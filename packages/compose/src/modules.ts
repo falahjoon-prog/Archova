@@ -44,6 +44,7 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
@@ -68,6 +69,7 @@ export const MODULE_PERMISSIONS = [
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
+  BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
@@ -253,6 +255,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     logger: services.logger,
   });
 
+  const bim = createBimModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    rfis: rfis.api,
+  });
+
   const ownerportal = createOwnerPortalModule(services, {
     access: access.api,
     platform: platform.api,
@@ -430,6 +439,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defects,
     meetings,
     ownerportal,
+    bim,
     notifications,
     financials,
     quality,
@@ -466,6 +476,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defects,
     meetings,
     ownerportal,
+    bim,
     notifications,
     financials,
     quality,

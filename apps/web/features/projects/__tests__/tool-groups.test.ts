@@ -15,6 +15,7 @@ describe('projectToolGroups', () => {
       'RFIs',
       'Submittals',
       'Correspondence',
+      'Coordination',
       'Site diary',
       'Delay register',
       'Programme',

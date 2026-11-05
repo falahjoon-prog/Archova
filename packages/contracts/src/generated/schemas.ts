@@ -107,6 +107,11 @@ export const AddBudgetLineRequestSchema = z.object({
 }).strict();
 export type AddBudgetLineRequest = z.infer<typeof AddBudgetLineRequestSchema>;
 
+export const AddCoordinationCommentRequestSchema = z.object({
+  "body": z.string().min(1).max(5000),
+}).strict();
+export type AddCoordinationCommentRequest = z.infer<typeof AddCoordinationCommentRequestSchema>;
+
 export const MeetingLiveSourceSchema = z.enum(["rfis_overdue", "submittals_due", "defects_open", "delays_week"]);
 export type MeetingLiveSource = z.infer<typeof MeetingLiveSourceSchema>;
 
@@ -448,6 +453,28 @@ export const BidderListListSchema = z.object({
   "data": z.array(BidderListSchema),
 });
 export type BidderListList = z.infer<typeof BidderListListSchema>;
+
+export const BimDisciplineSchema = z.enum(["architectural", "structural", "mechanical", "electrical", "hydraulic", "fire", "civil", "other"]);
+export type BimDiscipline = z.infer<typeof BimDisciplineSchema>;
+
+export const BimModelSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "discipline": BimDisciplineSchema,
+  "versionLabel": z.string(),
+  "fileId": z.string().nullable(),
+  "status": z.enum(["current", "superseded"]),
+  "supersededById": z.string().nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type BimModel = z.infer<typeof BimModelSchema>;
+
+export const BimModelListSchema = z.object({
+  "data": z.array(BimModelSchema),
+});
+export type BimModelList = z.infer<typeof BimModelListSchema>;
 
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
@@ -1000,6 +1027,53 @@ export const ContractSourceRefSchema = z.object({
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
+export const CoordinationCommentSchema = z.object({
+  "id": z.string(),
+  "authorId": z.string(),
+  "body": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type CoordinationComment = z.infer<typeof CoordinationCommentSchema>;
+
+export const CoordinationIssueStatusSchema = z.enum(["open", "in_progress", "resolved", "closed"]);
+export type CoordinationIssueStatus = z.infer<typeof CoordinationIssueStatusSchema>;
+
+export const CoordinationIssuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type CoordinationIssuePriority = z.infer<typeof CoordinationIssuePrioritySchema>;
+
+export const CoordinationIssueSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string(),
+  "status": CoordinationIssueStatusSchema,
+  "priority": CoordinationIssuePrioritySchema,
+  "assigneeId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "modelId": z.string().nullable(),
+  "elementGuids": z.array(z.string()),
+  "location": z.string(),
+  "rfiId": z.string().nullable(),
+  "resolvedAt": z.string().datetime({ offset: true }).nullable(),
+  "commentCount": z.number().int(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type CoordinationIssue = z.infer<typeof CoordinationIssueSchema>;
+
+export const CoordinationIssueDetailSchema = z.object({
+  "issue": CoordinationIssueSchema,
+  "comments": z.array(CoordinationCommentSchema),
+});
+export type CoordinationIssueDetail = z.infer<typeof CoordinationIssueDetailSchema>;
+
+export const CoordinationIssueListSchema = z.object({
+  "data": z.array(CoordinationIssueSchema),
+});
+export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
+
 export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
 export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
 
@@ -1233,6 +1307,15 @@ export const CreateBidderListRequestSchema = z.object({
 }).strict();
 export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
 
+export const CreateBimModelRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "discipline": BimDisciplineSchema,
+  "versionLabel": z.string().max(50).optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "supersedesModelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateBimModelRequest = z.infer<typeof CreateBimModelRequestSchema>;
+
 export const CreateCommitmentFromAwardRequestSchema = z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
 }).strict();
@@ -1312,6 +1395,19 @@ export const CreateContractRequestSchema = z.object({
 }).strict()).max(500),
 }).strict();
 export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
+
+export const CreateCoordinationIssueRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(10000).optional(),
+  "priority": CoordinationIssuePrioritySchema.optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).optional(),
+  "dueDate": z.string().date().optional(),
+  "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "elementGuids": z.array(z.string().max(64)).max(50).optional(),
+  "location": z.string().max(200).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateCoordinationIssueRequest = z.infer<typeof CreateCoordinationIssueRequestSchema>;
 
 export const CreateCorrespondenceRequestSchema = z.object({
   "typeId": CorrespondenceTypeRefSchema,
@@ -6319,6 +6415,20 @@ export const UpdateComplianceDocumentRequestSchema = z.object({
   "archived": z.boolean().optional(),
 }).strict();
 export type UpdateComplianceDocumentRequest = z.infer<typeof UpdateComplianceDocumentRequestSchema>;
+
+export const UpdateCoordinationIssueRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "description": z.string().max(10000).optional(),
+  "status": CoordinationIssueStatusSchema.optional(),
+  "priority": CoordinationIssuePrioritySchema.optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "elementGuids": z.array(z.string().max(64)).max(50).optional(),
+  "location": z.string().max(200).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type UpdateCoordinationIssueRequest = z.infer<typeof UpdateCoordinationIssueRequestSchema>;
 
 export const UpdateCorrespondenceRequestSchema = z.object({
   "subject": z.string().max(300).optional(),

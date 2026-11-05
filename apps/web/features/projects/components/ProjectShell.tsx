@@ -29,6 +29,7 @@ import {
   InductionsIcon,
   RfisIcon,
   SubmittalsIcon,
+  CoordinationIcon,
   CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -136,6 +137,11 @@ export function projectToolGroups(
       href: webRoutes.correspondence(orgSlug, projectId),
       label: 'Correspondence',
       icon: CorrespondenceIcon,
+    },
+    canRead('coordination') && {
+      href: webRoutes.coordination(orgSlug, projectId),
+      label: 'Coordination',
+      icon: CoordinationIcon,
     },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),

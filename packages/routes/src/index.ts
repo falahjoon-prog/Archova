@@ -34,6 +34,7 @@ export const webRoutes = {
   // Project tools (frontend 03 §1). Entity segments are API ids; pages show the human number.
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
+  coordination: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/coordination`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>

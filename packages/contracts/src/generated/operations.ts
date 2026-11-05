@@ -299,6 +299,46 @@ export const SearchSpecSectionsQuery = z.object({
   "q": z.string().max(100).optional(),
   "limit": z.coerce.number().int().min(1).max(50).default(20),
 });
+export const ListBimModelsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBimModelParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBimModelBody = s.CreateBimModelRequestSchema;
+export const ListCoordinationIssuesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCoordinationIssuesQuery = z.object({
+  "status": s.CoordinationIssueStatusSchema.optional(),
+  "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "q": z.string().min(1).max(200).optional(),
+});
+export const CreateCoordinationIssueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCoordinationIssueBody = s.CreateCoordinationIssueRequestSchema;
+export const GetCoordinationIssueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "issueId": z.string().regex(new RegExp("^cis_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoordinationIssueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "issueId": z.string().regex(new RegExp("^cis_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoordinationIssueBody = s.UpdateCoordinationIssueRequestSchema;
+export const AddCoordinationIssueCommentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "issueId": z.string().regex(new RegExp("^cis_[0-9A-Za-z]{26}$")),
+});
+export const AddCoordinationIssueCommentBody = s.AddCoordinationCommentRequestSchema;
 export const ListDocumentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3629,6 +3669,90 @@ export const operations = {
     params: SearchSpecSectionsParams,
     query: SearchSpecSectionsQuery,
     body: null,
+  },
+  listBimModels: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/bim-models',
+    module: "bim",
+    auth: "required",
+    permission: "bim.models.read",
+    internal: false,
+    contentType: null,
+    params: ListBimModelsParams,
+    query: null,
+    body: null,
+  },
+  createBimModel: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/bim-models',
+    module: "bim",
+    auth: "required",
+    permission: "bim.models.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBimModelParams,
+    query: null,
+    body: CreateBimModelBody,
+  },
+  listCoordinationIssues: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues',
+    module: "bim",
+    auth: "required",
+    permission: "bim.issues.read",
+    internal: false,
+    contentType: null,
+    params: ListCoordinationIssuesParams,
+    query: ListCoordinationIssuesQuery,
+    body: null,
+  },
+  createCoordinationIssue: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues',
+    module: "bim",
+    auth: "required",
+    permission: "bim.issues.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCoordinationIssueParams,
+    query: null,
+    body: CreateCoordinationIssueBody,
+  },
+  getCoordinationIssue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.issues.read",
+    internal: false,
+    contentType: null,
+    params: GetCoordinationIssueParams,
+    query: null,
+    body: null,
+  },
+  updateCoordinationIssue: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.issues.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCoordinationIssueParams,
+    query: null,
+    body: UpdateCoordinationIssueBody,
+  },
+  addCoordinationIssueComment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments',
+    module: "bim",
+    auth: "required",
+    permission: "bim.issues.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddCoordinationIssueCommentParams,
+    query: null,
+    body: AddCoordinationIssueCommentBody,
   },
   listDocuments: {
     method: 'GET',
