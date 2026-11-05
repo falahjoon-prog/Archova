@@ -864,6 +864,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ScheduleDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedule-links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listScheduleLinksForItem
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Where one RFI or submittal sits on the programme: the activities it is tied to (SCH-US10). Empty when the caller cannot see the item.'
+      parameters:
+        - {
+            name: kind,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [rfi, submittal] },
+          }
+        - { name: targetId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleItemPlacementList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10010,6 +10035,24 @@ components:
             type: [integer, 'null'],
             description: 'RFI schedule impact in days; null for submittals.',
           }
+    ScheduleItemPlacement:
+      type: object
+      required: [linkId, scheduleId, scheduleName, activityId, activityName, start, finish]
+      properties:
+        linkId: { type: string }
+        scheduleId: { type: string }
+        scheduleName: { type: string }
+        activityId: { type: string }
+        activityName: { type: string }
+        start: { type: string, format: date }
+        finish: { type: string, format: date }
+    ScheduleItemPlacementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleItemPlacement' }
     ScheduleLinkList:
       type: object
       required: [data]

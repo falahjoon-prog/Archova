@@ -51,6 +51,18 @@ export function useScheduleLinks(scheduleId: string | null) {
   });
 }
 
+/** Where one RFI or submittal sits on the programme. Errors (no programme access) just mean nothing to show. */
+export function useItemPlacements(kind: 'rfi' | 'submittal', targetId: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'programme', { item: kind, targetId }),
+    queryFn: () => source.placements(projectId, kind, targetId),
+    retry: false,
+  });
+}
+
 export function useLookahead(scheduleId: string | null, weeks: number) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();

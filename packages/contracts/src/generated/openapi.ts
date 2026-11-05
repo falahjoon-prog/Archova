@@ -730,6 +730,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedule-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Where one RFI or submittal sits on the programme: the activities it is tied to (SCH-US10). Empty when the caller cannot see the item. */
+        get: operations["listScheduleLinksForItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links": {
         parameters: {
             query?: never;
@@ -7105,6 +7125,20 @@ export interface components {
             dueDate: string | null;
             /** @description RFI schedule impact in days; null for submittals. */
             scheduleImpactDays: number | null;
+        };
+        ScheduleItemPlacement: {
+            linkId: string;
+            scheduleId: string;
+            scheduleName: string;
+            activityId: string;
+            activityName: string;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            finish: string;
+        };
+        ScheduleItemPlacementList: {
+            data: components["schemas"]["ScheduleItemPlacement"][];
         };
         ScheduleLinkList: {
             data: components["schemas"]["ScheduleLink"][];
@@ -14014,6 +14048,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listScheduleLinksForItem: {
+        parameters: {
+            query: {
+                kind: "rfi" | "submittal";
+                targetId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItemPlacementList"];
                 };
             };
             default: components["responses"]["Problem"];

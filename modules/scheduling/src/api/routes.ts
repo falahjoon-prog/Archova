@@ -102,6 +102,12 @@ export function schedulingRoutes(
       status: 200,
       body: await read(input, (s) => links.list(s, proj(input.params), sched(input.params))),
     }),
+    listScheduleLinksForItem: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        links.forItem(s, proj(input.params), input.query.kind, input.query.targetId),
+      ),
+    }),
     createScheduleLink: async (input) => ({
       status: 201,
       body: await tx(input, (s) =>

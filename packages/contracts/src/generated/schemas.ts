@@ -4516,6 +4516,22 @@ export const SaveInductionDraftRequestSchema = z.object({
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
 
+export const ScheduleItemPlacementSchema = z.object({
+  "linkId": z.string(),
+  "scheduleId": z.string(),
+  "scheduleName": z.string(),
+  "activityId": z.string(),
+  "activityName": z.string(),
+  "start": z.string().date(),
+  "finish": z.string().date(),
+});
+export type ScheduleItemPlacement = z.infer<typeof ScheduleItemPlacementSchema>;
+
+export const ScheduleItemPlacementListSchema = z.object({
+  "data": z.array(ScheduleItemPlacementSchema),
+});
+export type ScheduleItemPlacementList = z.infer<typeof ScheduleItemPlacementListSchema>;
+
 export const ScheduleLinkSchema = z.object({
   "id": z.string(),
   "activityId": z.string(),
