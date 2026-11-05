@@ -5,14 +5,32 @@ import type { ReactNode } from 'react';
 import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import {
+  AttendanceIcon,
+  ObservationsIcon,
+  InspectionsIcon,
+  SwmsIcon,
+  IncidentsIcon,
+  LateSubmissionsIcon,
+  OwnerPortalIcon,
+  FolderLinksIcon,
+  ImportsIcon,
   DefectsIcon,
+  MeetingsIcon,
+  ProgrammeIcon,
+  ContractsIcon,
+  BudgetIcon,
+  DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
+  TransmittalsIcon,
   DrawingsIcon,
   EstimatingIcon,
   HomeIcon,
   InductionsIcon,
   RfisIcon,
+  SubmittalsIcon,
+  CoordinationIcon,
+  CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -83,6 +101,11 @@ export function projectToolGroups(
     perms.orgRole === 'owner' ||
     perms.orgRole === 'admin' ||
     atLeast(perms.toolLevels[tool], 'read');
+  const canAdmin = (tool: Tool) =>
+    !perms ||
+    perms.orgRole === 'owner' ||
+    perms.orgRole === 'admin' ||
+    atLeast(perms.toolLevels[tool], 'admin');
   const core: Array<ProjectNavItem | false> = [
     canRead('documents') && {
       href: webRoutes.documents(orgSlug, projectId),
@@ -94,21 +117,121 @@ export function projectToolGroups(
       label: 'Drawings',
       icon: DrawingsIcon,
     },
+    canRead('documents') && {
+      href: webRoutes.specifications(orgSlug, projectId),
+      label: 'Specifications',
+      icon: DocumentsIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.transmittals(orgSlug, projectId),
+      label: 'Transmittals',
+      icon: TransmittalsIcon,
+    },
     canRead('rfis') && { href: webRoutes.rfis(orgSlug, projectId), label: 'RFIs', icon: RfisIcon },
+    canRead('submittals') && {
+      href: webRoutes.submittals(orgSlug, projectId),
+      label: 'Submittals',
+      icon: SubmittalsIcon,
+    },
+    canRead('correspondence') && {
+      href: webRoutes.correspondence(orgSlug, projectId),
+      label: 'Correspondence',
+      icon: CorrespondenceIcon,
+    },
+    canRead('coordination') && {
+      href: webRoutes.coordination(orgSlug, projectId),
+      label: 'Coordination',
+      icon: CoordinationIcon,
+    },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',
       icon: DiaryIcon,
+    },
+    canRead('diary') && {
+      href: webRoutes.delays(orgSlug, projectId),
+      label: 'Delay register',
+      icon: DelaysIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.programme(orgSlug, projectId),
+      label: 'Programme',
+      icon: ProgrammeIcon,
     },
     canRead('defects') && {
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('meetings') && {
+      href: webRoutes.meetings(orgSlug, projectId),
+      label: 'Meetings',
+      icon: MeetingsIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.inductions(orgSlug, projectId),
       label: 'Inductions',
       icon: InductionsIcon,
+    },
+    canRead('payment_claims') && {
+      href: webRoutes.contracts(orgSlug, projectId),
+      label: 'Contracts',
+      icon: ContractsIcon,
+    },
+    canRead('payment_claims') && {
+      href: webRoutes.paymentClaims(orgSlug, projectId),
+      label: 'Payment claims',
+      icon: ContractsIcon,
+    },
+    canRead('budget') && {
+      href: webRoutes.budget(orgSlug, projectId),
+      label: 'Budget',
+      icon: BudgetIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.attendance(orgSlug, projectId),
+      label: 'Attendance',
+      icon: AttendanceIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.inspections(orgSlug, projectId),
+      label: 'Inspections',
+      icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.observations(orgSlug, projectId),
+      label: 'Observations',
+      icon: ObservationsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.swms(orgSlug, projectId),
+      label: 'SWMS',
+      icon: SwmsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.incidents(orgSlug, projectId),
+      label: 'Incidents',
+      icon: IncidentsIcon,
+    },
+    canRead('owner_portal') && {
+      href: webRoutes.ownerPortal(orgSlug, projectId),
+      label: 'Owner portal',
+      icon: OwnerPortalIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.lateSubmissions(orgSlug, projectId),
+      label: 'Late submissions',
+      icon: LateSubmissionsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.imports(orgSlug, projectId),
+      label: 'Imports',
+      icon: ImportsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.folderLinks(orgSlug, projectId),
+      label: 'SharePoint and Drive',
+      icon: FolderLinksIcon,
     },
   ];
   return [
@@ -129,6 +252,16 @@ export function projectToolGroups(
         {
           href: webRoutes.tenderPackages(orgSlug, projectId),
           label: 'Tender packages',
+          icon: EstimatingIcon,
+        },
+        {
+          href: webRoutes.estimates(orgSlug, projectId),
+          label: 'Estimates',
+          icon: EstimatingIcon,
+        },
+        {
+          href: webRoutes.costLibrary(orgSlug, projectId),
+          label: 'Cost library',
           icon: EstimatingIcon,
         },
       ],

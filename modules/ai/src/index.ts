@@ -2,7 +2,10 @@
 // the codebase talks to an AI vendor (X26).
 import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
+import { createContractPlaybookService } from './application/contract-playbook';
+import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
+import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
 import { createSemanticSearchService } from './application/semantic-search';
 import { createInductionCurrencyService } from './application/induction-currency';
@@ -16,12 +19,19 @@ import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
+import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createImportMappingService } from './application/import-mapping';
+import {
+  createQuoteNegotiateService,
+  type QuoteForNegotiation,
+} from './application/quote-negotiate';
+import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
+import { createTakeoffDetectService } from './application/takeoff-detect';
 import {
   createDrawingCompareService,
   type DrawingRevisionRef,
@@ -47,6 +57,7 @@ import { AI_PERMISSIONS } from './permissions';
 
 export { AI_PERMISSIONS } from './permissions';
 export { FAKE_EMBEDDING_MODEL, FAKE_MODELS, loadAiConfig, type AiConfig } from './config';
+export { MAX_GRANT_CREDITS } from './application/credit-grants';
 export { TASK_CREDITS, decideBudget, effectiveAllowance } from './domain/credits';
 export { checkCitations, type CheckedCitation } from './domain/citations';
 export {
@@ -90,6 +101,7 @@ export type { InductionDraftPayload } from './application/induction-draft';
 export type { InductionRefreshPayload } from './application/induction-refresh';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { DiaryWeeklyPayload } from './application/diary-weekly';
+export type { MinutesExtractPayload } from './application/minutes-extract';
 export { compareVisually } from './application/visual-compare';
 export type {
   VisualComparePayload,
@@ -105,6 +117,7 @@ export type { RfiAnswerDraft, RfiForAnswer } from './application/rfi-answer';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
 export type { QuoteReading } from './application/quote-read';
+export type { TakeoffDetection } from './application/takeoff-detect';
 export type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 export type {
   DrawingCompare,
@@ -234,6 +247,12 @@ export function createAiModule(
       projectId: string,
       date: string,
     ) => Promise<DiaryDayForSummary | null>;
+    /** meetings.api.forMinutesDraft: the meeting's sections and attendees for the caller who may write its minutes (F7). */
+    meetingForMinutes: (
+      scope: TenantScope,
+      projectId: string,
+      meetingId: string,
+    ) => Promise<MeetingForMinutes>;
     /** platform.api.projectCompaniesWithTrades: who works on the project and the trades they list (F5). */
     projectCompanies: (scope: TenantScope, projectId: string) => Promise<ProjectCompany[]>;
     /** defects.api.openNear: open defects the caller can see pinned near a spot on a revision (F5). */
@@ -248,6 +267,13 @@ export function createAiModule(
       projectId: string,
       packageId: string,
     ) => Promise<{ id: string; trade: string; scope: QuoteScopeLine[] }>;
+    /** estimating.api.quoteForNegotiation: one confirmed quote's prices and terms against the field, no company (Nova). */
+    quoteForNegotiation: (
+      scope: TenantScope,
+      projectId: string,
+      packageId: string,
+      quoteId: string,
+    ) => Promise<QuoteForNegotiation>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -273,7 +299,12 @@ export function createAiModule(
   },
 ) {
   const provider = deps.provider ?? createProvider(deps.config.provider);
+  const grants = createCreditGrantService({
+    database: services.database,
+    orgTimeZone: deps.orgTimeZone,
+  });
   const gateway = createGateway({
+    grants,
     database: services.database,
     provider,
     routing: buildRoutingTable(deps.config.models, deps.config.prices),
@@ -287,7 +318,7 @@ export function createAiModule(
     logger: services.logger,
     orgTimeZone: deps.orgTimeZone,
   });
-  const admin = createAdminService({ orgTimeZone: deps.orgTimeZone });
+  const admin = createAdminService({ orgTimeZone: deps.orgTimeZone, grants });
   const drawingRegister = createDrawingRegisterService({
     database: services.database,
     gateway,
@@ -385,6 +416,26 @@ export function createAiModule(
     readFile: deps.readFile,
     quotePackage: deps.quotePackage,
   });
+  const contractPlaybooks = createContractPlaybookService();
+  const contractReviews = createContractReviewService({
+    database: services.database,
+    gateway,
+    playbooks: contractPlaybooks,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    orgTimeZone: deps.orgTimeZone,
+  });
+  const quoteNegotiations = createQuoteNegotiateService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    quote: deps.quoteForNegotiation,
+  });
+  const speech = createSpeechService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -393,6 +444,14 @@ export function createAiModule(
     getRevision: deps.getDrawingRevision,
     getPreviousRevision: deps.getPreviousDrawingRevision,
     openRfisOnDrawing: deps.openRfisOnDrawing,
+    ...(deps.rasterizePage ? { rasterizePage: deps.rasterizePage } : {}),
+  });
+  const takeoffDetect = createTakeoffDetectService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
     ...(deps.rasterizePage ? { rasterizePage: deps.rasterizePage } : {}),
   });
   const diarySummary = createDiarySummaryService({
@@ -404,6 +463,11 @@ export function createAiModule(
     database: services.database,
     gateway,
     dayForSummary: deps.dayForSummary,
+  });
+  const minutesExtract = createMinutesExtractService({
+    database: services.database,
+    gateway,
+    meeting: deps.meetingForMinutes,
   });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
@@ -431,11 +495,20 @@ export function createAiModule(
       defectTags,
       importMappings,
       quoteReads,
+      quoteNegotiations,
+      contractPlaybooks,
+      contractReviews,
+      speech,
+      takeoffDetect,
+      minutesExtract,
     ),
     permissions: AI_PERMISSIONS,
     provider,
     api: {
       runTask: gateway.runTask,
+      /** Owner console: add credits to an org's month, and read its grants. Staff actions; the caller checks the role. */
+      grantCredits: grants.grant,
+      listCreditGrants: grants.list,
       getSettings: admin.getSettings,
       extractDrawingRegister: drawingRegister.extract,
       ask: askService.ask,
@@ -465,11 +538,21 @@ export function createAiModule(
       suggestImportMapping: importMappings.suggest,
       /** F22: a subcontractor's PDF quote read into lines, exclusions and qualifications; no quote is saved. */
       readQuote: quoteReads.read,
+      /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
+      negotiateQuote: quoteNegotiations.negotiate,
+      /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
+      reviewContract: contractReviews.review,
+      /** Nova Esti: items of one kind found on a drawing sheet, as marks to accept or reject; nothing is saved. */
+      detectTakeoff: takeoffDetect.detect,
+      /** Nova listening: a short spoken question turned into text, in Australia; the clip is not kept. */
+      transcribeSpeech: speech.transcribe,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
       summariseDiaryDay: diarySummary.summariseDay,
       summariseDiaryWeek: diaryWeekly.summariseWeek,
+      /** F7: proposed minute items from typed meeting notes; `meetings.api.forMinutesDraft` supplies the meeting. */
+      extractMinutes: minutesExtract.extract,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */

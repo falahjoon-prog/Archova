@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } from '@archova/kernel';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -121,9 +121,9 @@ export function createTakeoffService(deps: TakeoffDeps) {
     return toPage(rows, opts.limit, (r) => ({ id: r.id }));
   }
 
-  async function create(scope: TenantScope, projectId: string, input: MeasurementCreate) {
+  async function assertRevision(scope: TenantScope, projectId: string, revisionId: string) {
     try {
-      await deps.documents.getDrawingRevision(scope, projectId, input.revisionId);
+      await deps.documents.getDrawingRevision(scope, projectId, revisionId);
     } catch (e) {
       if (!(e instanceof AppError) || e.code !== 'drawing_revision.not_found') throw e;
       throw new AppError(
@@ -132,6 +132,9 @@ export function createTakeoffService(deps: TakeoffDeps) {
         [{ path: 'revisionId', message: 'Not a drawing revision on this project' }],
       );
     }
+  }
+
+  async function insert(scope: TenantScope, projectId: string, input: MeasurementCreate) {
     check(input.kind, input.geometry, input.quantity);
     const packageId = input.packageId ?? null;
     const scopeKey = input.scopeKey ?? null;
@@ -165,7 +168,31 @@ export function createTakeoffService(deps: TakeoffDeps) {
       entityVersion: 1,
       data: { measurementId: id, revisionId: input.revisionId, source: input.source },
     });
-    return load(scope, projectId, id);
+    return id;
+  }
+
+  async function create(scope: TenantScope, projectId: string, input: MeasurementCreate) {
+    await assertRevision(scope, projectId, input.revisionId);
+    return load(scope, projectId, await insert(scope, projectId, input));
+  }
+
+  /** What Nova found on one sheet, saved together as unconfirmed `assisted` measurements: all or none. */
+  async function createAssisted(
+    scope: TenantScope,
+    projectId: string,
+    revisionId: string,
+    items: Array<Omit<MeasurementCreate, 'revisionId' | 'source'>>,
+  ) {
+    await assertRevision(scope, projectId, revisionId);
+    const ids: string[] = [];
+    for (const item of items)
+      ids.push(await insert(scope, projectId, { ...item, revisionId, source: 'assisted' }));
+    const rows = await scope.tx
+      .select()
+      .from(takeoffMeasurements)
+      .where(inArray(takeoffMeasurements.id, ids))
+      .orderBy(takeoffMeasurements.id);
+    return rows;
   }
 
   async function update(
@@ -216,6 +243,8 @@ export function createTakeoffService(deps: TakeoffDeps) {
       .set({
         confirmedBy: scope.ctx.userId,
         confirmedAt: now(),
+        rejectedBy: null,
+        rejectedAt: null,
         version: row.version + 1,
         updatedBy: scope.ctx.userId,
         updatedAt: now(),
@@ -234,6 +263,83 @@ export function createTakeoffService(deps: TakeoffDeps) {
     return updated;
   }
 
+  /** A person turns down something Nova drew: it stays on the sheet struck through, and never counts. */
+  async function reject(scope: TenantScope, projectId: string, id: string, expected: number) {
+    const row = await load(scope, projectId, id);
+    if (row.version !== expected) throw versionConflict();
+    if (row.source === 'manual')
+      throw new AppError('takeoff.invalid', 'Only what Nova drew can be rejected.', [
+        { path: 'id', message: 'A hand-drawn measurement is deleted, not rejected' },
+      ]);
+    if (row.rejectedAt) return row;
+    const [updated] = await scope.tx
+      .update(takeoffMeasurements)
+      .set({
+        rejectedBy: scope.ctx.userId,
+        rejectedAt: now(),
+        confirmedBy: null,
+        confirmedAt: null,
+        version: row.version + 1,
+        updatedBy: scope.ctx.userId,
+        updatedAt: now(),
+      })
+      .where(and(eq(takeoffMeasurements.id, id), eq(takeoffMeasurements.version, expected)))
+      .returning();
+    if (!updated) throw versionConflict();
+    scope.events.add({
+      type: 'estimating.takeoff.rejected.v1',
+      projectId,
+      entityType: 'takeoff_measurement',
+      entityId: id,
+      entityVersion: updated.version,
+      data: { measurementId: id, revisionId: row.revisionId },
+    });
+    return updated;
+  }
+
+  /**
+   * "Accept everything Nova is at least this sure of", or an explicit set. Only Nova's pending marks are touched:
+   * hand-drawn ones are confirmed already and a rejected mark stays rejected until a person confirms it on its own.
+   */
+  async function confirmMany(
+    scope: TenantScope,
+    projectId: string,
+    input: { revisionId: string; ids?: string[]; minConfidence?: number },
+  ) {
+    const t = takeoffMeasurements;
+    const conditions = [
+      eq(t.projectId, projectId),
+      eq(t.revisionId, input.revisionId),
+      isNull(t.deletedAt),
+      isNull(t.confirmedAt),
+      isNull(t.rejectedAt),
+      ne(t.source, 'manual'),
+    ];
+    if (input.ids) conditions.push(inArray(t.id, input.ids));
+    if (input.minConfidence !== undefined) conditions.push(gte(t.confidence, input.minConfidence));
+    const updated = await scope.tx
+      .update(t)
+      .set({
+        confirmedBy: scope.ctx.userId,
+        confirmedAt: now(),
+        version: sql`${t.version} + 1`,
+        updatedBy: scope.ctx.userId,
+        updatedAt: now(),
+      })
+      .where(and(...conditions))
+      .returning();
+    for (const row of updated)
+      scope.events.add({
+        type: 'estimating.takeoff.confirmed.v1',
+        projectId,
+        entityType: 'takeoff_measurement',
+        entityId: row.id,
+        entityVersion: row.version,
+        data: { measurementId: row.id, revisionId: row.revisionId },
+      });
+    return updated;
+  }
+
   async function remove(scope: TenantScope, projectId: string, id: string) {
     const row = await load(scope, projectId, id);
     await scope.tx
@@ -242,7 +348,7 @@ export function createTakeoffService(deps: TakeoffDeps) {
       .where(eq(takeoffMeasurements.id, id));
   }
 
-  return { list, get: load, create, update, confirm, remove };
+  return { list, get: load, create, createAssisted, update, confirm, confirmMany, reject, remove };
 }
 
 export type TakeoffService = ReturnType<typeof createTakeoffService>;

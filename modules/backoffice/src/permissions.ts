@@ -9,6 +9,18 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.requests.read',
   'backoffice.requests.decide',
   'backoffice.staff.read',
+  'backoffice.flags.read',
+  'backoffice.flags.edit',
+  'backoffice.accounts.trial',
+  'backoffice.accounts.plan',
+  'backoffice.accounts.suspend',
+  'backoffice.accounts.credits',
+  'backoffice.accounts.discount',
+  'backoffice.accounts.override',
+  'backoffice.accounts.refund',
+  'backoffice.accounts.refund_approve',
+  'backoffice.support.access',
+  'backoffice.holds.manage',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 
@@ -16,20 +28,54 @@ const READ: BackofficePermission[] = [
   'backoffice.customers.read',
   'backoffice.pricing.read',
   'backoffice.requests.read',
+  'backoffice.flags.read',
 ];
 
 export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]> = {
-  owner: BACKOFFICE_PERMISSIONS,
+  // Support access is for Support and Security lead only; Owner, Sales and Finance never hold it (Sam 12 §4a).
+  // Legal holds are for the Security lead only: placing and releasing one is a compliance act, not an admin one.
+  owner: BACKOFFICE_PERMISSIONS.filter(
+    (p) => p !== 'backoffice.support.access' && p !== 'backoffice.holds.manage',
+  ),
   pricing_approver: [
     ...READ,
     'backoffice.pricing.edit',
     'backoffice.pricing.approve',
     'backoffice.requests.decide',
   ],
-  billing_ops: [...READ, 'backoffice.pricing.edit'],
-  sales: ['backoffice.customers.read', 'backoffice.pricing.read'],
-  support: ['backoffice.customers.read', 'backoffice.requests.read'],
-  security_lead: [...READ, 'backoffice.staff.read'],
+  billing_ops: [
+    ...READ,
+    'backoffice.pricing.edit',
+    'backoffice.accounts.plan',
+    'backoffice.accounts.credits',
+    'backoffice.accounts.discount',
+    'backoffice.accounts.override',
+    'backoffice.accounts.refund',
+  ],
+  sales: [
+    'backoffice.customers.read',
+    'backoffice.pricing.read',
+    'backoffice.flags.read',
+    'backoffice.flags.edit',
+    'backoffice.accounts.trial',
+    'backoffice.accounts.plan',
+    'backoffice.accounts.discount',
+  ],
+  support: [
+    'backoffice.customers.read',
+    'backoffice.requests.read',
+    'backoffice.flags.read',
+    'backoffice.flags.edit',
+    'backoffice.accounts.trial',
+    'backoffice.support.access',
+  ],
+  security_lead: [
+    ...READ,
+    'backoffice.staff.read',
+    'backoffice.accounts.suspend',
+    'backoffice.support.access',
+    'backoffice.holds.manage',
+  ],
   finance_read: READ,
 };
 

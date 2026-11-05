@@ -12,6 +12,7 @@ overrides:
   vite@>=7.0.0 <7.3.7: ^7.3.7
   happy-dom@<21.0.4: ^21.0.4
   decode-uri-component@<0.5.1: ^0.5.1
+  node-forge@<1.4.1: ^1.4.1
   postcss@<8.5.18: ^8.5.18
 
 importers:
@@ -139,6 +140,9 @@ importers:
       '@archova/mod-billing':
         specifier: workspace:*
         version: link:../../modules/billing
+      '@archova/mod-correspondence':
+        specifier: workspace:*
+        version: link:../../modules/correspondence
       '@archova/mod-defects':
         specifier: workspace:*
         version: link:../../modules/defects
@@ -154,18 +158,45 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../../modules/financials
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../../modules/identity
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-meetings':
+        specifier: workspace:*
+        version: link:../../modules/meetings
+      '@archova/mod-notifications':
+        specifier: workspace:*
+        version: link:../../modules/notifications
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../../modules/platform
+      '@archova/mod-precon':
+        specifier: workspace:*
+        version: link:../../modules/precon
+      '@archova/mod-quality':
+        specifier: workspace:*
+        version: link:../../modules/quality
+      '@archova/mod-reporting':
+        specifier: workspace:*
+        version: link:../../modules/reporting
       '@archova/mod-rfis':
         specifier: workspace:*
         version: link:../../modules/rfis
+      '@archova/mod-safety':
+        specifier: workspace:*
+        version: link:../../modules/safety
+      '@archova/mod-scheduling':
+        specifier: workspace:*
+        version: link:../../modules/scheduling
+      '@archova/mod-submittals':
+        specifier: workspace:*
+        version: link:../../modules/submittals
       '@archova/mod-sync':
         specifier: workspace:*
         version: link:../../modules/sync
@@ -478,9 +509,15 @@ importers:
       next:
         specifier: ^15.5.28
         version: 15.5.28(@playwright/test@1.56.1)(@types/node@22.20.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.77.4)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
       pdfjs-dist:
         specifier: ^6.2.108
         version: 6.3.289
+      qrcode-generator:
+        specifier: 2.0.4
+        version: 2.0.4
       react:
         specifier: ^19.1.0
         version: 19.2.3
@@ -548,18 +585,57 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../../modules/access
       '@archova/mod-ai':
         specifier: workspace:*
         version: link:../../modules/ai
+      '@archova/mod-backoffice':
+        specifier: workspace:*
+        version: link:../../modules/backoffice
+      '@archova/mod-billing':
+        specifier: workspace:*
+        version: link:../../modules/billing
+      '@archova/mod-estimating':
+        specifier: workspace:*
+        version: link:../../modules/estimating
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../../modules/financials
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-meetings':
+        specifier: workspace:*
+        version: link:../../modules/meetings
+      '@archova/mod-notifications':
+        specifier: workspace:*
+        version: link:../../modules/notifications
+      '@archova/mod-safety':
+        specifier: workspace:*
+        version: link:../../modules/safety
       '@archova/mod-sync':
         specifier: workspace:*
         version: link:../../modules/sync
+      '@archova/mod-workforce':
+        specifier: workspace:*
+        version: link:../../modules/workforce
+      '@archova/routes':
+        specifier: workspace:*
+        version: link:../../packages/routes
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      '@aws-sdk/client-sesv2':
+        specifier: ^3.900.0
+        version: 3.1161.0
+      asn1js:
+        specifier: ^4.0.0
+        version: 4.0.0
       bullmq:
         specifier: ^5.58.0
         version: 5.81.5
@@ -572,6 +648,9 @@ importers:
       pg:
         specifier: ^8.16.0
         version: 8.23.1
+      pkijs:
+        specifier: ^4.0.1
+        version: 4.0.1(asn1js@4.0.0)
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*
@@ -770,6 +849,98 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
+  modules/bim:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/mod-rfis':
+        specifier: workspace:*
+        version: link:../rfis
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/correspondence:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
   modules/defects:
     dependencies:
       '@archova/contracts':
@@ -934,6 +1105,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../financials
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform
@@ -986,6 +1160,52 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/financials:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*
@@ -1092,6 +1312,126 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
+  modules/meetings:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/notifications:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/ownerportal:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
   modules/platform:
     dependencies:
       '@archova/contracts':
@@ -1109,6 +1449,144 @@ importers:
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../identity
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/precon:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/quality:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/reporting:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-defects':
+        specifier: workspace:*
+        version: link:../defects
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/mod-rfis':
+        specifier: workspace:*
+        version: link:../rfis
+      '@archova/mod-submittals':
+        specifier: workspace:*
+        version: link:../submittals
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
@@ -1149,6 +1627,144 @@ importers:
       '@archova/mod-documents':
         specifier: workspace:*
         version: link:../documents
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/safety:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/scheduling:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-diary':
+        specifier: workspace:*
+        version: link:../diary
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/mod-rfis':
+        specifier: workspace:*
+        version: link:../rfis
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/submittals:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files
@@ -1365,6 +1981,12 @@ importers:
       '@archova/mod-billing':
         specifier: workspace:*
         version: link:../../modules/billing
+      '@archova/mod-bim':
+        specifier: workspace:*
+        version: link:../../modules/bim
+      '@archova/mod-correspondence':
+        specifier: workspace:*
+        version: link:../../modules/correspondence
       '@archova/mod-defects':
         specifier: workspace:*
         version: link:../../modules/defects
@@ -1380,18 +2002,48 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../../modules/financials
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../../modules/identity
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-meetings':
+        specifier: workspace:*
+        version: link:../../modules/meetings
+      '@archova/mod-notifications':
+        specifier: workspace:*
+        version: link:../../modules/notifications
+      '@archova/mod-ownerportal':
+        specifier: workspace:*
+        version: link:../../modules/ownerportal
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../../modules/platform
+      '@archova/mod-precon':
+        specifier: workspace:*
+        version: link:../../modules/precon
+      '@archova/mod-quality':
+        specifier: workspace:*
+        version: link:../../modules/quality
+      '@archova/mod-reporting':
+        specifier: workspace:*
+        version: link:../../modules/reporting
       '@archova/mod-rfis':
         specifier: workspace:*
         version: link:../../modules/rfis
+      '@archova/mod-safety':
+        specifier: workspace:*
+        version: link:../../modules/safety
+      '@archova/mod-scheduling':
+        specifier: workspace:*
+        version: link:../../modules/scheduling
+      '@archova/mod-submittals':
+        specifier: workspace:*
+        version: link:../../modules/submittals
       '@archova/mod-sync':
         specifier: workspace:*
         version: link:../../modules/sync
@@ -1476,6 +2128,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
   packages/domain:
+    dependencies:
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../time
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*
@@ -1827,6 +2483,10 @@ packages:
     resolution: {integrity: sha512-MPKAQdx8qCZW1/ChDPILNehtAn/BMP4GNTnaH/xhGCWg3v50ADVq1K2WzxIrFfeANdWUyjwiY0CXDBhclsNWgQ==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/client-sesv2@3.1161.0':
+    resolution: {integrity: sha512-UIaU6OixjkY44nKaJZA2f41vnjj3pk9HbadZTWK2ZoVE81lzX2e+vWpOWWgJCfRxymm9GEiRMtEN/5rfcvDJYQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/client-textract@3.1145.0':
     resolution: {integrity: sha512-PZvkz89upbCTX611G7o9C07lYAiFapcGWJepZbmyU0Infm3xwKW+c6IGeoHDF7NL3H4pS051APguyatgKlJfOQ==}
     engines: {node: '>=20.0.0'}
@@ -1835,36 +2495,72 @@ packages:
     resolution: {integrity: sha512-LbY9aGsEiznDWmUc30Nwv3aIX/+dbwTx8KfS0yOC3NPYMO+O91e6jkT1azf34FwjOndq8/Q+RcVVZz5xnerwdg==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/core@3.979.1':
+    resolution: {integrity: sha512-ayOlV1VhLNMiq8PW9ZkVobG4gkldnUoHjG69yy2b8j+VYFlhz/uAL7ZdYQAoQ+eShtGUdNDnnG5rxDg6yUJrOg==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/credential-provider-env@3.972.72':
     resolution: {integrity: sha512-xTKO/FWJPozTIXbozVnVGoNBhaGba8TBcx+KyUjRVeOlXE+dUc7GTR1cLvu0uTdIdmemzaFbqqCshXeZA1fZew==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-env@3.972.80':
+    resolution: {integrity: sha512-uO5TiSvb6j1w9RTe5z28OaOmsrOxVQUPaC5+wZl50RfOXcrYD/KgnS8I9lfyGXc7sGbkCopK6VnhNIAoLqfewQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/credential-provider-http@3.972.74':
     resolution: {integrity: sha512-u91E/hT8f4d1xy0Jl7VG4nVKJ3lxbrZkoBTeSVoJdWBiSEUMwMS/9+e0H/aJVQV//Lt5wuzP+E69v4aRSsNTmw==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/credential-provider-http@3.972.82':
+    resolution: {integrity: sha512-vQzlDHlC24Yz42p+rT4NBoP/5VdetkBoujbOLq9h6QYWC8THuZSPYnXIR9OP3XcOrdMgPBBipOrdssfxnIiWUg==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/credential-provider-ini@3.973.17':
     resolution: {integrity: sha512-ged4KXdBkvIC81bLvNHHuQKdKak/VXhQTR1NWYTTqW0474nlmsxy9O/vlgTIohDDWH3xpBdtVMZRyjb+DnocDA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-ini@3.973.25':
+    resolution: {integrity: sha512-b5xl71uCRdWsu7P1VeGpiGuCf6zfYETsSNOv8AmYVTrsgbvTJRXdmmOPVfxkvGGVNsiKkGctClQW3jAn0SZLug==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/credential-provider-login@3.972.79':
     resolution: {integrity: sha512-L+Z85anONJd8MaiuraO4wRxATCdEejBZ3K3eymzWI5JPXa9sOS9CkIm72PBKqXKX+Z9p9NGMX5AIMXm0LEflgw==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/credential-provider-login@3.972.87':
+    resolution: {integrity: sha512-C4ZFmcwM+Zj14Z8huVUk54Gv4uzT1ZdzG9cY3Gdh8FePakq7Bss1OFsgZjAhWFOkFOGpBvFBeu0OWjWf8HNKRQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/credential-provider-node@3.972.84':
     resolution: {integrity: sha512-oHt854odINVwzwsh+c5x69j0ajm4DbqqqVJ+O1ECsCIZeMDAbzFpXItaqP7UZstJj/ATdTk/KFSH0LaNAgV+kA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-node@3.972.92':
+    resolution: {integrity: sha512-jC3zmOo7Qxlk+oBivvSsS1Ph7sFGm0QfuhqDGbqgRXi4cxUYMG+dWtBwS2XYYXgc8TIVXJiwgQ65sbNpbYupTA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/credential-provider-process@3.972.72':
     resolution: {integrity: sha512-rLIp2xbMjX/k9/od7APpqq1ZgXXnV0pOL1Th3ZsL8Wu0TRtBsDTVS8iPqcfRFcHakFxPvR04OSTv2ka2qOb/2A==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/credential-provider-process@3.972.80':
+    resolution: {integrity: sha512-xqfixO5aclje7tbQJDias+iNND5wp/3QZixCdZcVQpgWPTZ0V5DfTW9A804A5Z7ezu7sH3WRO+vzUjtiJBA8yg==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/credential-provider-sso@3.973.16':
     resolution: {integrity: sha512-IGihaJfFZYacJJr/odqILCoK7W/mvrZ7cuK7ECn3sAu4vLC6u0V8bS7mCGbdugJ8Aum2tnvqmx0F2MRFp2rn9g==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/credential-provider-sso@3.973.24':
+    resolution: {integrity: sha512-nlg3BKG03Cgzvv/dMnhxvDJPhAhQSpaN0RUdwgU7ziwkasoev7iI8el8Xy4Rd5sqzgaDUbV269fOXck5SargqA==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/credential-provider-web-identity@3.972.78':
     resolution: {integrity: sha512-/y9WvNtlcPBGLR0qc1a+9J/xtYZfVczvLUOuXaVWylzttH7ewsxwHtjmiJSolNrVSDorIxHGHMU61CbonRkmwA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-web-identity@3.972.86':
+    resolution: {integrity: sha512-zKTyLJBEyfQBVlYqT6Jt+mYV4r8kGbWM7dn6v4Y4MRARizhYafjDXP/iMu76UMRhToSPNmIKX1XAb24gtpBFIA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/eventstream-handler-node@3.972.35':
@@ -1887,12 +2583,20 @@ packages:
     resolution: {integrity: sha512-oRxtBcka/JGHGs9l9p9IVajGoTP8vTPmoAzdHGy4Qcy9P5vPnDf6nhIeM/COQNY9k/OahImTRaLkHftoXvfcmQ==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/nested-clients@3.997.54':
+    resolution: {integrity: sha512-/OczlavsS7U5sOodRO10Ug4R/AKFVZiXTstKipWe68EfjPkmdDFNXNl9FCJyXWkg1DG6RBm3qAuVB8FNW9O8KQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/s3-request-presigner@3.1145.0':
     resolution: {integrity: sha512-ewlTaWzlzmpMDU3C3rqYypaOhyvn7JAyyscJzbTbJa9XHPDGt+e8CYN8FH8GMGClGhSXq9RPAvD19O4fihUTXQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.996.47':
     resolution: {integrity: sha512-Zk08macMvQTHzQJCLJVkOlviVoqwYMrpXv4lmLN7b7sAbiMoOK7Go0NYdR5UeF+MW8LIbRmwrNy9u/5VvX1U5g==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/signature-v4-multi-region@3.996.51':
+    resolution: {integrity: sha512-+aHvUugVBuMPXxgkPfWnTMyGdE/yWS8GHi5+qQ37HowS0YqzrbuaDLznj+Dtmtu5jgCdqz36gXmujOToUhNNWw==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/token-providers@3.1138.0':
@@ -1903,12 +2607,24 @@ packages:
     resolution: {integrity: sha512-1UaecerBv7NDpfcb5JO8bqbGN2k7yvHIXRU+lnOl/fd+TraWN8YBjEcZpaQYQydKNFxGH0lDuz3Kz6VIAbRTIw==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/token-providers@3.1161.0':
+    resolution: {integrity: sha512-ypbXSofNcSHwf/KA40bFCXJb0MLaAKrfT7sot4dFaA+2lsuXNah4zLRJIAU7Qmvs9PFJ6rnY0bZFEC+mE7attA==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/types@3.974.6':
     resolution: {integrity: sha512-v/clNZzZnDxGyvpHMOGpJKVXFAExJzUNAAjaWGdcx8QAcXLGwTaOkw33p5SHAi0YAioK32xB3hWwOekRVfmfKg==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/types@3.975.0':
+    resolution: {integrity: sha512-WQlhs6juByzWOzj5fwxOx0mPJaEqMcG/sDpl3Id61B3XhKE63xY+0QWcnG+sWR/sCfprmreyUo1lM7IKZmHMzw==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/xml-builder@3.972.41':
     resolution: {integrity: sha512-ctjVSyCMegrWfXlx6VqzSBFI6UqmQ5ZlnfMhdLIiWmhoH8UAQxSCP5N3OpG7X3k4LnS7ou74C4mt20+bfTW2aQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/xml-builder@3.972.42':
+    resolution: {integrity: sha512-smX8/gNP8Kjq+CWTBMZQLQ912vOQjiWExzwzvMO+eujPB5RY8IbtF0AGdUUXHKN7KoDWK9dIcuW0WG269kiP6w==}
     engines: {node: '>=20.0.0'}
 
   '@aws/lambda-invoke-store@0.3.0':
@@ -3855,6 +4571,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
+
   '@node-rs/argon2-android-arm-eabi@2.2.1':
     resolution: {integrity: sha512-tvHjNf7XkLsuDKb6VhNZekA/Wq2Qf0yxygxQYWYcUUCawgg3QRDeXMBYa6QVQPHp1fpDXk42euRjVpHmQ5CwFQ==}
     engines: {node: '>= 10'}
@@ -4002,6 +4722,10 @@ packages:
 
   '@pdf-lib/upng@1.0.1':
     resolution: {integrity: sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ==}
+
+  '@peculiar/utils@4.1.0':
+    resolution: {integrity: sha512-y2oDqAwp+VPZMUYFGFFMYlXM8xinwb7ehb69+2EhbEL+n7KsykCQX5F0u3/B+BFHxCkwTyft3T1id0ugyzNHVQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -4462,6 +5186,11 @@ packages:
   '@smithy/core@3.35.1':
     resolution: {integrity: sha512-i4YPS4B6ts7bjn7UwLnGjiZdprOvHvgGobFZsYK3GIY3E5hIqtj0rReU69BcTpGp+fvtraSNXeG1l+jtJvF55w==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
+
+  '@smithy/core@3.38.1':
+    resolution: {integrity: sha512-U/mB2XiwTLaf+NSgLSWwJfptsMT/H8aBi0aTAA/E5e2/TagFeGCqAyhKGG0w0A9IWTkm4qYEmLoD/HB6aYfnRA==}
+    engines: {node: '>=18.0.0'}
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
@@ -4475,8 +5204,16 @@ packages:
     resolution: {integrity: sha512-ThMkboGeONWXAelq9FvGsuJC4rOi+qyC4/zhUF58xYpxUg5sQKx2VXZYJmtNjr4dSuBJ1HeJXETQILCz3wOHvw==}
     engines: {node: '>=18.0.0'}
 
+  '@smithy/node-http-handler@4.14.1':
+    resolution: {integrity: sha512-/T6E1jzCL0fErS9uq8JqES/5yYQQ4ppVmmYHwXw2nlov8KFzLb+3QqHR5iAun1BsuAB50IPxZliV8YMgghLwhA==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/signature-v4@5.7.4':
     resolution: {integrity: sha512-tHy0K0VtqNd5Y7Y41h0a0Lhh0L1GzC08dTWg0F7vRJWFtTENg7IZikf3wQkanYIRdb7ngoIPMTmqgUi401fEeQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/signature-v4@5.7.5':
+    resolution: {integrity: sha512-WPjdr5oWOk1LArpI4pavu+fSo+/evi0Re1olxGvqwuZopd4gYR1UGCi+Soyn/IjmafqbWs+ZC+3AKxJS3ZpwUg==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/types@4.19.0':
@@ -4865,6 +5602,10 @@ packages:
   asap@2.0.6:
     resolution: {integrity: sha512-BSHWgDSAiKs50o2Re8ppvp3seVHXSRM44cdSsT9FfNEUUZLOGWVCsiWaRPWM1Znn+mqZ1OfVZ3z3DWEzSp7hRA==}
 
+  asn1js@4.0.0:
+    resolution: {integrity: sha512-81NlooYbXCbBWL2+p1/ivGyT4AR2+bnfKYlPq/3rCoIPJSuLbdS8G70XYt561wOJnbaYfBS2HQDMENaX5hM2vA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
@@ -5026,6 +5767,10 @@ packages:
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
+
+  bytestreamjs@3.0.0:
+    resolution: {integrity: sha512-QJYdJHpGNj4dAfRrgQAu8V5OEFVgiALJ8YFR4c1BuNYzvoDU86yEg+9SXu/AbGyMaLAn17qdMmwsCc2Ry2nHPg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -6959,8 +7704,8 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.2:
+    resolution: {integrity: sha512-rRtAR5XLJ8gCKd9du4qrKAsgCG1ObGP4gLeNJMa4vYSeq4bmBMOJk5IHkrviBV0q7uoAJlVd8HEQYQSVUb4FGQ==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp-build-optional-packages@5.2.2:
@@ -7192,6 +7937,12 @@ packages:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
 
+  pkijs@4.0.1:
+    resolution: {integrity: sha512-hs6jHBg+Y9ZZ9r5w2CHnKXkGPOr3qWfkLfnZGlbNkP2hceGZ6EgjnTS7tqwbugHXx5mCqoSf4TUH2nu1diirnA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      asn1js: ^4.0.0
+
   playwright-core@1.56.1:
     resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
     engines: {node: '>=18'}
@@ -7288,6 +8039,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  qrcode-generator@2.0.4:
+    resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
 
   qs-esm@8.0.1:
     resolution: {integrity: sha512-eZ7l+0ZVy3He9c85pEM9KEBR9DFA4jrmWvIjm9wpcHvScwc/vgZDl2TNOF0pm0JsWKw24XBUZOY0Wxn7/nvJnw==}
@@ -8421,6 +9175,18 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/client-sesv2@3.1161.0':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/credential-provider-node': 3.972.92
+      '@aws-sdk/signature-v4-multi-region': 3.996.51
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/client-textract@3.1145.0':
     dependencies:
       '@aws-sdk/core': 3.978.1
@@ -8443,11 +9209,30 @@ snapshots:
       bowser: 2.14.1
       tslib: 2.8.1
 
+  '@aws-sdk/core@3.979.1':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/xml-builder': 3.972.42
+      '@aws/lambda-invoke-store': 0.3.0
+      '@smithy/core': 3.38.1
+      '@smithy/signature-v4': 5.7.5
+      '@smithy/types': 4.19.0
+      bowser: 2.14.1
+      tslib: 2.8.1
+
   '@aws-sdk/credential-provider-env@3.972.72':
     dependencies:
       '@aws-sdk/core': 3.978.1
       '@aws-sdk/types': 3.974.6
       '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-env@3.972.80':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8458,6 +9243,16 @@ snapshots:
       '@smithy/core': 3.35.1
       '@smithy/fetch-http-handler': 5.8.0
       '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-http@3.972.82':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8477,12 +9272,37 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/credential-provider-ini@3.973.25':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/credential-provider-env': 3.972.80
+      '@aws-sdk/credential-provider-http': 3.972.82
+      '@aws-sdk/credential-provider-login': 3.972.87
+      '@aws-sdk/credential-provider-process': 3.972.80
+      '@aws-sdk/credential-provider-sso': 3.973.24
+      '@aws-sdk/credential-provider-web-identity': 3.972.86
+      '@aws-sdk/nested-clients': 3.997.54
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/credential-provider-login@3.972.79':
     dependencies:
       '@aws-sdk/core': 3.978.1
       '@aws-sdk/nested-clients': 3.997.46
       '@aws-sdk/types': 3.974.6
       '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-login@3.972.87':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/nested-clients': 3.997.54
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8500,11 +9320,33 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/credential-provider-node@3.972.92':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.972.80
+      '@aws-sdk/credential-provider-http': 3.972.82
+      '@aws-sdk/credential-provider-ini': 3.973.25
+      '@aws-sdk/credential-provider-process': 3.972.80
+      '@aws-sdk/credential-provider-sso': 3.973.24
+      '@aws-sdk/credential-provider-web-identity': 3.972.86
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/credential-provider-process@3.972.72':
     dependencies:
       '@aws-sdk/core': 3.978.1
       '@aws-sdk/types': 3.974.6
       '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-process@3.972.80':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8518,12 +9360,31 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/credential-provider-sso@3.973.24':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/nested-clients': 3.997.54
+      '@aws-sdk/token-providers': 3.1161.0
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/credential-provider-web-identity@3.972.78':
     dependencies:
       '@aws-sdk/core': 3.978.1
       '@aws-sdk/nested-clients': 3.997.46
       '@aws-sdk/types': 3.974.6
       '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-web-identity@3.972.86':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/nested-clients': 3.997.54
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8571,6 +9432,17 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/nested-clients@3.997.54':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/signature-v4-multi-region': 3.996.51
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/s3-request-presigner@3.1145.0':
     dependencies:
       '@aws-sdk/core': 3.978.1
@@ -8584,6 +9456,13 @@ snapshots:
     dependencies:
       '@aws-sdk/types': 3.974.6
       '@smithy/signature-v4': 5.7.4
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/signature-v4-multi-region@3.996.51':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@smithy/signature-v4': 5.7.5
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -8605,12 +9484,31 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/token-providers@3.1161.0':
+    dependencies:
+      '@aws-sdk/core': 3.979.1
+      '@aws-sdk/nested-clients': 3.997.54
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/types@3.974.6':
     dependencies:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@aws-sdk/types@3.975.0':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@aws-sdk/xml-builder@3.972.41':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/xml-builder@3.972.42':
     dependencies:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
@@ -9562,7 +10460,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0
+      node-forge: 1.4.2
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -9599,7 +10497,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.2
 
   '@expo/config-plugins@57.0.11(typescript@5.9.3)':
     dependencies:
@@ -10619,6 +11517,8 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.4.3':
     optional: true
 
+  '@noble/hashes@2.4.0': {}
+
   '@node-rs/argon2-android-arm-eabi@2.2.1':
     optional: true
 
@@ -10902,6 +11802,8 @@ snapshots:
   '@pdf-lib/upng@1.0.1':
     dependencies:
       pako: 1.0.11
+
+  '@peculiar/utils@4.1.0': {}
 
   '@pinojs/redact@0.4.0': {}
 
@@ -11241,9 +12143,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 
@@ -11361,6 +12261,11 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@smithy/core@3.38.1':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@smithy/credential-provider-imds@4.5.2':
     dependencies:
       '@smithy/core': 3.35.1
@@ -11379,9 +12284,21 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@smithy/node-http-handler@4.14.1':
+    dependencies:
+      '@smithy/core': 3.38.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
   '@smithy/signature-v4@5.7.4':
     dependencies:
       '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/signature-v4@5.7.5':
+    dependencies:
+      '@smithy/core': 3.38.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -11790,6 +12707,10 @@ snapshots:
 
   asap@2.0.6: {}
 
+  asn1js@4.0.0:
+    dependencies:
+      '@peculiar/utils': 4.1.0
+
   assertion-error@2.0.1: {}
 
   atomic-sleep@1.0.0: {}
@@ -11994,6 +12915,8 @@ snapshots:
       streamsearch: 1.1.0
 
   bytes@3.1.2: {}
+
+  bytestreamjs@3.0.0: {}
 
   cac@6.7.14: {}
 
@@ -14180,7 +15103,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.2: {}
 
   node-gyp-build-optional-packages@5.2.2:
     dependencies:
@@ -14474,6 +15397,13 @@ snapshots:
       sonic-boom: 4.2.1
       thread-stream: 3.2.0
 
+  pkijs@4.0.1(asn1js@4.0.0):
+    dependencies:
+      '@noble/hashes': 2.4.0
+      '@peculiar/utils': 4.1.0
+      asn1js: 4.0.0
+      bytestreamjs: 3.0.0
+
   playwright-core@1.56.1: {}
 
   playwright@1.56.1:
@@ -14561,6 +15491,8 @@ snapshots:
       once: 1.4.0
 
   punycode@2.3.1: {}
+
+  qrcode-generator@2.0.4: {}
 
   qs-esm@8.0.1: {}
 

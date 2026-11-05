@@ -1,13 +1,14 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import type { CatalogueService } from '@archova/mod-billing';
+import type { AdjustmentService, CatalogueService } from '@archova/mod-billing';
 import type { RequestDto, RequestKind, RequestStatus } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
-import { requests, staffUsers } from '../infra/tables';
+import { orgActions, requests, staffUsers } from '../infra/tables';
 import type { StaffContext, StaffService } from './staff';
 
 export interface RequestDeps extends Pick<KernelServices, 'database'> {
   catalogue: CatalogueService;
+  adjustments: AdjustmentService;
   staff: StaffService;
   /** Solo-owner mode delay for a pricing publish (Sam 12 §4: 24 hours). */
   soloCoolingOffHours: number;
@@ -43,6 +44,41 @@ const KINDS: Record<
       ...(await d.catalogue.publishPlanDraft(ref, by, now, tx)),
     }),
     release: (d, ref, tx) => d.catalogue.returnPlanDraft(ref, tx),
+  },
+  // The subject is the pending refund's id. Approving it settles the record and logs the customer-visible action;
+  // a rejected, cancelled or failed request cancels the record so the invoice's balance is free again.
+  refund: {
+    permission: 'backoffice.accounts.refund_approve',
+    execute: async (d, ref, by, now, tx) => {
+      const refund = await d.adjustments.settleRefund(tx, ref, 'approved', by, now);
+      const [approver] = await tx
+        .select({ name: staffUsers.name })
+        .from(staffUsers)
+        .where(eq(staffUsers.id, by));
+      await tx.insert(orgActions).values({
+        id: uuidv7(),
+        targetOrgId: refund.targetOrgId,
+        kind: 'refund',
+        summary: `Refund of A$${(refund.amountCents / 100).toFixed(2)} on invoice ${refund.invoiceRef} approved by ${approver?.name ?? 'a second approver'}`,
+        customerSummary: `Archova staff recorded a refund of A$${(refund.amountCents / 100).toFixed(2)} on invoice ${refund.invoiceRef}.`,
+        reason: refund.reason,
+        ticketRef: refund.ticketRef,
+        staffId: refund.requestedBy,
+      });
+      return { refundId: refund.id, amountCents: refund.amountCents };
+    },
+    release: async (d, ref, tx) => {
+      const run = async (t: Tx) => {
+        try {
+          await d.adjustments.settleRefund(t, ref, 'cancelled', null, new Date());
+        } catch (e) {
+          // Already settled: nothing to release.
+          if (!(e instanceof AppError)) throw e;
+        }
+      };
+      if (tx) await run(tx);
+      else await d.database.withGlobalTx('backoffice', run);
+    },
   },
 };
 
@@ -97,6 +133,9 @@ export function createRequestService(deps: RequestDeps) {
       subjectLabel: string;
       reason: string;
       preview: Record<string, unknown> | null;
+      orgId?: string;
+      /** Replaces the solo-owner delay for this kind (a refund waits 1 hour, a publish 24). */
+      coolingOffHours?: number;
     },
   ) {
     // Solo-owner mode: while the requester is the only person who could approve, they may approve their own
@@ -113,10 +152,11 @@ export function createRequestService(deps: RequestDeps) {
         subjectLabel: input.subjectLabel,
         reason: input.reason,
         preview: input.preview,
+        targetOrgId: input.orgId ?? null,
         requestedBy: staff.staffId,
         soloOwnerMode: solo,
         coolingOffUntil: solo
-          ? new Date(at.getTime() + deps.soloCoolingOffHours * 3_600_000)
+          ? new Date(at.getTime() + (input.coolingOffHours ?? deps.soloCoolingOffHours) * 3_600_000)
           : null,
         createdAt: at,
       }),

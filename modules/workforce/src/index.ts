@@ -1,4 +1,5 @@
 // Public interface of @archova/mod-workforce.
+export { numberVaultFromKey, type NumberVault } from './domain/number-vault';
 export { createWorkforceModule, type WorkforceApi, type WorkforceModule } from './module';
 export { WORKFORCE_PERMISSIONS } from './permissions';
 export type { ComplianceSource } from './application/attendance';

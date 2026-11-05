@@ -40,15 +40,17 @@ export function createAccessService({ registry, lookupProjectMember }: AccessDep
   async function effectivePermissions(
     scope: TenantScope,
     projectId: string | null,
+    /** Another person's permissions, from their project template only (their org role isn't known here). */
+    otherUserId?: string,
   ): Promise<EffectivePermissions> {
     const base: EffectivePermissions = {
       ...NO_PERMISSIONS,
-      orgRole: scope.ctx.orgRole,
-      isExternal: scope.ctx.principalType === 'external',
+      orgRole: otherUserId ? null : scope.ctx.orgRole,
+      isExternal: otherUserId ? true : scope.ctx.principalType === 'external',
       projectId,
     };
     if (!projectId) return base;
-    const member = await lookupProjectMember(scope, projectId, scope.ctx.userId);
+    const member = await lookupProjectMember(scope, projectId, otherUserId ?? scope.ctx.userId);
     if (!member) return base;
     const [template] = await scope.tx
       .select()
@@ -102,6 +104,12 @@ export function createAccessService({ registry, lookupProjectMember }: AccessDep
     resource: { projectId?: string | null } = {},
   ) {
     const perms = await effectivePermissions(scope, resource.projectId ?? null);
+    return evaluate(perms, key, registry).allow;
+  }
+
+  /** Whether another project member holds `key` on the project, by their template and overrides. */
+  async function canUser(scope: TenantScope, userId: string, key: string, projectId: string) {
+    const perms = await effectivePermissions(scope, projectId, userId);
     return evaluate(perms, key, registry).allow;
   }
 
@@ -159,6 +167,7 @@ export function createAccessService({ registry, lookupProjectMember }: AccessDep
     effectivePermissions,
     assert,
     can,
+    canUser,
     seedDefaultTemplates,
     listTemplates,
     templateExists,

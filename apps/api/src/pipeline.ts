@@ -10,13 +10,15 @@ import {
   type HandlerResult,
   type Principal,
   type RouteTable,
+  type FlagReader,
   type TenantContext,
 } from '@archova/kernel';
-import { CSRF_COOKIE, SESSION_COOKIE } from '@archova/mod-identity';
-import { isDrainToken } from '@archova/mod-sync';
+import { CSRF_COOKIE, SESSION_COOKIE, requiredScope, scopeAllows } from '@archova/mod-identity';
+import { DRAIN_WINDOW_MS, isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
+import { tighter, type ApiRateLimiter } from './plugins/rate-limit';
 import { clientIp, safeEqualStrings } from './util';
 
 type Surface = 'app' | 'api';
@@ -34,9 +36,10 @@ export function registerOperations(
     modules: Modules;
     routes: RouteTable;
     idempotency: IdempotencyStore | null;
+    rateLimiter: ApiRateLimiter | null;
   },
 ) {
-  const { config, modules, routes, idempotency } = deps;
+  const { config, modules, routes, idempotency, rateLimiter } = deps;
 
   const missing = (Object.keys(operations) as OperationId[]).filter((id) => !routes[id]);
   if (missing.length) throw new Error(`Operations without a handler: ${missing.join(', ')}`);
@@ -72,7 +75,13 @@ export function registerOperations(
     if (!authz) return { principal: null, viaCookie: false };
     const m = /^Bearer\s+(\S+)$/i.exec(authz);
     if (!m) throw new AppError('auth.unauthenticated', 'Malformed Authorization header.');
-    const principal = await modules.identity.api.authenticateBearer(m[1]!);
+    // Personal access tokens work in one org, so the URL's org is needed to find them.
+    const urlOrg = (req.params as { orgId?: string } | undefined)?.orgId;
+    const principal = await modules.identity.api.authenticateBearer(
+      m[1]!,
+      urlOrg ? decodeId('org', urlOrg) : null,
+      clientIp(req, config.clientIpHops),
+    );
     if (!principal)
       throw new AppError(
         'auth.session_revoked',
@@ -117,6 +126,7 @@ export function registerOperations(
     orgIdParam: string,
     principal: Principal,
     requestId: string,
+    operationId: OperationId,
   ): Promise<TenantContext> {
     const orgId = decodeId('org', orgIdParam);
     if (!orgId) throw new AppError('org.not_found');
@@ -125,19 +135,151 @@ export function registerOperations(
       principal.userId,
       requestId,
     );
-    if (!access) throw new AppError('org.not_found');
+    if (!access) {
+      if (operationId === 'syncPull' || operationId === 'syncPush')
+        await throwIfRevoked(orgId, principal, requestId);
+      throw new AppError('org.not_found');
+    }
     const entitlements = await modules.billing.api.entitlements.forOrg(orgId);
+    // Evaluated lazily and at most once per key per request, so routes without a flag pay nothing.
+    const seen = new Map<string, Promise<boolean>>();
+    const flags: FlagReader = {
+      isOn: (key) => {
+        let hit = seen.get(key);
+        if (!hit) {
+          hit = modules.backoffice.api.flags.isOn(key, orgId);
+          seen.set(key, hit);
+        }
+        return hit;
+      },
+    };
     return {
       orgId,
       userId: principal.userId,
       principalType: access.principalType,
       orgRole: access.orgRole,
       entitlements,
+      flags,
       requestId,
     };
   }
 
-  function checkEntitlement(def: OperationDef, tenant: TenantContext, method: string) {
+  /**
+   * A phone whose person was removed in the ordinary way within the drain window (X38) is told so with a 401
+   * `access.revoked` and a grant for the project it lost, so queued work reaches the review queue. Only on the
+   * sync calls: the rest of the API keeps answering 404, and removal for cause or wipe gets no hint at all.
+   */
+  async function throwIfRevoked(orgId: string, principal: Principal, requestId: string) {
+    const removal = await modules.platform.api.findRecentOrdinaryRemoval(
+      orgId,
+      principal.userId,
+      requestId,
+      new Date(Date.now() - DRAIN_WINDOW_MS),
+    );
+    if (!removal) return;
+    const ctx: TenantContext = {
+      orgId,
+      userId: principal.userId,
+      principalType: 'external',
+      orgRole: null,
+      entitlements: await modules.billing.api.entitlements.forOrg(orgId),
+      requestId,
+    };
+    const drainGrant = await modules.database.withTenantTx(ctx, (scope) =>
+      modules.sync.api.drain.issue(scope, {
+        userId: principal.userId,
+        projectId: removal.projectId,
+        module: null,
+        accessEndedAt: removal.removedAt,
+        episode: removal.episode,
+      }),
+    );
+    throw new AppError(
+      'access.revoked',
+      'Your access to this project has ended.',
+      undefined,
+      drainGrant ? { drainGrant } : undefined,
+    );
+  }
+
+  /**
+   * Personal access tokens (integrations/06 §2): one org, public operations only, and only within the token's scopes.
+   * The owner's own permissions are still checked afterwards, so a token never does more than its owner.
+   */
+  function checkApiToken(
+    operationId: string,
+    def: OperationDef,
+    token: NonNullable<Principal['apiToken']>,
+    params: Record<string, string>,
+  ) {
+    if (def.internal)
+      throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
+    const needed = requiredScope(operationId, def.method);
+    if (!needed) throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
+    if (decodeId('org', params.orgId ?? '') !== token.orgId) throw new AppError('org.not_found');
+    if (!scopeAllows(token.scopes, needed))
+      throw new AppError(
+        'api_token.scope_missing',
+        `This token needs the ${needed} scope.`,
+        undefined,
+        {
+          scope: needed,
+        },
+      );
+  }
+
+  /**
+   * Token traffic counts against the plan's limits: the org's `limit.api_rpm` (default from config) shared by all its
+   * tokens, and half of that for any one token. First-party web and mobile traffic is not counted.
+   */
+  async function limitRate(
+    reply: FastifyReply,
+    token: NonNullable<Principal['apiToken']>,
+    tenant: TenantContext,
+  ) {
+    if (!rateLimiter) return;
+    const orgLimit = tenant.entitlements.limits['limit.api_rpm'] ?? config.apiRateLimitOrgRpm;
+    const byToken = await rateLimiter.hit(
+      tenant.orgId,
+      `token:${token.id}`,
+      Math.max(1, Math.ceil(orgLimit / 2)),
+    );
+    const byOrg = await rateLimiter.hit(tenant.orgId, 'org', orgLimit);
+    const shown = tighter(byToken, byOrg);
+    void reply.header('ratelimit-limit', String(shown.limit));
+    void reply.header('ratelimit-remaining', String(shown.remaining));
+    void reply.header('ratelimit-reset', String(shown.resetS));
+    const over = [byToken, byOrg].find((d) => !d.allowed);
+    if (over) {
+      void reply.header('retry-after', String(over.resetS));
+      throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
+    }
+  }
+
+  /**
+   * Per-operation limit for sensitive routes (x-rate-limit): one user in one org, signed-in or token, so a code or
+   * a builder read cannot be hammered. Counted before the flag and permission checks so guessing is throttled too.
+   */
+  async function limitOperation(
+    reply: FastifyReply,
+    operationId: string,
+    limit: number,
+    tenant: TenantContext,
+  ) {
+    if (!rateLimiter) return;
+    const d = await rateLimiter.hit(tenant.orgId, `op:${operationId}:${tenant.userId}`, limit);
+    if (!d.allowed) {
+      void reply.header('retry-after', String(d.resetS));
+      throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
+    }
+  }
+
+  function checkEntitlement(
+    def: OperationDef,
+    tenant: TenantContext,
+    method: string,
+    operationId: OperationId,
+  ) {
     const module = def.module!;
     if (
       !(CORE_MODULES as readonly string[]).includes(module) &&
@@ -155,7 +297,9 @@ export function registerOperations(
     if (
       (state === 'read_only' || state === 'cancelled') &&
       UNSAFE.has(method) &&
-      module !== 'billing'
+      module !== 'billing' &&
+      // Withdrawing consent for support access must work however the account stands.
+      operationId !== 'revokeSupportAccessGrant'
     ) {
       throw new AppError(
         'org.read_only',
@@ -234,14 +378,30 @@ export function registerOperations(
           ctx.principal = principal;
 
           const params = parse(def.params, req.params, true) as Record<string, string>;
+          if (principal?.apiToken) checkApiToken(operationId, def, principal.apiToken, params);
+
           const query = parse(def.query, req.query, false);
           const body = parse(def.body, req.body, false);
 
           let tenant: TenantContext | null = null;
           if (params.orgId && principal) {
-            tenant = await resolveTenant(params.orgId, principal, requestId);
+            tenant = await resolveTenant(params.orgId, principal, requestId, operationId);
             ctx.tenant = tenant;
-            checkEntitlement(def, tenant, req.method);
+            if (principal.apiToken && !tenant.entitlements.modules.includes('api'))
+              throw new AppError(
+                'entitlement-required',
+                'Your plan does not include API access.',
+                undefined,
+                {
+                  module: 'api',
+                },
+              );
+            if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
+            if (def.rateLimit) await limitOperation(reply, operationId, def.rateLimit, tenant);
+            checkEntitlement(def, tenant, req.method, operationId);
+            // A flag launches a feature for chosen orgs; off looks the same as a route that does not exist.
+            if (def.flag && !(await tenant.flags!.isOn(def.flag)))
+              throw new AppError('feature-unavailable', 'This feature is not available yet.');
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;
               if (params.projectId && !projectId) throw new AppError('project.not_found');

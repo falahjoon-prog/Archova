@@ -40,9 +40,15 @@ beforeAll(async () => {
       getPreviousDrawingRevision: async () => null,
       getMarkup: async () => ({ shapes: [] }),
       dayForSummary: async () => null,
+      meetingForMinutes: async () => {
+        throw new Error('not used');
+      },
       projectCompanies: async () => [],
       openDefectsNear: async () => [],
       quotePackage: async () => {
+        throw new Error('not used');
+      },
+      quoteForNegotiation: async () => {
         throw new Error('not used');
       },
       openRfisOnDrawing: async () => [],
@@ -184,6 +190,45 @@ describe('Nova gateway (ai/03)', () => {
       s.tx.execute(sql`select credits::float as credits, runs from ai.ai_usage_ledger`),
     );
     expect(ledger.rows).toEqual([{ credits: 0, runs: 2 }]);
+  });
+
+  it("lifts the month's allowance with a staff grant, and keeps grants inside the org", async () => {
+    t.ai.on('qa.answer', answered);
+    const { browser, org, ctx } = await newOrg('nova-grant');
+    const other = await newOrg('nova-grant-other');
+    await browser.patch(
+      `/v1/orgs/${org.id}/ai/settings`,
+      { monthlyCreditCap: 1 },
+      { 'if-match': '"0"' },
+    );
+    await nova.runTask(ctx, ask, { question: 'q' }, { passages });
+    await expect(nova.runTask(ctx, ask, { question: 'q' }, { passages })).rejects.toMatchObject({
+      code: 'ai.allowance_used',
+    });
+    const staffId = ctx.userId;
+    await expect(
+      nova.grantCredits(ctx.orgId, staffId, {
+        credits: 0,
+        kind: 'top_up',
+        reason: 'Zero',
+        ticketRef: 'SUP-1',
+      }),
+    ).rejects.toMatchObject({ code: 'ai.credit_grant.invalid' });
+    await nova.grantCredits(ctx.orgId, staffId, {
+      credits: 2,
+      kind: 'goodwill',
+      reason: 'Outage last week',
+      ticketRef: 'SUP-2',
+    });
+    await nova.runTask(ctx, ask, { question: 'q' }, { passages });
+    await nova.runTask(ctx, ask, { question: 'q' }, { passages });
+    await expect(nova.runTask(ctx, ask, { question: 'q' }, { passages })).rejects.toMatchObject({
+      code: 'ai.allowance_used',
+    });
+    const usage = await browser.get(`/v1/orgs/${org.id}/ai/usage`);
+    expect(usage.json()).toMatchObject({ allowance: 3, granted: 2, used: 3, remaining: 0 });
+    expect(await nova.listCreditGrants(ctx.orgId, staffId)).toHaveLength(1);
+    expect(await nova.listCreditGrants(other.ctx.orgId, staffId)).toHaveLength(0);
   });
 
   it('applies org settings: features off, AI off, and the monthly cap for interactive work only', async () => {

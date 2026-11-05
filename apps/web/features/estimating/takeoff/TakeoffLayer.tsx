@@ -5,14 +5,20 @@ import type { Point, TakeoffGeometry } from '@archova/markup';
 
 const P = (p: Point, aspect: number) => `${p.x * 1000},${(p.y * 1000) / aspect}`;
 
-export type LayerTone = 'saved' | 'draft' | 'active' | 'old';
+/** `nova` and `nova-low` are Nova's pending marks (dashed: teal when sure, amber when not); `rejected` is struck through. */
+export type LayerTone = 'saved' | 'draft' | 'active' | 'old' | 'nova' | 'nova-low' | 'rejected';
 
 const STROKE: Record<LayerTone, string> = {
   saved: 'var(--c-action-primary)',
   draft: 'var(--c-status-info)',
   active: 'var(--c-action-primary)',
   old: 'var(--c-status-warning)',
+  nova: 'var(--c-action-primary)',
+  'nova-low': 'var(--c-status-warning)',
+  rejected: 'var(--c-text-muted)',
 };
+
+const PENDING: ReadonlySet<LayerTone> = new Set(['nova', 'nova-low', 'rejected']);
 
 export function GeometrySvg({
   geometry,
@@ -26,7 +32,8 @@ export function GeometrySvg({
   label?: string;
 }) {
   const stroke = STROKE[tone];
-  const dash = tone === 'old' ? '6 4' : tone === 'draft' ? '3 2' : undefined;
+  const pending = PENDING.has(tone);
+  const dash = tone === 'old' || pending ? '6 4' : tone === 'draft' ? '3 2' : undefined;
   const at = (p: Point) => ({ x: p.x * 1000, y: (p.y * 1000) / aspect });
   switch (geometry.kind) {
     case 'length': {
@@ -74,20 +81,21 @@ export function GeometrySvg({
               <g key={i} transform={`translate(${q.x} ${q.y})`}>
                 <circle
                   r={6}
-                  fill={stroke}
-                  stroke="var(--c-surface)"
-                  strokeWidth={1}
+                  fill={pending ? 'var(--c-surface)' : stroke}
+                  fillOpacity={pending ? 0.7 : 1}
+                  stroke={pending ? stroke : 'var(--c-surface)'}
+                  strokeWidth={pending ? 1.5 : 1}
                   strokeDasharray={dash}
                 />
                 <text
                   y={3}
                   fontSize={7}
                   textAnchor="middle"
-                  fill="var(--c-surface)"
+                  fill={pending ? stroke : 'var(--c-surface)'}
                   fontWeight={700}
                   fontFamily="var(--font-family)"
                 >
-                  {i + 1}
+                  {tone === 'rejected' ? '×' : i + 1}
                 </text>
               </g>
             );

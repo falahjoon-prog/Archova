@@ -4,10 +4,12 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { OrgActionKind } from '@archova/contracts';
 
 export const backofficeSchema = pgSchema('backoffice');
 
@@ -44,6 +46,7 @@ export const staffSessions = backofficeSchema.table('staff_sessions', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   ip: text('ip'),
   userAgent: text('user_agent'),
+  hardwareKey: boolean('hardware_key').notNull().default(false),
 });
 
 export const requests = backofficeSchema.table('requests', {
@@ -78,4 +81,105 @@ export const tenantDirectory = backofficeSchema.table('tenant_directory', {
   cell: text('cell').notNull().default('local'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cohorts = backofficeSchema.table('cohorts', {
+  id: uuid('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cohortMembers = backofficeSchema.table(
+  'cohort_members',
+  {
+    cohortId: uuid('cohort_id').notNull(),
+    orgId: uuid('member_org_id').notNull(),
+    addedBy: uuid('added_by'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.cohortId, t.orgId] })],
+);
+
+export const flags = backofficeSchema.table('flags', {
+  key: text('key').primaryKey(),
+  enabledForAll: boolean('enabled_for_all').notNull().default(false),
+  percent: integer('percent').notNull().default(0),
+  updatedBy: uuid('updated_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const flagTargets = backofficeSchema.table(
+  'flag_targets',
+  {
+    flagKey: text('flag_key').notNull(),
+    kind: text('kind').$type<'org' | 'cohort'>().notNull(),
+    refId: uuid('ref_id').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.flagKey, t.kind, t.refId] })],
+);
+
+export const flagChanges = backofficeSchema.table('flag_changes', {
+  id: uuid('id').primaryKey(),
+  flagKey: text('flag_key'),
+  cohortId: uuid('cohort_id'),
+  summary: text('summary').notNull(),
+  reason: text('reason'),
+  ticketRef: text('ticket_ref'),
+  staffId: uuid('staff_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const orgActions = backofficeSchema.table('org_actions', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  kind: text('kind').$type<OrgActionKind>().notNull(),
+  summary: text('summary').notNull(),
+  /** What the customer's own admins read ("Archova staff: ..."); never the reason or the staff member's name. */
+  customerSummary: text('customer_summary').notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  staffId: uuid('staff_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const supportGrants = backofficeSchema.table('support_grants', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  level: text('level').$type<'view'>().notNull().default('view'),
+  grantedByUser: uuid('granted_by_user').notNull(),
+  grantedByName: text('granted_by_name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  /** NULL = the whole company; otherwise reads are limited to these projects. */
+  projectIds: uuid('project_ids').array(),
+});
+
+export const supportSessions = backofficeSchema.table('support_sessions', {
+  id: uuid('id').primaryKey(),
+  grantId: uuid('grant_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  staffId: uuid('staff_id').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+  endReason: text('end_reason').$type<'ended' | 'revoked'>(),
+  /** Set once an admin of the company has been emailed; reads need it. */
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+});
+
+export const supportEvents = backofficeSchema.table('support_events', {
+  id: uuid('id').primaryKey(),
+  sessionId: uuid('session_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  what: text('what').notNull(),
+  recordIds: text('record_ids').array().notNull().default([]),
+  staffId: uuid('staff_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

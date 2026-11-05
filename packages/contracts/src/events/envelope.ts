@@ -18,6 +18,7 @@ export interface FoundationEvents {
   'platform.org.created.v1': { orgId: string; ownerUserId: string };
   'platform.project.created.v1': { projectId: string; name: string };
   'platform.project.updated.v1': { projectId: string; changed: string[] };
+  'platform.project.key_dates_changed.v1': { projectId: string; changed: string[] };
   'platform.project_member.added.v1': {
     projectId: string;
     userId: string;

@@ -1,0 +1,167 @@
+import {
+  boolean,
+  date,
+  integer,
+  jsonb,
+  pgSchema,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import type {
+  CorrectiveStatus,
+  IncidentStatus,
+  IncidentType,
+  NotifiableClass,
+  RootCause,
+  Severity,
+} from '../domain/incident';
+import type { SwmsContent, SwmsStatus } from '../domain/swms';
+
+export const safetySchema = pgSchema('safety');
+
+export const swms = safetySchema.table('swms', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  companyId: uuid('company_id'),
+  highRiskWorkCategories: text('high_risk_work_categories').array().notNull().default([]),
+  content: jsonb('content').$type<SwmsContent>().notNull().default({}),
+  fileId: uuid('file_id'),
+  revision: integer('revision').notNull().default(1),
+  status: text('status').$type<SwmsStatus>().notNull().default('submitted'),
+  reviewedBy: uuid('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  expiresOn: date('expires_on'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const swmsEvents = safetySchema.table('swms_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  swmsId: uuid('swms_id').notNull(),
+  action: text('action').notNull(),
+  fromStatus: text('from_status'),
+  toStatus: text('to_status').notNull(),
+  revision: integer('revision').notNull(),
+  note: text('note'),
+  actorId: uuid('actor_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const acknowledgements = safetySchema.table(
+  'swms_acknowledgements',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: uuid('org_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    swmsId: uuid('swms_id').notNull(),
+    revision: integer('revision').notNull(),
+    userId: uuid('user_id').notNull(),
+    workerName: text('worker_name').notNull(),
+    language: text('language').notNull().default('en'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.swmsId, t.revision, t.userId)],
+);
+
+export const incidents = safetySchema.table('incidents', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  type: text('type').$type<IncidentType>().notNull(),
+  severity: text('severity').$type<Severity>().notNull().default('low'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  location: text('location'),
+  description: text('description').notNull().default(''),
+  immediateActions: text('immediate_actions'),
+  isNotifiable: boolean('is_notifiable').notNull().default(false),
+  notifiableClass: text('notifiable_class').$type<NotifiableClass>(),
+  regulatorNotifiedAt: timestamp('regulator_notified_at', { withTimezone: true }),
+  writtenNoticeRequestedAt: timestamp('written_notice_requested_at', { withTimezone: true }),
+  rootCause: jsonb('root_cause').$type<RootCause>(),
+  status: text('status').$type<IncidentStatus>().notNull().default('reported'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedBy: uuid('closed_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const incidentPeople = safetySchema.table('incident_people', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  incidentId: uuid('incident_id').notNull(),
+  personName: text('person_name').notNull(),
+  companyId: uuid('company_id'),
+  role: text('role').$type<'injured' | 'witness' | 'involved'>().notNull(),
+  injury: jsonb('injury').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const incidentActions = safetySchema.table('incident_actions', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  incidentId: uuid('incident_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  assigneeCompanyId: uuid('assignee_company_id'),
+  assigneeUserId: uuid('assignee_user_id'),
+  dueDate: date('due_date'),
+  sourceType: text('source_type').$type<'inspection' | 'observation'>(),
+  sourceId: uuid('source_id'),
+  status: text('status').$type<CorrectiveStatus>().notNull().default('open'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  completedBy: uuid('completed_by'),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  verifiedBy: uuid('verified_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const incidentFiles = safetySchema.table(
+  'incident_files',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: uuid('org_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    incidentId: uuid('incident_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.incidentId, t.fileId)],
+);
+
+export const incidentEvents = safetySchema.table('incident_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  incidentId: uuid('incident_id').notNull(),
+  action: text('action').notNull(),
+  fromStatus: text('from_status'),
+  toStatus: text('to_status').notNull(),
+  note: text('note'),
+  actorId: uuid('actor_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});

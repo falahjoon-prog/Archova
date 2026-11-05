@@ -11,7 +11,17 @@ import {
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { ContractPlaybookService } from '../application/contract-playbook';
+import type {
+  ContractReviewPayload,
+  ContractReviewRow,
+  ContractReviewService,
+} from '../application/contract-review';
+import type { TakeoffDetectService } from '../application/takeoff-detect';
+import type { SpeechService } from '../application/speech';
+import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -39,6 +49,10 @@ import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
 function payloadDto(task: string, payload: unknown): Record<string, unknown> {
+  if (task === 'contract.review') {
+    const p = payload as ContractReviewPayload;
+    return { ...p, fileId: encodeId('file', p.fileId) };
+  }
   if (task === 'induction.draft' || task === 'induction.refresh') {
     const p = payload as InductionDraftPayload;
     const cite = (c: DraftCitation) => ({ ...c, ...sourceIds(c) });
@@ -80,6 +94,18 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       ...p,
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'minutes.extract') {
+    const p = payload as MinutesExtractPayload;
+    return {
+      ...p,
+      meetingId: encodeId('meeting', p.meetingId),
+      items: p.items.map((i) => ({
+        ...i,
+        sectionId: i.sectionId ? encodeId('meetingSection', i.sectionId) : null,
+        attendeeId: i.attendeeId ? encodeId('meetingAttendee', i.attendeeId) : null,
+      })),
     };
   }
   if (task === 'rfi.draft') {
@@ -168,6 +194,7 @@ const TARGET_KINDS = {
   diary_entry: 'diary',
   tender_package: 'tenderPackage',
   rfi: 'rfi',
+  contract_file: 'file',
 } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
@@ -186,6 +213,20 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
   createdAt: r.createdAt.toISOString(),
   decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
 });
+
+/** A saved review as the API shows it: ids public, decisions with the person's public user id. */
+function toContractReviewDto(r: ContractReviewRow) {
+  return {
+    ...payloadDto('contract.review', r.payload),
+    decisions: (r.payload.decisions ?? []).map((d) => ({
+      ...d,
+      decidedBy: encodeId('user', d.decidedBy),
+    })),
+    runId: encodeId('aiRun', r.runId),
+    suggestionId: encodeId('aiSuggestion', r.id),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
 
 const toSourceDto = (s: AnswerSource) => ({
   sourceType: s.sourceType,
@@ -229,6 +270,12 @@ export function aiRoutes(
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
+  quoteNegotiations: QuoteNegotiateService,
+  playbooks: ContractPlaybookService,
+  contractReviews: ContractReviewService,
+  speech: SpeechService,
+  takeoffDetect: TakeoffDetectService,
+  minutesExtract: MinutesExtractService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -438,6 +485,152 @@ export function aiRoutes(
         },
       };
     },
+    getContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => playbooks.list(scope, contractType),
+        ro,
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    replaceContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(requireTenant(input), (scope) =>
+        playbooks.replace(scope, contractType, input.body.topics),
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    reviewContractWithNova: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const { runId, suggestionId, ...payload } = await contractReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          fileId,
+          contractType: input.body.contractType,
+          ourSide: input.body.ourSide,
+          baseForm: input.body.baseForm ?? null,
+          multiState: input.body.multiState ?? false,
+          state: input.body.state ?? null,
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          ...payloadDto('contract.review', payload),
+          decisions: [],
+          createdAt: new Date().toISOString(),
+          runId: encodeId('aiRun', runId),
+          suggestionId: encodeId('aiSuggestion', suggestionId),
+        },
+      };
+    },
+    listContractReviews: async (input) => {
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.list(scope, projectUuid(input.params.projectId)),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toContractReviewDto) } };
+    },
+    getContractReview: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.get(scope, projectUuid(input.params.projectId), id),
+        ro,
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    decideContractFlag: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        contractReviews.decideFlag(
+          scope,
+          projectUuid(input.params.projectId),
+          id,
+          Number(input.params.flagIndex),
+          { decision: input.body.decision, note: input.body.note ?? null },
+        ),
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    askContract: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const a = await contractReviews.ask(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        id,
+        input.body.question,
+      );
+      return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
+    },
+    compareContracts: async (input) => {
+      const baseId = decodeId('aiSuggestion', input.body.baseReviewId);
+      const otherId = decodeId('aiSuggestion', input.body.otherReviewId);
+      if (!baseId || !otherId) throw new AppError('ai.suggestion.not_found');
+      const c = await contractReviews.compare(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        baseId,
+        otherId,
+      );
+      return {
+        status: 200,
+        body: {
+          ...c,
+          runId: encodeId('aiRun', c.runId),
+          base: { ...c.base, suggestionId: encodeId('aiSuggestion', c.base.suggestionId) },
+          other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
+        },
+      };
+    },
+    transcribeSpeech: async (input) => {
+      const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
+        audio: Buffer.from(input.body.audio, 'base64'),
+        mimeType: input.body.mimeType,
+      });
+      return { status: 200, body: { runId: encodeId('aiRun', r.runId), text: r.text } };
+    },
+    negotiateQuote: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const quoteId = decodeId('quote', input.body.quoteId);
+      if (!quoteId) throw new AppError('quote.not_found');
+      const r = await quoteNegotiations.negotiate(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          packageId,
+          quoteId,
+          targetExGst: input.body.targetExGst ?? null,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          stance: r.stance,
+          gap: r.gap,
+          reply: r.reply,
+          points: r.points,
+          levers: r.levers,
+          counterExGst: r.counterExGst,
+          counterReason: r.counterReason,
+          draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
     tagDefectWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
       const photoFileId = decodeId('file', input.body.photo.fileId);
@@ -508,6 +701,47 @@ export function aiRoutes(
         input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
+    },
+    draftMinutesWithNova: async (input) => {
+      const meetingId = decodeId('meeting', input.params.meetingId);
+      if (!meetingId) throw new AppError('meeting.not_found');
+      const row = await minutesExtract.extract(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        meetingId,
+        { notes: input.body.notes },
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    detectTakeoffWithNova: async (input) => {
+      const revisionId = decodeId('drawingRevision', input.body.revisionId);
+      if (!revisionId)
+        throw new AppError('takeoff.revision_not_found', undefined, [
+          { path: 'revisionId', message: 'Not a drawing revision on this project' },
+        ]);
+      const d = await takeoffDetect.detect(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          revisionId,
+          target: input.body.target,
+          examples: input.body.examples ?? [],
+          ...(input.body.image ? { image: input.body.image } : {}),
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          revisionId: encodeId('drawingRevision', d.revisionId),
+          kind: d.kind,
+          what: d.what,
+          scanned: d.scanned,
+          caveat: d.caveat,
+          dropped: d.dropped,
+          items: d.items,
+        },
+      };
     },
     compareDrawingRevision: async (input) => {
       const projectId = projectUuid(input.params.projectId);

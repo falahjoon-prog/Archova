@@ -31,6 +31,7 @@ import {
   testRedisUrl,
   uniqueEmail,
 } from '@archova/testing';
+import type { WebhookTransport } from '@archova/mod-integrations';
 import { buildApp } from '../../src/app';
 import type { Modules } from '@archova/compose';
 import { loadConfig } from '../../src/config';
@@ -64,6 +65,10 @@ export async function createTestContext(
     env?: Record<string, string>;
     /** Where the app logs; silent by default. */
     logger?: Logger;
+    /** Sends webhook test events; the default would make real HTTPS calls. */
+    webhookTransport?: WebhookTransport;
+    /** Answers Xero and MYOB calls; the default would reach the real services. */
+    accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
   } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
@@ -96,6 +101,8 @@ export async function createTestContext(
     aiProvider: ai,
     ...(opts.rasterizePage ? { aiRasterizePage: opts.rasterizePage } : {}),
     messages,
+    ...(opts.webhookTransport ? { webhookTransport: opts.webhookTransport } : {}),
+    ...(opts.accountingFetch ? { accountingFetch: opts.accountingFetch } : {}),
   });
   await app.ready();
   return {
@@ -342,4 +349,21 @@ export async function outboxData<T>(
                      where org_id = ${org} and type = ${type} order by occurred_at`),
   );
   return (rows.rows as Array<{ data: T }>).map((r) => r.data);
+}
+
+/** Turns a feature flag on for one org, as the owner console's "this org" rule does (no staff needed in tests). */
+export async function enableFlag(ctx: TestContext, key: string, orgId: string) {
+  const id = decodeId('org', orgId);
+  if (!id) throw new Error(`enableFlag: bad org id ${orgId}`);
+  await ctx.adminDb.db.execute(
+    sql`insert into backoffice.flags (key) values (${key}) on conflict do nothing`,
+  );
+  await ctx.adminDb.db.execute(
+    sql`insert into backoffice.flag_targets (flag_key, kind, ref_id) values (${key}, 'org', ${id}) on conflict do nothing`,
+  );
+}
+
+/** Removes the per-org rules `enableFlag` added, so flag tests that list rules see a clean registry. */
+export async function clearFlagTargets(ctx: TestContext, key: string) {
+  await ctx.adminDb.db.execute(sql`delete from backoffice.flag_targets where flag_key = ${key}`);
 }

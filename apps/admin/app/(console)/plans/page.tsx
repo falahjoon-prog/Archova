@@ -31,6 +31,8 @@ const MODULE_LABEL: Record<string, string> = {
   submittals: 'Submittals',
   diary: 'Site diary',
   defects: 'Defects',
+  quality: 'Inspections and observations',
+  safety: 'SWMS register',
   photos: 'Photos',
   meetings: 'Meetings',
   correspondence: 'Correspondence',

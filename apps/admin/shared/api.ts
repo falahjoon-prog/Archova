@@ -2,8 +2,16 @@
 // the API cannot drift apart; every call is same-origin (the dev server or load balancer forwards /internal).
 import {
   internalOperations,
+  type CohortDto,
+  type FlagChangeInput,
+  type FlagDto,
   type InternalOperationId,
+  type OrgDetailDto,
   type OrgListItemDto,
+  type CreditGrantKind,
+  type SuspendCategory,
+  type SupportAccessDto,
+  type SupportProjectDto,
   type Page,
   type PlanDraftInput,
   type PlanDto,
@@ -84,8 +92,64 @@ export const api = {
   me: () => call<StaffDto>('getMe'),
   orgs: (query: { q?: string; cursor?: string; limit?: number }) =>
     call<Page<OrgListItemDto>>('listOrgs', { query }),
-  org: (orgId: string) =>
-    call<OrgListItemDto & { history: RequestDto[] }>('getOrg', { params: { orgId } }),
+  org: (orgId: string) => call<OrgDetailDto>('getOrg', { params: { orgId } }),
+  supportAccess: (orgId: string) =>
+    call<SupportAccessDto>('getOrgSupportAccess', { params: { orgId } }),
+  supportProjects: (orgId: string) =>
+    call<{ items: SupportProjectDto[] }>('listSupportProjects', { params: { orgId } }),
+  startSupportSession: (orgId: string, ticketRef: string) =>
+    call<SupportAccessDto>('startSupportSession', { params: { orgId }, body: { ticketRef } }),
+  endSupportSession: (orgId: string, sessionId: string) =>
+    call<SupportAccessDto>('endSupportSession', { params: { orgId, sessionId } }),
+  trialExtend: (orgId: string, body: { days: number; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('trialExtendOrg', { params: { orgId }, body }),
+  changePlan: (orgId: string, body: { planCode: string; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('changeOrgPlan', { params: { orgId }, body }),
+  suspend: (
+    orgId: string,
+    body: { category: SuspendCategory; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
+  reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
+  grantCredits: (
+    orgId: string,
+    body: { credits: number; kind: CreditGrantKind; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('grantOrgCredits', { params: { orgId }, body }),
+  addDiscount: (
+    orgId: string,
+    body: { percent: number; months: number; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('addOrgDiscount', { params: { orgId }, body }),
+  revokeDiscount: (
+    orgId: string,
+    discountId: string,
+    body: { reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('revokeOrgDiscount', { params: { orgId, discountId }, body }),
+  grantOverride: (
+    orgId: string,
+    body: {
+      kind: 'module' | 'limit';
+      key: string;
+      limitValue: number | null;
+      days: number;
+      reason: string;
+      ticketRef: string;
+    },
+  ) => call<OrgDetailDto>('grantOrgOverride', { params: { orgId }, body }),
+  revokeOverride: (
+    orgId: string,
+    overrideId: string,
+    body: { reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('revokeOrgOverride', { params: { orgId, overrideId }, body }),
+  refund: (
+    orgId: string,
+    body: {
+      invoiceRef: string;
+      amountCents: number;
+      paidCents: number;
+      reason: string;
+      ticketRef: string;
+    },
+  ) => call<OrgDetailDto>('refundOrg', { params: { orgId }, body }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),
@@ -108,6 +172,18 @@ export const api = {
   reject: (id: string, reason: string) =>
     call<RequestDto>('rejectRequest', { params: { id }, body: { reason } }),
   cancel: (id: string) => call<RequestDto>('cancelRequest', { params: { id } }),
+  flags: () => call<{ items: FlagDto[] }>('listFlags'),
+  updateFlag: (key: string, body: FlagChangeInput) =>
+    call<{ items: FlagDto[] }>('updateFlag', { params: { key }, body }),
+  killFlag: (key: string, reason: string) =>
+    call<{ items: FlagDto[] }>('killFlag', { params: { key }, body: { reason } }),
+  cohorts: () => call<{ items: CohortDto[] }>('listCohorts'),
+  createCohort: (body: { name: string; description: string }) =>
+    call<CohortDto>('createCohort', { body }),
+  addCohortMember: (id: string, orgId: string) =>
+    call<{ items: CohortDto[] }>('addCohortMember', { params: { id }, body: { orgId } }),
+  removeCohortMember: (id: string, orgId: string) =>
+    call<void>('removeCohortMember', { params: { id, orgId } }),
   staff: () =>
     call<{
       items: Array<{

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
 import {
   DEFECT_ACTIONS,
+  defectLabel,
   hasDefectLocation,
   uuidv7,
   type DefectAction,
@@ -568,6 +569,125 @@ export function createDefectService(deps: DefectsDeps) {
   }
 
   /**
+   * Meeting agenda (`meetings`, MTG-US5): open, ready-for-review and disputed defects the caller can see, grouped by
+   * trade (no trade last) then oldest first. `restricted` is true when the caller can't read defects at all.
+   */
+  async function openForMeeting(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      sql`${defects.status} in ('open', 'ready_for_review', 'disputed')`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({
+        id: defects.id,
+        number: defects.number,
+        title: defects.title,
+        status: defects.status,
+        trade: defects.trade,
+      })
+      .from(defects)
+      .where(and(...conditions))
+      .orderBy(sql`${defects.trade} asc nulls last`, asc(defects.number))
+      .limit(opts.limit + 1);
+    const STATUS: Record<string, string> = {
+      open: 'Open',
+      ready_for_review: 'Ready for review',
+      disputed: 'Disputed',
+    };
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        detail: `${r.trade ?? 'No trade'}, ${STATUS[r.status] ?? r.status}`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  /** Portfolio dashboard (`reporting`): defects the caller can see that are still open, and those past their due date. */
+  async function portfolioCounts(scope: TenantScope, projectId: string) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { restricted: true, open: 0, overdue: 0 };
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      sql`${defects.status} in ('open', 'ready_for_review', 'disputed')`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const [row] = await scope.tx
+      .select({
+        open: sql<number>`count(*)::int`,
+        overdue: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date))::int`,
+      })
+      .from(defects)
+      .where(and(...conditions));
+    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+  }
+
+  /** Report builder (`reporting`): defects the caller can see, one flat row each. `state` open = not yet closed. */
+  async function reportRows(
+    scope: TenantScope,
+    projectId: string,
+    opts: { state: 'open' | 'closed' | 'all'; limit: number },
+  ) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      opts.state === 'open'
+        ? sql`${defects.status} in ('open', 'ready_for_review', 'disputed')`
+        : opts.state === 'closed'
+          ? sql`${defects.status} = 'closed'`
+          : sql`${defects.status} in ('open', 'ready_for_review', 'disputed', 'closed')`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({
+        id: defects.id,
+        number: defects.number,
+        title: defects.title,
+        status: defects.status,
+        dueDate: defects.dueDate,
+        createdAt: defects.createdAt,
+      })
+      .from(defects)
+      .where(and(...conditions))
+      .orderBy(asc(defects.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        status: r.status as string,
+        dueDate: r.dueDate,
+        overdue:
+          (r.status === 'open' || r.status === 'disputed') &&
+          r.dueDate !== null &&
+          r.dueDate < date,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  /**
    * Nova Ask (F2): every issued defect on the project with the notes on its history, for the `ai` indexer. Drafts and
    * voided defects are left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by
    * `aiAccessScopes`.
@@ -628,6 +748,9 @@ export function createDefectService(deps: DefectsDeps) {
     update,
     transition,
     openNear,
+    openForMeeting,
+    portfolioCounts,
+    reportRows,
     visibleAmong,
     projectOf,
     aiSources,

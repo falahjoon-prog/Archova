@@ -77,6 +77,18 @@ export function HomeScreen() {
               />
             ))
           )}
+          {me.data?.memberships.find((m) => m.orgId === orgId)?.kind === 'member' ? (
+            <>
+              {sectionTitle('Tendering')}
+              <ListItem
+                title="Bid board"
+                subtitle="Tender packages across projects and your bidder lists"
+                accessibilityHint="Opens the bid board"
+                onPress={() => router.push(mobileRoutes.bidBoard())}
+                testID="bid-board-link"
+              />
+            </>
+          ) : null}
         </>
       ) : null}
     </Screen>
