@@ -70,6 +70,8 @@ export const ID_PREFIXES = {
   equipment: 'eqp',
   equipmentBooking: 'eqb',
   equipmentLog: 'eql',
+  timesheet: 'tsh',
+  timesheetLine: 'tsl',
   gate: 'wgt',
   worker: 'wkr',
   attendanceSession: 'ats',

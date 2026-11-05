@@ -16,6 +16,11 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   // Rosters (ATT-US11): site managers build and publish shifts; a subcontractor sees and answers for its own workers.
   { key: 'workforce.rosters.view', scope: 'project', tool: 'workforce', level: 'standard' },
   { key: 'workforce.rosters.manage', scope: 'project', tool: 'workforce', level: 'admin' },
+  // Timesheets (ATT-US9): built from sign-ins, edited by the worker's own company, approved and exported by supervisors.
+  { key: 'workforce.timesheets.view', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.timesheets.edit', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.timesheets.approve', scope: 'project', tool: 'workforce', level: 'admin' },
+  { key: 'workforce.timesheets.export', scope: 'project', tool: 'workforce', level: 'admin' },
   // Equipment: site managers keep the register and bookings; anyone on site logs the hours a machine ran.
   { key: 'workforce.equipment.view', scope: 'project', tool: 'workforce', level: 'standard' },
   { key: 'workforce.equipment.log', scope: 'project', tool: 'workforce', level: 'standard' },
