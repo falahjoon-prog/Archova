@@ -258,6 +258,13 @@ export interface RaisedSubcontract {
   created: boolean;
 }
 
+export interface RaisedCommitment {
+  commitmentId: string;
+  number: number;
+  total: string;
+  created: boolean;
+}
+
 export interface QuotesSource {
   /** The API (true) or the in-browser preview store (false): the preview reads an uploaded file by name only. */
   live: boolean;
@@ -313,6 +320,12 @@ export interface QuotesSource {
   ): Promise<TenderPackage>;
   /** Raise the draft subcontract from the awarded quote (`POST …/subcontract`); repeating it returns the same one. */
   createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract>;
+  /** Raise the draft budget commitment from the awarded quote against a budget line (`POST …/commitment`). */
+  createCommitment(
+    projectId: string,
+    packageId: string,
+    budgetLineId: string,
+  ): Promise<RaisedCommitment>;
   /** Nova on one confirmed quote (`POST …/ai/quote-negotiations`); nothing is saved or sent. */
   askNova(
     projectId: string,
@@ -600,6 +613,17 @@ export const quotesSource: QuotesSource & {
     pkg.status = 'awarded';
     pkg.award = { quoteId, by: actor.name, at: nowIso(), reason: reason.trim() || null, notLowest };
     return delay(pkg);
+  },
+
+  async createCommitment(
+    projectId: string,
+    packageId: string,
+    _budgetLineId: string,
+  ): Promise<RaisedCommitment> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a commitment.');
+    return delay({ commitmentId: mockId('cmt'), number: 1, total: '0.00', created: true });
   },
 
   async createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract> {

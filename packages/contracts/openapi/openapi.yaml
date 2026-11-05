@@ -3819,6 +3819,34 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AwardedSubcontract' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/commitment:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: createCommitmentFromAward
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: Raise the draft budget commitment for an awarded package from its winning quote.
+      description: |
+        A draft subcontract commitment in financials: vendor is the winning company, with one line for the quote total
+        ex GST against the budget line given. It still goes through submit and approve like any commitment. Also needs
+        `financials.commitments.manage`. Safe to repeat: a quote raises one commitment, and a repeat returns it with
+        `created` false (the budget line in a repeat is ignored).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentFromAwardRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AwardedCommitment' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11165,7 +11193,7 @@ components:
       name: bidderListId
       in: path
       required: true
-      schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+      schema: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
     CostItemId:
       name: costItemId
       in: path
@@ -16479,6 +16507,22 @@ components:
         allowances:
           type: object
           additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    CreateCommitmentFromAwardRequest:
+      type: object
+      additionalProperties: false
+      required: [budgetLineId]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+    AwardedCommitment:
+      type: object
+      required: [commitmentId, number, title, total, created]
+      properties:
+        commitmentId: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        total: { type: string, description: Ex GST }
+        created:
+          { type: boolean, description: False when the quote had already raised this commitment. }
     AwardedSubcontract:
       type: object
       required: [contractId, number, title, originalValue, created]

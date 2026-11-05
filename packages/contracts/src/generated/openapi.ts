@@ -2988,6 +2988,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/commitment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise the draft budget commitment for an awarded package from its winning quote.
+         * @description A draft subcontract commitment in financials: vendor is the winning company, with one line for the quote total
+         *     ex GST against the budget line given. It still goes through submit and approve like any commitment. Also needs
+         *     `financials.commitments.manage`. Safe to repeat: a quote raises one commitment, and a repeat returns it with
+         *     `created` false (the budget line in a repeat is ignored).
+         */
+        post: operations["createCommitmentFromAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison": {
         parameters: {
             query?: never;
@@ -11351,6 +11378,18 @@ export interface components {
                 [key: string]: string;
             };
         };
+        CreateCommitmentFromAwardRequest: {
+            budgetLineId: string;
+        };
+        AwardedCommitment: {
+            commitmentId: string;
+            number: number;
+            title: string;
+            /** @description Ex GST */
+            total: string;
+            /** @description False when the quote had already raised this commitment. */
+            created: boolean;
+        };
         AwardedSubcontract: {
             contractId: string;
             number: number;
@@ -19206,6 +19245,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AwardedSubcontract"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCommitmentFromAward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentFromAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardedCommitment"];
                 };
             };
             default: components["responses"]["Problem"];

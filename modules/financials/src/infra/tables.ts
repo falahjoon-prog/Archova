@@ -242,6 +242,8 @@ export const commitments = financialsSchema.table('commitments', {
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
   overBudgetOverride: boolean('over_budget_override').notNull().default(false),
+  sourcePackageId: uuid('source_package_id'),
+  sourceQuoteId: uuid('source_quote_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),

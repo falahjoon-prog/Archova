@@ -350,6 +350,15 @@ export const AwardPackageRequestSchema = z.object({
 }).strict();
 export type AwardPackageRequest = z.infer<typeof AwardPackageRequestSchema>;
 
+export const AwardedCommitmentSchema = z.object({
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "total": z.string(),
+  "created": z.boolean(),
+});
+export type AwardedCommitment = z.infer<typeof AwardedCommitmentSchema>;
+
 export const AwardedSubcontractSchema = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
   "number": z.number().int(),
@@ -1200,6 +1209,11 @@ export const CreateBidderListRequestSchema = z.object({
   "companyIds": z.array(z.string()).max(200).optional(),
 }).strict();
 export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
+
+export const CreateCommitmentFromAwardRequestSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+}).strict();
+export type CreateCommitmentFromAwardRequest = z.infer<typeof CreateCommitmentFromAwardRequestSchema>;
 
 export const CreateCommitmentRequestSchema = z.object({
   "kind": z.enum(["subcontract", "purchase_order"]),

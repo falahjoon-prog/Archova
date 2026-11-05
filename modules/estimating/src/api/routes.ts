@@ -655,6 +655,26 @@ export function estimatingRoutes(
         },
       };
     },
+    createCommitmentFromAward: async (input) => {
+      const r = await tx(input, (s) =>
+        svc.createCommitment(
+          s,
+          project(input.params),
+          pkgId(input.params),
+          ref('budgetLine', input.body.budgetLineId, 'budgetLineId'),
+        ),
+      );
+      return {
+        status: 200,
+        body: {
+          commitmentId: encodeId('commitment', r.commitment.id),
+          number: r.commitment.number,
+          title: r.commitment.title,
+          total: r.commitment.total,
+          created: r.created,
+        },
+      };
+    },
     awardTenderPackage: async (input) =>
       pkg(
         200,
