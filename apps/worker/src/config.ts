@@ -7,9 +7,11 @@ export interface WorkerConfig {
   /** 32 bytes, base64: opens the webhook signing secrets the API sealed (same key as API_WEBHOOK_SECRET_KEY). */
   webhookSecretKey: string | null;
   /** Object storage for file jobs; `none` leaves them unregistered (local runs without a bucket). */
-  /** `ses` sends mail through Amazon SES in `region`; anything else only logs (local runs). */
+  /** `ses` sends mail through Amazon SES in `region`, `smtp` through the domain's mail host; anything else only logs. */
   email: {
-    provider: 'ses' | 'log';
+    provider: 'ses' | 'smtp' | 'log';
+    /** Set when the provider is `smtp`. The password is a secret and is never logged. */
+    smtp: { host: string; port: number; user: string; pass: string } | null;
     region: string;
     from: string;
     replyTo: string | undefined;
@@ -51,9 +53,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     redisUrl: required(env, 'REDIS_URL'),
     webhookSecretKey: env.WORKER_WEBHOOK_SECRET_KEY || null,
     email: {
-      provider: env.WORKER_EMAIL_PROVIDER === 'ses' ? 'ses' : 'log',
+      provider:
+        env.WORKER_EMAIL_PROVIDER === 'ses'
+          ? 'ses'
+          : env.WORKER_EMAIL_PROVIDER === 'smtp'
+            ? 'smtp'
+            : 'log',
+      smtp:
+        env.WORKER_EMAIL_PROVIDER === 'smtp'
+          ? {
+              host: required(env, 'WORKER_SMTP_HOST'),
+              port: Number(env.WORKER_SMTP_PORT ?? 465),
+              user: required(env, 'WORKER_SMTP_USER'),
+              pass: required(env, 'WORKER_SMTP_PASS'),
+            }
+          : null,
       region: env.WORKER_EMAIL_REGION ?? 'ap-southeast-2',
-      from: env.WORKER_EMAIL_FROM ?? 'Archova <no-reply@archova.com.au>',
+      from:
+        env.WORKER_EMAIL_FROM ??
+        (env.WORKER_EMAIL_PROVIDER === 'smtp' && env.WORKER_SMTP_USER
+          ? `Archova <${env.WORKER_SMTP_USER}>`
+          : 'Archova <no-reply@archova.com.au>'),
       replyTo: env.WORKER_EMAIL_REPLY_TO || undefined,
       appBaseUrl: env.WORKER_APP_BASE_URL ?? 'https://app.archova.com.au',
     },
