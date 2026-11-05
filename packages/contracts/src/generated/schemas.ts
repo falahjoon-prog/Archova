@@ -4900,6 +4900,18 @@ export const RecordInspectionResponsesRequestSchema = z.object({
 }).strict();
 export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionResponsesRequestSchema>;
 
+export const RetentionStageSchema = z.enum(["practical_completion", "defects_end"]);
+export type RetentionStage = z.infer<typeof RetentionStageSchema>;
+
+export const RecordRetentionReleaseRequestSchema = z.object({
+  "stage": RetentionStageSchema,
+  "amount": FinancialsMoneySchema,
+  "releasedOn": z.string().date(),
+  "reference": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+}).strict();
+export type RecordRetentionReleaseRequest = z.infer<typeof RecordRetentionReleaseRequestSchema>;
+
 export const RecordTrustMovementRequestSchema = z.object({
   "kind": TrustMovementKindSchema,
   "amount": FinancialsMoneySchema,
@@ -5005,6 +5017,36 @@ export const RespondSubmittalStepRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
+
+export const RetentionStageStatusSchema = z.enum(["awaiting_date", "upcoming", "due", "released"]);
+export type RetentionStageStatus = z.infer<typeof RetentionStageStatusSchema>;
+
+export const RetentionReleaseSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "terms": z.object({
+  "practicalCompletionOn": z.string().date().nullable(),
+  "defectsPeriodDays": z.number().int().nullable(),
+  "firstReleasePct": z.string(),
+}),
+  "retentionHeld": FinancialsMoneySchema,
+  "stages": z.array(z.object({
+  "stage": RetentionStageSchema,
+  "dueOn": z.string().date().nullable(),
+  "entitled": FinancialsMoneySchema,
+  "released": FinancialsMoneySchema,
+  "remaining": FinancialsMoneySchema,
+  "status": RetentionStageStatusSchema,
+})),
+  "releases": z.array(z.object({
+  "stage": RetentionStageSchema,
+  "amount": FinancialsMoneySchema,
+  "releasedOn": z.string().date(),
+  "reference": z.string(),
+  "note": z.string().nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+})),
+});
+export type RetentionRelease = z.infer<typeof RetentionReleaseSchema>;
 
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
@@ -5186,6 +5228,13 @@ export const SaveInductionDraftRequestSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
+export const SaveRetentionTermsRequestSchema = z.object({
+  "practicalCompletionOn": z.string().date().nullable().optional(),
+  "defectsPeriodDays": z.number().int().min(0).max(3650).nullable().optional(),
+  "firstReleasePct": z.string().regex(new RegExp("^\\d{1,3}(\\.\\d{1,2})?$")).optional(),
+}).strict();
+export type SaveRetentionTermsRequest = z.infer<typeof SaveRetentionTermsRequestSchema>;
 
 export const ScheduleItemPlacementSchema = z.object({
   "linkId": z.string(),

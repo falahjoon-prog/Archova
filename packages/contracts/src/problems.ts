@@ -288,6 +288,8 @@ export const PROBLEM_CODES = {
   'financials.trust.movement_not_found': 404,
   'financials.trust.already_reversed': 409,
   'financials.trust.insufficient': 422,
+  'financials.retention.terms_missing': 422,
+  'financials.retention.over_entitlement': 422,
   'financials.variation.bad_state': 409,
   'financials.variation.not_approved': 422,
   'financials.variation.over_amount': 422,
