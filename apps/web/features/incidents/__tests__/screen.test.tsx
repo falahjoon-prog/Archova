@@ -71,6 +71,25 @@ describe('IncidentsScreen', () => {
     expect(await screen.findByText('Verified')).toBeTruthy();
   });
 
+  it('links a new corrective action to an observation chosen in the form', async () => {
+    const user = userEvent.setup();
+    nav.search = 'id=inx_0001';
+    renderInProject(<IncidentsScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Add corrective action' }));
+    await enterText(user, screen.getByLabelText('Action'), 'Re-tie the scaffold');
+    await user.selectOptions(screen.getByLabelText('Raised from'), 'observation');
+    await user.selectOptions(await screen.findByLabelText('Observation'), 'obs_0001');
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Add action' }),
+    );
+    await waitFor(async () => {
+      const a = (await incidentsPreview.get('prj_test', 'inx_0001')).actions.find(
+        (x) => x.title === 'Re-tie the scaffold',
+      );
+      expect(a?.source).toEqual({ type: 'observation', id: 'obs_0001' });
+    });
+  });
+
   it('shows the corrective actions an incident raised from an inspection, and nothing otherwise', async () => {
     const detail = await incidentsPreview.get('prj_test', 'inx_0001');
     await incidentsPreview.addAction('prj_test', detail, {

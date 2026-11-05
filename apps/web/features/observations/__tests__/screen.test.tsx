@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, nav, renderInProject } from '@/test/render';
+import { incidentsPreview, resetIncidentsPreview } from '../../incidents/data/source';
 import { observationsPreview, resetObservationsPreview } from '../data/source';
 import { ObservationsScreen } from '../screens/ObservationsScreen';
 
@@ -10,6 +11,7 @@ vi.mock('next/navigation', async () => (await import('@/test/render')).navigatio
 
 beforeEach(() => {
   resetObservationsPreview();
+  resetIncidentsPreview();
   nav.search = '';
 });
 
@@ -24,6 +26,25 @@ describe('ObservationsScreen', () => {
     renderInProject(<ObservationsScreen />);
     expect(await screen.findByText('OBS-0003')).toBeTruthy();
     expect(screen.queryByText('OBS-0001')).toBeNull();
+  });
+
+  it('lists the incident corrective actions raised from an observation, or says there are none', async () => {
+    const user = userEvent.setup();
+    const detail = await incidentsPreview.get('prj_test', 'inx_0001');
+    await incidentsPreview.addAction('prj_test', detail, {
+      title: 'Re-tie the scaffold',
+      source: { type: 'observation', id: 'obs_0001' },
+    });
+    renderInProject(<ObservationsScreen />);
+    await user.click(
+      await screen.findByRole('button', { name: 'Corrective actions from OBS-0001' }),
+    );
+    expect(await screen.findByText(/Re-tie the scaffold/)).toBeTruthy();
+    await user.click(
+      within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Close' })[0]!,
+    );
+    await user.click(screen.getByRole('button', { name: 'Corrective actions from OBS-0002' }));
+    expect(await screen.findByText(/No incident corrective actions/)).toBeTruthy();
   });
 
   it('raises an observation, numbered in order', async () => {

@@ -17,5 +17,7 @@ export const notifications = notificationsSchema.table('notifications', {
   body: text('body').notNull().default(''),
   dedupeKey: text('dedupe_key').notNull(),
   readAt: timestamp('read_at', { withTimezone: true }),
+  /** When the worker claimed it for email; null when not emailed. */
+  emailedAt: timestamp('emailed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

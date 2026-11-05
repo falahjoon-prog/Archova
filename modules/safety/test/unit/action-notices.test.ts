@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   planActionNotices,
+  planOverdueNotices,
   type ActionNoticeCandidate,
 } from '../../src/application/action-notices';
 
@@ -32,5 +33,29 @@ describe('planActionNotices', () => {
     expect(planActionNotices([{ ...base, dueDate: null, recipients: ['u1'] }])[0]?.body).toBe(
       'Fence the trench.',
     );
+  });
+
+  it('words a handed-on action as reassigned, under the same per-person key', () => {
+    const [n] = planActionNotices([{ ...base, recipients: ['u3'], reassigned: true }]);
+    expect(n).toMatchObject({
+      kind: 'safety.incident_action_reassigned',
+      title: 'INC-0007: corrective action reassigned to you',
+      dedupeKey: 'incident_action:a1:assigned',
+      userId: 'u3',
+    });
+  });
+});
+
+describe('planOverdueNotices', () => {
+  it('keys each reminder by action and due date, so a new due date re-arms it', () => {
+    const [a] = planOverdueNotices([{ ...base, recipients: ['u1'] }]);
+    const [b] = planOverdueNotices([{ ...base, recipients: ['u1'], dueDate: '2026-11-20' }]);
+    expect(a).toMatchObject({
+      kind: 'safety.incident_action_overdue',
+      title: 'INC-0007: corrective action overdue',
+      body: 'Fence the trench. It was due 2026-11-12.',
+    });
+    expect(a?.dedupeKey).toBe('incident_action:a1:overdue:2026-11-12');
+    expect(b?.dedupeKey).not.toBe(a?.dedupeKey);
   });
 });

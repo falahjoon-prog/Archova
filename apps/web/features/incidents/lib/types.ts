@@ -112,6 +112,8 @@ export interface IncidentDetail {
   incident: Incident;
   people: Person[];
   injuryHidden: boolean;
+  /** Photos taken at the scene on a phone. */
+  photoFileIds: string[];
   actions: CorrectiveAction[];
   events: IncidentEvent[];
   closeBlockers: { field: string; message: string }[];
@@ -158,6 +160,14 @@ export interface SourcedAction {
   incidentId: string;
   incidentNumberLabel: string;
   incidentTitle: string;
+}
+
+/** An inspection or observation an action can be raised from, as the source picker lists it. */
+export interface SourceOption {
+  type: 'inspection' | 'observation';
+  id: string;
+  /** `OBS-0042 · Scaffold tie missing` */
+  label: string;
 }
 
 export interface ActionInput {

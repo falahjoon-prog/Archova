@@ -31,6 +31,7 @@
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-sync": "workspace:*",
+    "@archova/routes": "workspace:*",
     "@archova/time": "workspace:*",
     "@aws-sdk/client-sesv2": "^3.900.0",
     "asn1js": "^4.0.0",

@@ -56,6 +56,18 @@ export function useActionsFromSource(source: ActionSource) {
   });
 }
 
+/** What an action can be raised from. Fetched only while the "add action" form is open (`enabled`). */
+export function useSourceOptions(enabled: boolean) {
+  const src = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'incidents', { sourceOptions: true }),
+    queryFn: () => src.sourceOptions(projectId),
+    enabled,
+  });
+}
+
 export function useIncidentMutations() {
   const source = useSource();
   const { orgId } = useCurrentOrg();

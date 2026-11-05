@@ -148,6 +148,8 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
   incidents: (projectId: string) => `/project/${enc(projectId)}/incidents`,
+  incidentPhoto: (projectId: string, incidentId: string) =>
+    `/project/${enc(projectId)}/incidents/${enc(incidentId)}/photo`,
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,

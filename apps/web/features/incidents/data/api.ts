@@ -57,6 +57,7 @@ export const toDetail = (d: ApiDetail): IncidentDetail => ({
     injury: p.injury,
   })),
   injuryHidden: d.injuryHidden,
+  photoFileIds: d.photoFileIds,
   actions: d.actions.map(toAction),
   events: d.events.map((e) => ({
     id: e.id,
@@ -174,6 +175,29 @@ export function createIncidentsApi(orgId: string): IncidentSource {
         }),
       );
       return get(projectId, d.incident.id);
+    },
+    async sourceOptions(projectId) {
+      const path = { orgId, projectId };
+      const [ins, obs] = await Promise.all([
+        api.GET('/v1/orgs/{orgId}/projects/{projectId}/inspections', {
+          params: { path, query: { limit: 100 } },
+        }),
+        api.GET('/v1/orgs/{orgId}/projects/{projectId}/observations', {
+          params: { path, query: { limit: 100 } },
+        }),
+      ]);
+      return [
+        ...unwrap(ins).data.map((i) => ({
+          type: 'inspection' as const,
+          id: i.id,
+          label: `${i.numberLabel} · ${i.title}`,
+        })),
+        ...unwrap(obs).data.map((o) => ({
+          type: 'observation' as const,
+          id: o.id,
+          label: `${o.numberLabel} · ${o.description.slice(0, 60)}`,
+        })),
+      ];
     },
     async fromSource(projectId, source) {
       const r = unwrap(
