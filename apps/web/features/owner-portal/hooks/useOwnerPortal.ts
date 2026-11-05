@@ -67,6 +67,18 @@ export function useOwnerPortalMutations() {
       mutationFn: (id: string) => source.withdraw(projectId, id),
       ...opts,
     }),
+    updateItem: useMutation({
+      mutationFn: (v: {
+        id: string;
+        version: number;
+        body: Parameters<typeof source.updateItem>[3];
+      }) => source.updateItem(projectId, v.id, v.version, v.body),
+      ...opts,
+    }),
+    removeItem: useMutation({
+      mutationFn: (id: string) => source.removeItem(projectId, id),
+      ...opts,
+    }),
     addItem: useMutation({
       mutationFn: (v: Parameters<typeof source.addItem>[1]) => source.addItem(projectId, v),
       ...opts,
