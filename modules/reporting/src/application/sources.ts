@@ -19,6 +19,9 @@ export interface ReportingDeps {
   rfis: Tool;
   defects: Tool;
   submittals: Tool;
+  claims: Tool;
+  variations: Tool;
+  incidents: Tool;
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {
     can(

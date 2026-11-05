@@ -11,7 +11,10 @@ export function createPortfolioService(deps: ReportingDeps) {
       const rfis = await deps.rfis.portfolioCounts(scope, p.id);
       const defects = await deps.defects.portfolioCounts(scope, p.id);
       const submittals = await deps.submittals.portfolioCounts(scope, p.id);
-      const counts = { rfis, defects, submittals };
+      const claims = await deps.claims.portfolioCounts(scope, p.id);
+      const variations = await deps.variations.portfolioCounts(scope, p.id);
+      const incidents = await deps.incidents.portfolioCounts(scope, p.id);
+      const counts = { rfis, defects, submittals, claims, variations, incidents };
       rows.push({
         id: encodeId('project', p.id),
         name: p.name,

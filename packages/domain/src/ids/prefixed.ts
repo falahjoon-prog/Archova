@@ -53,6 +53,7 @@ export const ID_PREFIXES = {
   aiHazardScan: 'ahn',
   aiHazardSignal: 'ahs',
   rfiResponse: 'rfr',
+  rfiAnnotation: 'rfa',
   submittal: 'sbm',
   submittalStep: 'sbs',
   correspondenceType: 'cty',

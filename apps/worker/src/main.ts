@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
+import { createEvidenceSigner } from '@archova/mod-financials';
 import {
   createHttpsTransport,
   createWebhookService,
@@ -71,6 +72,11 @@ async function main() {
           })
         : createLogSender((msg, o) => log.info(o, msg));
   SUBSCRIBERS.push(dataExportNotices(emailSender, (msg, o) => log.info(o ?? {}, msg)));
+  if (process.env.NODE_ENV === 'production' && !config.evidenceSigning)
+    log.warn(
+      {},
+      'WORKER_EVIDENCE_SIGNING_KEY is not set: sealed claim send proofs will be hashed and timestamped but not signed',
+    );
   /** Nightly and hourly per-org jobs (backend 05 §3). */
 
   const jobs: TenantJob[] = [
@@ -81,7 +87,20 @@ async function main() {
     trialBackfill,
     trialEndingEmail(emailSender, config.email.appBaseUrl),
     // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
-    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    // SMTP can send sealed claims too, but only ever as dispatch: no delivery confirmation comes back (compliance/01 §4).
+    ...(config.email.provider === 'ses' || config.email.provider === 'smtp'
+      ? [
+          evidenceDeliveries(emailSender, {
+            provider: config.email.provider,
+            signer: config.evidenceSigning
+              ? createEvidenceSigner(
+                  config.evidenceSigning.keyId,
+                  config.evidenceSigning.privateKeyPem,
+                )
+              : null,
+          }),
+        ]
+      : []),
     ...(config.evidenceTimestampUrl
       ? [
           evidenceTimestamps(

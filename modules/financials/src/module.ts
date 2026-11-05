@@ -7,6 +7,7 @@ import { createCommitmentsService } from './application/commitments';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
+import { createReportingSources } from './application/reportingSources';
 import { createRetentionService } from './application/retention';
 import { createTrustService } from './application/trust';
 import { FINANCIALS_PERMISSIONS } from './permissions';
@@ -30,6 +31,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   });
   const directCosts = createDirectCostsService({
     access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const reportingSources = createReportingSources({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const trustDeps = {
@@ -56,6 +62,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
+      reporting: reportingSources,
     },
   };
 }

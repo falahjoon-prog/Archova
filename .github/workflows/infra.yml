@@ -20,8 +20,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: infra-${{ github.ref }}
-  cancel-in-progress: true
+  group: infra-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read

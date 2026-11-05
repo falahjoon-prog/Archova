@@ -96,6 +96,15 @@ export function createCompanyService() {
       .limit(500);
   }
 
+  /** Contact emails for the invite links a tender sends (names and addresses only; nothing else about the company). */
+  async function contacts(scope: TenantScope, companyIds: readonly string[]) {
+    if (!companyIds.length) return [];
+    return scope.tx
+      .select({ id: companies.id, name: companies.name, email: companies.email })
+      .from(companies)
+      .where(and(isNull(companies.deletedAt), inArray(companies.id, [...companyIds])));
+  }
+
   async function exists(scope: TenantScope, companyId: string): Promise<boolean> {
     const [row] = await scope.tx
       .select({ id: companies.id })
@@ -131,7 +140,16 @@ export function createCompanyService() {
     return new Map(rows.map((r) => [r.id, { name: r.name, linkedOrgId: r.linkedOrgId }]));
   }
 
-  return { list, create, exists, identity, linkedOrgs, onProject, onProjectWithTrades };
+  return {
+    list,
+    create,
+    exists,
+    contacts,
+    identity,
+    linkedOrgs,
+    onProject,
+    onProjectWithTrades,
+  };
 }
 
 export type CompanyService = ReturnType<typeof createCompanyService>;

@@ -1,6 +1,13 @@
 // Report builder and portfolio rules. Pure, no IO.
 
-export const REPORT_SOURCES = ['rfis', 'defects', 'submittals'] as const;
+export const REPORT_SOURCES = [
+  'rfis',
+  'defects',
+  'submittals',
+  'claims',
+  'variations',
+  'incidents',
+] as const;
 export type ReportSource = (typeof REPORT_SOURCES)[number];
 
 export const REPORT_STATES = ['open', 'closed', 'all'] as const;
@@ -84,10 +91,17 @@ export interface ProjectCounts {
   rfis: ToolCounts;
   defects: ToolCounts;
   submittals: ToolCounts;
+  claims: ToolCounts;
+  variations: ToolCounts;
+  incidents: ToolCounts;
 }
 
 export const attention = (p: ProjectCounts) =>
-  p.rfis.overdue + p.defects.overdue + p.submittals.overdue;
+  p.rfis.overdue +
+  p.defects.overdue +
+  p.submittals.overdue +
+  p.claims.overdue +
+  p.variations.overdue;
 
 /** Company totals; a tool the caller cannot read on a project adds nothing (its counts are zero). */
 export function totals(projects: readonly ProjectCounts[]) {
@@ -101,6 +115,12 @@ export function totals(projects: readonly ProjectCounts[]) {
     defectsOverdue: sum((p) => p.defects, 'overdue'),
     submittalsOpen: sum((p) => p.submittals, 'open'),
     submittalsOverdue: sum((p) => p.submittals, 'overdue'),
+    claimsOpen: sum((p) => p.claims, 'open'),
+    claimsOverdue: sum((p) => p.claims, 'overdue'),
+    variationsOpen: sum((p) => p.variations, 'open'),
+    variationsOverdue: sum((p) => p.variations, 'overdue'),
+    incidentsOpen: sum((p) => p.incidents, 'open'),
+    incidentsOverdue: sum((p) => p.incidents, 'overdue'),
   };
 }
 
@@ -108,7 +128,13 @@ export function totals(projects: readonly ProjectCounts[]) {
 export function orderPortfolio<T extends { name: string; attention: number } & ProjectCounts>(
   rows: readonly T[],
 ): T[] {
-  const open = (p: ProjectCounts) => p.rfis.open + p.defects.open + p.submittals.open;
+  const open = (p: ProjectCounts) =>
+    p.rfis.open +
+    p.defects.open +
+    p.submittals.open +
+    p.claims.open +
+    p.variations.open +
+    p.incidents.open;
   return [...rows].sort(
     (a, b) => b.attention - a.attention || open(b) - open(a) || a.name.localeCompare(b.name),
   );

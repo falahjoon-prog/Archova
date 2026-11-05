@@ -213,6 +213,11 @@ export function projectToolGroups(
       label: 'Incidents',
       icon: IncidentsIcon,
     },
+    canAdmin('inspections') && {
+      href: webRoutes.safetySignals(orgSlug, projectId),
+      label: 'Safety signals',
+      icon: IncidentsIcon,
+    },
     canRead('owner_portal') && {
       href: webRoutes.ownerPortal(orgSlug, projectId),
       label: 'Owner portal',

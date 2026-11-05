@@ -29,6 +29,9 @@ const sessionCookies = (token: string, csrf: string): CookieSpec[] => [
   { name: CSRF_COOKIE, value: csrf, httpOnly: true, maxAgeSeconds: SESSION_ABSOLUTE_MS / 1000 },
 ];
 
+/** How recent a sign-in `prompt=login` accepts as "just now". */
+const FRESH_LOGIN_MS = 5 * 60_000;
+
 /** How recently the person must have signed in to create a token. */
 const STEP_UP_MS = 15 * 60_000;
 
@@ -140,9 +143,16 @@ export function identityRoutes({
       };
     },
     oauthAuthorize: async ({ principal, query }) => {
-      if (!principal || principal.client !== 'web') {
+      // `prompt=login` (OIDC): the person must have signed in just now, not at some earlier time. A stale session goes
+      // to the sign-in page, which makes a new session with a new auth time, and comes back here with `prompt=login`
+      // still on the URL, where the fresh sign-in passes.
+      const forceLogin = query.prompt === 'login';
+      const stale =
+        forceLogin && principal && Date.now() - principal.authTime.getTime() > FRESH_LOGIN_MS;
+      if (!principal || principal.client !== 'web' || stale) {
         const next = `/v1/oauth/authorize?${new URLSearchParams(query as Record<string, string>).toString()}`;
-        return { status: 302, redirect: `${webSignInUrl}?next=${encodeURIComponent(next)}` };
+        const signIn = `${webSignInUrl}?next=${encodeURIComponent(next)}`;
+        return { status: 302, redirect: forceLogin ? `${signIn}&prompt=login` : signIn };
       }
       return { status: 302, redirect: await oauth.authorize(principal, query) };
     },

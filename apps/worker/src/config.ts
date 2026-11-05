@@ -22,6 +22,11 @@ export interface WorkerConfig {
   evidenceTimestampUrl: string | null;
   /** PEM file of the authority's pinned certificates (root and any intermediates); required with the URL. */
   evidenceTimestampCaFile: string | null;
+  /**
+   * The worker's own Ed25519 key (its own id, never a copy of the API's key) to sign send proofs. Add its public key to
+   * the API's verification keyring. Unset leaves send proofs unsigned (still hashed and timestamped).
+   */
+  evidenceSigning: { keyId: string; privateKeyPem: string } | null;
   files: {
     store: 's3' | 'none';
     bucket: string;
@@ -81,6 +86,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     },
     evidenceTimestampUrl: env.WORKER_EVIDENCE_TSA_URL || null,
     evidenceTimestampCaFile: env.WORKER_EVIDENCE_TSA_CA_FILE || null,
+    evidenceSigning: env.WORKER_EVIDENCE_SIGNING_KEY
+      ? {
+          keyId: required(env, 'WORKER_EVIDENCE_SIGNING_KEY_ID'),
+          privateKeyPem: env.WORKER_EVIDENCE_SIGNING_KEY.replaceAll('\\n', '\n'),
+        }
+      : null,
     files: {
       store: env.WORKER_FILES_STORE === 's3' ? 's3' : 'none',
       bucket: env.WORKER_FILES_BUCKET ?? 'archova-local-files',
