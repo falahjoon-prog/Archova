@@ -1920,6 +1920,52 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const ListBudgetLinesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetLineBody = s.CreateBudgetLineRequestSchema;
+export const ListCommitmentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentBody = s.CreateCommitmentRequestSchema;
+export const GetCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const SubmitCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentBody = s.CommitmentApprovalRequestSchema;
+export const RejectCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const RejectCommitmentBody = s.CommitmentDecisionRequestSchema;
+export const VoidCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const VoidCommitmentBody = s.CommitmentDecisionRequestSchema;
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6260,6 +6306,114 @@ export const operations = {
     params: WithdrawVariationParams,
     query: null,
     body: null,
+  },
+  listBudgetLines: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget-lines',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: ListBudgetLinesParams,
+    query: null,
+    body: null,
+  },
+  createBudgetLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget-lines',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBudgetLineParams,
+    query: null,
+    body: CreateBudgetLineBody,
+  },
+  listCommitments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: ListCommitmentsParams,
+    query: null,
+    body: null,
+  },
+  createCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCommitmentParams,
+    query: null,
+    body: CreateCommitmentBody,
+  },
+  getCommitment: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentParams,
+    query: null,
+    body: null,
+  },
+  submitCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: null,
+    params: SubmitCommitmentParams,
+    query: null,
+    body: null,
+  },
+  approveCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveCommitmentParams,
+    query: null,
+    body: ApproveCommitmentBody,
+  },
+  rejectCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: RejectCommitmentParams,
+    query: null,
+    body: RejectCommitmentBody,
+  },
+  voidCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidCommitmentParams,
+    query: null,
+    body: VoidCommitmentBody,
   },
   listPaymentClaims: {
     method: 'GET',

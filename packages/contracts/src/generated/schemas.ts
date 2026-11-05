@@ -333,6 +333,29 @@ export const BallInCourtSchema = z.object({
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
 
+export const FinancialsMoneySchema = z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsMoney = z.infer<typeof FinancialsMoneySchema>;
+
+export const BudgetLineSchema = z.object({
+  "id": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "budget": FinancialsMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "uncommitted": z.string(),
+});
+export type BudgetLine = z.infer<typeof BudgetLineSchema>;
+
+export const BudgetLineListSchema = z.object({
+  "data": z.array(BudgetLineSchema),
+  "totals": z.object({
+  "budget": FinancialsMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "uncommitted": z.string(),
+}),
+});
+export type BudgetLineList = z.infer<typeof BudgetLineListSchema>;
+
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -383,6 +406,53 @@ export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
 export type CloseRfiRequest = z.infer<typeof CloseRfiRequestSchema>;
+
+export const CommitmentStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "void"]);
+export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
+
+export const CommitmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "kind": z.enum(["subcontract", "purchase_order"]),
+  "title": z.string(),
+  "vendorCompanyId": z.string().nullable(),
+  "status": CommitmentStatusSchema,
+  "total": FinancialsMoneySchema,
+  "overBudgetOverride": z.boolean(),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decisionNote": z.string().nullable(),
+});
+export type Commitment = z.infer<typeof CommitmentSchema>;
+
+export const CommitmentApprovalRequestSchema = z.object({
+  "note": z.string().min(1).max(5000).optional(),
+  "allowOverBudget": z.boolean().optional(),
+}).strict();
+export type CommitmentApprovalRequest = z.infer<typeof CommitmentApprovalRequestSchema>;
+
+export const CommitmentDecisionRequestSchema = z.object({
+  "note": z.string().min(1).max(5000).optional(),
+}).strict();
+export type CommitmentDecisionRequest = z.infer<typeof CommitmentDecisionRequestSchema>;
+
+export const CommitmentLineSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+  "description": z.string(),
+  "amount": FinancialsMoneySchema,
+});
+export type CommitmentLine = z.infer<typeof CommitmentLineSchema>;
+
+export const CommitmentDetailSchema = z.object({
+  "commitment": CommitmentSchema,
+  "lines": z.array(CommitmentLineSchema),
+});
+export type CommitmentDetail = z.infer<typeof CommitmentDetailSchema>;
+
+export const CommitmentListSchema = z.object({
+  "data": z.array(CommitmentSchema),
+});
+export type CommitmentList = z.infer<typeof CommitmentListSchema>;
 
 export const CompanyTypeSchema = z.enum(["builder", "subcontractor", "consultant", "client", "supplier"]);
 export type CompanyType = z.infer<typeof CompanyTypeSchema>;
@@ -579,9 +649,6 @@ export type ConfirmSheetScaleRequest = z.infer<typeof ConfirmSheetScaleRequestSc
 
 export const ContractKindSchema = z.enum(["head", "subcontract"]);
 export type ContractKind = z.infer<typeof ContractKindSchema>;
-
-export const FinancialsMoneySchema = z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"));
-export type FinancialsMoney = z.infer<typeof FinancialsMoneySchema>;
 
 export const SopaStateSchema = z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]);
 export type SopaState = z.infer<typeof SopaStateSchema>;
@@ -833,6 +900,25 @@ export const CreateAttendanceSiteRequestSchema = z.object({
   "gateCheckMode": z.enum(["block", "warn"]).optional(),
 }).strict();
 export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
+
+export const CreateBudgetLineRequestSchema = z.object({
+  "code": z.string().min(1).max(50),
+  "description": z.string().min(1).max(300),
+  "budget": FinancialsMoneySchema,
+}).strict();
+export type CreateBudgetLineRequest = z.infer<typeof CreateBudgetLineRequestSchema>;
+
+export const CreateCommitmentRequestSchema = z.object({
+  "kind": z.enum(["subcontract", "purchase_order"]),
+  "title": z.string().min(1).max(300),
+  "vendorCompanyId": z.string().nullable().optional(),
+  "lines": z.array(z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+  "description": z.string().min(1).max(300),
+  "amount": FinancialsMoneySchema,
+}).strict()).min(1).max(200),
+}).strict();
+export type CreateCommitmentRequest = z.infer<typeof CreateCommitmentRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),

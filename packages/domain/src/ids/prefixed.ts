@@ -95,6 +95,8 @@ export const ID_PREFIXES = {
   paymentClaim: 'pcl',
   paymentSchedule: 'psc',
   variation: 'var',
+  budgetLine: 'bdl',
+  commitment: 'cmt',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

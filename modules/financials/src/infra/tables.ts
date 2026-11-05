@@ -154,3 +154,47 @@ export const evidenceRecords = financialsSchema.table('evidence_records', {
   pdf: bytea('pdf').notNull(),
   pdfSha256: text('pdf_sha256').notNull(),
 });
+
+export const budgetLines = financialsSchema.table('budget_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  code: text('code').notNull(),
+  description: text('description').notNull(),
+  budget: money('budget').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const commitments = financialsSchema.table('commitments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  kind: text('kind').$type<'subcontract' | 'purchase_order'>().notNull(),
+  title: text('title').notNull(),
+  vendorCompanyId: uuid('vendor_company_id'),
+  status: text('status').notNull().default('draft'),
+  total: money('total').notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  submittedBy: uuid('submitted_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by'),
+  decisionNote: text('decision_note'),
+  overBudgetOverride: boolean('over_budget_override').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const commitmentLines = financialsSchema.table('commitment_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  commitmentId: uuid('commitment_id').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  description: text('description').notNull(),
+  amount: money('amount').notNull(),
+  sort: integer('sort').notNull(),
+});

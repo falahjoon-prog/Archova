@@ -17,4 +17,23 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'standard',
   },
   { key: 'financials.variations.decide', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  {
+    key: 'financials.commitments.read',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.decide',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'admin',
+  },
+  { key: 'financials.budget.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
 ];

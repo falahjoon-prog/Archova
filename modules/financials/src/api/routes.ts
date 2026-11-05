@@ -7,10 +7,14 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { CommitmentsService, CommitmentMove } from '../application/commitments';
 import type { FinancialsService } from '../application/financials';
 import { isMoney } from '../domain/money';
 import {
+  toBudgetLineDto,
   toClaimDto,
+  toCommitmentDto,
+  toCommitmentLineDto,
   toContractDto,
   toLineDto,
   toScheduleDto,
@@ -37,7 +41,11 @@ const money = (value: string, path: string) => {
   return value;
 };
 
-export function financialsRoutes(database: Database, financials: FinancialsService) {
+export function financialsRoutes(
+  database: Database,
+  financials: FinancialsService,
+  commitments: CommitmentsService,
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -74,7 +82,102 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
     ),
   });
 
+  const commitmentBody = (d: Awaited<ReturnType<CommitmentsService['getCommitment']>>) => ({
+    commitment: toCommitmentDto(d.commitment),
+    lines: d.lines.map(toCommitmentLineDto),
+  });
+  const moveCommitment = async (
+    input: { tenant: TenantContext | null; params: { projectId: string; commitmentId: string } },
+    to: CommitmentMove,
+    opts: { note?: string; allowOverBudget?: boolean } = {},
+  ) => ({
+    status: 200 as const,
+    body: commitmentBody(
+      await tx(input, (s) =>
+        commitments.moveCommitment(
+          s,
+          project(input.params),
+          ref('commitment', input.params.commitmentId, 'commitmentId'),
+          to,
+          opts,
+        ),
+      ),
+    ),
+  });
+
   return defineRoutes({
+    listBudgetLines: async (input) => {
+      const r = await read(input, (s) => commitments.listBudgetLines(s, project(input.params)));
+      return { status: 200, body: { data: r.lines.map(toBudgetLineDto), totals: r.totals } };
+    },
+    createBudgetLine: async (input) => ({
+      status: 201,
+      body: toBudgetLineDto(
+        await tx(input, (s) =>
+          commitments.createBudgetLine(s, project(input.params), {
+            ...input.body,
+            budget: money(input.body.budget, 'budget'),
+          }),
+        ),
+      ),
+    }),
+    listCommitments: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => commitments.listCommitments(s, project(input.params)))).map(
+          toCommitmentDto,
+        ),
+      },
+    }),
+    createCommitment: async (input) => {
+      const b = input.body;
+      return {
+        status: 201,
+        body: commitmentBody(
+          await tx(input, (s) =>
+            commitments.createCommitment(s, project(input.params), {
+              kind: b.kind,
+              title: b.title,
+              ...(b.vendorCompanyId !== undefined
+                ? {
+                    vendorCompanyId: b.vendorCompanyId
+                      ? ref('company', b.vendorCompanyId, 'vendorCompanyId')
+                      : null,
+                  }
+                : {}),
+              lines: b.lines.map((l, n) => ({
+                budgetLineId: ref('budgetLine', l.budgetLineId, `lines/${n}/budgetLineId`),
+                description: l.description,
+                amount: money(l.amount, `lines/${n}/amount`),
+              })),
+            }),
+          ),
+        ),
+      };
+    },
+    getCommitment: async (input) => ({
+      status: 200,
+      body: commitmentBody(
+        await read(input, (s) =>
+          commitments.getCommitment(
+            s,
+            project(input.params),
+            ref('commitment', input.params.commitmentId, 'commitmentId'),
+          ),
+        ),
+      ),
+    }),
+    submitCommitment: async (input) => moveCommitment(input, 'submitted'),
+    approveCommitment: async (input) =>
+      moveCommitment(input, 'approved', {
+        ...(input.body?.note ? { note: input.body.note } : {}),
+        allowOverBudget: input.body?.allowOverBudget === true,
+      }),
+    rejectCommitment: async (input) =>
+      moveCommitment(input, 'rejected', input.body?.note ? { note: input.body.note } : {}),
+    voidCommitment: async (input) =>
+      moveCommitment(input, 'void', input.body?.note ? { note: input.body.note } : {}),
+
     listContracts: async (input) => ({
       status: 200,
       body: {

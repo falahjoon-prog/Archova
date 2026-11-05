@@ -1,5 +1,6 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
 import { financialsRoutes } from './api/routes';
+import { createCommitmentsService } from './application/commitments';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
 import { FINANCIALS_PERMISSIONS } from './permissions';
 
@@ -10,9 +11,13 @@ import { FINANCIALS_PERMISSIONS } from './permissions';
  */
 export function createFinancialsModule(services: KernelServices, deps: FinancialsDeps) {
   const service = createFinancialsService(deps);
+  const commitments = createCommitmentsService({
+    access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   return {
     definition: defineModule({ name: 'financials', permissions: FINANCIALS_PERMISSIONS }),
-    routes: financialsRoutes(services.database, service),
+    routes: financialsRoutes(services.database, service, commitments),
     api: { ledgerSource: service.ledgerSource, recordPayment: service.recordPayment },
   };
 }

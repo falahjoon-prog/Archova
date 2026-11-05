@@ -6033,6 +6033,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget-lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Budget lines with committed cost from approved commitments. */
+        get: operations["listBudgetLines"];
+        put?: never;
+        /** Add a budget line. */
+        post: operations["createBudgetLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Subcontracts and purchase orders, newest first. */
+        get: operations["listCommitments"];
+        put?: never;
+        /** Draft a subcontract or purchase order against budget lines. */
+        post: operations["createCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** One commitment with its lines. */
+        get: operations["getCommitment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a draft for approval. */
+        post: operations["submitCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve. Counts as committed cost; past budget needs allowOverBudget and a note. */
+        post: operations["approveCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted commitment. A reason is required. */
+        post: operations["rejectCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a commitment, releasing its committed cost. A reason is required once submitted. */
+        post: operations["voidCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/payment-claims": {
         parameters: {
             query?: never;
@@ -10068,6 +10215,76 @@ export interface components {
         VariationDecisionRequest: {
             note?: string;
         };
+        BudgetLine: {
+            id: string;
+            code: string;
+            description: string;
+            budget: components["schemas"]["FinancialsMoney"];
+            committed: components["schemas"]["FinancialsMoney"];
+            /** @description Budget less committed. Negative when over budget. */
+            uncommitted: string;
+        };
+        BudgetLineList: {
+            data: components["schemas"]["BudgetLine"][];
+            totals: {
+                budget: components["schemas"]["FinancialsMoney"];
+                committed: components["schemas"]["FinancialsMoney"];
+                uncommitted: string;
+            };
+        };
+        CreateBudgetLineRequest: {
+            code: string;
+            description: string;
+            budget: components["schemas"]["FinancialsMoney"];
+        };
+        /** @enum {string} */
+        CommitmentStatus: "draft" | "submitted" | "approved" | "rejected" | "void";
+        Commitment: {
+            id: string;
+            number: number;
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId: string | null;
+            status: components["schemas"]["CommitmentStatus"];
+            total: components["schemas"]["FinancialsMoney"];
+            overBudgetOverride: boolean;
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        CommitmentLine: {
+            budgetLineId: string;
+            description: string;
+            amount: components["schemas"]["FinancialsMoney"];
+        };
+        CommitmentDetail: {
+            commitment: components["schemas"]["Commitment"];
+            lines: components["schemas"]["CommitmentLine"][];
+        };
+        CommitmentList: {
+            data: components["schemas"]["Commitment"][];
+        };
+        CreateCommitmentRequest: {
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId?: string | null;
+            lines: {
+                budgetLineId: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        CommitmentDecisionRequest: {
+            note?: string;
+        };
+        CommitmentApprovalRequest: {
+            note?: string;
+            allowOverBudget?: boolean;
+        };
         /** @enum {string} */
         PaymentClaimStatus: "submitted" | "scheduled" | "paid" | "disputed" | "adjudication" | "withdrawn";
         PaymentClaim: {
@@ -11872,6 +12089,7 @@ export interface components {
         RfiId: string;
         ContractId: string;
         VariationId: string;
+        CommitmentId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
@@ -21788,6 +22006,259 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Variation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBudgetLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBudgetLine: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetLineRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLine"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCommitments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
                 };
             };
             default: components["responses"]["Problem"];

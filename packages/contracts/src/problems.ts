@@ -252,6 +252,12 @@ export const PROBLEM_CODES = {
   'financials.variation.not_approved': 422,
   'financials.variation.over_amount': 422,
   'financials.variation.reason_required': 422,
+  'financials.budget_line.not_found': 404,
+  'financials.budget_line.duplicate_code': 409,
+  'financials.commitment.not_found': 404,
+  'financials.commitment.bad_state': 409,
+  'financials.commitment.reason_required': 422,
+  'financials.commitment.over_budget': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,

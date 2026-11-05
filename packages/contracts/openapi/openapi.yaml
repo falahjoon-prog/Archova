@@ -8316,6 +8316,193 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget-lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBudgetLines
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Budget lines with committed cost from approved commitments.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLineList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Add a budget line.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBudgetLineRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCommitments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Subcontracts and purchase orders, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Draft a subcontract or purchase order against budget lines.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: getCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: One commitment with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: submitCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Send a draft for approval.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: approveCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Approve. Counts as committed cost; past budget needs allowOverBudget and a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentApprovalRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: rejectCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Reject a submitted commitment. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: voidCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Void a commitment, releasing its committed cost. A reason is required once submitted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -8896,6 +9083,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    CommitmentId:
+      name: commitmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -14760,6 +14952,123 @@ components:
       additionalProperties: false
       properties:
         note: { type: string, minLength: 1, maxLength: 5000 }
+    BudgetLine:
+      type: object
+      required: [id, code, description, budget, committed, uncommitted]
+      properties:
+        id: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        budget: { $ref: '#/components/schemas/FinancialsMoney' }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        uncommitted:
+          { type: string, description: Budget less committed. Negative when over budget. }
+    BudgetLineList:
+      type: object
+      required: [data, totals]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetLine' }
+        totals:
+          type: object
+          required: [budget, committed, uncommitted]
+          properties:
+            budget: { $ref: '#/components/schemas/FinancialsMoney' }
+            committed: { $ref: '#/components/schemas/FinancialsMoney' }
+            uncommitted: { type: string }
+    CreateBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [code, description, budget]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 50 }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        budget: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, void]
+    Commitment:
+      type: object
+      required:
+        [
+          id,
+          number,
+          kind,
+          title,
+          vendorCompanyId,
+          status,
+          total,
+          overBudgetOverride,
+          submittedAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string }
+        vendorCompanyId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/CommitmentStatus' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        overBudgetOverride: { type: boolean }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    CommitmentLine:
+      type: object
+      required: [budgetLineId, description, amount]
+      properties:
+        budgetLineId: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
+        description: { type: string }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDetail:
+      type: object
+      required: [commitment, lines]
+      properties:
+        commitment: { $ref: '#/components/schemas/Commitment' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentLine' }
+    CommitmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Commitment' }
+    CreateCommitmentRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, lines]
+      properties:
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        vendorCompanyId: { type: [string, 'null'] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [budgetLineId, description, amount]
+            properties:
+              budgetLineId: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
+              description: { type: string, minLength: 1, maxLength: 300 }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentApprovalRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+        allowOverBudget: { type: boolean }
     PaymentClaimStatus:
       type: string
       enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
