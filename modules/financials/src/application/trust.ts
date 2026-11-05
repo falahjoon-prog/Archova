@@ -6,6 +6,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { fromCents, percentOf, toCents } from '../domain/money';
 import { trustPosition, trustRequirement, trustTotals, type MovementInput } from '../domain/trust';
+import type { contracts } from '../infra/tables';
 import {
   paymentClaims,
   paymentSchedules,
