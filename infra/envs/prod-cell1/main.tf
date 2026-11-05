@@ -51,6 +51,8 @@ module "cell" {
 
   audit_archive_retention_days = 2557 # 7 years (Sam, security-licensing 07 §5)
 
+  claims_evidence_retention_days = 3653 # 10 years (SOPA evidence, compliance/07)
+
   backup = {
     daily_retention_days   = 35
     monthly_retention_days = 365
