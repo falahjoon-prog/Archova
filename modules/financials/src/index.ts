@@ -8,7 +8,10 @@ export { planReminders, type PlannedReminder, type ReminderContract } from './do
 export {
   MAX_DELIVERY_ATTEMPTS,
   findUntimestamped,
+  findUnarchivedSends,
   findUntimestampedSends,
+  recordArchive,
+  type UnarchivedSend,
   recordSendProof,
   recordSendTimestamp,
   type SendReport,

@@ -1,4 +1,4 @@
--- Composed from modules/rfis/db/migrations/20261105160000_rfis_photos_annotations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/rfis/db/migrations/20261105160001_rfis_photos_annotations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- rfis: photos on the question itself, and marks drawn on photos (Procore-style photo annotation).
 -- The photo is never changed: a mark layer is a list of shapes in 0..1 photo coordinates, one layer per person per
 -- photo, so an assignee's marks sit over the raiser's without touching them.

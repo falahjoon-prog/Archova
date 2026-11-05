@@ -12,6 +12,7 @@ export const ID_PREFIXES = {
   permissionTemplate: 'ptp',
   session: 'ses',
   apiToken: 'tok',
+  appInstall: 'ain',
   upload: 'upl',
   file: 'fil',
   document: 'doc',

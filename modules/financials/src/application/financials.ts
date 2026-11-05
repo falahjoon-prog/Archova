@@ -1698,9 +1698,56 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return 'recorded';
   }
 
+  /**
+   * Nova project risk (`reporting`): subcontract claims still waiting for a payment schedule, with their deadlines.
+   * Builder staff holding `financials.claims.read` only; `restricted` otherwise, so the caller says "couldn't see"
+   * rather than "no risk". No dates are computed here: the stored statutory dates are returned as recorded.
+   */
+  async function sopaRiskSignals(scope: TenantScope, projectId: string) {
+    if (
+      scope.ctx.principalType !== 'member' ||
+      !(await deps.access.can(scope, 'financials.claims.read', { projectId }))
+    )
+      return { restricted: true as const, claims: [] };
+    const rows = await scope.tx
+      .select({
+        claimId: paymentClaims.id,
+        claimNumber: paymentClaims.number,
+        contractId: contracts.id,
+        contractNumber: contracts.number,
+        contractTitle: contracts.title,
+        payeeCompanyId: contracts.payeeCompanyId,
+        scheduleDueOn: paymentClaims.scheduleDueOn,
+        paymentDueOn: paymentClaims.paymentDueOn,
+        claimedTotal: paymentClaims.claimedTotal,
+      })
+      .from(paymentClaims)
+      .innerJoin(contracts, eq(contracts.id, paymentClaims.contractId))
+      .where(
+        and(
+          eq(paymentClaims.projectId, projectId),
+          eq(contracts.kind, 'subcontract'),
+          eq(paymentClaims.isValid, true),
+          eq(paymentClaims.status, 'submitted'),
+          sql`${paymentClaims.scheduleDueOn} is not null`,
+        ),
+      )
+      .orderBy(asc(paymentClaims.scheduleDueOn))
+      .limit(200);
+    return {
+      restricted: false as const,
+      claims: rows.map((r) => ({
+        ...r,
+        scheduleDueOn: r.scheduleDueOn!,
+        claimedTotalCents: toCents(r.claimedTotal),
+      })),
+    };
+  }
+
   return {
     contractFor: getContractRow,
     requireStaff,
+    sopaRiskSignals,
     ledgerSource,
     recordPayment,
     createVariation,
