@@ -2054,6 +2054,52 @@ export const TransitionObservationParams = z.object({
   "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
 });
 export const TransitionObservationBody = s.ObservationTransitionRequestSchema;
+export const ListIncidentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListIncidentsQuery = z.object({
+  "status": s.IncidentStatusSchema.optional(),
+  "type": s.IncidentTypeSchema.optional(),
+  "notifiable": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const ReportIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReportIncidentBody = s.ReportIncidentRequestSchema;
+export const GetIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentBody = s.UpdateIncidentRequestSchema;
+export const TransitionIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const TransitionIncidentBody = s.IncidentTransitionRequestSchema;
+export const AddIncidentActionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const AddIncidentActionBody = s.CreateIncidentActionRequestSchema;
+export const UpdateIncidentActionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+  "actionId": z.string().regex(new RegExp("^iac_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentActionBody = s.UpdateIncidentActionRequestSchema;
 export const ListSwmsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7019,6 +7065,90 @@ export const operations = {
     params: TransitionObservationParams,
     query: null,
     body: TransitionObservationBody,
+  },
+  listIncidents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: ListIncidentsParams,
+    query: ListIncidentsQuery,
+    body: null,
+  },
+  reportIncident: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.report",
+    internal: false,
+    contentType: "application/json",
+    params: ReportIncidentParams,
+    query: null,
+    body: ReportIncidentBody,
+  },
+  getIncident: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: GetIncidentParams,
+    query: null,
+    body: null,
+  },
+  updateIncident: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateIncidentParams,
+    query: null,
+    body: UpdateIncidentBody,
+  },
+  transitionIncident: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionIncidentParams,
+    query: null,
+    body: TransitionIncidentBody,
+  },
+  addIncidentAction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddIncidentActionParams,
+    query: null,
+    body: AddIncidentActionBody,
+  },
+  updateIncidentAction: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions/{actionId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateIncidentActionParams,
+    query: null,
+    body: UpdateIncidentActionBody,
   },
   listSwms: {
     method: 'GET',

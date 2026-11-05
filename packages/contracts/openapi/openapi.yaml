@@ -8964,6 +8964,175 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Observation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listIncidents
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: Incidents on the project, newest first. People who are not builder staff see only the ones they reported.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/IncidentStatus' } }
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/IncidentType' } }
+        - { name: notifiable, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: reportIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.report
+      summary: Report an incident. It is numbered INC-0001 per project. Only builder staff can set the severity, notifiable class and regulator dates.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportIncidentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    get:
+      operationId: getIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: An incident with its people, corrective actions and history. Injury details need the view_medical permission.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Classify, record regulator dates and the root cause, or change the people on an incident. A closed incident must be reopened first.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateIncidentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    post:
+      operationId: transitionIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Start the investigation, close (needs a root cause, the regulator date when notifiable, and every action verified) or reopen with a reason.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    post:
+      operationId: addIncidentAction
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Add a corrective action, optionally linked to the inspection or observation it came from.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateIncidentActionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions/{actionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+      - $ref: '#/components/parameters/IncidentActionId'
+    patch:
+      operationId: updateIncidentAction
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: The assigned company or person marks an action done; the builder edits it and verifies it (or sends it back to open).
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateIncidentActionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentAction' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/swms:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10461,6 +10630,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    IncidentId:
+      name: incidentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^inx_[0-9A-Za-z]{26}$' }
+    IncidentActionId:
+      name: actionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -20529,6 +20708,283 @@ components:
         - extreme_temperature
         - drowning
         - diving
+    IncidentType:
+      type: string
+      enum: [injury, near_miss, property_damage, environmental, dangerous_occurrence]
+    IncidentSeverity:
+      type: string
+      enum: [low, medium, high, critical]
+    NotifiableClass:
+      type: string
+      description: 'WHS Act s35-s37. A person confirms the class; Archova never notifies the regulator.'
+      enum: [death, serious_injury_illness, dangerous_incident]
+    IncidentStatus:
+      type: string
+      enum: [reported, investigating, closed]
+    IncidentTransitionAction:
+      type: string
+      enum: [investigate, close, reopen]
+    CorrectiveStatus:
+      type: string
+      enum: [open, done, verified]
+    IncidentRootCause:
+      type: object
+      additionalProperties: false
+      required: [method, causes, summary]
+      properties:
+        method: { type: string, enum: [five_whys, fishbone, other] }
+        causes:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 500 }
+        summary: { type: string, maxLength: 4000 }
+    IncidentPerson:
+      type: object
+      required: [id, personName, companyId, role, injury]
+      properties:
+        id: { type: string }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        role: { type: string, enum: [injured, witness, involved] }
+        injury:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Health information. Null without the view_medical permission (see injuryHidden).
+    IncidentPersonInput:
+      type: object
+      additionalProperties: false
+      required: [personName, role]
+      properties:
+        personName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        role: { type: string, enum: [injured, witness, involved] }
+        injury: { type: object, additionalProperties: true }
+    IncidentSource:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [inspection, observation] }
+        id: { type: string, pattern: '^(ins|obs)_[0-9A-Za-z]{26}$' }
+    Incident:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          type,
+          severity,
+          occurredAt,
+          location,
+          description,
+          immediateActions,
+          isNotifiable,
+          notifiableClass,
+          regulatorNotifiedAt,
+          writtenNoticeRequestedAt,
+          writtenNoticeDueAt,
+          keepUntil,
+          rootCause,
+          status,
+          closedAt,
+          openActions,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'INC-0007' }
+        title: { type: string }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: [string, 'null'] }
+        description: { type: string }
+        immediateActions: { type: [string, 'null'] }
+        isNotifiable: { type: boolean }
+        notifiableClass:
+          { oneOf: [{ $ref: '#/components/schemas/NotifiableClass' }, { type: 'null' }] }
+        regulatorNotifiedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeRequestedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeDueAt:
+          type: [string, 'null']
+          format: date-time
+          description: 48 hours after the regulator asked for written notice (s38(4)).
+        keepUntil:
+          type: [string, 'null']
+          format: date-time
+          description: The record is kept at least 5 years from notification (s38(7)).
+        rootCause: { oneOf: [{ $ref: '#/components/schemas/IncidentRootCause' }, { type: 'null' }] }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        openActions: { type: integer, description: Corrective actions not yet verified. }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    IncidentEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { type: string }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    IncidentAction:
+      type: object
+      required:
+        [
+          id,
+          incidentId,
+          number,
+          title,
+          description,
+          assigneeCompanyId,
+          assigneeUserId,
+          dueDate,
+          source,
+          status,
+          isOverdue,
+          completedAt,
+          verifiedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        incidentId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        assigneeCompanyId: { type: [string, 'null'] }
+        assigneeUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        source:
+          oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }]
+        status: { $ref: '#/components/schemas/CorrectiveStatus' }
+        isOverdue: { type: boolean }
+        completedAt: { type: [string, 'null'], format: date-time }
+        verifiedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    IncidentCloseBlocker:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    IncidentDetail:
+      type: object
+      required: [incident, people, injuryHidden, actions, events, closeBlockers, canManage]
+      properties:
+        incident: { $ref: '#/components/schemas/Incident' }
+        people:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentPerson' }
+        injuryHidden:
+          { type: boolean, description: True when injury details are withheld from the caller. }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentAction' }
+        events:
+          type: array
+          description: History, oldest first.
+          items: { $ref: '#/components/schemas/IncidentEvent' }
+        closeBlockers:
+          type: array
+          description: What stops the incident closing now. Empty when it can close.
+          items: { $ref: '#/components/schemas/IncidentCloseBlocker' }
+        canManage: { type: boolean }
+    IncidentPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Incident' }
+        nextCursor: { type: [string, 'null'] }
+    ReportIncidentRequest:
+      type: object
+      additionalProperties: false
+      required: [title, type, occurredAt]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 500 }
+        description: { type: string, maxLength: 8000 }
+        immediateActions: { type: string, maxLength: 4000 }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        isNotifiable: { type: boolean }
+        notifiableClass: { $ref: '#/components/schemas/NotifiableClass' }
+        regulatorNotifiedAt: { type: string, format: date-time }
+        writtenNoticeRequestedAt: { type: string, format: date-time }
+        people:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/IncidentPersonInput' }
+    UpdateIncidentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 500 }
+        description: { type: string, maxLength: 8000 }
+        immediateActions: { type: [string, 'null'], maxLength: 4000 }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        isNotifiable: { type: boolean }
+        notifiableClass:
+          { oneOf: [{ $ref: '#/components/schemas/NotifiableClass' }, { type: 'null' }] }
+        regulatorNotifiedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeRequestedAt: { type: [string, 'null'], format: date-time }
+        rootCause: { oneOf: [{ $ref: '#/components/schemas/IncidentRootCause' }, { type: 'null' }] }
+        people:
+          type: array
+          description: Replaces the whole list.
+          maxItems: 50
+          items: { $ref: '#/components/schemas/IncidentPersonInput' }
+    IncidentTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/IncidentTransitionAction' }
+        reason: { type: string, maxLength: 2000, description: Required to reopen. }
+    CreateIncidentActionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 4000 }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        dueDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/IncidentSource' }
+    UpdateIncidentActionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
+        status: { $ref: '#/components/schemas/CorrectiveStatus' }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]
