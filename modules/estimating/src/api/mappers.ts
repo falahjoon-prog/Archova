@@ -25,11 +25,10 @@ import {
   OUTLIER_PERCENT,
   type Comparison,
 } from '../domain/comparison';
-import { fromCents } from '../domain/tender';
+import { formatPackageNumber, fromCents } from '../domain/tender';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
-export const formatPackageNumber = (n: number) => `TP-${String(n).padStart(3, '0')}`;
 
 /** Allowance keys are `quoteId:scopeKey`; the quote id is public on the wire and internal in storage. */
 const allowanceKeysOut = (a: Record<string, string>) =>
