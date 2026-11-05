@@ -34,6 +34,7 @@ tags:
   - name: defects
   - name: financials
   - name: quality
+  - name: precon
   - name: safety
   - name: estimating
   - name: integrations
@@ -7146,6 +7147,368 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ComplianceAccessLogList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPrequalTemplates
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: The prequalification forms, by name then newest version.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Start a new form as a draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrequalTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: One form with its questions.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Edit a draft form. A published form is frozen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrequalTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: publishPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Freeze a form so companies can be asked to complete it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}/new-version:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: newPrequalTemplateVersion
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Copy a published form into a draft at the next version.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPrequalifications
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: Prequalification forms, newest first.
+      parameters:
+        - {
+            name: companyId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/PrequalStatus' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalificationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Start a form for a company on a published template.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrequalificationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalification-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPrequalificationRegister
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: 'One line per company: who is qualified today, who is expiring, who has lapsed.'
+      description: 'Each company shows its best standing: an approved form in date wins over a pending renewal, which wins over an expired or rejected form. Sorted by soonest expiry. Standing is worked out when asked, so it never goes stale.'
+      parameters:
+        - {
+            name: state,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/PrequalQualification' },
+          }
+        - { name: trade, in: query, required: false, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalRegister' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: One form with its answers.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Save answers or trades on a draft.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: submitPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Submit a completed draft for a decision. Required questions must be answered; the advisory score is worked out now.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: approvePrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.decide
+      summary: Approve a submitted form. A person decides; the score is advice only.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovePrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: rejectPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.decide
+      summary: Reject a submitted form, with the reason.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectPrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/subcontractor-wallets:
     parameters:
@@ -16384,6 +16747,210 @@ components:
           abn,
           other,
         ]
+    PrequalQuestion:
+      type: object
+      required: [id, section, prompt, type, options, required, expect, points, critical]
+      properties:
+        id: { type: string, pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' }
+        section: { type: string, maxLength: 100 }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+        type: { type: string, enum: [yes_no, text, number, select, date] }
+        options: { type: array, items: { type: string, maxLength: 200 }, maxItems: 20 }
+        required: { type: boolean }
+        expect:
+          type: [string, 'null']
+          enum: [yes, no, null]
+          description: For a yes/no question, the answer the builder wants.
+        points: { type: integer, minimum: 0, maximum: 100 }
+        critical:
+          type: boolean
+          description: An unwanted answer is flagged to whoever decides. It never rejects a form by itself.
+    PrequalTemplate:
+      type: object
+      required:
+        [id, name, version, published, validityMonths, questions, rowVersion, createdAt, updatedAt]
+      properties:
+        id: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        version:
+          { type: integer, description: The form's own version, raised by making a new version. }
+        published: { type: boolean }
+        validityMonths:
+          {
+            type: integer,
+            description: How long an approval lasts unless the approver sets another date.,
+          }
+        questions: { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' } }
+        rowVersion: { type: integer, description: Concurrency version, sent back as If-Match. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PrequalTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalTemplate' } }
+    CreatePrequalTemplateRequest:
+      type: object
+      required: [name, questions]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        validityMonths: { type: integer, minimum: 1, maximum: 60 }
+        questions:
+          { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' }, maxItems: 100 }
+    UpdatePrequalTemplateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        validityMonths: { type: integer, minimum: 1, maximum: 60 }
+        questions:
+          { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' }, maxItems: 100 }
+    PrequalStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected]
+    PrequalQualification:
+      type: string
+      enum: [qualified, expiring, expired, pending, not_qualified]
+      description: '`qualified`: approved and in date. `expiring`: within 30 days of expiry. `expired`: approved but lapsed. `pending`: a draft or submitted form with nothing in date. `not_qualified`: the latest form was rejected.'
+    PrequalAnswers:
+      type: object
+      description: Answers by question id. yes/no is a boolean, number a number, the rest strings.
+      additionalProperties:
+        oneOf:
+          [{ type: string, maxLength: 2000 }, { type: number }, { type: boolean }, { type: 'null' }]
+    Prequalification:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          templateId,
+          templateName,
+          templateVersion,
+          status,
+          qualification,
+          trades,
+          answers,
+          scorePoints,
+          scoreMax,
+          concerns,
+          submittedAt,
+          decidedAt,
+          decidedBy,
+          decisionNote,
+          validFrom,
+          expiresOn,
+          questions,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateId: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        templateName: { type: string }
+        templateVersion: { type: integer }
+        status: { $ref: '#/components/schemas/PrequalStatus' }
+        qualification: { $ref: '#/components/schemas/PrequalQualification' }
+        trades: { type: array, items: { type: string } }
+        answers: { $ref: '#/components/schemas/PrequalAnswers' }
+        scorePoints:
+          {
+            type: [integer, 'null'],
+            description: Set on submit. Advice for the person deciding,
+            never a decision.,
+          }
+        scoreMax: { type: [integer, 'null'] }
+        concerns:
+          {
+            type: array,
+            items: { type: string },
+            description: Ids of critical questions not answered as wanted.,
+          }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decidedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        decisionNote: { type: [string, 'null'] }
+        validFrom: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        questions:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/PrequalQuestion' },
+            description: The questions on the version this form was started on.,
+          }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    PrequalificationList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalificationSummary' } }
+    PrequalificationSummary:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          templateName,
+          templateVersion,
+          status,
+          qualification,
+          trades,
+          scorePoints,
+          scoreMax,
+          concerns,
+          decidedAt,
+          expiresOn,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateName: { type: string }
+        templateVersion: { type: integer }
+        status: { $ref: '#/components/schemas/PrequalStatus' }
+        qualification: { $ref: '#/components/schemas/PrequalQualification' }
+        trades: { type: array, items: { type: string } }
+        scorePoints: { type: [integer, 'null'] }
+        scoreMax: { type: [integer, 'null'] }
+        concerns: { type: array, items: { type: string } }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        expiresOn: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+    PrequalRegister:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalificationSummary' } }
+    CreatePrequalificationRequest:
+      type: object
+      required: [companyId, templateId]
+      additionalProperties: false
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateId: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        trades: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 20 }
+    UpdatePrequalificationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        answers: { $ref: '#/components/schemas/PrequalAnswers' }
+        trades: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 20 }
+    ApprovePrequalificationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 2000 }
+        expiresOn:
+          { type: string, format: date, description: Defaults to the form's validity from today. }
+    RejectPrequalificationRequest:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 2000 }
     ComplianceDocument:
       type: object
       required:
