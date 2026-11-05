@@ -6649,6 +6649,26 @@ export interface paths {
         patch: operations["updateIncidentAction"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The corrective actions that came from one inspection or observation, with the incident each belongs to. */
+        get: operations["listIncidentActionsFromSource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/swms": {
         parameters: {
             query?: never;
@@ -14471,6 +14491,15 @@ export interface components {
             /** @description What stops the incident closing now. Empty when it can close. */
             closeBlockers: components["schemas"]["IncidentCloseBlocker"][];
             canManage: boolean;
+        };
+        IncidentActionFromSource: {
+            action: components["schemas"]["IncidentAction"];
+            incidentId: string;
+            incidentNumberLabel: string;
+            incidentTitle: string;
+        };
+        IncidentActionFromSourceList: {
+            data: components["schemas"]["IncidentActionFromSource"][];
         };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
@@ -25728,6 +25757,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentAction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listIncidentActionsFromSource: {
+        parameters: {
+            query: {
+                sourceType: "inspection" | "observation";
+                sourceId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentActionFromSourceList"];
                 };
             };
             default: components["responses"]["Problem"];

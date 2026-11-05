@@ -22,6 +22,7 @@ import {
   type StatusTone,
 } from '@archova/ui';
 import { ChevronLeft, InspectionsIcon, Plus } from '@archova/ui/icons';
+import { LinkedIncidentActions } from '@/features/incidents';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -397,6 +398,7 @@ function RunnerBody({ detail, back }: { detail: InspectionDetail; back: React.Re
             ))}
         </section>
       ))}
+      <LinkedIncidentActions source={{ type: 'inspection', id: i.id }} />
       {signing ? (
         <SignDialog
           missing={localMissing}

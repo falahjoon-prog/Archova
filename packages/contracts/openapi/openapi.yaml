@@ -9243,6 +9243,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listIncidentActionsFromSource
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: The corrective actions that came from one inspection or observation, with the incident each belongs to.
+      parameters:
+        - {
+            name: sourceType,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [inspection, observation] },
+          }
+        - {
+            name: sourceId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^(ins|obs)_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentActionFromSourceList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/swms:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -21500,6 +21530,21 @@ components:
           description: What stops the incident closing now. Empty when it can close.
           items: { $ref: '#/components/schemas/IncidentCloseBlocker' }
         canManage: { type: boolean }
+    IncidentActionFromSource:
+      type: object
+      required: [action, incidentId, incidentNumberLabel, incidentTitle]
+      properties:
+        action: { $ref: '#/components/schemas/IncidentAction' }
+        incidentId: { type: string }
+        incidentNumberLabel: { type: string }
+        incidentTitle: { type: string }
+    IncidentActionFromSourceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentActionFromSource' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

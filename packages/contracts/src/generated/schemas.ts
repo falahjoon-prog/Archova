@@ -2935,6 +2935,19 @@ export const IncidentActionSchema = z.object({
 });
 export type IncidentAction = z.infer<typeof IncidentActionSchema>;
 
+export const IncidentActionFromSourceSchema = z.object({
+  "action": IncidentActionSchema,
+  "incidentId": z.string(),
+  "incidentNumberLabel": z.string(),
+  "incidentTitle": z.string(),
+});
+export type IncidentActionFromSource = z.infer<typeof IncidentActionFromSourceSchema>;
+
+export const IncidentActionFromSourceListSchema = z.object({
+  "data": z.array(IncidentActionFromSourceSchema),
+});
+export type IncidentActionFromSourceList = z.infer<typeof IncidentActionFromSourceListSchema>;
+
 export const IncidentCloseBlockerSchema = z.object({
   "field": z.string(),
   "message": z.string(),

@@ -112,6 +112,19 @@ export function createIncidentService(deps: SafetyDeps) {
       ]);
   }
 
+  async function checkSource(
+    scope: TenantScope,
+    projectId: string,
+    source: { type: 'inspection' | 'observation'; id: string },
+  ) {
+    if (deps.sources && !(await deps.sources.exists(scope, projectId, source.type, source.id)))
+      throw new AppError(
+        'validation_failed',
+        `Name ${source.type === 'inspection' ? 'an inspection' : 'an observation'} on this project.`,
+        [{ path: 'source.id', message: 'Not found on this project' }],
+      );
+  }
+
   async function record(
     scope: TenantScope,
     row: IncidentRow,
@@ -517,6 +530,7 @@ export function createIncidentService(deps: SafetyDeps) {
       throw new AppError('incident.closed', 'Reopen the incident before adding actions.');
     if (input.assigneeCompanyId)
       await checkCompany(scope, projectId, input.assigneeCompanyId, 'assigneeCompanyId');
+    if (input.source) await checkSource(scope, projectId, input.source);
     // Numbered within the incident under the incident row lock, so concurrent adds cannot clash.
     await scope.tx.execute(sql`select 1 from safety.incidents where id = ${incidentId} for update`);
     const [last] = await scope.tx
@@ -607,6 +621,7 @@ export function createIncidentService(deps: SafetyDeps) {
       throw new AppError('incident.closed', 'Reopen the incident before changing its actions.');
     if (patch.assigneeCompanyId)
       await checkCompany(scope, projectId, patch.assigneeCompanyId, 'assigneeCompanyId');
+    if (patch.source) await checkSource(scope, projectId, patch.source);
     const at = now();
     const to = patch.status ?? cur.status;
     const [next] = await scope.tx
@@ -681,7 +696,47 @@ export function createIncidentService(deps: SafetyDeps) {
     return { row, viewer };
   }
 
-  return { list, create, detail, update, transition, addAction, updateAction };
+  /**
+   * The corrective actions that came from one inspection or observation, with the incident each belongs to. Staff
+   * see all of them; anyone else only the incidents they reported or actions assigned to them.
+   */
+  async function actionsFromSource(
+    scope: TenantScope,
+    projectId: string,
+    source: { type: 'inspection' | 'observation'; id: string },
+  ) {
+    const v = await viewerOf(scope, projectId);
+    const conditions: SQL[] = [
+      eq(incidentActions.projectId, projectId),
+      eq(incidentActions.sourceType, source.type),
+      eq(incidentActions.sourceId, source.id),
+      isNull(incidents.deletedAt),
+    ];
+    if (!v.isInternal) {
+      const mine = [
+        sql`${incidents.createdBy} = ${v.userId}`,
+        sql`${incidentActions.assigneeUserId} = ${v.userId}`,
+      ];
+      if (v.companyId) mine.push(sql`${incidentActions.assigneeCompanyId} = ${v.companyId}`);
+      conditions.push(sql`(${sql.join(mine, sql` or `)})`);
+    }
+    const date = await today(scope, projectId);
+    const rows = await scope.tx
+      .select({ action: incidentActions, incident: incidents })
+      .from(incidentActions)
+      .innerJoin(incidents, eq(incidents.id, incidentActions.incidentId))
+      .where(and(...conditions))
+      .orderBy(desc(incidentActions.createdAt))
+      .limit(100);
+    return rows.map((r) => ({
+      ...r.action,
+      incidentNumber: r.incident.number,
+      incidentTitle: r.incident.title,
+      isOverdue: isOverdue(r.action.dueDate, r.action.status, date),
+    }));
+  }
+
+  return { list, create, detail, update, transition, addAction, updateAction, actionsFromSource };
 }
 
 export type IncidentService = ReturnType<typeof createIncidentService>;

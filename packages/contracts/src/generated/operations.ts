@@ -2128,6 +2128,14 @@ export const UpdateIncidentActionParams = z.object({
   "actionId": z.string().regex(new RegExp("^iac_[0-9A-Za-z]{26}$")),
 });
 export const UpdateIncidentActionBody = s.UpdateIncidentActionRequestSchema;
+export const ListIncidentActionsFromSourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListIncidentActionsFromSourceQuery = z.object({
+  "sourceType": z.enum(["inspection", "observation"]),
+  "sourceId": z.string().regex(new RegExp("^(ins|obs)_[0-9A-Za-z]{26}$")),
+});
 export const ListSwmsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7297,6 +7305,18 @@ export const operations = {
     params: UpdateIncidentActionParams,
     query: null,
     body: UpdateIncidentActionBody,
+  },
+  listIncidentActionsFromSource: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incident-actions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: ListIncidentActionsFromSourceParams,
+    query: ListIncidentActionsFromSourceQuery,
+    body: null,
   },
   listSwms: {
     method: 'GET',

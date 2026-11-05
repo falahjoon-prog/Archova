@@ -14,6 +14,7 @@ import type { SwmsContent } from '../domain/swms';
 import type { ActionInput, IncidentFields, IncidentService } from '../application/incidents';
 import {
   toActionDto,
+  toActionFromSource,
   toIncidentDetail,
   toIncidentListDto,
   toSwmsDetail,
@@ -163,6 +164,16 @@ export function safetyRoutes(database: Database, swms: SwmsService, incidents: I
   });
 
   return defineRoutes({
+    listIncidentActionsFromSource: async (input) => {
+      const type = input.query.sourceType;
+      const rows = await read(input, (s) =>
+        incidents.actionsFromSource(s, project(input.params), {
+          type,
+          id: ref(type, input.query.sourceId, 'sourceId'),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toActionFromSource) } };
+    },
     listIncidents: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>
