@@ -12,11 +12,13 @@ import { useInbox, useMarkAllRead, useMarkRead } from '../hooks/useNotifications
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/** Where a notification leads; today every kind is about a meeting. */
+/** Where a notification leads: a meeting, or a tender package. */
 function target(orgSlug: string, n: Notification): string | null {
-  return n.entityType === 'meeting' && n.projectId
-    ? webRoutes.meeting(orgSlug, n.projectId, n.entityId)
-    : null;
+  if (!n.projectId) return null;
+  if (n.entityType === 'meeting') return webRoutes.meeting(orgSlug, n.projectId, n.entityId);
+  if (n.entityType === 'tender_package')
+    return webRoutes.tenderPackage(orgSlug, n.projectId, n.entityId);
+  return null;
 }
 
 /** The person's inbox: reminders and notices addressed to them, newest first (product/07 MTG-AC3). */

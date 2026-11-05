@@ -11,7 +11,7 @@ import type { ResponseInput } from './application/inspections';
 import { createObservationService } from './application/observations';
 import type { QualityDeps } from './application/shared';
 import { qualityRoutes } from './api/routes';
-import { toInspectionDetail } from './api/mappers';
+import { toInspectionDetail, toTemplateDetail } from './api/mappers';
 import { QUALITY_PERMISSIONS } from './permissions';
 
 export type { QualityDeps } from './application/shared';
@@ -70,11 +70,30 @@ export function syncPieces(inspections: InspectionService) {
     module: 'quality',
     permission: 'quality.inspections.read',
     publicId: (entityType, uuid) =>
-      encodeId(entityType === 'observation' ? 'observation' : 'inspection', uuid),
+      encodeId(
+        entityType === 'observation'
+          ? 'observation'
+          : entityType === 'inspection_template'
+            ? 'inspectionTemplate'
+            : 'inspection',
+        uuid,
+      ),
     async load(scope, { projectId, entityType, ids }) {
       const out = new Map<string, { version: number; data: Record<string, unknown> }>();
       // Observations are online-only for now; their changes reach the device as deletes of nothing.
-      if (!projectId || entityType !== 'inspection') return out;
+      if (!projectId) return out;
+      if (entityType === 'inspection_template') {
+        for (const d of await inspections.templatesAmong(scope, projectId, ids)) {
+          const { template, items } = toTemplateDetail(d);
+          out.set(d.template.id, {
+            version: d.template.version,
+            // Flat, like inspections: the device files the record by its `projectId`.
+            data: { ...template, items } as unknown as Record<string, unknown>,
+          });
+        }
+        return out;
+      }
+      if (entityType !== 'inspection') return out;
       for (const d of await inspections.visibleAmong(scope, projectId, ids))
         out.set(d.inspection.id, dto(d));
       return out;
@@ -107,13 +126,50 @@ export function syncPieces(inspections: InspectionService) {
     module: 'quality',
     async run(scope, m) {
       const { inspectionId, projectId } = await target(scope, m.entityId);
-      const d = await inspections.recordResponses(
-        scope,
-        projectId,
-        inspectionId,
-        parseResponses(m.payload),
-      );
+      const answers = parseResponses(m.payload);
+      // An answer that does not mention photos leaves the item's photos as they are: the phone may have sent it
+      // before a photo taken meanwhile reached the server, and must not wipe it.
+      const held = await inspections.detail(scope, projectId, inspectionId);
+      for (const a of answers) {
+        if (a.fileIds === undefined)
+          a.fileIds =
+            held.responses.find((r) => r.templateItemId === a.templateItemId)?.fileIds ?? [];
+      }
+      const d = await inspections.recordResponses(scope, projectId, inspectionId, answers);
       return { version: d.inspection.version };
+    },
+    current,
+  };
+
+  /**
+   * `quality.attachItemPhoto`: a photo taken on site for one checklist item. The phone queues it held until the
+   * photo has uploaded, then fills in `fileId`. It adds the file to the item's answer and keeps the rest of the
+   * answer as it is; a retry that finds the file already attached changes nothing.
+   */
+  const attachItemPhoto: SyncCommand = {
+    name: 'quality.attachItemPhoto',
+    module: 'quality',
+    async run(scope, m) {
+      const { inspectionId, projectId } = await target(scope, m.entityId);
+      const itemId = id('inspectionItem', m.payload.templateItemId, 'payload/templateItemId');
+      const fileId = id('file', m.payload.fileId, 'payload/fileId');
+      const d = await inspections.detail(scope, projectId, inspectionId);
+      const existing = d.responses.find((r) => r.templateItemId === itemId);
+      const have = existing?.fileIds ?? [];
+      if (have.includes(fileId)) return { version: d.inspection.version };
+      if (have.length >= 20) throw invalid('payload/fileId', 'An item holds at most 20 photos');
+      const next = await inspections.recordResponses(scope, projectId, inspectionId, [
+        {
+          templateItemId: itemId,
+          ...(existing?.value !== null && existing?.value !== undefined
+            ? { value: existing.value as string | number | boolean }
+            : {}),
+          ...(existing?.result ? { result: existing.result } : {}),
+          ...(existing?.note ? { note: existing.note } : {}),
+          fileIds: [...have, fileId],
+        },
+      ]);
+      return { version: next.inspection.version };
     },
     current,
   };
@@ -142,7 +198,41 @@ export function syncPieces(inspections: InspectionService) {
     current,
   };
 
-  return { syncSource, syncCommands: [recordResponses, submit] };
+  /**
+   * `quality.startInspection`: the REST "start an inspection from a published checklist" call queued offline. The
+   * device picks the inspection's id; the number is given by the server when this arrives.
+   */
+  const startInspection: SyncCommand = {
+    name: 'quality.startInspection',
+    module: 'quality',
+    async run(scope, m) {
+      const inspectionId = id('inspection', m.entityId, 'entityId');
+      const p = m.payload;
+      const templateId = id('inspectionTemplate', p.templateId, 'payload/templateId');
+      const text = (v: unknown, path: string, max: number) => {
+        if (v === undefined || v === null) return undefined;
+        if (typeof v !== 'string' || v.length > max) throw invalid(path);
+        return v.trim() === '' ? undefined : v;
+      };
+      const title = text(p.title, 'payload/title', 200);
+      const location = text(p.location, 'payload/location', 200);
+      const projectId = await inspections.templateProjectOf(scope, templateId);
+      if (!projectId) throw new AppError('inspection_template.not_found');
+      const d = await inspections.create(scope, projectId, {
+        id: inspectionId,
+        templateId,
+        ...(title ? { title } : {}),
+        ...(location ? { location } : {}),
+      });
+      return { version: d.inspection.version };
+    },
+    // A start has no earlier copy to conflict with.
+    async current() {
+      return null;
+    },
+  };
+
+  return { syncSource, syncCommands: [startInspection, recordResponses, attachItemPhoto, submit] };
 }
 
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {

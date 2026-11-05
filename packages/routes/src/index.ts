@@ -14,6 +14,7 @@ export const webRoutes = {
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
@@ -126,6 +127,8 @@ export const mobileRoutes = {
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
+  inspectionItemPhoto: (projectId: string, inspectionId: string, itemId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}/photo?itemId=${enc(itemId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,

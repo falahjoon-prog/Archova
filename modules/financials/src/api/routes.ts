@@ -13,7 +13,6 @@ import { toAdjustmentDto, toForecastDto } from './forecast-mappers';
 import type { FinancialsService } from '../application/financials';
 import { isMoney } from '../domain/money';
 import {
-  toBudgetLineDto,
   toClaimDto,
   toCommitmentDto,
   toCommitmentLineDto,
@@ -46,8 +45,8 @@ const money = (value: string, path: string) => {
 export function financialsRoutes(
   database: Database,
   financials: FinancialsService,
-  commitments: CommitmentsService,
   forecast: ForecastService,
+  commitments: CommitmentsService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -109,21 +108,6 @@ export function financialsRoutes(
   });
 
   return defineRoutes({
-    listBudgetLines: async (input) => {
-      const r = await read(input, (s) => commitments.listBudgetLines(s, project(input.params)));
-      return { status: 200, body: { data: r.lines.map(toBudgetLineDto), totals: r.totals } };
-    },
-    createBudgetLine: async (input) => ({
-      status: 201,
-      body: toBudgetLineDto(
-        await tx(input, (s) =>
-          commitments.createBudgetLine(s, project(input.params), {
-            ...input.body,
-            budget: money(input.body.budget, 'budget'),
-          }),
-        ),
-      ),
-    }),
     listCommitments: async (input) => ({
       status: 200,
       body: {

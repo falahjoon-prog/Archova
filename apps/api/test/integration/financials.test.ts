@@ -466,102 +466,110 @@ describe('Contracts and payment claims (product/09)', () => {
   });
 });
 
-describe('Commitments against the budget', () => {
-  it('counts only approved commitments as committed cost and guards the budget', async () => {
+describe('Budget and cost codes', () => {
+  it('builds a draft, locks it, then only changes by adjustment with a reason', async () => {
     const s = await setup('NSW');
-    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
-    const e = (
-      await post('budget-lines', { code: '03', description: 'Electrical', budget: '50000.00' })
-    ).json();
-    const p = (
-      await post('budget-lines', { code: '05', description: 'Plumbing', budget: '20000.00' })
-    ).json();
-    expect(
-      (await post('budget-lines', { code: '03', description: 'Dup', budget: '1.00' })).json().code,
-    ).toBe('financials.budget_line.duplicate_code');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
 
-    const draft = await post('commitments', {
-      kind: 'subcontract',
-      title: 'Electrical subcontract',
-      vendorCompanyId: s.subCo.companyId,
-      lines: [
-        { budgetLineId: e.id, description: 'Rough-in', amount: '30000.00' },
-        { budgetLineId: e.id, description: 'Fit-off', amount: '15000.00' },
-      ],
+    expect((await s.pm.browser.get(`${s.base}/budget`)).json()).toMatchObject({
+      id: null,
+      status: 'draft',
+      lines: [],
     });
-    expect(draft.statusCode).toBe(201);
-    const c = draft.json();
-    expect(c.commitment).toMatchObject({ number: 1, status: 'draft', total: '45000.00' });
-
-    // Drafts are not committed cost, and can't be approved before submission.
-    let budget = (await s.pm.browser.get(`${s.base}/budget-lines`)).json();
-    expect(budget.totals).toMatchObject({ budget: '70000.00', committed: '0.00' });
-    const early = await post(`commitments/${c.commitment.id}/approve`, {});
-    expect(early.json().code).toBe('financials.commitment.bad_state');
-
-    expect((await post(`commitments/${c.commitment.id}/submit`)).statusCode).toBe(200);
-    expect((await post(`commitments/${c.commitment.id}/approve`, {})).statusCode).toBe(200);
-    budget = (await s.pm.browser.get(`${s.base}/budget-lines`)).json();
-    expect(budget.data.find((l: { code: string }) => l.code === '03')).toMatchObject({
-      committed: '45000.00',
-      uncommitted: '5000.00',
-    });
-
-    // A second commitment that would pass the budget is refused unless overridden with a reason.
-    const po = (
-      await post('commitments', {
-        kind: 'purchase_order',
-        title: 'Switchboard',
-        lines: [{ budgetLineId: e.id, description: 'Board', amount: '8000.00' }],
-      })
-    ).json();
-    await post(`commitments/${po.commitment.id}/submit`);
-    const over = await post(`commitments/${po.commitment.id}/approve`, {});
-    expect(over.statusCode).toBe(422);
-    expect(over.json().code).toBe('financials.commitment.over_budget');
-    const noReason = await post(`commitments/${po.commitment.id}/approve`, {
-      allowOverBudget: true,
-    });
-    expect(noReason.json().code).toBe('financials.commitment.reason_required');
-    const ok = await post(`commitments/${po.commitment.id}/approve`, {
-      allowOverBudget: true,
-      note: 'Client-approved upgrade',
-    });
-    expect(ok.json().commitment).toMatchObject({ status: 'approved', overBudgetOverride: true });
-
-    // Rejection needs a reason; voiding an approved commitment releases its cost.
-    const rej = (
-      await post('commitments', {
-        kind: 'purchase_order',
-        title: 'Taps',
-        lines: [{ budgetLineId: p.id, description: 'Taps', amount: '500.00' }],
-      })
-    ).json();
-    await post(`commitments/${rej.commitment.id}/submit`);
-    expect((await post(`commitments/${rej.commitment.id}/reject`, {})).json().code).toBe(
-      'financials.commitment.reason_required',
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '09-200', description: 'Painting' })).json();
+    expect((await post('/cost-codes', { code: '03-100', description: 'Again' })).statusCode).toBe(
+      409,
     );
-    expect(
-      (await post(`commitments/${rej.commitment.id}/reject`, { note: 'Too dear' })).statusCode,
-    ).toBe(200);
-    expect(
-      (await post(`commitments/${po.commitment.id}/void`, { note: 'Cancelled' })).statusCode,
-    ).toBe(200);
-    budget = (await s.pm.browser.get(`${s.base}/budget-lines`)).json();
-    expect(budget.totals.committed).toBe('45000.00');
 
-    const list = (await s.pm.browser.get(`${s.base}/commitments`)).json().data;
-    expect(list.map((x: { number: number }) => x.number)).toEqual([3, 2, 1]);
+    expect((await post('/budget/lines', { costCodeId: c1.id, original: '1.00' })).statusCode).toBe(
+      404,
+    );
+    expect((await post('/budget')).statusCode).toBe(201);
+    expect((await post('/budget')).statusCode).toBe(409);
 
-    // A line from another project's budget, and a subcontractor, are both refused.
-    const bad = await post('commitments', {
-      kind: 'purchase_order',
-      title: 'x',
-      lines: [{ budgetLineId: 'bdl_00000000000000000000000000', description: 'x', amount: '1.00' }],
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    expect((await post('/budget/lines', { costCodeId: c1.id, original: '1.00' })).statusCode).toBe(
+      409,
+    );
+    const l2 = (
+      await post('/budget/lines', {
+        costCodeId: c2.id,
+        original: '8000.50',
+        description: 'Internal',
+      })
+    ).json();
+    const edited = await s.pm.browser.patch(`${s.base}/budget/lines/${l2.id}`, {
+      original: '9000.00',
     });
-    expect(bad.statusCode).toBe(404);
-    expect((await s.sub.browser.get(`${s.base}/commitments`)).statusCode).toBe(403);
-    expect((await s.sub.browser.get(`${s.base}/budget-lines`)).statusCode).toBe(403);
+    expect(edited.json()).toMatchObject({ original: '9000.00', revised: '9000.00' });
+
+    // Not locked yet: no adjustments.
+    expect(
+      (await post(`/budget/lines/${l1.id}/adjustments`, { amount: '10.00', reason: 'x' }))
+        .statusCode,
+    ).toBe(409);
+
+    const locked = (await post('/budget/lock')).json();
+    expect(locked).toMatchObject({
+      status: 'locked',
+      totals: { original: '59000.00', revised: '59000.00' },
+    });
+
+    // Frozen: no draft edits, adds or deletes.
+    expect(
+      (await s.pm.browser.patch(`${s.base}/budget/lines/${l1.id}`, { original: '1.00' }))
+        .statusCode,
+    ).toBe(409);
+    expect((await s.pm.browser.del(`${s.base}/budget/lines/${l1.id}`)).statusCode).toBe(409);
+    expect((await post('/budget/lock')).statusCode).toBe(409);
+
+    const up = await post(`/budget/lines/${l1.id}/adjustments`, {
+      amount: '2500.75',
+      reason: 'Extra slab',
+    });
+    expect(up.statusCode).toBe(201);
+    expect(up.json()).toMatchObject({
+      original: '50000.00',
+      approvedChanges: '2500.75',
+      revised: '52500.75',
+    });
+    const down = await post(`/budget/lines/${l1.id}/adjustments`, {
+      amount: '-500.00',
+      reason: 'Scope cut',
+    });
+    expect(down.json()).toMatchObject({ approvedChanges: '2000.75', revised: '52000.75' });
+    expect(
+      (await post(`/budget/lines/${l1.id}/adjustments`, { amount: '-60000.00', reason: 'Too far' }))
+        .statusCode,
+    ).toBe(422);
+    expect(
+      (await post(`/budget/lines/${l1.id}/adjustments`, { amount: '0', reason: 'Nothing' }))
+        .statusCode,
+    ).toBe(422);
+    expect(
+      (await post(`/budget/lines/${l1.id}/adjustments`, { amount: '5', reason: '   ' })).statusCode,
+    ).toBe(422);
+
+    const history = (await s.pm.browser.get(`${s.base}/budget/lines/${l1.id}/adjustments`)).json();
+    expect(history.data.map((a: { amount: string }) => a.amount)).toEqual(['2500.75', '-500.00']);
+
+    const after = (await s.pm.browser.get(`${s.base}/budget`)).json();
+    expect(after.totals).toMatchObject({
+      original: '59000.00',
+      approvedChanges: '2000.75',
+      revised: '61000.75',
+    });
+  });
+
+  it('keeps the budget away from a subcontractor', async () => {
+    const s = await setup('QLD');
+    await s.pm.browser.post(`${s.base}/budget`);
+    expect((await s.sub.browser.get(`${s.base}/budget`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/cost-codes`, { code: 'X', description: 'x' }))
+        .statusCode,
+    ).toBe(403);
   });
 });
 
@@ -620,5 +628,100 @@ describe('Cost forecast', () => {
     expect((await s.pm.browser.get(`${s.base}/cost-forecast`)).json().forecastFinalCost).toBe(
       '100000.00',
     );
+  });
+});
+
+describe('Commitments against the budget', () => {
+  it('counts only approved commitments as committed cost and guards the budget', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const c1 = (await post('cost-codes', { code: '03', description: 'Electrical' })).json();
+    const c2 = (await post('cost-codes', { code: '05', description: 'Plumbing' })).json();
+    expect((await post('budget')).statusCode).toBe(201);
+    const e = (await post('budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    const p = (await post('budget/lines', { costCodeId: c2.id, original: '20000.00' })).json();
+    const committedOf = async (id: string) =>
+      (await s.pm.browser.get(`${s.base}/budget`))
+        .json()
+        .lines.find((l: { id: string }) => l.id === id).committed;
+
+    const draft = await post('commitments', {
+      kind: 'subcontract',
+      title: 'Electrical subcontract',
+      vendorCompanyId: s.subCo.companyId,
+      lines: [
+        { budgetLineId: e.id, description: 'Rough-in', amount: '30000.00' },
+        { budgetLineId: e.id, description: 'Fit-off', amount: '15000.00' },
+      ],
+    });
+    expect(draft.statusCode).toBe(201);
+    const c = draft.json();
+    expect(c.commitment).toMatchObject({ number: 1, status: 'draft', total: '45000.00' });
+
+    // Drafts are not committed cost, and can't be approved before submission.
+    expect(await committedOf(e.id)).toBe('0.00');
+    expect((await post(`commitments/${c.commitment.id}/approve`, {})).json().code).toBe(
+      'financials.commitment.bad_state',
+    );
+
+    expect((await post(`commitments/${c.commitment.id}/submit`)).statusCode).toBe(200);
+    expect((await post(`commitments/${c.commitment.id}/approve`, {})).statusCode).toBe(200);
+    expect(await committedOf(e.id)).toBe('45000.00');
+
+    // A second commitment that would pass the budget is refused unless overridden with a reason.
+    const po = (
+      await post('commitments', {
+        kind: 'purchase_order',
+        title: 'Switchboard',
+        lines: [{ budgetLineId: e.id, description: 'Board', amount: '8000.00' }],
+      })
+    ).json();
+    await post(`commitments/${po.commitment.id}/submit`);
+    const over = await post(`commitments/${po.commitment.id}/approve`, {});
+    expect(over.statusCode).toBe(422);
+    expect(over.json().code).toBe('financials.commitment.over_budget');
+    expect(
+      (await post(`commitments/${po.commitment.id}/approve`, { allowOverBudget: true })).json()
+        .code,
+    ).toBe('financials.commitment.reason_required');
+    const ok = await post(`commitments/${po.commitment.id}/approve`, {
+      allowOverBudget: true,
+      note: 'Client-approved upgrade',
+    });
+    expect(ok.json().commitment).toMatchObject({ status: 'approved', overBudgetOverride: true });
+    expect(await committedOf(e.id)).toBe('53000.00');
+
+    // Rejection needs a reason and commits nothing; voiding an approved commitment releases its cost.
+    const rej = (
+      await post('commitments', {
+        kind: 'purchase_order',
+        title: 'Taps',
+        lines: [{ budgetLineId: p.id, description: 'Taps', amount: '500.00' }],
+      })
+    ).json();
+    await post(`commitments/${rej.commitment.id}/submit`);
+    expect((await post(`commitments/${rej.commitment.id}/reject`, {})).json().code).toBe(
+      'financials.commitment.reason_required',
+    );
+    expect(
+      (await post(`commitments/${rej.commitment.id}/reject`, { note: 'Too dear' })).statusCode,
+    ).toBe(200);
+    expect(await committedOf(p.id)).toBe('0.00');
+    expect(
+      (await post(`commitments/${po.commitment.id}/void`, { note: 'Cancelled' })).statusCode,
+    ).toBe(200);
+    expect(await committedOf(e.id)).toBe('45000.00');
+
+    const list = (await s.pm.browser.get(`${s.base}/commitments`)).json().data;
+    expect(list.map((x: { number: number }) => x.number)).toEqual([3, 2, 1]);
+
+    // A line that is not on this project's budget, and a subcontractor, are both refused.
+    const bad = await post('commitments', {
+      kind: 'purchase_order',
+      title: 'x',
+      lines: [{ budgetLineId: 'bln_00000000000000000000000000', description: 'x', amount: '1.00' }],
+    });
+    expect(bad.statusCode).toBe(404);
+    expect((await s.sub.browser.get(`${s.base}/commitments`)).statusCode).toBe(403);
   });
 });

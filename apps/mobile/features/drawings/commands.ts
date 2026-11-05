@@ -4,7 +4,7 @@
 import { encodeId, uuidv7 } from '@archova/domain';
 import type { Markup } from '@archova/contracts';
 import type { SqliteSyncStore } from '../../lib/db/sync-store';
-import type { PenShape } from './ink';
+import type { InkShape } from './ink';
 
 export const MARKUP_ENTITY = 'drawing_markup';
 
@@ -14,7 +14,7 @@ export interface MarkupTarget {
 }
 
 export interface SavePenMarkupInput extends MarkupTarget {
-  shapes: readonly PenShape[];
+  shapes: readonly InkShape[];
   /** Id of the queued command; a retry after a lost response is safe because the server remembers it. */
   mutationId: string;
   clientAt: string;
@@ -88,7 +88,7 @@ export function canChangeMarkup(markup: Markup, meId: string | null): boolean {
 }
 
 export type ChangeMarkup =
-  { kind: 'shapes'; shapes: readonly PenShape[] } | { kind: 'publish' } | { kind: 'delete' };
+  { kind: 'shapes'; shapes: readonly InkShape[] } | { kind: 'publish' } | { kind: 'delete' };
 
 export type ChangeMarkupResult =
   { ok: true } | { ok: false; reason: 'not_found' | 'published' | 'no_shapes' };

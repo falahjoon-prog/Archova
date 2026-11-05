@@ -1,11 +1,10 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import { uuidv7 } from '@archova/domain';
+import { encodeId, uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, recordRetentionBatch, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fromCents, toCents } from '../domain/money';
 import { budgetLines, commitmentLines, commitments } from '../infra/tables';
 
-export type BudgetLineRow = typeof budgetLines.$inferSelect;
 export type CommitmentRow = typeof commitments.$inferSelect;
 export type CommitmentLineRow = typeof commitmentLines.$inferSelect;
 
@@ -43,91 +42,6 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
     if (scope.ctx.principalType !== 'member')
       throw new AppError('access.denied', "Only the builder's staff can work with commitments.");
   };
-
-  /** Committed cents per budget line, approved commitments only. */
-  async function committedByLine(scope: TenantScope, projectId: string, lineIds?: string[]) {
-    const rows = await scope.tx
-      .select({
-        id: commitmentLines.budgetLineId,
-        total: sql<string>`coalesce(sum(${commitmentLines.amount}), 0)`,
-      })
-      .from(commitmentLines)
-      .innerJoin(commitments, eq(commitments.id, commitmentLines.commitmentId))
-      .where(
-        and(
-          eq(commitments.projectId, projectId),
-          eq(commitments.status, 'approved'),
-          lineIds ? inArray(commitmentLines.budgetLineId, lineIds) : undefined,
-        ),
-      )
-      .groupBy(commitmentLines.budgetLineId);
-    return new Map(rows.map((r) => [r.id, toCents(r.total)]));
-  }
-
-  async function listBudgetLines(scope: TenantScope, projectId: string) {
-    await need(scope, 'financials.commitments.read', projectId);
-    const rows = await scope.tx
-      .select()
-      .from(budgetLines)
-      .where(eq(budgetLines.projectId, projectId))
-      .orderBy(asc(budgetLines.code));
-    const committed = await committedByLine(scope, projectId);
-    const lines = rows.map((r) => {
-      const c = committed.get(r.id) ?? 0;
-      return { line: r, committed: fromCents(c), uncommitted: fromCents(toCents(r.budget) - c) };
-    });
-    const totalBudget = rows.reduce((n, r) => n + toCents(r.budget), 0);
-    const totalCommitted = [...committed.values()].reduce((n, c) => n + c, 0);
-    return {
-      lines,
-      totals: {
-        budget: fromCents(totalBudget),
-        committed: fromCents(totalCommitted),
-        uncommitted: fromCents(totalBudget - totalCommitted),
-      },
-    };
-  }
-
-  async function createBudgetLine(
-    scope: TenantScope,
-    projectId: string,
-    input: { code: string; description: string; budget: string },
-  ) {
-    await need(scope, 'financials.budget.manage', projectId);
-    const code = input.code.trim();
-    const [dup] = await scope.tx
-      .select({ id: budgetLines.id })
-      .from(budgetLines)
-      .where(and(eq(budgetLines.projectId, projectId), eq(budgetLines.code, code)))
-      .limit(1);
-    if (dup)
-      throw new AppError('financials.budget_line.duplicate_code', `Budget code ${code} is in use.`);
-    const id = uuidv7();
-    const [row] = await scope.tx
-      .insert(budgetLines)
-      .values({
-        id,
-        orgId: scope.ctx.orgId,
-        projectId,
-        code,
-        description: input.description.trim(),
-        budget: input.budget,
-        createdBy: scope.ctx.userId,
-      })
-      .onConflictDoNothing()
-      .returning();
-    // A concurrent create of the same code loses on the unique index.
-    if (!row)
-      throw new AppError('financials.budget_line.duplicate_code', `Budget code ${code} is in use.`);
-    await recordRetention(scope, {
-      recordType: 'financials.budget_lines',
-      recordId: id,
-      projectId,
-      category: 'financial_7y',
-      anchor: row.createdAt,
-    });
-    return { line: row, committed: '0.00', uncommitted: row.budget };
-  }
 
   async function linesOf(scope: TenantScope, commitmentId: string) {
     return scope.tx
@@ -170,7 +84,7 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
       .where(and(eq(budgetLines.projectId, projectId), inArray(budgetLines.id, ids)));
     if (found.length !== ids.length)
       throw new AppError(
-        'financials.budget_line.not_found',
+        'financials.budget.line_not_found',
         'A budget line is not on this project.',
       );
     // Serialise numbering per project.
@@ -267,37 +181,49 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
       );
     const lines = await linesOf(scope, id);
     let override = false;
-    if (to === 'approved') {
-      // Lock the budget lines so two approvals cannot both pass a limit only one of them fits under.
-      const lineIds = [...new Set(lines.map((l) => l.budgetLineId))].sort();
+    // Approving adds to the budget lines' committed cost and voiding an approved commitment takes it back. The lines
+    // are locked first (in id order) so two moves cannot both pass a limit only one of them fits under.
+    const sign = to === 'approved' ? 1 : to === 'void' && c.status === 'approved' ? -1 : 0;
+    if (sign !== 0) {
+      const delta = new Map<string, number>();
+      for (const l of lines)
+        delta.set(l.budgetLineId, (delta.get(l.budgetLineId) ?? 0) + toCents(l.amount));
       const budgets = await scope.tx
         .select()
         .from(budgetLines)
-        .where(inArray(budgetLines.id, lineIds))
+        .where(inArray(budgetLines.id, [...delta.keys()]))
         .orderBy(asc(budgetLines.id))
         .for('update');
-      const committed = await committedByLine(scope, projectId, lineIds);
-      const adding = new Map<string, number>();
-      for (const l of lines)
-        adding.set(l.budgetLineId, (adding.get(l.budgetLineId) ?? 0) + toCents(l.amount));
-      const over = budgets.filter(
-        (b) => (committed.get(b.id) ?? 0) + (adding.get(b.id) ?? 0) > toCents(b.budget),
-      );
-      if (over.length) {
-        if (!opts.allowOverBudget)
-          throw new AppError(
-            'financials.commitment.over_budget',
-            `Approving this would take ${over.map((b) => b.code).join(', ')} past budget.`,
-            over.map((b) => ({ path: `budgetLines/${b.code}`, message: 'Over budget' })),
-          );
-        if (!(opts.note ?? '').trim())
-          throw new AppError(
-            'financials.commitment.reason_required',
-            'Give the reason for approving over budget.',
-            [{ path: 'note', message: 'Required when approving over budget' }],
-          );
-        override = true;
+      if (sign === 1) {
+        const over = budgets.filter(
+          (b) =>
+            toCents(b.committed) + delta.get(b.id)! >
+            toCents(b.original) + toCents(b.approvedChanges),
+        );
+        if (over.length) {
+          if (!opts.allowOverBudget)
+            throw new AppError(
+              'financials.commitment.over_budget',
+              'Approving this would take a budget line past its budget.',
+              over.map((b) => ({
+                path: `budgetLines/${encodeId('budgetLine', b.id)}`,
+                message: 'Over budget',
+              })),
+            );
+          if (!(opts.note ?? '').trim())
+            throw new AppError(
+              'financials.commitment.reason_required',
+              'Give the reason for approving over budget.',
+              [{ path: 'note', message: 'Required when approving over budget' }],
+            );
+          override = true;
+        }
       }
+      for (const b of budgets)
+        await scope.tx
+          .update(budgetLines)
+          .set({ committed: fromCents(toCents(b.committed) + sign * delta.get(b.id)!) })
+          .where(eq(budgetLines.id, b.id));
     }
     const at = now();
     const [updated] = await scope.tx
@@ -331,8 +257,6 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
   }
 
   return {
-    listBudgetLines,
-    createBudgetLine,
     createCommitment,
     listCommitments,
     getCommitment,

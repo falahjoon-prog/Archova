@@ -1,22 +1,7 @@
 -- Composed from modules/financials/db/migrations/20261105064500_financials_commitments.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
--- financials: budget lines and commitments (subcontracts and purchase orders the builder places against the budget).
+-- financials: commitments (subcontracts and purchase orders the builder places against the budget).
 -- A commitment is internal cost control: draft -> submitted -> approved. Only approved commitments count as
--- committed cost on a budget line. Amounts are positive, numeric(18,2) ex GST. Financial records: 7 years.
-
-create table financials.budget_lines (
-  id           uuid primary key,
-  org_id       uuid not null,
-  project_id   uuid not null,
-  code         text not null check (length(code) between 1 and 50),
-  description  text not null check (length(description) between 1 and 300),
-  budget       numeric(18,2) not null check (budget >= 0),
-  created_at   timestamptz not null default now(),
-  created_by   uuid,
-  version      int not null default 1,
-  unique (project_id, code)
-);
-create index budget_lines_project on financials.budget_lines (org_id, project_id, code);
-select kernel.enable_tenant_rls('financials.budget_lines');
+-- committed cost on a budget line (kept in budget_lines.committed under the line row lock). Amounts are positive, numeric(18,2) ex GST. Financial records: 7 years.
 
 create table financials.commitments (
   id                uuid primary key,
@@ -57,7 +42,6 @@ create index commitment_lines_commitment on financials.commitment_lines (org_id,
 create index commitment_lines_budget on financials.commitment_lines (org_id, budget_line_id);
 select kernel.enable_tenant_rls('financials.commitment_lines');
 
-select kernel.enable_retention_guard('financials.budget_lines');
 select kernel.enable_retention_guard('financials.commitments');
 select kernel.enable_retention_guard('financials.commitment_lines');
 
