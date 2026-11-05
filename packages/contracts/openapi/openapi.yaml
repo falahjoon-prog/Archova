@@ -10987,6 +10987,46 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceJson' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: listClaimEvidenceDeliveries
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'Emails of this sealed record, with delivery confirmation. Builder staff only.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceDeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: queueClaimEvidenceDelivery
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Email the sealed PDF and JSON, attached, to the address the payer gave for service. Never a link. Sent by the
+        background worker; service counts from the delivery confirmation. Serving a schedule needs
+        `financials.claims.assess`. At most five a day per record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QueueClaimEvidenceDeliveryRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -12937,7 +12977,7 @@ components:
         viewer: { $ref: '#/components/schemas/MeetingViewer' }
     ClaimEvidenceRecord:
       type: object
-      required: [kind, sealedAt, snapshotSha256, pdfSha256, pdfBytes, intact]
+      required: [kind, sealedAt, snapshotSha256, pdfSha256, pdfBytes, intact, signature, timestamp]
       properties:
         kind: { type: string, enum: [claim, schedule] }
         sealedAt: { type: string, format: date-time }
@@ -12945,6 +12985,88 @@ components:
         pdfSha256: { type: string }
         pdfBytes: { type: integer }
         intact: { type: boolean }
+        signature:
+          description: The platform's Ed25519 signature over `message`. Null for records sealed before signing was on.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ClaimEvidenceSignature'
+        timestamp:
+          description: An outside RFC 3161 timestamp over SHA-256 of the signed message. Null until the authority has answered.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ClaimEvidenceTimestamp'
+    ClaimEvidenceSignature:
+      type: object
+      required: [keyId, algorithm, signatureBase64, message, publicKeyPem, valid]
+      properties:
+        keyId: { type: string }
+        algorithm: { type: string, enum: [ed25519] }
+        signatureBase64: { type: string }
+        message:
+          {
+            type: string,
+            description: 'The exact text signed; it names both hashes, the claim and the sealed time.',
+          }
+        publicKeyPem:
+          { type: [string, 'null'], description: 'Null when the server no longer holds that key.' }
+        valid:
+          {
+            type: [boolean, 'null'],
+            description: 'Null when the server cannot check (key not held).',
+          }
+    ClaimEvidenceTimestamp:
+      type: object
+      required: [authority, time, imprintSha256, serialHex, tokenBase64]
+      properties:
+        authority: { type: string }
+        time: { type: string, format: date-time }
+        imprintSha256: { type: string }
+        serialHex: { type: string }
+        tokenBase64:
+          {
+            type: string,
+            description: 'The whole RFC 3161 TimeStampToken, so the authority signature can be checked.',
+          }
+    ClaimEvidenceDelivery:
+      type: object
+      required:
+        [id, kind, recipientEmail, status, queuedAt, sentAt, deliveredAt, bouncedAt, notConfirmed]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [claim, schedule] }
+        recipientEmail: { type: string }
+        status: { type: string, enum: [queued, sending, sent, delivered, bounced, failed] }
+        queuedAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        deliveredAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When the receiving mail server accepted it. Service time counts from this, never from sending.',
+          }
+        bouncedAt: { type: [string, 'null'], format: date-time }
+        notConfirmed:
+          type: boolean
+          description: True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it.
+    ClaimEvidenceDeliveryList:
+      type: object
+      required: [deliveries]
+      properties:
+        deliveries:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
+    QueueClaimEvidenceDeliveryRequest:
+      type: object
+      required: [recipientEmail]
+      additionalProperties: false
+      properties:
+        recipientEmail:
+          {
+            type: string,
+            format: email,
+            maxLength: 254,
+            description: 'The address the payer gave for service.',
+          }
     ClaimEvidenceList:
       type: object
       required: [records]

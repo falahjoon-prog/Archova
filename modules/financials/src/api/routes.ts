@@ -59,6 +59,15 @@ export function financialsRoutes(
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn, { readOnly: true });
+  const deliveryDto = (
+    d: Awaited<ReturnType<FinancialsService['listEvidenceDeliveries']>>[number],
+  ) => ({
+    ...d,
+    queuedAt: d.queuedAt.toISOString(),
+    sentAt: d.sentAt?.toISOString() ?? null,
+    deliveredAt: d.deliveredAt?.toISOString() ?? null,
+    bouncedAt: d.bouncedAt?.toISOString() ?? null,
+  });
   const claimBody = (d: Awaited<ReturnType<FinancialsService['claimDetail']>>) => ({
     claim: toClaimDto(d.claim, d.today, d.schedule !== null),
     lines: d.lines.map(toLineDto),
@@ -517,8 +526,40 @@ export function financialsRoutes(
               ref('paymentClaim', input.params.claimId, 'claimId'),
             ),
           )
-        ).map((r) => ({ ...r, sealedAt: r.sealedAt.toISOString() })),
+        ).map((r) => ({
+          ...r,
+          sealedAt: r.sealedAt.toISOString(),
+          timestamp: r.timestamp ? { ...r.timestamp, time: r.timestamp.time.toISOString() } : null,
+        })),
       },
+    }),
+    listClaimEvidenceDeliveries: async (input) => ({
+      status: 200,
+      body: {
+        deliveries: (
+          await read(input, (s) =>
+            financials.listEvidenceDeliveries(
+              s,
+              project(input.params),
+              ref('paymentClaim', input.params.claimId, 'claimId'),
+            ),
+          )
+        ).map(deliveryDto),
+      },
+    }),
+    queueClaimEvidenceDelivery: async (input) => ({
+      status: 201,
+      body: deliveryDto(
+        await tx(input, (s) =>
+          financials.queueEvidenceDelivery(
+            s,
+            project(input.params),
+            ref('paymentClaim', input.params.claimId, 'claimId'),
+            input.params.kind,
+            input.body.recipientEmail,
+          ),
+        ),
+      ),
     }),
     getClaimEvidencePdf: async (input) => ({
       status: 200,

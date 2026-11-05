@@ -21,6 +21,7 @@ import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { fromCents, toCents } from '../domain/money';
+import { sealMessage, type EvidenceSigner } from '../domain/seal-proof';
 import {
   canonicalJson,
   renderEvidencePdf,
@@ -32,7 +33,10 @@ import {
   claimStatements,
   contracts,
   costCodes,
+  evidenceDeliveries,
   evidenceRecords,
+  evidenceSignatures,
+  evidenceTimestamps,
   paymentClaimLines,
   paymentClaims,
   paymentSchedules,
@@ -64,7 +68,15 @@ export interface FinancialsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyIdentity'>;
   now?: () => Date;
+  /** Signs each sealed record. Without one, records are sealed by hash only (marked unsigned). */
+  signer?: EvidenceSigner;
 }
+
+/** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */
+export const MAX_EVIDENCE_EMAIL_BYTES = 10 * 1024 * 1024;
+const DELIVERIES_PER_DAY = 5;
+const CONFIRM_WITHIN_MS = 60 * 60 * 1000;
+const EMAIL = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/;
 
 export interface CreateContractInput {
   kind: ContractKind;
@@ -760,8 +772,10 @@ export function createFinancialsService(deps: FinancialsDeps) {
     const snapshotText = canonicalJson(snapshot);
     const snapshotSha256 = sha256Hex(snapshotText);
     const pdf = Buffer.from(await renderEvidencePdf(snapshot, snapshotSha256));
+    const evidenceId = uuidv7();
+    const pdfSha256 = sha256Hex(pdf);
     await scope.tx.insert(evidenceRecords).values({
-      id: uuidv7(),
+      id: evidenceId,
       orgId: scope.ctx.orgId,
       projectId,
       claimId,
@@ -771,8 +785,25 @@ export function createFinancialsService(deps: FinancialsDeps) {
       snapshotText,
       snapshotSha256,
       pdf,
-      pdfSha256: sha256Hex(pdf),
+      pdfSha256,
     });
+    if (deps.signer) {
+      const message = sealMessage({
+        kind,
+        claimId,
+        sealedAt: sealedAt.toISOString(),
+        snapshotSha256,
+        pdfSha256,
+      });
+      await scope.tx.insert(evidenceSignatures).values({
+        evidenceId,
+        orgId: scope.ctx.orgId,
+        keyId: deps.signer.keyId,
+        algorithm: 'ed25519',
+        message,
+        signature: deps.signer.sign(message),
+      });
+    }
   }
 
   /** Evidence for a claim the viewer may see, each record re-hashed so a changed row shows as not intact. */
@@ -783,14 +814,160 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .from(evidenceRecords)
       .where(eq(evidenceRecords.claimId, claimId))
       .orderBy(asc(evidenceRecords.sealedAt));
-    return rows.map((r) => ({
-      kind: r.kind,
-      sealedAt: r.sealedAt,
-      snapshotSha256: r.snapshotSha256,
-      pdfSha256: r.pdfSha256,
-      pdfBytes: r.pdf.length,
-      intact: sha256Hex(r.snapshotText) === r.snapshotSha256 && sha256Hex(r.pdf) === r.pdfSha256,
-    }));
+    const ids = rows.map((r) => r.id);
+    const sigs = ids.length
+      ? await scope.tx
+          .select()
+          .from(evidenceSignatures)
+          .where(inArray(evidenceSignatures.evidenceId, ids))
+      : [];
+    const stamps = ids.length
+      ? await scope.tx
+          .select()
+          .from(evidenceTimestamps)
+          .where(inArray(evidenceTimestamps.evidenceId, ids))
+      : [];
+    return rows.map((r) => {
+      const intact =
+        sha256Hex(r.snapshotText) === r.snapshotSha256 && sha256Hex(r.pdf) === r.pdfSha256;
+      const sig = sigs.find((x) => x.evidenceId === r.id);
+      const stamp = stamps.find((x) => x.evidenceId === r.id);
+      const message = sealMessage({
+        kind: r.kind,
+        claimId: r.claimId,
+        sealedAt: r.sealedAt.toISOString(),
+        snapshotSha256: r.snapshotSha256,
+        pdfSha256: r.pdfSha256,
+      });
+      return {
+        kind: r.kind,
+        sealedAt: r.sealedAt,
+        snapshotSha256: r.snapshotSha256,
+        pdfSha256: r.pdfSha256,
+        pdfBytes: r.pdf.length,
+        intact,
+        signature: sig
+          ? {
+              keyId: sig.keyId,
+              algorithm: sig.algorithm,
+              signatureBase64: sig.signature,
+              message: sig.message,
+              publicKeyPem: deps.signer?.keyId === sig.keyId ? deps.signer.publicKeyPem : null,
+              // null when this server no longer holds that key, so it cannot say either way
+              valid:
+                deps.signer?.keyId === sig.keyId
+                  ? sig.message === message &&
+                    deps.signer.verify(sig.message, sig.signature, sig.keyId)
+                  : null,
+            }
+          : null,
+        timestamp: stamp
+          ? {
+              authority: stamp.authority,
+              time: stamp.genTime,
+              imprintSha256: stamp.imprintSha256,
+              serialHex: stamp.serialHex,
+              tokenBase64: stamp.token.toString('base64'),
+            }
+          : null,
+      };
+    });
+  }
+
+  /**
+   * Queue the sealed record for email to an address the payer gave for service. The PDF and the JSON go as
+   * attachments, never as a link (compliance/01 §4). The worker sends it; service time is the receiving server's
+   * delivery confirmation, not this request.
+   */
+  async function queueEvidenceDelivery(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+    recipientEmail: string,
+  ) {
+    await need(
+      scope,
+      kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    await requireStaff(scope, projectId, 'serve a claim by email');
+    const email = recipientEmail.trim();
+    if (!EMAIL.test(email) || email.length > 254)
+      throw new AppError('validation_failed', 'Enter a valid email address.', [
+        { path: 'recipientEmail', message: 'Not a valid email address' },
+      ]);
+    // Serialise per claim so two requests cannot both pass the daily cap.
+    await scope.tx
+      .select({ id: paymentClaims.id })
+      .from(paymentClaims)
+      .where(eq(paymentClaims.id, claimId))
+      .for('update');
+    const { row } = await evidenceFile(scope, projectId, claimId, kind);
+    if (row.pdf.length + Buffer.byteLength(row.snapshotText) > MAX_EVIDENCE_EMAIL_BYTES)
+      throw new AppError(
+        'conflict',
+        'This record is too large to attach to an email. Serve it another way; Archova does not send a link instead.',
+      );
+    const recent = await scope.tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(evidenceDeliveries)
+      .where(
+        and(
+          eq(evidenceDeliveries.claimId, claimId),
+          eq(evidenceDeliveries.kind, kind),
+          sql`${evidenceDeliveries.queuedAt} > ${now()}::timestamptz - interval '1 day'`,
+        ),
+      );
+    if ((recent[0]?.n ?? 0) >= DELIVERIES_PER_DAY)
+      throw new AppError('conflict', 'This record has already been emailed several times today.');
+    const [created] = await scope.tx
+      .insert(evidenceDeliveries)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        claimId,
+        evidenceId: row.id,
+        kind,
+        recipientEmail: email,
+        queuedBy: scope.ctx.userId,
+        queuedAt: now(),
+      })
+      .returning();
+    return deliveryView(created!);
+  }
+
+  function deliveryView(d: typeof evidenceDeliveries.$inferSelect) {
+    const open = d.status === 'queued' || d.status === 'sending' || d.status === 'sent';
+    return {
+      id: d.id,
+      kind: d.kind,
+      recipientEmail: d.recipientEmail,
+      status: d.status,
+      queuedAt: d.queuedAt,
+      sentAt: d.sentAt,
+      deliveredAt: d.deliveredAt,
+      bouncedAt: d.bouncedAt,
+      // Service counts from delivery confirmation only. Anything else after an hour must be served another way.
+      notConfirmed:
+        d.status === 'bounced' ||
+        d.status === 'failed' ||
+        (open &&
+          d.deliveredAt === null &&
+          now().getTime() - d.queuedAt.getTime() > CONFIRM_WITHIN_MS),
+    };
+  }
+
+  async function listEvidenceDeliveries(scope: TenantScope, projectId: string, claimId: string) {
+    await claimDetail(scope, projectId, claimId, true);
+    await requireStaff(scope, projectId, 'see email deliveries');
+    const rows = await scope.tx
+      .select()
+      .from(evidenceDeliveries)
+      .where(eq(evidenceDeliveries.claimId, claimId))
+      .orderBy(desc(evidenceDeliveries.queuedAt));
+    return rows.map(deliveryView);
   }
 
   async function evidenceFile(
@@ -1313,6 +1490,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
     recordStatement,
     issueSchedule,
     listEvidence,
+    queueEvidenceDelivery,
+    listEvidenceDeliveries,
     evidencePdf,
     evidenceJson,
   };

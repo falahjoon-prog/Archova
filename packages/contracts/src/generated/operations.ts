@@ -2586,6 +2586,19 @@ export const GetClaimEvidenceJsonParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
   "kind": z.enum(["claim", "schedule"]),
 });
+export const ListClaimEvidenceDeliveriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const QueueClaimEvidenceDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const QueueClaimEvidenceDeliveryBody = s.QueueClaimEvidenceDeliveryRequestSchema;
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8465,6 +8478,30 @@ export const operations = {
     params: GetClaimEvidenceJsonParams,
     query: null,
     body: null,
+  },
+  listClaimEvidenceDeliveries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceDeliveriesParams,
+    query: null,
+    body: null,
+  },
+  queueClaimEvidenceDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: QueueClaimEvidenceDeliveryParams,
+    query: null,
+    body: QueueClaimEvidenceDeliveryBody,
   },
   listMeetingSeries: {
     method: 'GET',

@@ -521,6 +521,24 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ClaimEvidenceDeliverySchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["claim", "schedule"]),
+  "recipientEmail": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "delivered", "bounced", "failed"]),
+  "queuedAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+  "bouncedAt": z.string().datetime({ offset: true }).nullable(),
+  "notConfirmed": z.boolean(),
+});
+export type ClaimEvidenceDelivery = z.infer<typeof ClaimEvidenceDeliverySchema>;
+
+export const ClaimEvidenceDeliveryListSchema = z.object({
+  "deliveries": z.array(ClaimEvidenceDeliverySchema),
+});
+export type ClaimEvidenceDeliveryList = z.infer<typeof ClaimEvidenceDeliveryListSchema>;
+
 export const ClaimEvidenceJsonSchema = z.object({
   "filename": z.string(),
   "contentType": z.enum(["application/json"]),
@@ -529,6 +547,25 @@ export const ClaimEvidenceJsonSchema = z.object({
 });
 export type ClaimEvidenceJson = z.infer<typeof ClaimEvidenceJsonSchema>;
 
+export const ClaimEvidenceSignatureSchema = z.object({
+  "keyId": z.string(),
+  "algorithm": z.enum(["ed25519"]),
+  "signatureBase64": z.string(),
+  "message": z.string(),
+  "publicKeyPem": z.string().nullable(),
+  "valid": z.boolean().nullable(),
+});
+export type ClaimEvidenceSignature = z.infer<typeof ClaimEvidenceSignatureSchema>;
+
+export const ClaimEvidenceTimestampSchema = z.object({
+  "authority": z.string(),
+  "time": z.string().datetime({ offset: true }),
+  "imprintSha256": z.string(),
+  "serialHex": z.string(),
+  "tokenBase64": z.string(),
+});
+export type ClaimEvidenceTimestamp = z.infer<typeof ClaimEvidenceTimestampSchema>;
+
 export const ClaimEvidenceRecordSchema = z.object({
   "kind": z.enum(["claim", "schedule"]),
   "sealedAt": z.string().datetime({ offset: true }),
@@ -536,6 +573,8 @@ export const ClaimEvidenceRecordSchema = z.object({
   "pdfSha256": z.string(),
   "pdfBytes": z.number().int(),
   "intact": z.boolean(),
+  "signature": z.union([z.null(), ClaimEvidenceSignatureSchema]),
+  "timestamp": z.union([z.null(), ClaimEvidenceTimestampSchema]),
 });
 export type ClaimEvidenceRecord = z.infer<typeof ClaimEvidenceRecordSchema>;
 
@@ -4937,6 +4976,11 @@ export const PublishInductionRequestSchema = z.object({
   "changeNote": z.string().min(1).max(1000).optional(),
 }).strict();
 export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
+
+export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
+  "recipientEmail": z.string().email().max(254),
+}).strict();
+export type QueueClaimEvidenceDeliveryRequest = z.infer<typeof QueueClaimEvidenceDeliveryRequestSchema>;
 
 export const QuoteStatusSchema = z.enum(["reading", "ready_to_review", "confirmed", "superseded", "declined"]);
 export type QuoteStatus = z.infer<typeof QuoteStatusSchema>;

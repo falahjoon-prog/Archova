@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
-import type { PaymentInput } from '@archova/mod-financials';
+import {
+  findUntimestamped,
+  markDeliverySent,
+  recordDeliveryEvent,
+  recordTimestamp,
+  takeDueDeliveries,
+  type PaymentInput,
+} from '@archova/mod-financials';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -142,6 +149,97 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(createHash('sha256').update(json.json().dataText).digest('hex')).toBe(
       evidence.json().records[1].snapshotSha256,
     );
+    // Each record is signed by the platform; the signature checks out and covers both hashes.
+    for (const r of evidence.json().records) {
+      expect(r.signature).toMatchObject({ algorithm: 'ed25519', valid: true });
+      expect(r.signature.message).toContain(`snapshot-sha256:${r.snapshotSha256}`);
+      expect(r.signature.message).toContain(`pdf-sha256:${r.pdfSha256}`);
+      expect(r.timestamp).toBeNull(); // the worker takes it later
+    }
+    // Serve the schedule by email: queued, shown as not yet confirmed service, capped per day.
+    const served = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`,
+      { recipientEmail: 'accounts@owner.example' },
+    );
+    expect(served.statusCode).toBe(201);
+    expect(served.json()).toMatchObject({
+      status: 'queued',
+      kind: 'schedule',
+      deliveredAt: null,
+      notConfirmed: false,
+    });
+    const bad = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`,
+      { recipientEmail: 'not an address' },
+    );
+    expect(bad.statusCode).toBe(422);
+    const listed = await s.pm.browser.get(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`,
+    );
+    expect(listed.json().deliveries).toHaveLength(1);
+    const asSub = await s.sub.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/claim/deliveries`,
+      { recipientEmail: 'x@owner.example' },
+    );
+    expect(asSub.statusCode).toBeGreaterThanOrEqual(403);
+    // The worker's steps: take it, send it, and only the receiving server's confirmation makes it delivered.
+    const wctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test-worker',
+    };
+    const at = new Date();
+    const taken = await t.database.withTenantTx(wctx, (sc) => takeDueDeliveries(sc, at));
+    expect(taken).toHaveLength(1);
+    expect(taken[0]!.pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(await t.database.withTenantTx(wctx, (sc) => takeDueDeliveries(sc, at))).toHaveLength(0);
+    await t.database.withTenantTx(wctx, (sc) =>
+      markDeliverySent(sc, taken[0]!.id, at, 'ses-msg-1'),
+    );
+    let after = (
+      await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
+    ).json().deliveries[0];
+    expect(after).toMatchObject({ status: 'sent', deliveredAt: null });
+    expect(
+      await t.database.withTenantTx(wctx, (sc) =>
+        recordDeliveryEvent(sc, 'ses-msg-1', 'delivered', new Date()),
+      ),
+    ).toBe(true);
+    after = (
+      await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
+    ).json().deliveries[0];
+    expect(after).toMatchObject({ status: 'delivered', notConfirmed: false });
+    expect(after.deliveredAt).not.toBeNull();
+    // A later bounce report does not undo a delivery.
+    expect(
+      await t.database.withTenantTx(wctx, (sc) =>
+        recordDeliveryEvent(sc, 'ses-msg-1', 'bounced', new Date()),
+      ),
+    ).toBe(false);
+    // The outside timestamp is taken for records that lack one, then recorded once and cannot change.
+    const todo = await t.database.withTenantTx(wctx, (sc) => findUntimestamped(sc));
+    expect(todo.length).toBeGreaterThanOrEqual(2);
+    const stamped = todo.find((x) => x.evidenceId)!;
+    await t.database.withTenantTx(wctx, (sc) =>
+      recordTimestamp(sc, stamped.evidenceId, 'tsa.example', {
+        genTime: new Date('2026-11-05T07:30:15Z'),
+        imprintHex: stamped.imprint.toString('hex'),
+        nonceHex: '01',
+        serialHex: '0f42',
+        token: Buffer.from('token'),
+      }),
+    );
+    const withStamp = (await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence`)).json()
+      .records;
+    expect(withStamp.filter((r: { timestamp: unknown }) => r.timestamp)).toHaveLength(1);
+    await expect(
+      t.database.withTenantTx(wctx, (sc) =>
+        sc.tx.execute(sql`delete from financials.evidence_timestamps`),
+      ),
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/cannot be changed/) } });
     // The schedule's record names the sealed claim it answers.
     expect(JSON.parse(json.json().dataText).claimEvidenceSha256).toBe(
       evidence.json().records[0].snapshotSha256,

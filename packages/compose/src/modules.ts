@@ -22,7 +22,11 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
-import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
+import {
+  FINANCIALS_PERMISSIONS,
+  createFinancialsModule,
+  type EvidenceSigner,
+} from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
@@ -95,6 +99,8 @@ export interface ModuleOptions {
   webhooks: WebhooksDeps;
   /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
   accounting: AccountingDeps;
+  /** Signs sealed claim evidence (compliance/01 §4). */
+  evidenceSigner?: EvidenceSigner;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -263,6 +269,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
