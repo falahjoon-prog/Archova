@@ -2,6 +2,7 @@ import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createAttendanceService, type ComplianceSource } from './application/attendance';
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
+import { createRosterService } from './application/roster';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -28,6 +29,11 @@ export function createWorkforceModule(
     platform: deps.platform,
     files: deps.files,
   });
+  const roster = createRosterService({
+    access: deps.access,
+    attendance,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const links = createInductionLinkService({
     ...deps.links,
     database: services.database,
@@ -53,10 +59,19 @@ export function createWorkforceModule(
   };
   return {
     definition: defineModule({ name: 'workforce', permissions: WORKFORCE_PERMISSIONS }),
-    routes: workforceRoutes(services.database, attendance, inductions, links, wallet, grants, {
-      logger: services.logger,
-      ...deps.hooks,
-    }),
+    routes: workforceRoutes(
+      services.database,
+      attendance,
+      inductions,
+      links,
+      wallet,
+      grants,
+      roster,
+      {
+        logger: services.logger,
+        ...deps.hooks,
+      },
+    ),
     api: {
       /** What the mobile pull reads (modules/sync): attendance sessions. */
       syncSource,

@@ -398,3 +398,38 @@ export const complianceExpiryAlerts = workforceSchema.table('compliance_expiry_a
   raisedOn: date('raised_on').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type ShiftStatus = 'draft' | 'published' | 'cancelled';
+export type AssignmentStatus = 'offered' | 'accepted' | 'declined' | 'no_show' | 'attended';
+
+export const shifts = workforceSchema.table('shifts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  siteId: uuid('site_id').notNull(),
+  crew: text('crew'),
+  trade: text('trade').notNull(),
+  note: text('note'),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  requiredHeadcount: integer('required_headcount').notNull(),
+  status: text('status').$type<ShiftStatus>().notNull().default('draft'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const shiftAssignments = workforceSchema.table('shift_assignments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  shiftId: uuid('shift_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  companyId: uuid('company_id'),
+  status: text('status').$type<AssignmentStatus>().notNull().default('offered'),
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

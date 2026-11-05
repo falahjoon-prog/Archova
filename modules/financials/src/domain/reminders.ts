@@ -21,9 +21,20 @@ export interface ReminderContract {
   movements: readonly MovementInput[];
   terms: ReleaseTermsInput;
   releasedByStage: Partial<Record<ReleaseStage, number>>;
+  /** Valid claims with a payment schedule and an amount still owing (schedule plus GST, less paid). */
+  unpaidClaims: readonly {
+    claimId: string;
+    number: number;
+    paymentDueOn: LocalDate;
+    outstandingCents: number;
+  }[];
 }
 
-export type ReminderKind = 'financials.trust_attention' | 'financials.retention_release_due';
+export type ReminderKind =
+  'financials.trust_attention' | 'financials.retention_release_due' | 'financials.payment_overdue';
+
+/** How long past its due date an unpaid claim still gets its reminder. */
+export const OVERDUE_WINDOW_DAYS = 60;
 
 export interface PlannedReminder {
   userId: string;
@@ -52,6 +63,20 @@ export function planReminders(
     if (!zone || !ctx.isMember(c.ownerUserId)) continue;
     const today: LocalDate = localDateOf(now, zone);
     const label = `C-${String(c.number).padStart(3, '0')} ${c.title}`;
+
+    for (const q of c.unpaidClaims) {
+      if (q.outstandingCents <= 0 || compareLocalDates(q.paymentDueOn, today) >= 0) continue;
+      if (compareLocalDates(q.paymentDueOn, addDays(today, -OVERDUE_WINDOW_DAYS)) < 0) continue;
+      out.push({
+        userId: c.ownerUserId,
+        projectId: c.projectId,
+        contractId: c.contractId,
+        kind: 'financials.payment_overdue',
+        title: `${label}: claim ${q.number} is past its payment due date`,
+        body: `$${fromCents(q.outstandingCents)} was due on ${q.paymentDueOn} and has not been paid.`,
+        dedupeKey: `payment-overdue:${q.claimId}:${q.paymentDueOn}`,
+      });
+    }
 
     const requirement = trustRequirement({
       sopaState: c.sopaState,

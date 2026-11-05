@@ -1608,6 +1608,55 @@ export const DeleteDiaryStandDownParams = z.object({
 export const DeleteDiaryStandDownQuery = z.object({
   "amendmentReason": z.string().min(1).max(1000).optional(),
 });
+export const ListShiftsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListShiftsQuery = z.object({
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.ShiftStatusSchema.optional(),
+});
+export const CreateShiftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateShiftBody = s.CreateShiftRequestSchema;
+export const GetShiftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+});
+export const PublishShiftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+});
+export const CancelShiftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+});
+export const AssignShiftWorkersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+});
+export const AssignShiftWorkersBody = s.AssignShiftWorkersRequestSchema;
+export const RemoveShiftAssignmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "assignmentId": z.string().regex(new RegExp("^sha_[0-9A-Za-z]{26}$")),
+});
+export const RespondToShiftAssignmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "assignmentId": z.string().regex(new RegExp("^sha_[0-9A-Za-z]{26}$")),
+});
+export const RespondToShiftAssignmentBody = s.RespondToShiftRequestSchema;
 export const ListAttendanceSitesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6042,6 +6091,102 @@ export const operations = {
     params: DeleteDiaryStandDownParams,
     query: DeleteDiaryStandDownQuery,
     body: null,
+  },
+  listShifts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.view",
+    internal: false,
+    contentType: null,
+    params: ListShiftsParams,
+    query: ListShiftsQuery,
+    body: null,
+  },
+  createShift: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateShiftParams,
+    query: null,
+    body: CreateShiftBody,
+  },
+  getShift: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.view",
+    internal: false,
+    contentType: null,
+    params: GetShiftParams,
+    query: null,
+    body: null,
+  },
+  publishShift: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/publish',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.manage",
+    internal: false,
+    contentType: null,
+    params: PublishShiftParams,
+    query: null,
+    body: null,
+  },
+  cancelShift: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/cancel',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.manage",
+    internal: false,
+    contentType: null,
+    params: CancelShiftParams,
+    query: null,
+    body: null,
+  },
+  assignShiftWorkers: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AssignShiftWorkersParams,
+    query: null,
+    body: AssignShiftWorkersBody,
+  },
+  removeShiftAssignment: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.manage",
+    internal: false,
+    contentType: null,
+    params: RemoveShiftAssignmentParams,
+    query: null,
+    body: null,
+  },
+  respondToShiftAssignment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}/respond',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.rosters.view",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToShiftAssignmentParams,
+    query: null,
+    body: RespondToShiftAssignmentBody,
   },
   listAttendanceSites: {
     method: 'GET',

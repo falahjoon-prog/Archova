@@ -78,11 +78,24 @@ describe('financials.trust-reminders', () => {
     await t.contract({ state: 'WA', retention: '0' }); // nothing withheld
     await t.contract({ state: 'WA', retention: '1000', createdBy: null }); // nobody to tell
 
-    expect((await run(t.orgId)).created).toBe(2);
+    // A claim with a schedule whose payment date has passed and nothing paid.
+    const late = await t.contract({ state: 'VIC', retention: '0' });
+    await database.withTenantTx(jobContext(t.orgId, 'seed'), async (s) => {
+      await s.tx.execute(
+        sql`update financials.payment_claims set payment_due_on = '2026-11-01' where contract_id = ${late}`,
+      );
+      await s.tx.execute(
+        sql`insert into financials.payment_schedules (id, org_id, project_id, claim_id, scheduled_amount, withheld_amount, issued_within_time)
+            select ${uuidv7()}, org_id, project_id, id, 100, 0, true from financials.payment_claims where contract_id = ${late}`,
+      );
+    });
+
+    expect((await run(t.orgId)).created).toBe(3);
     const rows = await inbox(t.orgId, t.user);
     expect(rows.map((r) => r.title)).toEqual([
       'C-001 Trade 1: retention trust account not recorded',
       'C-002 Trade 2: retention release is due',
+      'C-006 Trade 6: claim 1 is past its payment due date',
     ]);
     expect(rows[0]).toMatchObject({ kind: 'financials.trust_attention', entity_type: 'contract' });
 

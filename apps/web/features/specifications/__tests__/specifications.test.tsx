@@ -124,3 +124,29 @@ describe('SpecificationsScreen', () => {
     });
   });
 });
+
+describe('SpecSectionField', () => {
+  it('suggests sections from the current books while typing, and still takes free text', async () => {
+    fake.on('GET', '/v1/orgs/{orgId}/projects/{projectId}/spec-sections', () => ({
+      data: [{ section, bookId: book().id, bookName: book().name }],
+    }));
+    const { SpecSectionField } = await import('../components/SpecSectionField');
+    const { useState } = await import('react');
+    function Harness() {
+      const [v, setV] = useState('');
+      return <SpecSectionField value={v} onChange={setV} />;
+    }
+    const { container } = renderInProject(<Harness />);
+    const user = userEvent.setup();
+    const input = screen.getByLabelText('Spec section') as HTMLInputElement;
+    await user.type(input, '03');
+    await waitFor(() =>
+      expect(container.querySelector('datalist option')?.getAttribute('value')).toBe(
+        '03 30 00 Concrete',
+      ),
+    );
+    await user.clear(input);
+    await user.type(input, 'Site notes');
+    expect(input.value).toBe('Site notes');
+  });
+});
