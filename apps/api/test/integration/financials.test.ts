@@ -224,13 +224,19 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(todo.length).toBeGreaterThanOrEqual(2);
     const stamped = todo.find((x) => x.evidenceId)!;
     await t.database.withTenantTx(wctx, (sc) =>
-      recordTimestamp(sc, stamped.evidenceId, 'tsa.example', {
-        genTime: new Date('2026-11-05T07:30:15Z'),
-        imprintHex: stamped.imprint.toString('hex'),
-        nonceHex: '01',
-        serialHex: '0f42',
-        token: Buffer.from('token'),
-      }),
+      recordTimestamp(
+        sc,
+        stamped.evidenceId,
+        'tsa.example',
+        {
+          genTime: new Date('2026-11-05T07:30:15Z'),
+          imprintHex: createHash('sha256').update(stamped.message).digest('hex'),
+          nonceHex: '01',
+          serialHex: '0f42',
+          token: Buffer.from('token'),
+        },
+        '-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----',
+      ),
     );
     const withStamp = (await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence`)).json()
       .records;

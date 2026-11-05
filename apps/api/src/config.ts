@@ -87,12 +87,16 @@ const Env = z.object({
   // production; elsewhere a fixed development key is used. Never rotate by replacing the key under the same id.
   API_EVIDENCE_SIGNING_KEY: z.string().optional(),
   API_EVIDENCE_SIGNING_KEY_ID: z.string().min(1).max(64).default('archova-evidence-1'),
+  // JSON object of retired signing key id to public key PEM, so records signed before a rotation still verify.
+  API_EVIDENCE_RETIRED_PUBLIC_KEYS: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
 
 /** Development and test only: production refuses to start without API_WEBHOOK_SECRET_KEY. */
 export const DEV_WEBHOOK_KEY = Buffer.alloc(32, 7).toString('base64');
 /** Development and test only: an Ed25519 key from a fixed seed, so signatures are checkable but worth nothing. */
+/** The id the development key signs under; production refuses it. */
+export const DEV_EVIDENCE_KEY_ID = 'archova-evidence-dev';
 export const DEV_EVIDENCE_SIGNING_KEY = `-----BEGIN PRIVATE KEY-----\n${Buffer.concat([
   Buffer.from('302e020100300506032b657004220420', 'hex'),
   Buffer.alloc(32, 11),
@@ -150,6 +154,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       ? {
           keyId: e.API_EVIDENCE_SIGNING_KEY_ID,
           privateKeyPem: e.API_EVIDENCE_SIGNING_KEY.replaceAll('\\n', '\n'),
+          retired: e.API_EVIDENCE_RETIRED_PUBLIC_KEYS
+            ? (JSON.parse(e.API_EVIDENCE_RETIRED_PUBLIC_KEYS) as Record<string, string>)
+            : {},
         }
       : null,
     accounting: {
@@ -235,6 +242,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       missing.push('https API_APP_ORIGINS');
     if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
     if (!config.evidenceSigning) missing.push('API_EVIDENCE_SIGNING_KEY (Ed25519 PEM)');
+    if (config.evidenceSigning?.keyId === DEV_EVIDENCE_KEY_ID)
+      missing.push(`API_EVIDENCE_SIGNING_KEY_ID other than ${DEV_EVIDENCE_KEY_ID}`);
     if (
       (config.accounting.xero ||
         config.accounting.myob ||

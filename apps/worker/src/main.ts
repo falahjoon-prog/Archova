@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
@@ -34,6 +35,14 @@ import { webhookDelivery } from './webhooks';
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
 const ROUTES = AI_ROUTES;
 
+function readTimestampCa(file: string | null): string {
+  if (!file)
+    throw new Error(
+      'WORKER_EVIDENCE_TSA_URL needs WORKER_EVIDENCE_TSA_CA_FILE (pinned certificates)',
+    );
+  return readFileSync(file, 'utf8');
+}
+
 async function main() {
   const log = createLogger('worker');
   if (workerRole() === 'ai')
@@ -62,7 +71,15 @@ async function main() {
     trialEndingEmail(emailSender, config.email.appBaseUrl),
     // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
     ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
-    ...(config.evidenceTimestampUrl ? [evidenceTimestamps(config.evidenceTimestampUrl)] : []),
+    ...(config.evidenceTimestampUrl
+      ? [
+          evidenceTimestamps(
+            config.evidenceTimestampUrl,
+            readTimestampCa(config.evidenceTimestampCaFile),
+            (msg, o) => log.warn(o, msg),
+          ),
+        ]
+      : []),
     templateBackfill,
     meetingReminders,
     bidReminders,

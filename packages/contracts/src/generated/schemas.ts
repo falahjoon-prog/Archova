@@ -607,6 +607,7 @@ export const ClaimEvidenceTimestampSchema = z.object({
   "imprintSha256": z.string(),
   "serialHex": z.string(),
   "tokenBase64": z.string(),
+  "caChainPem": z.string(),
 });
 export type ClaimEvidenceTimestamp = z.infer<typeof ClaimEvidenceTimestampSchema>;
 

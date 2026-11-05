@@ -11,7 +11,7 @@ const b64 = (data: Uint8Array) =>
 /** A header value with no line breaks, and RFC 2047 encoded when it is not plain ASCII. */
 const header = (v: string) => {
   const clean = v.replace(/[\r\n]+/g, ' ').trim();
-  // eslint-disable-next-line no-control-regex
+
   return /^[\x20-\x7e]*$/.test(clean)
     ? clean
     : `=?UTF-8?B?${Buffer.from(clean, 'utf8').toString('base64')}?=`;
