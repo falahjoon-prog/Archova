@@ -9216,6 +9216,23 @@ paths:
         '204':
           description: No content
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetVsForecast
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Revised budget against forecast final cost for each cost code, with what is not yet tagged to a code.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetVsForecast' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16024,9 +16041,10 @@ components:
       enum: [head, subcontract]
     SovItem:
       type: object
-      required: [id, code, description, value]
+      required: [id, code, description, value, costCodeId]
       properties:
         id: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
         code: { type: string }
         description: { type: string }
         value: { $ref: '#/components/schemas/FinancialsMoney' }
@@ -16115,6 +16133,7 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+              costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     CostCode:
       type: object
       required: [id, code, description, parentId, archived]
@@ -16245,6 +16264,44 @@ components:
             description: Signed decimal AUD ex GST.,
           }
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BudgetVsForecastRow:
+      type: object
+      required:
+        [
+          costCodeId,
+          code,
+          codeDescription,
+          revised,
+          committed,
+          claimed,
+          adjustments,
+          forecastFinal,
+          variance,
+        ]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: [string, 'null'] }
+        codeDescription: { type: string }
+        revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimed: { $ref: '#/components/schemas/FinancialsMoney' }
+        adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        variance:
+          {
+            $ref: '#/components/schemas/FinancialsSignedMoney',
+            description: Revised budget less forecast final cost. Negative is over budget.,
+          }
+    BudgetVsForecast:
+      type: object
+      required: [budgetStatus, rows, unallocated, totals]
+      properties:
+        budgetStatus: { type: [string, 'null'], enum: [draft, locked, null] }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+        unallocated: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+        totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
     BudgetAdjustment:
       type: object
       required: [id, amount, reason, createdAt]
@@ -16271,10 +16328,11 @@ components:
       description: Decimal AUD ex GST, negative allowed.
     ForecastAdjustment:
       type: object
-      required: [id, contractId, category, label, note, amount, createdAt]
+      required: [id, contractId, costCodeId, category, label, note, amount, createdAt]
       properties:
         id: { type: string, pattern: '^fca_[0-9A-Za-z]{26}$' }
         contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
         category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
         label: { type: string }
         note: { type: [string, 'null'] }
@@ -16289,6 +16347,7 @@ components:
       required: [category, label, amount]
       properties:
         contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
         category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
         label: { type: string, minLength: 1, maxLength: 300 }
         note: { type: string, minLength: 1, maxLength: 5000 }
