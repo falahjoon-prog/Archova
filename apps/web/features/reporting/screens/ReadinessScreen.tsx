@@ -3,14 +3,16 @@
 import {
   Alert,
   Button,
+  Card,
   DataTable,
-  DescriptionList,
   EmptyState,
   PageHeader,
   SkeletonRows,
+  StatGrid,
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
+import { Download } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useReadinessPack, useReadinessPdf } from '../hooks/useReporting';
 import { ITEM_LABELS, type ReadinessPack } from '../lib/types';
@@ -103,7 +105,7 @@ export function ReadinessScreen() {
         description="Your licences and insurance, subcontractor prequalification, safety record and retention-trust standing on one page, ready to give a client, financier or insurer."
         actions={
           <Button onClick={() => void onDownload()} loading={pdf.isPending} disabled={!data}>
-            Download PDF
+            <Download size={16} aria-hidden="true" /> Download PDF
           </Button>
         }
       />
@@ -129,116 +131,185 @@ export function ReadinessScreen() {
             licensing or insurer register.
           </p>
 
-          <section aria-labelledby="ready-creds" className="stack">
-            <h2 id="ready-creds" className="panel-heading">
-              Licences and insurance
-            </h2>
-            {data.credentials.restricted ? (
-              <Alert tone="info" title="Not shown">
-                {NO_ACCESS('the compliance wallet')}
-              </Alert>
-            ) : (
-              <>
-                <DescriptionList
-                  items={[
-                    { label: 'Current', value: data.credentials.current },
-                    { label: 'Expiring within 30 days', value: data.credentials.expiring },
-                    { label: 'Expired', value: data.credentials.expired },
-                    { label: 'No expiry recorded', value: data.credentials.noExpiry },
-                  ]}
-                />
-                <DataTable
-                  caption="Licences and insurance"
-                  columns={columns}
-                  rows={data.credentials.items}
-                  getRowId={(r) => `${r.itemType}|${r.title}|${r.expiresOn ?? ''}`}
-                  empty={
-                    <EmptyState
-                      title="No licences or insurance recorded"
-                      description="Add them to the compliance wallet and they appear here."
-                    />
-                  }
-                />
-              </>
-            )}
-          </section>
+          <Card title="Licences and insurance">
+            <div className="stack">
+              {data.credentials.restricted ? (
+                <Alert tone="info" title="Not shown">
+                  {NO_ACCESS('the compliance wallet')}
+                </Alert>
+              ) : (
+                <>
+                  <StatGrid
+                    items={[
+                      {
+                        label: 'Current',
+                        value: data.credentials.current,
+                        tone: data.credentials.current ? 'success' : undefined,
+                      },
+                      {
+                        label: 'Expiring within 30 days',
+                        value: data.credentials.expiring,
+                        tone: data.credentials.expiring ? 'warning' : undefined,
+                      },
+                      {
+                        label: 'Expired',
+                        value: data.credentials.expired,
+                        tone: data.credentials.expired ? 'danger' : undefined,
+                      },
+                      { label: 'No expiry recorded', value: data.credentials.noExpiry },
+                    ]}
+                  />
+                  <DataTable
+                    caption="Licences and insurance"
+                    columns={columns}
+                    rows={data.credentials.items}
+                    getRowId={(r) => `${r.itemType}|${r.title}|${r.expiresOn ?? ''}`}
+                    empty={
+                      <EmptyState
+                        title="No licences or insurance recorded"
+                        description="Add them to the compliance wallet and they appear here."
+                      />
+                    }
+                  />
+                </>
+              )}
+            </div>
+          </Card>
 
-          <section aria-labelledby="ready-prequal" className="stack">
-            <h2 id="ready-prequal" className="panel-heading">
-              Subcontractor prequalification
-            </h2>
-            {data.prequal.restricted ? (
-              <Alert tone="info" title="Not shown">
-                {NO_ACCESS('prequalification')}
-              </Alert>
-            ) : (
-              <>
-                <DescriptionList
-                  items={[
-                    { label: 'Companies on record', value: data.prequal.companies },
-                    { label: 'Qualified', value: data.prequal.qualified },
-                    { label: 'Expiring within 30 days', value: data.prequal.expiring },
-                    { label: 'Pending', value: data.prequal.pending },
-                    { label: 'Expired', value: data.prequal.expired },
-                    { label: 'Not approved', value: data.prequal.notQualified },
-                  ]}
-                />
-                <p className="u-muted">
-                  Prequalification is {data.prequal.requiredForTenders ? '' : 'not '}required before
-                  a tender invite.
-                </p>
-              </>
-            )}
-          </section>
+          <Card title="Subcontractor prequalification">
+            <div className="stack">
+              {data.prequal.restricted ? (
+                <Alert tone="info" title="Not shown">
+                  {NO_ACCESS('prequalification')}
+                </Alert>
+              ) : (
+                <>
+                  <StatGrid
+                    items={[
+                      { label: 'Companies on record', value: data.prequal.companies },
+                      {
+                        label: 'Qualified',
+                        value: data.prequal.qualified,
+                        tone: data.prequal.qualified ? 'success' : undefined,
+                      },
+                      {
+                        label: 'Expiring within 30 days',
+                        value: data.prequal.expiring,
+                        tone: data.prequal.expiring ? 'warning' : undefined,
+                      },
+                      {
+                        label: 'Pending',
+                        value: data.prequal.pending,
+                        tone: data.prequal.pending ? 'info' : undefined,
+                      },
+                      {
+                        label: 'Expired',
+                        value: data.prequal.expired,
+                        tone: data.prequal.expired ? 'danger' : undefined,
+                      },
+                      {
+                        label: 'Not approved',
+                        value: data.prequal.notQualified,
+                        tone: data.prequal.notQualified ? 'danger' : undefined,
+                      },
+                    ]}
+                  />
+                  <p className="u-muted">
+                    Prequalification is {data.prequal.requiredForTenders ? '' : 'not '}required
+                    before a tender invite.
+                  </p>
+                </>
+              )}
+            </div>
+          </Card>
 
-          <section aria-labelledby="ready-safety" className="stack">
-            <h2 id="ready-safety" className="panel-heading">
-              Safety record, last 12 months
-            </h2>
-            <DescriptionList
-              items={[
-                { label: 'Incidents', value: data.safety.incidents.total },
-                { label: 'Notifiable', value: data.safety.incidents.notifiable },
-                { label: 'High severity', value: data.safety.incidents.high },
-                { label: 'Critical', value: data.safety.incidents.critical },
-                { label: 'Not yet closed', value: data.safety.incidents.notClosed },
-                { label: 'SWMS accepted and in date', value: data.safety.swms.accepted },
-                { label: 'SWMS accepted but expired', value: data.safety.swms.expired },
-                { label: 'SWMS awaiting a decision', value: data.safety.swms.awaitingReview },
-                { label: 'SWMS rejected', value: data.safety.swms.rejected },
-              ]}
-            />
-            <Coverage
-              covered={data.safety.projectsCovered}
-              restricted={data.safety.projectsRestricted}
-            />
-          </section>
+          <Card title="Safety record, last 12 months">
+            <div className="stack">
+              <StatGrid
+                items={[
+                  { label: 'Incidents', value: data.safety.incidents.total },
+                  {
+                    label: 'Notifiable',
+                    value: data.safety.incidents.notifiable,
+                    tone: data.safety.incidents.notifiable ? 'danger' : undefined,
+                  },
+                  {
+                    label: 'High severity',
+                    value: data.safety.incidents.high,
+                    tone: data.safety.incidents.high ? 'warning' : undefined,
+                  },
+                  {
+                    label: 'Critical',
+                    value: data.safety.incidents.critical,
+                    tone: data.safety.incidents.critical ? 'danger' : undefined,
+                  },
+                  {
+                    label: 'Not yet closed',
+                    value: data.safety.incidents.notClosed,
+                    tone: data.safety.incidents.notClosed ? 'warning' : undefined,
+                  },
+                  {
+                    label: 'SWMS accepted and in date',
+                    value: data.safety.swms.accepted,
+                    tone: data.safety.swms.accepted ? 'success' : undefined,
+                  },
+                  {
+                    label: 'SWMS accepted but expired',
+                    value: data.safety.swms.expired,
+                    tone: data.safety.swms.expired ? 'danger' : undefined,
+                  },
+                  {
+                    label: 'SWMS awaiting a decision',
+                    value: data.safety.swms.awaitingReview,
+                    tone: data.safety.swms.awaitingReview ? 'info' : undefined,
+                  },
+                  {
+                    label: 'SWMS rejected',
+                    value: data.safety.swms.rejected,
+                    tone: data.safety.swms.rejected ? 'danger' : undefined,
+                  },
+                ]}
+              />
+              <Coverage
+                covered={data.safety.projectsCovered}
+                restricted={data.safety.projectsRestricted}
+              />
+            </div>
+          </Card>
 
-          <section aria-labelledby="ready-trust" className="stack">
-            <h2 id="ready-trust" className="panel-heading">
-              Retention trust compliance
-            </h2>
-            <DescriptionList
-              items={[
-                { label: 'Subcontracts', value: data.trust.subcontracts },
-                { label: 'In order', value: data.trust.ok },
-                {
-                  label: 'Short in trust',
-                  value: `${data.trust.shortfall} (${dollars(data.trust.shortfallCents)})`,
-                },
-                { label: 'No trust account recorded', value: data.trust.notSetUp },
-                { label: 'Not likely to need a trust', value: data.trust.notRequired },
-              ]}
-            />
-            <p className="u-muted">
-              Whether a trust is required depends on state rules Archova has not yet had reviewed.
-              Treat &ldquo;likely&rdquo; as a prompt to check, not advice.
-            </p>
-            <Coverage
-              covered={data.trust.projectsCovered}
-              restricted={data.trust.projectsRestricted}
-            />
-          </section>
+          <Card title="Retention trust compliance">
+            <div className="stack">
+              <StatGrid
+                items={[
+                  { label: 'Subcontracts', value: data.trust.subcontracts },
+                  {
+                    label: 'In order',
+                    value: data.trust.ok,
+                    tone: data.trust.ok ? 'success' : undefined,
+                  },
+                  {
+                    label: 'Short in trust',
+                    value: `${data.trust.shortfall} (${dollars(data.trust.shortfallCents)})`,
+                    tone: data.trust.shortfall ? 'danger' : undefined,
+                  },
+                  {
+                    label: 'No trust account recorded',
+                    value: data.trust.notSetUp,
+                    tone: data.trust.notSetUp ? 'warning' : undefined,
+                  },
+                  { label: 'Not likely to need a trust', value: data.trust.notRequired },
+                ]}
+              />
+              <p className="u-muted">
+                Whether a trust is required depends on state rules Archova has not yet had reviewed.
+                Treat &ldquo;likely&rdquo; as a prompt to check, not advice.
+              </p>
+              <Coverage
+                covered={data.trust.projectsCovered}
+                restricted={data.trust.projectsRestricted}
+              />
+            </div>
+          </Card>
 
           {data.truncated ? (
             <Alert tone="info" title="Showing the first 200 projects">

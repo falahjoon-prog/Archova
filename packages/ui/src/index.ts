@@ -37,6 +37,7 @@ export {
   type DrawingCanvasProps,
 } from './patterns/DrawingCanvas';
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
+export { StatGrid, type StatItem, type StatTone } from './patterns/StatGrid';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState';
 export { FilterBar } from './patterns/FilterBar';
 export { ItemHeader, type ItemHeaderProps } from './patterns/ItemHeader';

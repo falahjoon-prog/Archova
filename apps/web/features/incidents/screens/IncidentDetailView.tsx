@@ -3,8 +3,29 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
-import { Alert, Button, PageHeader, SkeletonRows, StatusPill, buttonClassName } from '@archova/ui';
-import { ChevronLeft } from '@archova/ui/icons';
+import {
+  ActivityTimeline,
+  Alert,
+  Button,
+  Card,
+  DescriptionList,
+  ItemHeader,
+  PageHeader,
+  SkeletonRows,
+  StatusPill,
+  buttonClassName,
+} from '@archova/ui';
+import {
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  Plus,
+  RotateCcw,
+  Search,
+  Tag,
+  Undo2,
+} from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
@@ -65,60 +86,63 @@ export function IncidentDetailView({ id }: { id: string }) {
   const setAction = (actionId: string, status: CorrectiveStatus) =>
     m.setActionStatus.mutate({ detail: d, actionId, status });
 
+  const ACTION_ICONS = { investigate: Search, close: CheckCircle2, reopen: RotateCcw } as const;
+  const NextIcon = next ? ACTION_ICONS[next] : null;
+
   return (
     <>
-      <PageHeader
-        eyebrow={`${i.numberLabel} · ${TYPE_LABELS[i.type]}`}
+      <p className="u-m-0">{back}</p>
+      <ItemHeader
+        number={`${i.numberLabel} · ${TYPE_LABELS[i.type]}`}
         title={i.title}
-        description={`${formatInstant(i.occurredAt, tz)}${i.location ? ` · ${i.location}` : ''}`}
+        status={<StatusPill tone={STATUS_TONE[i.status]}>{STATUS_LABELS[i.status]}</StatusPill>}
+        meta={
+          <StatusPill tone={SEVERITY_TONE[i.severity]}>{SEVERITY_LABELS[i.severity]}</StatusPill>
+        }
         actions={
-          <>
-            {back}
-            {d.canManage ? (
-              <>
-                {i.status !== 'closed' ? (
-                  <Button variant="secondary" onClick={() => setDialog('classify')}>
-                    Classify
-                  </Button>
-                ) : null}
-                {next ? (
-                  <Button onClick={() => setDialog(next)}>{ACTION_LABELS[next]}</Button>
-                ) : null}
-              </>
-            ) : null}
-          </>
+          d.canManage ? (
+            <>
+              {i.status !== 'closed' ? (
+                <Button variant="secondary" onClick={() => setDialog('classify')}>
+                  <Tag size={16} aria-hidden="true" /> Classify
+                </Button>
+              ) : null}
+              {next && NextIcon ? (
+                <Button onClick={() => setDialog(next)}>
+                  <NextIcon size={16} aria-hidden="true" /> {ACTION_LABELS[next]}
+                </Button>
+              ) : null}
+            </>
+          ) : null
         }
       />
-      <p>
-        <StatusPill tone={STATUS_TONE[i.status]}>{STATUS_LABELS[i.status]}</StatusPill>{' '}
-        <StatusPill tone={SEVERITY_TONE[i.severity]}>{SEVERITY_LABELS[i.severity]}</StatusPill>
-      </p>
 
       {i.isNotifiable ? (
-        <section aria-labelledby="inc-notifiable" className="stack stack--flush">
-          <h2 id="inc-notifiable">Notifiable incident</h2>
-          <Alert tone="danger" title={i.notifiableClass ? CLASS_LABELS[i.notifiableClass] : ''}>
-            Tell your state work health and safety regulator immediately, by the fastest means.
-            Archova does not notify the regulator for you. Do not disturb the site except to help
-            injured people or make it safe.
-          </Alert>
-          <p>
-            {i.regulatorNotifiedAt
-              ? `Regulator notified ${formatInstant(i.regulatorNotifiedAt, tz)}.`
-              : 'The time the regulator was notified has not been recorded.'}
-          </p>
-          {i.writtenNoticeDueAt ? (
-            <Alert tone="warning">
-              Written notice is due by {formatInstant(i.writtenNoticeDueAt, tz)} (48 hours after the
-              regulator asked for it).
+        <Card title="Notifiable incident">
+          <div className="stack">
+            <Alert tone="danger" title={i.notifiableClass ? CLASS_LABELS[i.notifiableClass] : ''}>
+              Tell your state work health and safety regulator immediately, by the fastest means.
+              Archova does not notify the regulator for you. Do not disturb the site except to help
+              injured people or make it safe.
             </Alert>
-          ) : null}
-          {i.keepUntil ? (
-            <p className="u-muted">
-              Kept until at least {formatLocalDate(i.keepUntil.slice(0, 10))}.
+            <p className="u-m-0">
+              {i.regulatorNotifiedAt
+                ? `Regulator notified ${formatInstant(i.regulatorNotifiedAt, tz)}.`
+                : 'The time the regulator was notified has not been recorded.'}
             </p>
-          ) : null}
-        </section>
+            {i.writtenNoticeDueAt ? (
+              <Alert tone="warning">
+                Written notice is due by {formatInstant(i.writtenNoticeDueAt, tz)} (48 hours after
+                the regulator asked for it).
+              </Alert>
+            ) : null}
+            {i.keepUntil ? (
+              <p className="u-muted u-m-0">
+                Kept until at least {formatLocalDate(i.keepUntil.slice(0, 10))}.
+              </p>
+            ) : null}
+          </div>
+        </Card>
       ) : null}
 
       {i.status === 'investigating' && d.closeBlockers.length > 0 ? (
@@ -131,150 +155,182 @@ export function IncidentDetailView({ id }: { id: string }) {
         </Alert>
       ) : null}
 
-      <section aria-labelledby="inc-what" className="stack stack--flush">
-        <h2 id="inc-what">What happened</h2>
-        <p>{i.description || <span className="u-muted">Not described.</span>}</p>
-        <h3>Done straight away</h3>
-        <p>{i.immediateActions || <span className="u-muted">Nothing recorded.</span>}</p>
-      </section>
+      <div className="detail-grid">
+        <div className="stack-lg">
+          <Card title="What happened">
+            <div className="stack">
+              <p className="u-m-0 u-prewrap">
+                {i.description || <span className="u-muted">Not described.</span>}
+              </p>
+              <div>
+                <h3 className="panel-heading">Done straight away</h3>
+                <p className="u-m-0 u-prewrap">
+                  {i.immediateActions || <span className="u-muted">Nothing recorded.</span>}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-      <section aria-labelledby="inc-people" className="stack stack--flush">
-        <h2 id="inc-people">People involved</h2>
-        {d.people.length === 0 ? (
-          <p className="u-muted">No one recorded.</p>
-        ) : (
-          <ul>
-            {d.people.map((p) => (
-              <li key={p.id}>
-                {p.personName} · {ROLE_LABELS[p.role]}
-                {p.companyId ? ` · ${dir.companyName(p.companyId)}` : ''}
-                {p.injury ? (
-                  <span className="u-caption">
-                    {' '}
-                    ·{' '}
-                    {Object.values(p.injury)
-                      .filter((v) => typeof v === 'string' && v)
-                      .join(' · ')}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-        {d.photoFileIds.length > 0 ? (
-          <p className="u-caption">
-            {d.photoFileIds.length} {d.photoFileIds.length === 1 ? 'photo' : 'photos'} taken at the
-            scene on a phone.
-          </p>
-        ) : null}
-        {d.injuryHidden ? (
-          <p className="u-muted">
-            Injury details are only shown to people who may see health information.
-          </p>
-        ) : null}
-      </section>
+          <Card title="Root cause">
+            {i.rootCause ? (
+              <div className="stack">
+                <p className="u-m-0">{i.rootCause.summary}</p>
+                <ul className="u-m-0">
+                  {i.rootCause.causes.map((c, n) => (
+                    <li key={`${c}-${n}`}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="u-muted u-m-0">Not recorded yet.</p>
+            )}
+          </Card>
 
-      <section aria-labelledby="inc-cause" className="stack stack--flush">
-        <h2 id="inc-cause">Root cause</h2>
-        {i.rootCause ? (
-          <>
-            <p>{i.rootCause.summary}</p>
-            <ul>
-              {i.rootCause.causes.map((c, n) => (
-                <li key={`${c}-${n}`}>{c}</li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p className="u-muted">Not recorded yet.</p>
-        )}
-      </section>
-
-      <section aria-labelledby="inc-actions" className="stack stack--flush">
-        <h2 id="inc-actions">Corrective actions</h2>
-        {d.canManage && i.status !== 'closed' ? (
-          <div>
-            <Button variant="secondary" onClick={() => setDialog('action')}>
-              Add corrective action
-            </Button>
-          </div>
-        ) : null}
-        <ErrorAlert error={m.setActionStatus.error} title="We couldn't update the action" />
-        {d.actions.length === 0 ? (
-          <p className="u-muted">No corrective actions yet.</p>
-        ) : (
-          <ul className="stack">
-            {d.actions.map((a) => (
-              <li key={a.id}>
-                <strong>{a.title}</strong>{' '}
-                <StatusPill tone={CORRECTIVE_TONE[a.status]}>
-                  {CORRECTIVE_LABELS[a.status]}
-                </StatusPill>
-                {a.isOverdue ? <StatusPill tone="danger">Overdue</StatusPill> : null}
-                <div className="u-caption">
-                  {a.assigneeCompanyId ? dir.companyName(a.assigneeCompanyId) : 'Not assigned'}
-                  {a.dueDate ? ` · due ${formatLocalDate(a.dueDate)}` : ''}
-                  {a.source?.type === 'inspection' ? (
-                    <>
-                      {' · '}
-                      <Link
-                        href={webRoutes.inspections(org.orgSlug, project.projectId, a.source.id)}
-                      >
-                        From an inspection
-                      </Link>
-                    </>
-                  ) : a.source ? (
-                    ' · From an observation'
-                  ) : null}
-                </div>
-                {a.description ? <p>{a.description}</p> : null}
-                {i.status !== 'closed' ? (
-                  <div className="u-row">
-                    {a.status === 'open' ? (
-                      <Button
-                        variant="secondary"
-                        aria-label={`Mark ${a.title} done`}
-                        onClick={() => setAction(a.id, 'done')}
-                      >
-                        Mark done
-                      </Button>
+          <Card
+            title="Corrective actions"
+            actions={
+              d.canManage && i.status !== 'closed' ? (
+                <Button variant="secondary" onClick={() => setDialog('action')}>
+                  <Plus size={16} aria-hidden="true" /> Add corrective action
+                </Button>
+              ) : null
+            }
+          >
+            <ErrorAlert error={m.setActionStatus.error} title="We couldn't update the action" />
+            {d.actions.length === 0 ? (
+              <p className="u-muted u-m-0">No corrective actions yet.</p>
+            ) : (
+              <ul className="plain-list">
+                {d.actions.map((a) => (
+                  <li key={a.id} className="plain-list__item">
+                    <div className="row-actions">
+                      <strong>{a.title}</strong>
+                      <StatusPill tone={CORRECTIVE_TONE[a.status]}>
+                        {CORRECTIVE_LABELS[a.status]}
+                      </StatusPill>
+                      {a.isOverdue ? <StatusPill tone="danger">Overdue</StatusPill> : null}
+                    </div>
+                    <div className="u-caption">
+                      {a.assigneeCompanyId ? dir.companyName(a.assigneeCompanyId) : 'Not assigned'}
+                      {a.dueDate ? ` · due ${formatLocalDate(a.dueDate)}` : ''}
+                      {a.source?.type === 'inspection' ? (
+                        <>
+                          {' · '}
+                          <Link
+                            className="link"
+                            href={webRoutes.inspections(
+                              org.orgSlug,
+                              project.projectId,
+                              a.source.id,
+                            )}
+                          >
+                            From an inspection
+                          </Link>
+                        </>
+                      ) : a.source ? (
+                        ' · From an observation'
+                      ) : null}
+                    </div>
+                    {a.description ? <p className="u-m-0">{a.description}</p> : null}
+                    {i.status !== 'closed' ? (
+                      <div className="row-actions">
+                        {a.status === 'open' ? (
+                          <Button
+                            variant="secondary"
+                            aria-label={`Mark ${a.title} done`}
+                            onClick={() => setAction(a.id, 'done')}
+                          >
+                            <Check size={16} aria-hidden="true" /> Mark done
+                          </Button>
+                        ) : null}
+                        {a.status === 'done' && d.canManage ? (
+                          <>
+                            <Button
+                              aria-label={`Verify ${a.title}`}
+                              onClick={() => setAction(a.id, 'verified')}
+                            >
+                              <CheckCircle2 size={16} aria-hidden="true" /> Verify
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              aria-label={`Send ${a.title} back`}
+                              onClick={() => setAction(a.id, 'open')}
+                            >
+                              <Undo2 size={16} aria-hidden="true" /> Send back
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
                     ) : null}
-                    {a.status === 'done' && d.canManage ? (
-                      <>
-                        <Button
-                          aria-label={`Verify ${a.title}`}
-                          onClick={() => setAction(a.id, 'verified')}
-                        >
-                          Verify
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          aria-label={`Send ${a.title} back`}
-                          onClick={() => setAction(a.id, 'open')}
-                        >
-                          Send back
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
 
-      <section aria-labelledby="inc-history" className="stack stack--flush">
-        <h2 id="inc-history">History</h2>
-        <ul>
-          {d.events.map((e) => (
-            <li key={e.id}>
-              {formatInstant(e.at, tz)}: {e.action.replaceAll('_', ' ')} → {e.toStatus}
-              {e.note ? ` (${e.note})` : ''}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <div className="stack-lg">
+          <Card title="Details">
+            <DescriptionList
+              items={[
+                { label: 'Type', value: TYPE_LABELS[i.type] },
+                { label: 'When', value: formatInstant(i.occurredAt, tz) },
+                { label: 'Where', value: i.location || '—' },
+                ...(i.notifiableClass
+                  ? [{ label: 'Class', value: CLASS_LABELS[i.notifiableClass] }]
+                  : []),
+              ]}
+            />
+          </Card>
+
+          <Card title="People involved">
+            {d.people.length === 0 ? (
+              <p className="u-muted u-m-0">No one recorded.</p>
+            ) : (
+              <ul className="plain-list">
+                {d.people.map((p) => (
+                  <li key={p.id} className="plain-list__item">
+                    <strong>{p.personName}</strong>
+                    <span className="u-caption">
+                      {ROLE_LABELS[p.role]}
+                      {p.companyId ? ` · ${dir.companyName(p.companyId)}` : ''}
+                      {p.injury
+                        ? ` · ${Object.values(p.injury)
+                            .filter((v) => typeof v === 'string' && v)
+                            .join(' · ')}`
+                        : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {d.photoFileIds.length > 0 ? (
+              <p className="u-caption">
+                <Camera size={14} aria-hidden="true" /> {d.photoFileIds.length}{' '}
+                {d.photoFileIds.length === 1 ? 'photo' : 'photos'} taken at the scene on a phone.
+              </p>
+            ) : null}
+            {d.injuryHidden ? (
+              <p className="u-muted">
+                Injury details are only shown to people who may see health information.
+              </p>
+            ) : null}
+          </Card>
+
+          <Card title="History">
+            <ActivityTimeline
+              entries={d.events.map((e) => ({
+                id: e.id,
+                actor: e.action.replaceAll('_', ' '),
+                action: `→ ${e.toStatus}`,
+                at: formatInstant(e.at, tz),
+                atIso: e.at,
+                detail: e.note || undefined,
+              }))}
+            />
+          </Card>
+        </div>
+      </div>
 
       {dialog === 'classify' ? (
         <ClassifyDialog

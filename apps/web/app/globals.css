@@ -1235,6 +1235,17 @@ main:focus {
   margin: 0;
   min-width: 0;
 }
+/* Long lists of ticks use the width instead of one tall column. */
+.fieldset:has(> .ac-check),
+.check-group:has(> .ac-check) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-1) var(--space-4);
+}
+.fieldset:has(> .ac-check) > legend,
+.check-group:has(> .ac-check) > legend {
+  grid-column: 1 / -1;
+}
 .fieldset legend {
   padding: 0 var(--space-1);
   font-weight: 600;
@@ -2031,10 +2042,13 @@ fieldset.worker-card > legend {
 .api-access__scopes {
   display: grid;
   gap: var(--space-1);
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   margin: 0;
   padding: 0;
   border: 0;
+}
+.api-access__scopes > legend {
+  grid-column: 1 / -1;
 }
 .api-access__secret {
   display: block;
@@ -3036,5 +3050,18 @@ fieldset.worker-card > legend {
   }
   .bim-canvas {
     height: 70vh;
+  }
+}
+
+/* Two equal columns that stack on narrow screens: form cards and side-by-side lists. */
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .two-col {
+    grid-template-columns: 1fr;
   }
 }

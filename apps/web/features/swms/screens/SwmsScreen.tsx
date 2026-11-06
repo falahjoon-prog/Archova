@@ -4,13 +4,17 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
 import {
+  ActivityTimeline,
   Alert,
+  Badge,
   Button,
+  Card,
   Checkbox,
   DataTable,
   Dialog,
   EmptyState,
   FilterBar,
+  ItemHeader,
   PageHeader,
   Select,
   SkeletonRows,
@@ -21,13 +25,13 @@ import {
   type DataTableColumn,
   type StatusTone,
 } from '@archova/ui';
-import { ChevronLeft, Plus, SwmsIcon } from '@archova/ui/icons';
+import { Check, ChevronLeft, Eye, Plus, RotateCcw, SwmsIcon, X } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
-import { formatLocalDate } from '@/shared/lib/format';
+import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -216,129 +220,149 @@ function SwmsDetailView({ id }: { id: string }) {
     );
   }
   const s = d.swms;
+  const ACTION_ICONS = { markReviewed: Eye, accept: Check, reject: X, reopen: RotateCcw } as const;
   return (
     <>
-      <PageHeader
-        eyebrow={`${s.numberLabel} · revision ${s.revision}`}
+      <p className="u-m-0">{back}</p>
+      <ItemHeader
+        number={`${s.numberLabel} · revision ${s.revision}`}
         title={s.title}
-        description={s.companyId ? dir.companyName(s.companyId) : undefined}
-        actions={
-          <>
-            {back}
-            {d.availableActions.map((a) => (
-              <Button
-                key={a}
-                variant={a === 'reject' ? 'secondary' : 'primary'}
-                onClick={() => setActing(a)}
-              >
-                {ACTION_LABELS[a]}
-              </Button>
-            ))}
-          </>
+        status={<StatusPill tone={TONE[s.status]}>{STATUS_LABELS[s.status]}</StatusPill>}
+        ballInCourt={s.companyId ? dir.companyName(s.companyId) : undefined}
+        due={
+          s.expiresOn
+            ? `${s.isExpired ? 'Expired' : 'Expires'} ${formatLocalDate(s.expiresOn)}`
+            : undefined
         }
-      />
-      <p>
-        <StatusPill tone={TONE[s.status]}>{STATUS_LABELS[s.status]}</StatusPill>
-        {s.expiresOn ? (
-          <span className="u-caption">
-            {' '}
-            · {s.isExpired ? 'Expired' : 'Expires'} {formatLocalDate(s.expiresOn)}
-          </span>
-        ) : null}
-      </p>
-      <section aria-labelledby="swms-check" className="stack">
-        <h2 id="swms-check">Required content</h2>
-        {d.gaps.length === 0 ? (
-          <Alert tone="success">
-            Every required item is present. This is a checklist, not a statement that the SWMS is
-            compliant.
-          </Alert>
-        ) : (
-          <Alert tone="warning" title="Missing before it can be accepted">
-            <ul>
-              {d.gaps.map((g) => (
-                <li key={`${g.item}-${g.field}`}>{g.message}</li>
-              ))}
-            </ul>
-          </Alert>
-        )}
-        {d.advisories.map((a) => (
-          <Alert key={a.code} tone="info">
-            {a.message}
-          </Alert>
-        ))}
-      </section>
-      <section aria-labelledby="swms-work" className="stack">
-        <h2 id="swms-work">The work</h2>
-        <p>{s.workDescription || <span className="u-muted">Not described.</span>}</p>
-        <h3>Hazards and risks</h3>
-        <p>{s.hazardsAndRisks || <span className="u-muted">Not described.</span>}</p>
-        <h3>Control measures</h3>
-        {s.controlMeasures.length ? (
-          <ul>
-            {s.controlMeasures.map((c, i) => (
-              <li key={`${c.level}-${i}`}>
-                {CONTROL_LEVEL_LABELS[c.level]}: {c.description}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="u-muted">None listed.</p>
-        )}
-        {s.categories.length ? (
-          <ul>
-            {s.categories.map((c) => (
-              <li key={c}>{CATEGORY_LABELS[c]}</li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
-      <section aria-labelledby="swms-ack" className="stack">
-        <h2 id="swms-ack">Acknowledgements</h2>
-        {s.status === 'accepted' ? (
-          <div className="u-row">
-            <TextField
-              label="Worker name"
-              value={ackName}
-              onChange={(e) => setAckName(e.target.value)}
-            />
+        actions={d.availableActions.map((a) => {
+          const Icon = ACTION_ICONS[a];
+          return (
             <Button
-              disabled={!ackName.trim() || m.acknowledge.isPending}
-              onClick={() =>
-                m.acknowledge.mutate(
-                  { detail: d, workerName: ackName.trim() },
-                  { onSuccess: () => setAckName('') },
-                )
-              }
+              key={a}
+              variant={a === 'reject' || a === 'markReviewed' ? 'secondary' : 'primary'}
+              onClick={() => setActing(a)}
             >
-              Record that they’ve read it
+              <Icon size={16} aria-hidden="true" /> {ACTION_LABELS[a]}
             </Button>
-          </div>
-        ) : (
-          <p className="u-muted">Workers can acknowledge it once it is accepted.</p>
-        )}
-        <ErrorAlert error={m.acknowledge.error} title="We couldn't record that" />
-        {d.acknowledgements.length === 0 ? (
-          <p className="u-muted">No one has acknowledged this revision yet.</p>
-        ) : (
-          <ul>
-            {d.acknowledgements.map((a, i) => (
-              <li key={`${a.workerName}-${i}`}>{a.workerName}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section aria-labelledby="swms-history" className="stack">
-        <h2 id="swms-history">History</h2>
-        <ul>
-          {d.events.map((e) => (
-            <li key={e.id}>
-              Revision {e.revision}: {e.action} → {e.toStatus}
-              {e.note ? ` (${e.note})` : ''}
-            </li>
-          ))}
-        </ul>
-      </section>
+          );
+        })}
+      />
+      <div className="detail-grid">
+        <div className="stack-lg">
+          <Card title="Required content">
+            <div className="stack">
+              {d.gaps.length === 0 ? (
+                <Alert tone="success">
+                  Every required item is present. This is a checklist, not a statement that the SWMS
+                  is compliant.
+                </Alert>
+              ) : (
+                <Alert tone="warning" title="Missing before it can be accepted">
+                  <ul>
+                    {d.gaps.map((g) => (
+                      <li key={`${g.item}-${g.field}`}>{g.message}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+              {d.advisories.map((a) => (
+                <Alert key={a.code} tone="info">
+                  {a.message}
+                </Alert>
+              ))}
+            </div>
+          </Card>
+          <Card title="The work">
+            <div className="stack">
+              <p className="u-m-0 u-prewrap">
+                {s.workDescription || <span className="u-muted">Not described.</span>}
+              </p>
+              <div>
+                <h3 className="panel-heading">Hazards and risks</h3>
+                <p className="u-m-0 u-prewrap">
+                  {s.hazardsAndRisks || <span className="u-muted">Not described.</span>}
+                </p>
+              </div>
+              <div>
+                <h3 className="panel-heading">Control measures</h3>
+                {s.controlMeasures.length ? (
+                  <ul className="plain-list">
+                    {s.controlMeasures.map((c, i) => (
+                      <li key={`${c.level}-${i}`} className="plain-list__item">
+                        <strong>{CONTROL_LEVEL_LABELS[c.level]}</strong>
+                        <span>{c.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="u-muted u-m-0">None listed.</p>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+        <div className="stack-lg">
+          {s.categories.length ? (
+            <Card title="High-risk work">
+              <div className="row-actions">
+                {s.categories.map((c) => (
+                  <Badge key={c}>{CATEGORY_LABELS[c]}</Badge>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+          <Card title="Acknowledgements">
+            <div className="stack">
+              {s.status === 'accepted' ? (
+                <div className="u-row">
+                  <TextField
+                    label="Worker name"
+                    value={ackName}
+                    onChange={(e) => setAckName(e.target.value)}
+                  />
+                  <Button
+                    disabled={!ackName.trim() || m.acknowledge.isPending}
+                    onClick={() =>
+                      m.acknowledge.mutate(
+                        { detail: d, workerName: ackName.trim() },
+                        { onSuccess: () => setAckName('') },
+                      )
+                    }
+                  >
+                    <Check size={16} aria-hidden="true" /> Record that they’ve read it
+                  </Button>
+                </div>
+              ) : (
+                <p className="u-muted u-m-0">Workers can acknowledge it once it is accepted.</p>
+              )}
+              <ErrorAlert error={m.acknowledge.error} title="We couldn't record that" />
+              {d.acknowledgements.length === 0 ? (
+                <p className="u-muted u-m-0">No one has acknowledged this revision yet.</p>
+              ) : (
+                <ul className="plain-list">
+                  {d.acknowledgements.map((a, i) => (
+                    <li key={`${a.workerName}-${i}`} className="plain-list__item">
+                      {a.workerName}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+          <Card title="History">
+            <ActivityTimeline
+              entries={d.events.map((e) => ({
+                id: e.id,
+                actor: `Revision ${e.revision}`,
+                action: `${e.action} → ${e.toStatus}`,
+                at: formatInstant(e.at, project.timezone),
+                atIso: e.at,
+                detail: e.note || undefined,
+              }))}
+            />
+          </Card>
+        </div>
+      </div>
       {acting ? (
         <ReviewDialog
           detail={d}
