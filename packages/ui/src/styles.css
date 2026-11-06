@@ -1271,3 +1271,228 @@
   font-size: var(--font-xs);
   color: var(--c-text-secondary);
 }
+
+/* Incident analytics charts. Chart colours are their own tokens (validated categorical, sequential and status steps),
+   separate from the slate and amber of the interface, so a chart always reads in full colour. */
+.ia-viz {
+  --ia-s1: #2a78d6;
+  --ia-s2: #eb6834;
+  --ia-s3: #1baf7a;
+  --ia-s4: #eda100;
+  --ia-s5: #e87ba4;
+  --ia-s6: #008300;
+  --ia-s7: #6250d6;
+  --ia-other: #898781;
+  --ia-seq-0: #e1e0d9;
+  --ia-seq-1: #b7d3f6;
+  --ia-seq-2: #6da7ec;
+  --ia-seq-3: #2a78d6;
+  --ia-seq-4: #184f95;
+  --ia-seq-5: #0d366b;
+  --ia-good: #0ca30c;
+  --ia-warning: #fab219;
+  --ia-serious: #ec835a;
+  --ia-critical: #d03b3b;
+  --ia-grid: #e1e0d9;
+  --ia-ink-on-fill: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) .ia-viz {
+    --ia-s1: #3987e5;
+    --ia-s2: #d95926;
+    --ia-s3: #199e70;
+    --ia-s4: #c98500;
+    --ia-s5: #d55181;
+    --ia-s7: #9085e9;
+    --ia-seq-0: #2c2c2a;
+    --ia-seq-1: #104281;
+    --ia-seq-2: #256abf;
+    --ia-seq-3: #3987e5;
+    --ia-seq-4: #6da7ec;
+    --ia-seq-5: #9ec5f4;
+    --ia-grid: #2c2c2a;
+  }
+}
+:root[data-theme='dark'] .ia-viz {
+  --ia-s1: #3987e5;
+  --ia-s2: #d95926;
+  --ia-s3: #199e70;
+  --ia-s4: #c98500;
+  --ia-s5: #d55181;
+  --ia-s7: #9085e9;
+  --ia-seq-0: #2c2c2a;
+  --ia-seq-1: #104281;
+  --ia-seq-2: #256abf;
+  --ia-seq-3: #3987e5;
+  --ia-seq-4: #6da7ec;
+  --ia-seq-5: #9ec5f4;
+  --ia-grid: #2c2c2a;
+}
+.ia-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 768px) {
+  .ia-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ia-grid--bodymap {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+}
+.ia-bodies {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+}
+.ia-body-figure {
+  margin: 0;
+  width: 160px;
+  max-width: 44%;
+}
+.ia-body {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ia-body__shape {
+  fill: var(--c-border-divider);
+  stroke: var(--c-border-control);
+  stroke-width: 1;
+}
+.ia-region {
+  stroke: var(--c-surface);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+.ia-region:hover,
+.ia-region:focus-visible {
+  stroke: var(--c-text);
+  stroke-width: 2;
+  outline: none;
+}
+.ia-region[aria-pressed='true'] {
+  stroke: var(--c-text);
+  stroke-width: 2.5;
+}
+.ia-body__caption {
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.ia-scale {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+  margin-top: var(--space-3);
+}
+.ia-scale__swatch {
+  width: 20px;
+  height: 12px;
+  border-radius: 2px;
+}
+.ia-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.ia-bars__row {
+  display: grid;
+  grid-template-columns: minmax(96px, 38%) 1fr 2.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+}
+.ia-bars__label {
+  overflow-wrap: anywhere;
+}
+.ia-bars__track {
+  height: 14px;
+  background: var(--ia-grid);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ia-bars__fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+}
+.ia-bars__value {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.ia-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+}
+.ia-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ia-legend__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.ia-legend__count {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+.ia-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+.ia-donut svg {
+  width: 160px;
+  height: 160px;
+}
+.ia-gauges {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ia-gauge {
+  text-align: center;
+}
+.ia-gauge svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+.ia-gauge__value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.1;
+}
+.ia-gauge__label {
+  margin: var(--space-1) 0 0;
+  color: var(--c-text-secondary);
+  font-size: var(--font-sm);
+}
+.ia-stack {
+  display: flex;
+  height: 18px;
+  gap: 2px;
+  margin-bottom: var(--space-3);
+}
+.ia-stack > span {
+  border-radius: 3px;
+  min-width: 4px;
+}

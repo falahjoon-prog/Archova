@@ -4010,6 +4010,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/incident-analytics:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getIncidentAnalytics
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Injury analytics across projects - body map, harm source, injury type, LTIFR and TRIFR, days without an injury.
+      description: |
+        Counts injured people recorded on incidents, for the projects the caller can see. Injury detail is health
+        information, so projects where the caller lacks the view_medical permission are counted in
+        `projectsRestricted` and left out. Rates are per million hours worked, from submitted, approved and exported
+        timesheets; they are null when hours are not available. LTIFR counts lost time injuries (a full day or shift
+        or more) and TRIFR counts lost time, restricted work and medical treatment injuries. The range defaults to
+        the last 12 months and is limited to five years. `bodyPart` narrows the rows and the totals.
+      parameters:
+        - { name: projectId, in: query, schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+        - { name: bodyPart, in: query, schema: { $ref: '#/components/schemas/BodyPart' } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: The analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentAnalytics' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13459,6 +13488,185 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    BodyPart:
+      type: string
+      enum:
+        [
+          head,
+          eye,
+          face,
+          neck,
+          shoulder,
+          upper_arm,
+          elbow,
+          forearm,
+          wrist,
+          hand,
+          fingers,
+          chest,
+          upper_back,
+          lower_back,
+          abdomen,
+          hip_groin,
+          thigh,
+          knee,
+          lower_leg,
+          ankle,
+          foot,
+          toes,
+          multiple,
+          systemic,
+        ]
+    InjuryType:
+      type: string
+      enum:
+        [
+          fracture,
+          laceration,
+          sprain_strain,
+          contusion,
+          burn,
+          foreign_body,
+          amputation,
+          concussion,
+          dermatitis,
+          hearing_loss,
+          respiratory,
+          psychological,
+          other,
+        ]
+    HarmSource:
+      type: string
+      enum:
+        [
+          falls_trips_slips,
+          hitting_objects,
+          being_hit,
+          body_stressing,
+          vehicle_plant,
+          electricity_heat,
+          chemicals,
+          sound_pressure,
+          biological,
+          mental_stress,
+          other,
+        ]
+    InjuryOutcome:
+      type: string
+      enum: [first_aid, medical_treatment, restricted_work, lost_time, fatality]
+    InjuryCount:
+      type: object
+      required: [key, count]
+      properties:
+        key: { type: string, description: 'The category, or `unknown` when it was not recorded.' }
+        count: { type: integer }
+    IncidentAnalyticsSummary:
+      type: object
+      required:
+        [
+          injuries,
+          lostTimeInjuries,
+          recordableInjuries,
+          daysLost,
+          notifiable,
+          hoursWorked,
+          ltifr,
+          trifr,
+          byBodyPart,
+          byHarmSource,
+          byInjuryType,
+          byOutcome,
+        ]
+      properties:
+        injuries: { type: integer }
+        lostTimeInjuries: { type: integer }
+        recordableInjuries:
+          { type: integer, description: Lost time, restricted work and medical treatment injuries. }
+        daysLost: { type: integer }
+        notifiable: { type: integer }
+        hoursWorked: { type: [number, 'null'] }
+        ltifr: { type: [number, 'null'], description: Lost time injuries per million hours worked. }
+        trifr:
+          { type: [number, 'null'], description: Recordable injuries per million hours worked. }
+        byBodyPart: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byHarmSource: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byInjuryType: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byOutcome: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+    IncidentAnalyticsRow:
+      type: object
+      required:
+        [
+          incidentId,
+          projectId,
+          projectName,
+          ref,
+          occurredAt,
+          localDate,
+          personName,
+          companyId,
+          bodyPart,
+          injuryType,
+          harmSource,
+          outcome,
+          daysLost,
+          notifiable,
+        ]
+      properties:
+        incidentId: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        ref: { type: string }
+        occurredAt: { type: string, format: date-time }
+        localDate:
+          {
+            type: string,
+            format: date,
+            description: The day it happened in the project's time zone.,
+          }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        bodyPart: { oneOf: [{ $ref: '#/components/schemas/BodyPart' }, { type: 'null' }] }
+        injuryType: { oneOf: [{ $ref: '#/components/schemas/InjuryType' }, { type: 'null' }] }
+        harmSource: { oneOf: [{ $ref: '#/components/schemas/HarmSource' }, { type: 'null' }] }
+        outcome: { oneOf: [{ $ref: '#/components/schemas/InjuryOutcome' }, { type: 'null' }] }
+        daysLost: { type: integer }
+        notifiable: { type: boolean }
+    IncidentAnalytics:
+      type: object
+      required:
+        [
+          from,
+          to,
+          summary,
+          daysWithoutInjury,
+          daysWithoutIncident,
+          projectsRestricted,
+          projectsTruncated,
+          rowsTruncated,
+          rows,
+        ]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/IncidentAnalyticsSummary' }
+        daysWithoutInjury:
+          {
+            type: [integer, 'null'],
+            description: Days since the latest injury on the projects covered; null when none is recorded.,
+          }
+        daysWithoutIncident:
+          {
+            type: [integer, 'null'],
+            description: Days since the latest incident of any type; null when none is recorded.,
+          }
+        projectsRestricted:
+          {
+            type: integer,
+            description: Projects left out because the caller may not view health information there.,
+          }
+        projectsTruncated: { type: boolean }
+        rowsTruncated: { type: boolean }
+        rows: { type: array, items: { $ref: '#/components/schemas/IncidentAnalyticsRow' } }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -24744,7 +24952,22 @@ components:
         personName: { type: string, minLength: 1, maxLength: 200 }
         companyId: { $ref: '#/components/schemas/CompanyRef' }
         role: { type: string, enum: [injured, witness, involved] }
-        injury: { type: object, additionalProperties: true }
+        injury:
+          type: object
+          additionalProperties: true
+          description: Free-text keys are kept. The recognised keys below feed the injury analytics.
+          properties:
+            bodyPart: { $ref: '#/components/schemas/BodyPart' }
+            injuryType: { $ref: '#/components/schemas/InjuryType' }
+            harmSource: { $ref: '#/components/schemas/HarmSource' }
+            outcome: { $ref: '#/components/schemas/InjuryOutcome' }
+            daysLost:
+              {
+                type: integer,
+                minimum: 0,
+                maximum: 3650,
+                description: Needs the lost_time or fatality outcome.,
+              }
     IncidentSource:
       type: object
       additionalProperties: false

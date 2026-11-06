@@ -1,3 +1,4 @@
+import type { InjuryRecord } from '@archova/domain';
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
@@ -48,6 +49,11 @@ export interface ReportingDeps {
     }>;
   };
   workforce: {
+    hoursWorked(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string; companyId?: string },
+    ): Promise<number | null>;
     credentialSummary(scope: TenantScope): Promise<{
       counts: { current: number; expiring: number; expired: number; no_expiry: number };
       items: readonly {
@@ -61,6 +67,16 @@ export interface ReportingDeps {
     }>;
   };
   safety: {
+    injuryRows(
+      scope: TenantScope,
+      projectId: string,
+      filters: { from?: string; to?: string; companyId?: string },
+    ): Promise<{
+      restricted: boolean;
+      rows: readonly InjuryRecord[];
+      lastInjuryOn: string | null;
+      lastIncidentOn: string | null;
+    }>;
     readinessSummary(
       scope: TenantScope,
       projectId: string,

@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  BODY_PART_LABELS,
+  HARM_SOURCE_LABELS,
+  INJURY_OUTCOME_LABELS,
+  INJURY_TYPE_LABELS,
+  readInjury,
+} from '@archova/domain';
 import Link from 'next/link';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
@@ -52,6 +59,25 @@ const NEXT: Record<string, IncidentAction | undefined> = {
   investigating: 'close',
   closed: 'reopen',
 };
+
+/** "Hand · Laceration · Lost time (3 days)" from the structured fields, then any free-text ones. */
+function injurySummary(injury: Record<string, unknown>): string {
+  const d = readInjury(injury);
+  const known = new Set(['bodyPart', 'injuryType', 'harmSource', 'outcome', 'daysLost']);
+  return [
+    d.bodyPart ? BODY_PART_LABELS[d.bodyPart] : null,
+    d.injuryType ? INJURY_TYPE_LABELS[d.injuryType] : null,
+    d.harmSource ? HARM_SOURCE_LABELS[d.harmSource] : null,
+    d.outcome
+      ? `${INJURY_OUTCOME_LABELS[d.outcome]}${d.daysLost ? ` (${d.daysLost} ${d.daysLost === 1 ? 'day' : 'days'})` : ''}`
+      : null,
+    ...Object.entries(injury)
+      .filter(([k, v]) => !known.has(k) && typeof v === 'string' && v)
+      .map(([, v]) => v as string),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 export function IncidentDetailView({ id }: { id: string }) {
   const org = useCurrentOrg();
@@ -296,11 +322,7 @@ export function IncidentDetailView({ id }: { id: string }) {
                     <span className="u-caption">
                       {ROLE_LABELS[p.role]}
                       {p.companyId ? ` · ${dir.companyName(p.companyId)}` : ''}
-                      {p.injury
-                        ? ` · ${Object.values(p.injury)
-                            .filter((v) => typeof v === 'string' && v)
-                            .join(' · ')}`
-                        : ''}
+                      {p.injury ? ` · ${injurySummary(p.injury)}` : ''}
                     </span>
                   </li>
                 ))}

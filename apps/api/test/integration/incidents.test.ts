@@ -83,6 +83,54 @@ describe('Incidents', () => {
     expect(noClass.statusCode).toBe(422);
   });
 
+  it('feeds the injury analytics for builder staff only, with health detail checked', async () => {
+    const s = await setup();
+    const orgId = s.base.split('/')[3];
+    const bad = await s.sub.browser.post(`${s.base}/incidents`, {
+      title: 'Bad injury',
+      type: 'injury',
+      occurredAt: when(),
+      people: [{ personName: 'A. Worker', role: 'injured', injury: { bodyPart: 'elbowish' } }],
+    });
+    expect(bad.statusCode).toBe(422);
+    const sent = await s.sub.browser.post(`${s.base}/incidents`, {
+      title: 'Cut hand',
+      type: 'injury',
+      occurredAt: when(),
+      people: [
+        {
+          personName: 'A. Worker',
+          role: 'injured',
+          companyId: s.subCo.companyId,
+          injury: {
+            bodyPart: 'hand',
+            injuryType: 'laceration',
+            harmSource: 'hitting_objects',
+            outcome: 'lost_time',
+            daysLost: 2,
+          },
+        },
+      ],
+    });
+    expect(sent.statusCode).toBe(201);
+    const a = await s.pm.browser.get(`/v1/orgs/${orgId}/incident-analytics`);
+    expect(a.statusCode).toBe(200);
+    const body = a.json();
+    expect(body.summary).toMatchObject({
+      injuries: 1,
+      lostTimeInjuries: 1,
+      daysLost: 2,
+      hoursWorked: null,
+      ltifr: null,
+    });
+    expect(body.summary.byBodyPart).toEqual([{ key: 'hand', count: 1 }]);
+    expect(body.daysWithoutInjury).toBe(0);
+    expect(body.rows[0]).toMatchObject({ ref: 'INC-0001', bodyPart: 'hand', outcome: 'lost_time' });
+    const knee = await s.pm.browser.get(`/v1/orgs/${orgId}/incident-analytics?bodyPart=knee`);
+    expect(knee.json().rows).toEqual([]);
+    expect((await s.sub.browser.get(`/v1/orgs/${orgId}/incident-analytics`)).statusCode).toBe(403);
+  });
+
   it('closes only with a root cause, the regulator time and every action verified', async () => {
     const s = await setup();
     const created = (

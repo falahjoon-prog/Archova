@@ -2,6 +2,7 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import { createIncidentService } from './application/incidents';
 import { createSwmsService, type SafetyDeps } from './application/swms';
 import { createReportingSources } from './application/reportingSources';
+import { createAnalyticsSource } from './application/analytics';
 import { createReadinessService } from './application/readiness';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -14,6 +15,7 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const incidents = createIncidentService(deps);
   const readiness = createReadinessService(deps);
   const reportingSources = createReportingSources(deps);
+  const analytics = createAnalyticsSource(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
     routes: safetyRoutes(services.database, swms, incidents),
@@ -26,6 +28,8 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
       readinessSummary: readiness.summary,
       /** Portfolio dashboard and report builder (`reporting`): incident counts and rows. */
       reporting: reportingSources,
+      /** Incident analytics (`reporting`): injured people on a project; needs view_medical. */
+      injuryRows: analytics.injuryRows,
       /** "Stop work: SWMS not followed" (r300). Called by `quality` only, from an observation. */
       reopenForReview: swms.reopenForReview,
       /** Whether a SWMS is on the project, for observations that link to one. Called by `quality` only. */
