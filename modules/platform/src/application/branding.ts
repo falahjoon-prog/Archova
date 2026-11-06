@@ -24,7 +24,7 @@ const WIDGET_KEYS: ReadonlySet<string> = new Set(DASHBOARD_WIDGETS.map((w) => w.
 export const DEFAULT_WIDGETS: readonly string[] = DASHBOARD_WIDGETS.map((w) => w.key);
 const HEX = /^#[0-9a-f]{6}$/i;
 
-/** Colours too light or too close to the page cannot be seen as a bar or mark on the surface (needs 3:1). */
+/** WCAG relative luminance of a #RRGGBB colour. Accents are only marks and bars, so they just need to stand out from both page surfaces. */
 export function luminance(hex: string): number {
   const ch = [1, 3, 5].map((i) => {
     const v = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -94,7 +94,7 @@ export function createBrandingService(files: () => BrandingFilesPort | undefined
       if (c === null) next.accentColor = null;
       else if (!HEX.test(c))
         problems.push({ path: 'accentColor', message: 'Use a colour like #1F6FEB' });
-      else if (contrast(luminance(c), WHITE) < 3 && contrast(luminance(c), DARK_SURFACE) < 3)
+      else if (contrast(luminance(c), WHITE) < 1.5 || contrast(luminance(c), DARK_SURFACE) < 1.5)
         problems.push({
           path: 'accentColor',
           message: 'Pick a colour that shows on both light and dark pages',
