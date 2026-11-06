@@ -306,6 +306,18 @@ export function financialsRoutes(
         ),
       };
     },
+    getVariationWorkflow: async (input) => ({
+      status: 200,
+      body: {
+        run: await read(input, (s) =>
+          financials.getVariationWorkflow(
+            s,
+            project(input.params),
+            ref('variation', input.params.variationId, 'variationId'),
+          ),
+        ),
+      },
+    }),
     getVariation: async (input) => ({
       status: 200,
       body: toVariationDto(

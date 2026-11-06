@@ -17,6 +17,7 @@
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
     "@archova/mod-platform": "workspace:*",
+    "@archova/mod-workflows": "workspace:*",
     "@archova/time": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "pdf-lib": "^1.17.1"

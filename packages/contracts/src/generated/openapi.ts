@@ -3307,6 +3307,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The approval workflows this organisation has set up. */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Set up an approval chain for a kind of record.
+         * @description Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+         *     minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+         *     workflow per kind of record: activating a second one is refused with 409.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows/{workflowId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a workflow. Variations already going through it carry on. */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a workflow, or switch it on or off.
+         * @description Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+         */
+        patch: operations["updateWorkflow"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a variation is in its approval chain.
+         * @description `run` is null when no workflow applied to the variation.
+         */
+        get: operations["getVariationWorkflow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bid-board": {
         parameters: {
             query?: never;
@@ -9753,6 +9826,77 @@ export interface components {
             skippedFileCount: number | null;
             /** @description Why a failed export failed */
             error: string | null;
+        };
+        WorkflowStep: {
+            name: string;
+            /** @description Any one of these people can approve the step. */
+            approverUserIds: string[];
+        };
+        Workflow: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            /** @description Decimal dollars. The chain applies from this amount up; null means every variation. */
+            minAmount: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowList: {
+            data: components["schemas"]["Workflow"][];
+        };
+        CreateWorkflowRequest: {
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            minAmount?: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @default true */
+            active: boolean;
+        };
+        UpdateWorkflowRequest: {
+            name?: string;
+            minAmount?: string | null;
+            steps?: components["schemas"]["WorkflowStep"][];
+            active?: boolean;
+        };
+        WorkflowRunDecision: {
+            userId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        WorkflowRunStep: {
+            name: string;
+            approverUserIds: string[];
+            /** @enum {string} */
+            state: "waiting" | "current" | "approved" | "rejected";
+            decision: components["schemas"]["WorkflowRunDecision"] | null;
+        };
+        WorkflowRun: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            subjectId: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "cancelled";
+            /** @description Zero-based index of the step waiting on a decision. */
+            currentStep: number | null;
+            steps: components["schemas"]["WorkflowRunStep"][];
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        VariationWorkflow: {
+            run: components["schemas"]["WorkflowRun"] | null;
         };
         DataExportList: {
             data: components["schemas"]["DataExport"][];
@@ -17144,6 +17288,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        WorkflowId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -22060,6 +22205,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataExportDownload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getVariationWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationWorkflow"];
                 };
             };
             default: components["responses"]["Problem"];
