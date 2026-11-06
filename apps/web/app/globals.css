@@ -135,6 +135,11 @@ main:focus {
   line-height: var(--space-4);
   text-align: center;
 }
+.search-group__title {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+}
 .inbox-list {
   display: grid;
   margin: 0;

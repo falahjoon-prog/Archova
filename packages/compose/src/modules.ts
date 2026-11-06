@@ -60,6 +60,7 @@ import {
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
@@ -81,6 +82,7 @@ export const MODULE_PERMISSIONS = [
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
@@ -457,6 +459,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     scheduling: scheduling.api,
   });
 
+  const search = createSearchModule({
+    database: services.database as Database,
+    platform: platform.api,
+    sources: {
+      rfi: rfis.api,
+      document: documents.api,
+      defect: defects.api,
+      submittal: submittals.api,
+      correspondence: correspondence.api,
+    },
+  });
+
   const sync = createSyncModule(services, {
     access: access.api,
     sources: [
@@ -505,6 +519,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
     exportsModule,
     workforce,
     sync,
@@ -544,6 +559,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
     exportsModule,
     workforce,
     routes,

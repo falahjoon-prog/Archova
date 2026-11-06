@@ -16,3 +16,4 @@ export * from './messages';
 export * from './sync';
 export * from './flags';
 export * from './email';
+export * from './search';

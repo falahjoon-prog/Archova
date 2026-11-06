@@ -43,6 +43,8 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       overdueForMeeting: service.overdueForMeeting,
       /** Portfolio dashboard and report builder (`reporting`): counts and flat rows of the RFIs the caller can see. */
       portfolioCounts: service.portfolioCounts,
+      /** Global search (`search`): RFIs the caller can see that match some words. */
+      searchHits: service.searchHits,
       reportRows: service.reportRows,
       /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */
       openOnDrawing: service.openOnDrawing,

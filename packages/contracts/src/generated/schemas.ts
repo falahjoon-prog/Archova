@@ -6164,6 +6164,24 @@ export const ScheduleLookaheadSchema = z.object({
 });
 export type ScheduleLookahead = z.infer<typeof ScheduleLookaheadSchema>;
 
+export const SearchResultSchema = z.object({
+  "type": z.enum(["rfi", "document", "defect", "submittal", "correspondence"]),
+  "id": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+});
+export type SearchResult = z.infer<typeof SearchResultSchema>;
+
+export const SearchResultsSchema = z.object({
+  "query": z.string(),
+  "results": z.array(SearchResultSchema),
+  "truncated": z.boolean(),
+});
+export type SearchResults = z.infer<typeof SearchResultsSchema>;
+
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
   "clientAt": z.string().datetime({ offset: true }).optional(),

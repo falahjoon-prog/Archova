@@ -47,6 +47,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: reporting
+  - name: search
   - name: data-export
 paths:
   /v1/auth/signup:
@@ -4009,6 +4010,41 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/search:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: searchOrg
+      tags: [search]
+      x-module: search
+      x-permission: search.global.read
+      summary: Search RFIs, documents, defects, submittals and correspondence across the projects the caller can see.
+      description: |
+        Global search from the header. Looks for the words in every project the caller can see (archived projects are
+        left out, at most 100 projects), in each tool the caller may read on that project, and returns at most
+        `perType` rows of each type. Each tool applies its own permission and visibility rules, so a row only appears
+        if the caller could open it from that tool's own list. `truncated` is true when more rows or projects matched
+        than were returned. A query under two characters returns nothing. Staff only.
+      parameters:
+        - {
+            name: q,
+            in: query,
+            required: true,
+            schema: { type: string, minLength: 1, maxLength: 200 },
+          }
+        - {
+            name: perType,
+            in: query,
+            required: false,
+            schema: { type: integer, minimum: 1, maximum: 25, default: 8 },
+          }
+      responses:
+        '200':
+          description: The matches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResults' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
@@ -13459,6 +13495,26 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    SearchResults:
+      type: object
+      required: [query, results, truncated]
+      properties:
+        query: { type: string, description: 'The words searched for, trimmed.' }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/SearchResult' }
+        truncated: { type: boolean }
+    SearchResult:
+      type: object
+      required: [type, id, projectId, projectName, ref, title, status]
+      properties:
+        type: { type: string, enum: [rfi, document, defect, submittal, correspondence] }
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        ref: { type: string, description: 'Human reference such as RFI-012.' }
+        title: { type: string }
+        status: { type: string }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
