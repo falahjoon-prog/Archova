@@ -245,6 +245,8 @@ main:focus {
     order: 1;
     min-width: 0;
     flex: 1;
+    /* Keeps the wordmark off the Ask Nova button when the row is tight. */
+    padding-inline-end: var(--space-3);
   }
   .app-shell__actions {
     order: 2;
