@@ -28,6 +28,7 @@ export const webRoutes = {
   plan: (orgSlug: string) => `/${enc(orgSlug)}/settings/plan`,
   permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
+  branding: (orgSlug: string) => `/${enc(orgSlug)}/settings/branding`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   dataExport: (orgSlug: string) => `/${enc(orgSlug)}/settings/data-export`,

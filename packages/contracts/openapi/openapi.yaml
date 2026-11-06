@@ -450,6 +450,42 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/branding:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getOrgBranding
+      tags: [orgs]
+      x-module: platform
+      summary: The company's logo, accent colour and Portfolio widgets (members only).
+      responses:
+        '200':
+          description: Branding
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgBranding' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateOrgBranding
+      tags: [orgs]
+      x-module: platform
+      summary: Change the logo, accent colour or Portfolio widgets (org owners and admins).
+      description: |
+        Only the fields sent change. `accentColor: null` goes back to the Archova amber and `logoFileId: null` to the
+        Archova logo. The logo is an org-level image upload (`module: branding`, no project). The accent replaces the
+        brand amber only; buttons, links, status and safety colours never change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOrgBrandingRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgBranding' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14897,6 +14933,36 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    OrgBranding:
+      type: object
+      required: [logoFileId, accentColor, dashboardWidgets, availableWidgets, version]
+      properties:
+        logoFileId: { type: [string, 'null'] }
+        accentColor: { type: [string, 'null'], description: 'Six-digit hex such as #1F6FEB.' }
+        dashboardWidgets:
+          type: array
+          description: The Portfolio widgets that show, in order.
+          items: { type: string }
+        availableWidgets:
+          type: array
+          items:
+            type: object
+            required: [key, label]
+            properties:
+              key: { type: string }
+              label: { type: string }
+        version: { type: integer }
+    UpdateOrgBrandingRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        logoFileId: { type: [string, 'null'] }
+        accentColor: { type: [string, 'null'], pattern: '^#[0-9a-fA-F]{6}$' }
+        dashboardWidgets:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string }
     SupportAccessGrant:
       type: object
       required: [id, ticketRef, level, projectIds, createdAt, expiresAt, grantedBy, status]

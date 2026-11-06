@@ -5012,6 +5012,18 @@ export const OrgSchema = z.object({
 });
 export type Org = z.infer<typeof OrgSchema>;
 
+export const OrgBrandingSchema = z.object({
+  "logoFileId": z.string().nullable(),
+  "accentColor": z.string().nullable(),
+  "dashboardWidgets": z.array(z.string()),
+  "availableWidgets": z.array(z.object({
+  "key": z.string(),
+  "label": z.string(),
+})),
+  "version": z.number().int(),
+});
+export type OrgBranding = z.infer<typeof OrgBrandingSchema>;
+
 export const OwnerApprovalStatusSchema = z.enum(["requested", "approved", "rejected", "withdrawn"]);
 export type OwnerApprovalStatus = z.infer<typeof OwnerApprovalStatusSchema>;
 
@@ -7245,6 +7257,13 @@ export const UpdateObservationRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateObservationRequest = z.infer<typeof UpdateObservationRequestSchema>;
+
+export const UpdateOrgBrandingRequestSchema = z.object({
+  "logoFileId": z.string().nullable().optional(),
+  "accentColor": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).nullable().optional(),
+  "dashboardWidgets": z.array(z.string()).min(1).max(20).optional(),
+}).strict();
+export type UpdateOrgBrandingRequest = z.infer<typeof UpdateOrgBrandingRequestSchema>;
 
 export const UpdateOwnerCapitalItemRequestSchema = z.object({
   "fiscalYear": z.number().int().min(2000).max(2100).optional(),

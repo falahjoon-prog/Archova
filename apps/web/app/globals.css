@@ -3180,3 +3180,18 @@ fieldset.worker-card > legend {
 .row-end > :first-child {
   flex: 1 1 16rem;
 }
+
+/* White-label: the company's own logo in the top bar, never taller than the bar's logo slot. */
+.app-shell__org-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+}
+@media (max-width: 640px) {
+  .app-shell__org-logo {
+    height: 28px;
+    max-width: 112px;
+  }
+}
