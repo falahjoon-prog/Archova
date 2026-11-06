@@ -617,8 +617,10 @@ export function aiRoutes(
       };
     },
     draftContractSov: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
       const d = await contractSov.draft(requireTenant(input), projectUuid(input.params.projectId), {
-        fileId: input.body.fileId,
+        fileId,
         contractValue: input.body.contractValue ?? null,
       });
       return { status: 200, body: { ...d, runId: encodeId('aiRun', d.runId) } };
