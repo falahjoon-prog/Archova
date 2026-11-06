@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, TextField } from '@archova/ui';
 import { NovaIcon } from '@archova/ui/icons';
+import { useRegisterAssistantAction } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useInductionRefresh } from '../hooks/useBuilder';
@@ -31,6 +32,12 @@ export function NovaDraftPanel({
   const project = useCurrentProject();
   const nova = useInductionRefresh();
   const [siteName, setSiteName] = useState(project.name);
+  // Ask Nova's "Draft with Nova" button runs the same draft as this page's button, so both stay in step.
+  useRegisterAssistantAction('draft', () => {
+    if (!disabled && !nova.draft.isPending && !pending && siteName.trim()) {
+      nova.draft.mutate(siteName, { onSuccess: onPending });
+    }
+  });
   const parsed = pending ? parseDraft(pending) : null;
   const warnings =
     (pending?.payload as { warnings?: unknown[] } | undefined)?.warnings?.length ?? 0;
