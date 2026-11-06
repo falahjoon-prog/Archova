@@ -9,7 +9,9 @@ export interface ReviewedHelp {
   tools: HelpExplainOutput['tools'];
 }
 
-const LINK = /\b(?:https?:\/\/|www\.)\S+|\b[\w.-]+@[\w-]+\.[\w.]+\b/gi;
+// Web addresses, scheme links (javascript:, data:, file: and the like), emails and bare domains such as evil.example.
+const LINK =
+  /\b(?:https?:\/\/|www\.)\S+|\b(?:[a-z][a-z0-9+.-]{1,20}):(?:\/\/)?[^\s,;)]+|\b[\w.-]+@[\w-]+\.[\w.]+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b(?:\/\S*)?/gi;
 const clean = (text: string) =>
   text
     .replace(LINK, '')

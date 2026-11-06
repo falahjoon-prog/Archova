@@ -96,7 +96,8 @@ export const helpExplainPrompt = definePrompt({
   output: HelpExplainOutput,
   render: (i) => {
     const err = i.error
-      ? `<error status="${i.error.status ?? 'none'}" code="${escapeContent(i.error.code ?? '')}">${escapeContent(i.error.message)}</error>\n`
+      ? // The code sits in an attribute, so it is cut down to identifier characters: no quote can close it.
+        `<error status="${i.error.status ?? 'none'}" code="${(i.error.code ?? '').replace(/[^\w.:-]/g, '').slice(0, 80)}">${escapeContent(i.error.message)}</error>\n`
       : '';
     return {
       text: `<input>\nScreen: ${escapeContent(i.area) || 'unknown'}\n${err}${
