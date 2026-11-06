@@ -2,13 +2,83 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
 import { BrandLogo } from './BrandLogo';
 
 export interface NavItem {
   href: string;
   label: string;
+}
+
+/** A labelled dropdown of related links, so a long module list doesn't become one scrolling row. */
+export interface NavGroup {
+  label: string;
+  items: readonly NavItem[];
+}
+
+export type NavEntry = NavItem | NavGroup;
+
+const isGroup = (entry: NavEntry): entry is NavGroup => 'items' in entry;
+
+const isCurrentPath = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+
+/** Disclosure menu: click (or Enter/Space) opens it, Escape, an outside click or navigating closes it. */
+function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLLIElement>(null);
+  const current = group.items.some((item) => isCurrentPath(pathname, item.href));
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        ref.current?.querySelector('button')?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <li ref={ref} className="app-shell__nav-group">
+      <button
+        type="button"
+        className="app-shell__nav-link app-shell__nav-trigger ac-focusable"
+        aria-expanded={open}
+        aria-current={current ? 'page' : undefined}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {group.label}
+        <span className="app-shell__nav-caret" aria-hidden="true" />
+      </button>
+      {open ? (
+        <ul className="app-shell__nav-menu">
+          {group.items.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="app-shell__nav-menu-link ac-focusable"
+                aria-current={isCurrentPath(pathname, item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
 }
 
 /**
@@ -23,7 +93,7 @@ export function AppShell({
   children,
 }: {
   orgName: string;
-  nav: readonly NavItem[];
+  nav: readonly NavEntry[];
   actions?: ReactNode;
   /** The panel, its toggle label and open state; omitted where the assistant doesn't apply. */
   assistant?: {
@@ -67,16 +137,19 @@ export function AppShell({
         </div>
         <nav aria-label="Primary" className="app-shell__nav">
           <ul>
-            {nav.map((item) => {
-              const current = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            {nav.map((entry) => {
+              if (isGroup(entry)) {
+                return <NavDropdown key={entry.label} group={entry} pathname={pathname} />;
+              }
+              const current = isCurrentPath(pathname, entry.href);
               return (
-                <li key={item.href}>
+                <li key={entry.href}>
                   <Link
-                    href={item.href}
+                    href={entry.href}
                     className="app-shell__nav-link ac-focusable"
                     aria-current={current ? 'page' : undefined}
                   >
-                    {item.label}
+                    {entry.label}
                   </Link>
                 </li>
               );
