@@ -25,4 +25,5 @@ export * from './quote-negotiate/prompt';
 export * from './contract-review/prompt';
 export * from './contract-review/ask';
 export * from './contract-review/compare';
+export * from './contract-review/sov';
 export * from './takeoff-detect/prompt';

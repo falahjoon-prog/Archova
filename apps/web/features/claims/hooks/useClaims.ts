@@ -180,6 +180,10 @@ export function useClaimsMutations(projectId: string) {
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'cost-forecast') }),
     ]);
   return {
+    draftSov: useMutation({
+      mutationFn: (v: { file: File; contractValue: string | null }) =>
+        source.draftSov(projectId, v),
+    }),
     createContract: useMutation({
       mutationFn: (body: CreateContract) => source.createContract(projectId, body),
       onSuccess: refresh,
