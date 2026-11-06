@@ -606,6 +606,340 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${drawings} projects got drawings, ${books} got a specification book`;
   });
 
+  // Estimating: the org-wide cost library, then two estimates on the primary project.
+  await step('cost library', async () => {
+    const have = new Set(
+      (await s.ok<{ data: Array<{ code: string }> }>('GET', `${org}/cost-items`)).data.map(
+        (c) => c.code,
+      ),
+    );
+    const items = [
+      ['CON-001', 'Concrete N32 supply and place', 'm3', 'Concrete', 'material', '285.00'],
+      ['CON-002', 'Reinforcement bar supply and fix', 't', 'Concrete', 'material', '2450.00'],
+      ['CON-003', 'Formwork to slabs and beams', 'm2', 'Concrete', 'labour', '78.00'],
+      [
+        'STL-001',
+        'Structural steel fabrication and erect',
+        't',
+        'Structural steel',
+        'subcontract',
+        '6200.00',
+      ],
+      ['BRK-001', 'Facework brickwork, laid', 'm2', 'Masonry', 'labour', '165.00'],
+      ['CRP-001', 'Carpenter, hourly rate', 'hr', 'Carpentry', 'labour', '92.00'],
+      ['CRP-002', 'Timber stud framing', 'm2', 'Carpentry', 'material', '58.00'],
+      ['ELE-001', 'Electrician, hourly rate', 'hr', 'Electrical', 'labour', '105.00'],
+      ['ELE-002', 'Power point, supply and install', 'ea', 'Electrical', 'subcontract', '165.00'],
+      ['PLM-001', 'Plumber, hourly rate', 'hr', 'Plumbing', 'labour', '102.00'],
+      ['PLM-002', 'Hydraulic rough-in per fixture', 'ea', 'Plumbing', 'subcontract', '740.00'],
+      [
+        'PLS-001',
+        'Plasterboard lining, set and paint ready',
+        'm2',
+        'Plastering',
+        'subcontract',
+        '46.00',
+      ],
+      ['PNT-001', 'Internal paint, three coats', 'm2', 'Painting', 'subcontract', '24.50'],
+      ['TIL-001', 'Floor tiling, supply and lay', 'm2', 'Tiling', 'subcontract', '135.00'],
+      ['EXC-001', 'Bulk excavation and cart away', 'm3', 'Earthworks', 'plant', '48.00'],
+      ['PLT-001', 'Scissor lift hire', 'day', 'Plant hire', 'plant', '310.00'],
+    ] as const;
+    let added = 0;
+    for (const [code, description, unit, trade, category, rate] of items) {
+      if (have.has(code)) continue;
+      await s.ok('POST', `${org}/cost-items`, {
+        code,
+        description,
+        unit,
+        trade,
+        category,
+        rate: { rate, region: 'NSW', effectiveFrom: day(-60), note: 'Sample rate' },
+      });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('estimates', async () => {
+    const list = await s.ok<{ data: Array<{ name: string }> }>('GET', `${pp}/estimates`);
+    if (list.data.length >= 2) return 'already there';
+    const costItems = (
+      await s.ok<{ data: Array<{ id: string; code: string; description: string; unit: string }> }>(
+        'GET',
+        `${org}/cost-items`,
+      )
+    ).data;
+    const pick = (code: string) => costItems.find((c) => c.code === code);
+    const specs = [
+      {
+        name: 'Stage 1 structure budget estimate',
+        sections: [
+          ['Earthworks', [['EXC-001', '420']]],
+          [
+            'Concrete',
+            [
+              ['CON-001', '260'],
+              ['CON-002', '34'],
+              ['CON-003', '1850'],
+            ],
+          ],
+          ['Steel', [['STL-001', '22']]],
+        ],
+      },
+      {
+        name: 'Fit-out estimate, levels 1 and 2',
+        sections: [
+          [
+            'Linings and paint',
+            [
+              ['PLS-001', '2400'],
+              ['PNT-001', '3100'],
+            ],
+          ],
+          [
+            'Services',
+            [
+              ['ELE-002', '96'],
+              ['PLM-002', '18'],
+            ],
+          ],
+          ['Finishes', [['TIL-001', '380']]],
+        ],
+      },
+    ] as const;
+    let added = 0;
+    for (const spec of specs) {
+      if (list.data.some((e) => e.name === spec.name)) continue;
+      const est = await s.ok<{ id: string }>('POST', `${pp}/estimates`, {
+        name: spec.name,
+        baseDate: day(-14),
+        region: 'NSW',
+        contingencyPct: '5',
+        marginPct: '8',
+        marginBasis: 'markup',
+        gstPct: '10',
+      });
+      const estId = est.id;
+      for (const [title, lines] of spec.sections) {
+        const sec = await s.ok<{
+          lines: Array<{ id: string; kind: string; description: string }>;
+        }>('POST', `${pp}/estimates/${estId}/lines`, { kind: 'section', description: title });
+        const secId = [...sec.lines]
+          .reverse()
+          .find((l) => l.kind === 'section' && l.description === title)?.id;
+        for (const [code, qty] of lines) {
+          const ci = pick(code);
+          if (!ci) continue;
+          await s.ok('POST', `${pp}/estimates/${estId}/lines`, {
+            kind: 'item',
+            parentId: secId ?? null,
+            description: ci.description,
+            costItemId: ci.id,
+            quantity: qty,
+            unit: ci.unit,
+          });
+        }
+      }
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('site diary', async () => {
+    const have = await count(`${pp}/diary`);
+    if (have >= 8) return 'already there';
+    const notes = [
+      [
+        'Fine, 22C',
+        'Dry, good access',
+        'Formwork to level 1 slab continued. Rebar inspection booked for Thursday.',
+      ],
+      [
+        'Overcast, 19C',
+        'Dry',
+        'Concrete pour to level 1 slab, 62m3 placed, no issues. Pump on site 6am to 1pm.',
+      ],
+      [
+        'Showers in the afternoon, 18C',
+        'Wet underfoot after 2pm',
+        'Wet weather stopped external works at 2pm. Internal framing carried on.',
+      ],
+      [
+        'Fine, 24C',
+        'Dry',
+        'Steel erection started, first six columns landed. Crane inspection certificate sighted.',
+      ],
+      [
+        'Fine, windy, 21C',
+        'Dry, strong gusts',
+        'Crane stood down 10am to 12pm because of wind over 40km/h.',
+      ],
+      [
+        'Fine, 23C',
+        'Dry',
+        'Hydraulic rough-in began on ground floor. Electrical conduit running to risers.',
+      ],
+      [
+        'Rain all day, 16C',
+        'Wet, site muddy',
+        'Site closed from 9am for wet weather. Drainage and sediment controls checked.',
+      ],
+      [
+        'Fine, 20C',
+        'Drying out',
+        'Site reopened after rain. Pump-out of excavation, then brickwork resumed.',
+      ],
+      [
+        'Fine, 25C',
+        'Dry',
+        'Council inspector attended for footings. Passed with one note on cover.',
+      ],
+      ['Fine, 22C', 'Dry', 'Toolbox talk on working at heights. All trades on site inducted.'],
+    ] as const;
+    let added = 0;
+    for (let i = 0; i < notes.length; i++) {
+      const d = day(-(notes.length - i));
+      const wd = new Date(`${d}T00:00:00Z`).getUTCDay();
+      if (wd === 0 || wd === 6) continue;
+      const [weatherNotes, siteConditions, text] = notes[i]!;
+      await s.ok('PUT', `${pp}/diary/${d}`, { weatherNotes, siteConditions, notes: text });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('inspection templates and inspections', async () => {
+    const templates = await s.ok<{
+      data: Array<{ id: string; name: string; published?: boolean }>;
+    }>('GET', `${pp}/inspection-templates`);
+    let tpl = templates.data.find((t) => t.published);
+    if (!tpl) {
+      const created = await s.ok<{ template: { id: string } }>(
+        'POST',
+        `${pp}/inspection-templates`,
+        {
+          name: 'Pre-pour slab inspection',
+          type: 'itp',
+          items: [
+            {
+              section: 'Formwork',
+              prompt: 'Formwork is clean, braced and to the drawn dimensions',
+              responseType: 'pass_fail_na',
+              required: true,
+              createsDefectOnFail: true,
+            },
+            {
+              section: 'Formwork',
+              prompt: 'Penetrations and cast-in items are in place',
+              responseType: 'pass_fail_na',
+              required: true,
+            },
+            {
+              section: 'Reinforcement',
+              prompt: 'Bar size and spacing match structural drawings',
+              responseType: 'pass_fail_na',
+              required: true,
+              createsDefectOnFail: true,
+            },
+            {
+              section: 'Reinforcement',
+              prompt: 'Cover to reinforcement (mm)',
+              responseType: 'number',
+              required: true,
+            },
+            {
+              section: 'Sign-off',
+              prompt: 'Engineer notified and hold point released',
+              responseType: 'yes_no',
+              required: true,
+            },
+            { section: 'Sign-off', prompt: 'Notes', responseType: 'text', required: false },
+          ],
+        },
+      );
+      await s.ok(
+        'POST',
+        `${pp}/inspection-templates/${created.template.id}/publish`,
+        {},
+        { 'if-match': s.etag ?? '' },
+      );
+      tpl = { id: created.template.id, name: 'Pre-pour slab inspection', published: true };
+    }
+    const have = await count(`${pp}/inspections`);
+    const sample = [
+      ['Level 1 slab, grid A to D', -3],
+      ['Level 1 slab, grid E to H', 1],
+      ['Ground floor slab, east wing', 5],
+    ] as const;
+    let added = 0;
+    for (const [location, offset] of sample.slice(have)) {
+      await s.ok('POST', `${pp}/inspections`, {
+        templateId: tpl.id,
+        title: `Pre-pour inspection: ${location}`,
+        location,
+        scheduledFor: day(offset),
+      });
+      added++;
+    }
+    return `${added} inspections added`;
+  });
+
+  await step('coordination issues', async () => {
+    const issues = [
+      [
+        'Duct clashes with beam at gridline C4',
+        'high',
+        'Level 1 ceiling void',
+        'Supply air duct passes through the transfer beam. Needs a sleeve or reroute.',
+      ],
+      [
+        'Sprinkler main conflicts with cable tray',
+        'medium',
+        'Level 1 corridor',
+        'Cable tray and sprinkler main share the same 150mm zone above the ceiling.',
+      ],
+      [
+        'Riser too small for hydraulic stack',
+        'critical',
+        'Core, levels 1 to 3',
+        'Hydraulic stack and fire hydrant riser do not fit in the 450mm shaft as drawn.',
+      ],
+      [
+        'Door swing clashes with handrail',
+        'low',
+        'Stair 2, level 1 landing',
+        'Door opens into the handrail return. Move the door or shorten the handrail.',
+      ],
+      [
+        'Slab penetration missing for plumbing',
+        'medium',
+        'Ground floor, bathrooms',
+        'Four floor wastes shown on the hydraulic plan have no slab penetrations on the structural drawing.',
+      ],
+      [
+        'Façade bracket interferes with services',
+        'medium',
+        'East facade, level 2',
+        'Façade support bracket sits where the electrical conduit is run.',
+      ],
+    ] as const;
+    return topUp(
+      `${pp}/coordination-issues`,
+      async (i) => {
+        const [title, priority, location, description] = issues[i % issues.length]!;
+        await s.ok('POST', `${pp}/coordination-issues`, {
+          title,
+          priority,
+          location,
+          description,
+          dueDate: day(7 + i * 3),
+        });
+      },
+      issues.length,
+    );
+  });
+
   // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register
   // with a mix of qualified, expiring (within 30 days), pending and not-qualified companies.
   await step('prequalification', async () => {
