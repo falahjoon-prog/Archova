@@ -107,6 +107,8 @@ export interface ProjectRef {
   name: string;
   number: string | null;
   status: string;
+  phase: string | null;
+  siteLocation: { lat: number; lng: number } | null;
 }
 
 /** The projects the caller can see, in name order, up to the limit; `truncated` when there were more. */
@@ -129,7 +131,15 @@ export async function visibleProjects(
         truncated = true;
         break;
       }
-      out.push({ id: p.id, name: p.name, number: p.number, status: p.status });
+      out.push({
+        id: p.id,
+        name: p.name,
+        number: p.number,
+        status: p.status,
+        phase: p.phase ?? null,
+        siteLocation:
+          p.siteLat !== null && p.siteLng !== null ? { lat: p.siteLat, lng: p.siteLng } : null,
+      });
     }
     if (truncated || !page.nextCursor) break;
     cursor = page.nextCursor;

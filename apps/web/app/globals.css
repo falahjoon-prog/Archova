@@ -3180,3 +3180,21 @@ fieldset.worker-card > legend {
 .row-end > :first-child {
   flex: 1 1 16rem;
 }
+
+/* Portfolio charts */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+.chart-grid > * {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .chart-grid__wide {
+    grid-column: 1 / -1;
+  }
+}
