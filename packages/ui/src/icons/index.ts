@@ -86,9 +86,11 @@ export {
   Scale as EstimatingIcon,
   Users as MeetingsIcon,
   Send as TransmittalsIcon,
-  Sparkles as NovaIcon,
   Settings as AdminIcon,
 } from 'lucide-react';
 
 /** Default icon props: 20 px, 1.5 px stroke, hidden from assistive tech (the label carries the meaning). */
 export const iconProps = { size: 20, strokeWidth: 1.5, 'aria-hidden': true } as const;
+
+/** The Nova mark (brand/nova-mark): the one icon for anything Nova wrote or does. */
+export { NovaMark as NovaIcon, type NovaMarkProps } from './NovaMark';
