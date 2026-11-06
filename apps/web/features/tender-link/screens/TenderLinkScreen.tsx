@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Alert, Button, DescriptionList, SkeletonRows, StatusPill } from '@archova/ui';
+import { Card, Alert, Button, DescriptionList, SkeletonRows, StatusPill } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { tenderLinkApi, type TenderAccess } from '../data/api';
 
@@ -98,46 +98,46 @@ export function TenderLinkScreen({ token }: { token: string }) {
             </ul>
           </section>
           {access.actions.includes('respond') ? (
-            <section className="ac-card stack" aria-labelledby="tender-respond">
-              <h2 id="tender-respond" className="panel-heading">
-                Will you quote?
-              </h2>
-              {status === 'submitted' ? (
-                <StatusPill tone="success">Quote received</StatusPill>
-              ) : (
-                <>
-                  {status === 'intends_to_quote' ? (
-                    <StatusPill tone="success">You said you will quote</StatusPill>
-                  ) : status === 'declined' ? (
-                    <StatusPill tone="neutral">You declined</StatusPill>
-                  ) : null}
-                  <p className="u-m-0">
-                    This tells {access.package.fromOrg} that {access.invite.email ?? 'your company'}{' '}
-                    {status === 'declined' ? 'has changed its mind' : 'has an answer'}. You can
-                    change your answer until you send a quote.
-                  </p>
-                  <div className="row-actions">
-                    <Button
-                      variant={status === 'intends_to_quote' ? 'secondary' : 'primary'}
-                      disabled={status === 'intends_to_quote'}
-                      loading={respond.isPending && respond.variables === 'intends_to_quote'}
-                      onClick={() => respond.mutate('intends_to_quote')}
-                    >
-                      We will quote
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={status === 'declined'}
-                      loading={respond.isPending && respond.variables === 'declined'}
-                      onClick={() => respond.mutate('declined')}
-                    >
-                      We&apos;ll pass
-                    </Button>
-                  </div>
-                  <ErrorAlert error={respond.error} title="We couldn't record that" />
-                </>
-              )}
-            </section>
+            <Card title="Will you quote?">
+              <div className="stack">
+                {status === 'submitted' ? (
+                  <StatusPill tone="success">Quote received</StatusPill>
+                ) : (
+                  <>
+                    {status === 'intends_to_quote' ? (
+                      <StatusPill tone="success">You said you will quote</StatusPill>
+                    ) : status === 'declined' ? (
+                      <StatusPill tone="neutral">You declined</StatusPill>
+                    ) : null}
+                    <p className="u-m-0">
+                      This tells {access.package.fromOrg} that{' '}
+                      {access.invite.email ?? 'your company'}{' '}
+                      {status === 'declined' ? 'has changed its mind' : 'has an answer'}. You can
+                      change your answer until you send a quote.
+                    </p>
+                    <div className="row-actions">
+                      <Button
+                        variant={status === 'intends_to_quote' ? 'secondary' : 'primary'}
+                        disabled={status === 'intends_to_quote'}
+                        loading={respond.isPending && respond.variables === 'intends_to_quote'}
+                        onClick={() => respond.mutate('intends_to_quote')}
+                      >
+                        We will quote
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={status === 'declined'}
+                        loading={respond.isPending && respond.variables === 'declined'}
+                        onClick={() => respond.mutate('declined')}
+                      >
+                        We&apos;ll pass
+                      </Button>
+                    </div>
+                    <ErrorAlert error={respond.error} title="We couldn't record that" />
+                  </>
+                )}
+              </div>
+            </Card>
           ) : null}
         </>
       ) : null}
