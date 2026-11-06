@@ -200,7 +200,7 @@ main:focus {
 .app-shell__nav-link {
   display: inline-flex;
   align-items: center;
-  min-height: calc(var(--space-10) + var(--space-1));
+  min-height: var(--space-9, 36px);
   padding: 0 var(--space-3);
   color: var(--c-text-secondary);
   font-weight: 500;
@@ -304,10 +304,16 @@ main:focus {
     min-width: 0;
   }
 }
+@media (max-width: 400px) {
+  /* The Nova mark alone is enough on the narrowest phones; the button keeps its accessible name. */
+  .app-shell__assistant-label {
+    display: none;
+  }
+}
 /* Phone: brand and actions share the first row, the primary nav takes the second, so the bar stays two rows. */
 @media (max-width: 640px) {
   .app-shell__logo .brand-logo img {
-    height: 30px;
+    height: 24px;
     width: auto;
   }
   .app-shell__bar {
@@ -336,6 +342,11 @@ main:focus {
 @media (max-width: 480px) {
   .app-shell__org {
     display: none;
+  }
+  /* Narrow padding so the logo, Ask Nova, inbox and Sign out all fit on one row at 375px. */
+  .app-shell__actions > button,
+  .app-shell__actions > a {
+    padding-inline: var(--space-2);
   }
 }
 .app-shell__body {
@@ -647,9 +658,50 @@ main:focus {
 /* Project shell: tool sidebar + content (design 03 §2) */
 .project-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-8);
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: var(--space-6);
   align-items: start;
+}
+.project-shell__side {
+  position: sticky;
+  top: calc(var(--app-bar-h, 0px) + var(--space-4));
+  min-width: 0;
+}
+.project-shell__side .project-nav {
+  position: static;
+  /* Room for the edge handle so it never overlaps a scrollbar. */
+  padding-inline-end: var(--space-2);
+}
+.project-shell__edge {
+  position: absolute;
+  top: var(--space-2);
+  right: calc(var(--space-3) * -1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-full);
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  z-index: 2;
+}
+.project-shell__edge:hover {
+  color: var(--c-text);
+  background: var(--c-surface-sunken, var(--c-surface));
+}
+.project-shell[data-collapsed='true'] {
+  grid-template-columns: var(--space-4) minmax(0, 1fr);
+}
+.project-shell[data-collapsed='true'] .project-nav {
+  display: none;
+}
+.project-shell[data-collapsed='true'] .project-shell__edge {
+  right: auto;
+  left: 0;
 }
 .project-shell__content {
   min-width: 0;
@@ -662,7 +714,7 @@ main:focus {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 .project-nav ul {
   margin: 0;
@@ -684,8 +736,8 @@ main:focus {
 .project-nav__link {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  min-height: calc(var(--space-10) + var(--space-1));
+  gap: var(--space-2);
+  min-height: 36px;
   padding: 0 var(--space-3);
   color: var(--c-text-secondary);
   font-weight: 500;
@@ -707,9 +759,9 @@ main:focus {
 .cgroup__header {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   width: 100%;
-  min-height: calc(var(--space-10) + var(--space-1));
+  min-height: var(--space-8, 32px);
   padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-md);
@@ -784,9 +836,19 @@ main:focus {
   margin: 0;
 }
 @media (max-width: 1023px) {
-  .project-shell {
+  .project-shell,
+  .project-shell[data-collapsed='true'] {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
+  }
+  .project-shell__edge {
+    display: none;
+  }
+  .project-shell[data-collapsed='true'] .project-nav {
+    display: flex;
+  }
+  .project-shell__side {
+    position: static;
   }
   .project-nav {
     position: static;
