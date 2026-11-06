@@ -176,6 +176,8 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
+  /** My digital Safety ID badge for a project. */
+  safetyBadge: (projectId: string) => `/project/${enc(projectId)}/badge`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (
     projectId: string,

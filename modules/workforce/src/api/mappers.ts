@@ -1,4 +1,5 @@
 import { encodeId } from '@archova/domain';
+import type { BadgeView } from '../application/badge';
 import type {
   AttendanceEntry,
   AttendanceSession,
@@ -6,6 +7,7 @@ import type {
   EligibilityCheck,
   Gate,
   RollCall,
+  SafetyBadge,
   SignInResult,
   Worker,
 } from '@archova/contracts';
@@ -165,5 +167,24 @@ export function toRollCallDto(call: RollCallRow, marks: MarkRow[]): RollCall {
       unmarked: out.filter((p) => p.status === 'unmarked').length,
     },
     people: out,
+  };
+}
+
+export function toSafetyBadgeDto(b: BadgeView): SafetyBadge {
+  const id = encodeId('worker', b.worker.id);
+  return {
+    workerId: id,
+    fullName: b.worker.fullName,
+    companyName: b.companyName,
+    status: b.worker.status,
+    qrValue: `archova:badge:${id}`,
+    photoUrl: b.photo?.url ?? null,
+    emergencyContact: b.worker.emergencyContact,
+    credentials: b.credentials,
+    inductions: b.inductions.map((i) => ({
+      title: i.title,
+      completedAt: i.completedAt.toISOString(),
+      expiresOn: i.expiresOn,
+    })),
   };
 }
