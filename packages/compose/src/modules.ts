@@ -59,6 +59,7 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
@@ -82,6 +83,7 @@ export const MODULE_PERMISSIONS = [
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
   EXPORTS_PERMISSIONS,
+  WORKFLOWS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
@@ -297,9 +299,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const notifications = createNotificationsModule(services);
 
+  const workflows = createWorkflowsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    workflows: workflows.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
   });
 
@@ -506,6 +511,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     scheduling,
     reporting,
     exportsModule,
+    workflows,
     workforce,
     sync,
   ];
@@ -545,6 +551,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     scheduling,
     reporting,
     exportsModule,
+    workflows,
     workforce,
     routes,
   };

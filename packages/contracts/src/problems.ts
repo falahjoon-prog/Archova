@@ -299,6 +299,12 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // configurable approval workflows
+  'workflow.not_found': 404,
+  'workflow.active_exists': 409,
+  'workflow.not_approver': 403,
+  'workflow.own_submission': 403,
+  'workflow.no_eligible_approver': 422,
   // data export (one-click full export)
   'data_export.not_found': 404,
   'data_export.in_progress': 409,

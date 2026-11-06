@@ -48,6 +48,7 @@ tags:
   - name: notifications
   - name: reporting
   - name: data-export
+  - name: workflows
 paths:
   /v1/auth/signup:
     post:
@@ -4280,6 +4281,95 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DataExportDownload' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWorkflows
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: The approval workflows this organisation has set up.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Set up an approval chain for a kind of record.
+      description: |
+        Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+        minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+        workflow per kind of record: activating a second one is refused with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkflowRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows/{workflowId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WorkflowId'
+    patch:
+      operationId: updateWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Change a workflow, or switch it on or off.
+      description: Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkflowRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Remove a workflow. Variations already going through it carry on.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    get:
+      operationId: getVariationWorkflow
+      tags: [workflows]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Where a variation is in its approval chain.
+      description: '`run` is null when no workflow applied to the variation.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationWorkflow' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -13052,6 +13142,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    WorkflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wfl_[0-9A-Za-z]{26}$' }
     DataExportId:
       name: exportId
       in: path
@@ -13678,6 +13773,113 @@ components:
             missing from storage); each is listed in the manifest with the reason.,
           }
         error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    WorkflowStep:
+      type: object
+      required: [name, approverUserIds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        approverUserIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string }
+          description: Any one of these people can approve the step.
+    Workflow:
+      type: object
+      required: [id, subjectType, name, minAmount, steps, active, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string }
+        minAmount:
+          type: [string, 'null']
+          description: Decimal dollars. The chain applies from this amount up; null means every variation.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkflowList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Workflow' }
+    CreateWorkflowRequest:
+      type: object
+      required: [subjectType, name, steps]
+      properties:
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean, default: true }
+    UpdateWorkflowRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+    WorkflowRunDecision:
+      type: object
+      required: [userId, decision, note, decidedAt]
+      properties:
+        userId: { type: string }
+        decision: { type: string, enum: [approved, rejected] }
+        note: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+    WorkflowRunStep:
+      type: object
+      required: [name, approverUserIds, state, decision]
+      properties:
+        name: { type: string }
+        approverUserIds:
+          type: array
+          items: { type: string }
+        state: { type: string, enum: [waiting, current, approved, rejected] }
+        decision:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRunDecision' }
+            - { type: 'null' }
+    WorkflowRun:
+      type: object
+      required:
+        [id, subjectType, subjectId, status, currentStep, steps, startedBy, createdAt, finishedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        subjectId: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, cancelled] }
+        currentStep:
+          {
+            type: [integer, 'null'],
+            description: Zero-based index of the step waiting on a decision.,
+          }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowRunStep' }
+        startedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    VariationWorkflow:
+      type: object
+      required: [run]
+      properties:
+        run:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRun' }
+            - { type: 'null' }
     DataExportList:
       type: object
       required: [data]

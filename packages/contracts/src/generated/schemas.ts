@@ -2311,6 +2311,21 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const WorkflowStepSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "approverUserIds": z.array(z.string()).min(1).max(10),
+});
+export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
+
+export const CreateWorkflowRequestSchema = z.object({
+  "subjectType": z.enum(["financials.variation"]),
+  "name": z.string().min(1).max(100),
+  "minAmount": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
+  "steps": z.array(WorkflowStepSchema).min(1).max(8),
+  "active": z.boolean().optional(),
+});
+export type CreateWorkflowRequest = z.infer<typeof CreateWorkflowRequestSchema>;
+
 export const DataExportSchema = z.object({
   "id": z.string(),
   "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
@@ -7388,6 +7403,14 @@ export const UpdateWorkerRequestSchema = z.object({
 }).strict();
 export type UpdateWorkerRequest = z.infer<typeof UpdateWorkerRequestSchema>;
 
+export const UpdateWorkflowRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "minAmount": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
+  "steps": z.array(WorkflowStepSchema).min(1).max(8).optional(),
+  "active": z.boolean().optional(),
+});
+export type UpdateWorkflowRequest = z.infer<typeof UpdateWorkflowRequestSchema>;
+
 export const UploadSchema = z.object({
   "id": z.string(),
   "status": z.enum(["pending", "uploaded", "expired"]),
@@ -7428,6 +7451,40 @@ export const VariationListSchema = z.object({
   "approvedTotal": FinancialsMoneySchema,
 });
 export type VariationList = z.infer<typeof VariationListSchema>;
+
+export const WorkflowRunDecisionSchema = z.object({
+  "userId": z.string(),
+  "decision": z.enum(["approved", "rejected"]),
+  "note": z.string().nullable(),
+  "decidedAt": z.string().datetime({ offset: true }),
+});
+export type WorkflowRunDecision = z.infer<typeof WorkflowRunDecisionSchema>;
+
+export const WorkflowRunStepSchema = z.object({
+  "name": z.string(),
+  "approverUserIds": z.array(z.string()),
+  "state": z.enum(["waiting", "current", "approved", "rejected"]),
+  "decision": z.union([WorkflowRunDecisionSchema, z.null()]),
+});
+export type WorkflowRunStep = z.infer<typeof WorkflowRunStepSchema>;
+
+export const WorkflowRunSchema = z.object({
+  "id": z.string(),
+  "subjectType": z.enum(["financials.variation"]),
+  "subjectId": z.string(),
+  "status": z.enum(["pending", "approved", "rejected", "cancelled"]),
+  "currentStep": z.number().int().nullable(),
+  "steps": z.array(WorkflowRunStepSchema),
+  "startedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type WorkflowRun = z.infer<typeof WorkflowRunSchema>;
+
+export const VariationWorkflowSchema = z.object({
+  "run": z.union([WorkflowRunSchema, z.null()]),
+});
+export type VariationWorkflow = z.infer<typeof VariationWorkflowSchema>;
 
 export const VerifyInductionAccessRequestSchema = z.object({
   "code": z.string().regex(new RegExp("^[0-9]{6}$")),
@@ -7498,3 +7555,20 @@ export const WorkerListSchema = z.object({
   "data": z.array(WorkerSchema),
 });
 export type WorkerList = z.infer<typeof WorkerListSchema>;
+
+export const WorkflowSchema = z.object({
+  "id": z.string(),
+  "subjectType": z.enum(["financials.variation"]),
+  "name": z.string(),
+  "minAmount": z.string().nullable(),
+  "steps": z.array(WorkflowStepSchema),
+  "active": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Workflow = z.infer<typeof WorkflowSchema>;
+
+export const WorkflowListSchema = z.object({
+  "data": z.array(WorkflowSchema),
+});
+export type WorkflowList = z.infer<typeof WorkflowListSchema>;
