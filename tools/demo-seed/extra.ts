@@ -41,6 +41,8 @@ export interface ExtraContext {
   ) => Promise<string>;
   /** The drawing sheets to give a project that has none. */
   sheets: Array<{ number: string; title: string; discipline: string }>;
+  /** The documents to give a project that has none. */
+  documents: ReadonlyArray<{ folder: string; title: string; docNumber: string; docType: string }>;
 }
 
 const TARGET = 10;
@@ -541,6 +543,30 @@ export async function seedExtra(ctx: ExtraContext) {
         }
         await s.ok('POST', `${base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
         drawings++;
+      }
+      const docList = await s.ok<{ data?: unknown[] }>('GET', `${base}/documents`);
+      if (!docList.data?.length) {
+        const folders = new Map<string, string>();
+        for (const name of new Set(ctx.documents.map((d) => d.folder))) {
+          const f = await s.ok<{ id: string }>('POST', `${base}/folders`, { name });
+          folders.set(name, f.id);
+        }
+        for (const d of ctx.documents) {
+          const fileId = await ctx.upload(
+            p.id,
+            'documents',
+            `${d.docNumber}.pdf`,
+            makePdf({ project: p.name, number: d.docNumber, title: d.title, rev: '1' }),
+          );
+          await s.ok('POST', `${base}/documents`, {
+            folderId: folders.get(d.folder),
+            title: d.title,
+            docNumber: d.docNumber,
+            docType: d.docType,
+            status: 'approved',
+            revision: { rev: '1', fileId, issuedFor: 'Construction', issuedDate: date },
+          });
+        }
       }
       const bookList = await s.ok<{ data?: unknown[] }>('GET', `${base}/spec-books`);
       if (!bookList.data?.length) {

@@ -6,7 +6,7 @@
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
 import { createHash } from 'node:crypto';
 import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
-import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
+import { COMPANIES, type CompanyKey, DOCS, ORG, PROJECTS } from './data';
 import { seedExtra } from './extra';
 import { enableAllFlags } from './flags';
 import { makePdf } from './pdf';
@@ -546,6 +546,7 @@ await seedExtra({
   password: PASSWORD,
   upload,
   sheets: PROJECTS[0]!.sheets,
+  documents: DOCS,
 });
 
 // Ask Nova answers only from indexed documents and drawings. Indexing is idempotent, so every run brings each
