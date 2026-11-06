@@ -40,6 +40,7 @@ export type ProjectTool =
   | 'documents'
   | 'drawings'
   | 'drawing-sets'
+  | 'commitments'
   | 'transmittals'
   | 'rfis'
   | 'submittals'
