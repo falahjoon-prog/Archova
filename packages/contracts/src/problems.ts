@@ -288,6 +288,8 @@ export const PROBLEM_CODES = {
   'ownerportal.item_not_found': 404,
   // notifications
   'notification.not_found': 404,
+  // recents
+  'recent.invalid_target': 422,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,

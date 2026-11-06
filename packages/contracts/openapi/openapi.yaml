@@ -46,6 +46,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: recents
   - name: reporting
   - name: search
   - name: data-export
@@ -664,6 +665,48 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Notification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/recents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listRecentViews
+      tags: [recents]
+      x-module: platform
+      summary: The records the caller opened lately, newest first.
+      description: |
+        Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+      parameters:
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        - name: limit
+          in: query
+          description: At most this many rows (default 10, at most 50).
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: The recent views
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecentViewList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordRecentView
+      tags: [recents]
+      x-module: platform
+      summary: Note that the caller opened a record (idempotent; it moves the record to the top).
+      description: |
+        `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+        record's own module. The caller keeps their newest 50 views.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecentViewInput' }
+      responses:
+        '204':
+          description: Recorded
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -15534,6 +15577,36 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Notification' }
         unreadCount: { type: integer, minimum: 0 }
+    RecentViewEntityType:
+      type: string
+      enum: [rfi, submittal, defect, drawing_sheet, meeting]
+    RecentViewInput:
+      type: object
+      required: [entityType, entityId, projectId, title]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId:
+          { type: string, description: Public id of the record, of the kind `entityType` names. }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        subtitle: { type: string, maxLength: 200 }
+    RecentView:
+      type: object
+      required: [entityType, entityId, projectId, title, subtitle, viewedAt]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId: { type: string }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        subtitle: { type: string }
+        viewedAt: { type: string, format: date-time }
+    RecentViewList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RecentView' }
     FeatureFlags:
       type: object
       required: [orgId, flags]

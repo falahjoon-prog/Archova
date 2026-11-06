@@ -97,6 +97,17 @@ export const MarkNotificationReadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "notificationId": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
 });
+export const ListRecentViewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListRecentViewsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(50).optional(),
+});
+export const RecordRecentViewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const RecordRecentViewBody = s.RecentViewInputSchema;
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3441,6 +3452,30 @@ export const operations = {
     params: MarkNotificationReadParams,
     query: null,
     body: null,
+  },
+  listRecentViews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/recents',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListRecentViewsParams,
+    query: ListRecentViewsQuery,
+    body: null,
+  },
+  recordRecentView: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/recents',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: RecordRecentViewParams,
+    query: null,
+    body: RecordRecentViewBody,
   },
   listProjects: {
     method: 'GET',
