@@ -91,7 +91,9 @@ export function IncidentDetailView({ id }: { id: string }) {
 
   return (
     <>
-      <p className="u-m-0">{back}</p>
+      <p className="u-m-0" style={{ marginBottom: 'var(--space-4)' }}>
+        {back}
+      </p>
       <ItemHeader
         number={`${i.numberLabel} · ${TYPE_LABELS[i.type]}`}
         title={i.title}

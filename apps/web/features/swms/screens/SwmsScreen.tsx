@@ -223,7 +223,9 @@ function SwmsDetailView({ id }: { id: string }) {
   const ACTION_ICONS = { markReviewed: Eye, accept: Check, reject: X, reopen: RotateCcw } as const;
   return (
     <>
-      <p className="u-m-0">{back}</p>
+      <p className="u-m-0" style={{ marginBottom: 'var(--space-4)' }}>
+        {back}
+      </p>
       <ItemHeader
         number={`${s.numberLabel} · revision ${s.revision}`}
         title={s.title}
