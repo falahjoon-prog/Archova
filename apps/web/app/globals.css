@@ -347,6 +347,9 @@ main:focus {
   padding: var(--space-8) var(--space-6);
 }
 .app-shell__assistant-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   min-height: calc(var(--space-10) + var(--space-1));
   padding: 0 var(--space-3);
   color: var(--c-action-primary);
@@ -1324,6 +1327,24 @@ main:focus {
   outline: 2px solid var(--c-action-primary);
   outline-offset: -2px;
 }
+.diary-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.diary-sections > * {
+  grid-column: 1 / -1;
+}
+/* Lists with no lines yet (delays, plant, deliveries, visitors) sit two to a row. */
+.diary-sections > .diary-section--list:not(:has(.diary-line, fieldset)) {
+  grid-column: auto;
+}
+@media (max-width: 700px) {
+  .diary-sections > .diary-section--list:not(:has(.diary-line, fieldset)) {
+    grid-column: 1 / -1;
+  }
+}
 .diary-section {
   border: 1px solid var(--c-border-divider);
   border-radius: var(--radius-md);
@@ -1457,6 +1478,19 @@ section.diary-section .diary-section__summary {
   top: 0;
   max-height: 100vh;
   overflow-y: auto;
+}
+/* On narrow screens it is a docked drawer over the page (it must come after the sticky rule above, which
+   otherwise wins and leaves the panel as a tall block below the content). */
+@media (max-width: 900px) {
+  .app-shell__assistant {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(100vw, 380px);
+    height: 100dvh;
+    max-height: none;
+    z-index: 40;
+    box-shadow: var(--shadow-lg, -8px 0 24px rgb(0 0 0 / 0.18));
+  }
 }
 .assistant-panel__head {
   justify-content: space-between;
@@ -3064,4 +3098,19 @@ fieldset.worker-card > legend {
   .two-col {
     grid-template-columns: 1fr;
   }
+}
+
+.diary-nav {
+  align-items: flex-end;
+}
+
+/* Fields and their button on one baseline. */
+.row-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.row-end > :first-child {
+  flex: 1 1 16rem;
 }

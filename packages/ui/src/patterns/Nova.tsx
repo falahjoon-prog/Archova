@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { FileText, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { FileText, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { NovaMark } from '../icons/NovaMark';
 import { cx } from '../lib/cx';
 
 export interface Citation {
@@ -69,7 +70,7 @@ export function NovaSuggestion({
   return (
     <section className={cx('ac-nova', className)} aria-label="Drafted by Nova">
       <p className="ac-nova__label">
-        <Sparkles size={14} strokeWidth={2} aria-hidden="true" />
+        <NovaMark size={14} />
         Drafted by Nova
       </p>
       {title ? <p className="ac-nova__title">{title}</p> : null}
