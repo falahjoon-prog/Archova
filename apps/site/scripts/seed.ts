@@ -89,13 +89,11 @@ const homeData = {
   layout: [
     {
       blockType: 'hero',
-      heading: 'One system for the whole job, from the office to the site gate.',
+      heading: 'One system for the *whole job*, from the office to the site gate.',
       subheading:
         'Archova gives builders, site teams, subcontractors and clients what they each need, in one place, with Ask Nova built in and your data kept in Australia.',
       primaryLabel: 'Request a demo',
       primaryHref: '/demo',
-      secondaryLabel: 'See pricing',
-      secondaryHref: '/pricing',
     },
     {
       blockType: 'roleSection',

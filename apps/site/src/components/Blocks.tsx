@@ -6,12 +6,17 @@ import { RichText } from './RichText';
 
 type Block = Page['layout'][number];
 
+// "*whole job*" in a heading is shown in italic amber; nothing else is interpreted.
+function emphasise(text: string) {
+  return text.split('*').map((part, i) => (i % 2 === 1 ? <em key={i}>{part}</em> : part));
+}
+
 function BlockView({ block }: { block: Block }) {
   switch (block.blockType) {
     case 'hero':
       return (
         <section className="hero">
-          <h1>{block.heading}</h1>
+          <h1>{emphasise(block.heading)}</h1>
           {block.subheading ? <p className="hero__sub">{block.subheading}</p> : null}
           <p className="hero__actions">
             {block.primaryLabel && block.primaryHref ? (
