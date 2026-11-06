@@ -37,6 +37,25 @@ export function useCostCodes(projectId: string) {
   });
 }
 
+export function useSnapshots(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { snapshots: true }),
+    queryFn: () => source.snapshots(projectId),
+  });
+}
+
+export function useCreateSnapshot(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
 export function useDirectCosts(projectId: string) {
   const { orgId } = useCurrentOrg();
   const source = useBudgetApi();

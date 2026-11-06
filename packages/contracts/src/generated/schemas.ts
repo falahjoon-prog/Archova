@@ -541,6 +541,37 @@ export const BudgetAdjustmentListSchema = z.object({
 });
 export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
 
+export const BudgetSnapshotLineSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "description": z.string(),
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "isMargin": z.boolean(),
+});
+export type BudgetSnapshotLine = z.infer<typeof BudgetSnapshotLineSchema>;
+
+export const BudgetSnapshotSchema = z.object({
+  "id": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "note": z.string().nullable(),
+  "takenAt": z.string().datetime({ offset: true }),
+  "lines": z.array(BudgetSnapshotLineSchema),
+  "totals": z.object({
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+}),
+});
+export type BudgetSnapshot = z.infer<typeof BudgetSnapshotSchema>;
+
+export const BudgetSnapshotListSchema = z.object({
+  "data": z.array(BudgetSnapshotSchema),
+});
+export type BudgetSnapshotList = z.infer<typeof BudgetSnapshotListSchema>;
+
 export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
 export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
 
@@ -1399,6 +1430,12 @@ export const CreateBimModelRequestSchema = z.object({
   "supersedesModelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateBimModelRequest = z.infer<typeof CreateBimModelRequestSchema>;
+
+export const CreateBudgetSnapshotRequestSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export type CreateBudgetSnapshotRequest = z.infer<typeof CreateBudgetSnapshotRequestSchema>;
 
 export const CreateCommitmentFromAwardRequestSchema = z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),

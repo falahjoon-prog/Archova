@@ -14,6 +14,7 @@ export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
 export type AdjustBudgetLine = S['AdjustBudgetLineRequest'];
 export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
+export type BudgetSnapshot = S['BudgetSnapshot'];
 export type DirectCost = S['DirectCost'];
 export type DirectCostList = S['DirectCostList'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
@@ -102,6 +103,22 @@ export function createBudgetApi(orgId: string) {
         await api.POST(`${P}/direct-costs/{directCostId}/void`, {
           params: { path: { orgId, projectId, directCostId }, header: idempotencyKey() },
           body: { note },
+        }),
+      );
+    },
+    async snapshots(projectId: string): Promise<BudgetSnapshot[]> {
+      return unwrap(
+        await api.GET(`${P}/budget/snapshots`, { params: { path: { orgId, projectId } } }),
+      ).data;
+    },
+    async createSnapshot(
+      projectId: string,
+      body: { name: string; note?: string },
+    ): Promise<BudgetSnapshot> {
+      return unwrap(
+        await api.POST(`${P}/budget/snapshots`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
         }),
       );
     },

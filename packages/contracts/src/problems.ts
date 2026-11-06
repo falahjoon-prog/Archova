@@ -335,6 +335,7 @@ export const PROBLEM_CODES = {
   'financials.budget.locked': 409,
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
+  'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,
   'financials.commitment.not_found': 404,

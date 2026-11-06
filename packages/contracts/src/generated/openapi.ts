@@ -8413,6 +8413,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Budget snapshots, newest first. Margin lines are left out without the margin permission. */
+        get: operations["listBudgetSnapshots"];
+        put?: never;
+        /** Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted. */
+        post: operations["createBudgetSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        /** One budget snapshot with its frozen lines. */
+        get: operations["getBudgetSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments": {
         parameters: {
             query?: never;
@@ -14338,6 +14380,40 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        BudgetSnapshotLine: {
+            costCodeId: string;
+            code: string;
+            codeDescription: string;
+            description: string;
+            original: components["schemas"]["FinancialsMoney"];
+            /** @description Signed decimal AUD ex GST. */
+            approvedChanges: string;
+            /** @description Signed decimal AUD ex GST. */
+            revised: string;
+            isMargin: boolean;
+        };
+        BudgetSnapshot: {
+            id: string;
+            name: string;
+            note: string | null;
+            /** Format: date-time */
+            takenAt: string;
+            lines: components["schemas"]["BudgetSnapshotLine"][];
+            totals: {
+                original: components["schemas"]["FinancialsMoney"];
+                /** @description Signed decimal AUD ex GST. */
+                approvedChanges: string;
+                /** @description Signed decimal AUD ex GST. */
+                revised: string;
+            };
+        };
+        BudgetSnapshotList: {
+            data: components["schemas"]["BudgetSnapshot"][];
+        };
+        CreateBudgetSnapshotRequest: {
+            name: string;
+            note?: string;
+        };
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
         };
@@ -17108,6 +17184,7 @@ export interface components {
         RfiId: string;
         ContractId: string;
         CostCodeId: string;
+        BudgetSnapshotId: string;
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
@@ -30940,6 +31017,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Budget"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBudgetSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshotList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
                 };
             };
             default: components["responses"]["Problem"];

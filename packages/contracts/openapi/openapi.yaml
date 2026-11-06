@@ -11488,6 +11488,61 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Budget' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBudgetSnapshots
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Budget snapshots, newest first. Margin lines are left out without the margin permission.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshotList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBudgetSnapshotRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetSnapshotId'
+    get:
+      operationId: getBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: One budget snapshot with its frozen lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12878,6 +12933,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    BudgetSnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
     BudgetLineId:
       name: lineId
       in: path
@@ -20857,6 +20917,80 @@ components:
           }
         reason: { type: string }
         createdAt: { type: string, format: date-time }
+    BudgetSnapshotLine:
+      type: object
+      required:
+        [
+          costCodeId,
+          code,
+          codeDescription,
+          description,
+          original,
+          approvedChanges,
+          revised,
+          isMargin,
+        ]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        description: { type: string }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        isMargin: { type: boolean }
+    BudgetSnapshot:
+      type: object
+      required: [id, name, note, takenAt, lines, totals]
+      properties:
+        id: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        note: { type: [string, 'null'] }
+        takenAt: { type: string, format: date-time }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshotLine' }
+        totals:
+          type: object
+          required: [original, approvedChanges, revised]
+          properties:
+            original: { $ref: '#/components/schemas/FinancialsMoney' }
+            approvedChanges:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+            revised:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+    BudgetSnapshotList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshot' }
+    CreateBudgetSnapshotRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        note: { type: string, maxLength: 1000 }
     BudgetAdjustmentList:
       type: object
       required: [data]
