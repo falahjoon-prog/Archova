@@ -27,3 +27,5 @@ create table reporting.risks (
 create unique index risks_number on reporting.risks (project_id, number);
 create index risks_project on reporting.risks (org_id, project_id) where deleted_at is null;
 select kernel.enable_tenant_rls('reporting.risks');
+
+select kernel.grant_module_schema('reporting');
