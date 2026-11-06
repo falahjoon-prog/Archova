@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
 import {
+  Card,
   Alert,
   Button,
   Dialog,
@@ -243,64 +244,63 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
       ) : null}
       <ErrorAlert error={mutationError} title="We couldn't save that change" />
 
-      <section aria-labelledby="est-settings" className="stack">
-        <h2 id="est-settings" className="panel-subheading">
-          Rates, contingency, margin and GST
-        </h2>
-        <div className="form-row">
-          <TextField
-            label="Rates as at"
-            type="date"
-            disabled={locked}
-            value={e.baseDate}
-            onChange={(ev) => ev.target.value && patchSettings({ baseDate: ev.target.value })}
-          />
-          <TextField
-            label="Region"
-            hint="Picks regional library rates first."
-            disabled={locked}
-            defaultValue={e.region ?? ''}
-            key={`region-${e.version}`}
-            onBlur={(ev) =>
-              (ev.target.value.trim() || null) !== e.region &&
-              patchSettings({ region: ev.target.value.trim() || null })
-            }
-          />
+      <Card title="Rates, contingency, margin and GST">
+        <div className="stack">
+          <div className="form-row">
+            <TextField
+              label="Rates as at"
+              type="date"
+              disabled={locked}
+              value={e.baseDate}
+              onChange={(ev) => ev.target.value && patchSettings({ baseDate: ev.target.value })}
+            />
+            <TextField
+              label="Region"
+              hint="Picks regional library rates first."
+              disabled={locked}
+              defaultValue={e.region ?? ''}
+              key={`region-${e.version}`}
+              onBlur={(ev) =>
+                (ev.target.value.trim() || null) !== e.region &&
+                patchSettings({ region: ev.target.value.trim() || null })
+              }
+            />
+          </div>
+          <div className="form-row">
+            {(
+              [
+                ['contingencyPct', 'Contingency %'],
+                ['marginPct', 'Margin %'],
+                ['gstPct', 'GST %'],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="stack">
+                <span>{label}</span>
+                <CommitInput
+                  className="ac-input"
+                  label={label}
+                  value={e[key]}
+                  disabled={locked}
+                  parse={(t) => parsePercent(t)}
+                  onCommit={(v) => v !== null && patchSettings({ [key]: v })}
+                />
+              </label>
+            ))}
+            <Select
+              label="Margin is"
+              disabled={locked}
+              value={e.marginBasis}
+              options={[
+                { value: 'markup', label: 'Markup on cost' },
+                { value: 'margin', label: 'Share of selling price' },
+              ]}
+              onChange={(ev) =>
+                patchSettings({ marginBasis: ev.target.value as Estimate['marginBasis'] })
+              }
+            />
+          </div>
         </div>
-        <div className="form-row">
-          {(
-            [
-              ['contingencyPct', 'Contingency %'],
-              ['marginPct', 'Margin %'],
-              ['gstPct', 'GST %'],
-            ] as const
-          ).map(([key, label]) => (
-            <label key={key} className="stack">
-              <span>{label}</span>
-              <CommitInput
-                className="ac-input"
-                label={label}
-                value={e[key]}
-                disabled={locked}
-                parse={(t) => parsePercent(t)}
-                onCommit={(v) => v !== null && patchSettings({ [key]: v })}
-              />
-            </label>
-          ))}
-          <Select
-            label="Margin is"
-            disabled={locked}
-            value={e.marginBasis}
-            options={[
-              { value: 'markup', label: 'Markup on cost' },
-              { value: 'margin', label: 'Share of selling price' },
-            ]}
-            onChange={(ev) =>
-              patchSettings({ marginBasis: ev.target.value as Estimate['marginBasis'] })
-            }
-          />
-        </div>
-      </section>
+      </Card>
 
       <section aria-labelledby="est-lines" className="stack">
         <div className="row-actions takeoff-quantities__head">
