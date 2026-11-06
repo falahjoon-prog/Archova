@@ -14,6 +14,8 @@ export interface NovaAnswer {
   citations: Citation[];
   /** `air_…` when the answer came from the API; feedback is only sent for those. */
   runId: string | null;
+  /** A button under the answer that runs the action on the current screen. */
+  action?: { id: string; label: string };
 }
 
 const notFound = (text: string): NovaAnswer => ({

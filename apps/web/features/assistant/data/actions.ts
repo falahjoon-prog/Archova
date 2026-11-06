@@ -6,11 +6,18 @@ import type { NovaAnswer } from './preview-answers';
 
 const VERB = /\b(make|create|draft|write|generate|build|prepare|set up)\b/;
 
-const DRAFTS: { match: RegExp; recordType: string; here: string; elsewhere: string }[] = [
+const DRAFTS: {
+  match: RegExp;
+  recordType: string;
+  actionId?: string;
+  here: string;
+  elsewhere: string;
+}[] = [
   {
     match: /\binductions?\b/,
     recordType: 'induction',
-    here: 'Use the "Draft with Nova" button on this page. I\'ll read the project documents and draft the slides, script and quiz for you to review.',
+    actionId: 'draft',
+    here: "I can draft it now: I'll read the project documents and draft the slides, script and quiz for you to review. Nothing changes until you take it in.",
     elsewhere:
       'I draft inductions from the Inductions screen: open an induction and choose "Draft with Nova". I\'ll read the project documents and draft the slides, script and quiz for you to review.',
   },
@@ -44,5 +51,8 @@ export function actionRedirect(question: string, scope: AssistantScope): NovaAns
     text: scope.record?.type === hit.recordType ? hit.here : hit.elsewhere,
     citations: [],
     runId: null,
+    ...(hit.actionId && scope.record?.type === hit.recordType
+      ? { action: { id: hit.actionId, label: 'Draft with Nova' } }
+      : {}),
   };
 }
