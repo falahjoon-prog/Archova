@@ -105,9 +105,27 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const barRef = useRef<HTMLElement>(null);
   const assistantOpen = assistant?.open ?? false;
   const onAssistantChange = assistant?.onOpenChange;
   const toggleAssistant = assistant ? () => assistant.onOpenChange(!assistant.open) : undefined;
+
+  // The bar is sticky and its height changes with the breakpoint (one to three rows), so sticky things below it
+  // (the project sidebar) read `--app-bar-h` instead of guessing.
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('--app-bar-h', `${bar.offsetHeight}px`);
+    sync();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(bar);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--app-bar-h');
+    };
+  }, []);
 
   // Cmd/Ctrl+J opens and closes Ask Nova from anywhere (frontend 03 §5).
   useEffect(() => {
@@ -126,7 +144,7 @@ export function AppShell({
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <header className="app-shell__bar">
+      <header ref={barRef} className="app-shell__bar">
         <div className="app-shell__brand">
           <Link className="app-shell__logo ac-focusable" href={webRoutes.orgPicker()}>
             <BrandLogo />

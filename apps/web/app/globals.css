@@ -90,6 +90,10 @@ main:focus {
   padding: var(--space-3) var(--space-6);
   background: var(--c-surface);
   border-bottom: 1px solid var(--c-border-divider);
+  /* Stays put on every signed-in page; its dropdown menus are positioned against it. */
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .app-shell__brand {
   display: flex;
@@ -292,9 +296,6 @@ main:focus {
 }
 /* Narrow screens: menus span the bar's width instead of hanging off the right edge. */
 @media (max-width: 900px) {
-  .app-shell__bar {
-    position: relative;
-  }
   .app-shell__nav-group {
     position: static;
   }
@@ -648,7 +649,10 @@ main:focus {
 }
 .project-nav {
   position: sticky;
-  top: var(--space-4);
+  top: calc(var(--app-bar-h, 0px) + var(--space-4));
+  /* Long groups scroll inside the sidebar instead of running under the sticky header. */
+  max-height: calc(100vh - var(--app-bar-h, 0px) - var(--space-8));
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -779,6 +783,7 @@ main:focus {
   }
   .project-nav {
     position: static;
+    max-height: none;
     flex-direction: row;
     overflow-x: auto;
     gap: var(--space-2);
