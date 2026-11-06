@@ -16,7 +16,7 @@ interface SourceRows {
 
 /** What `reporting` needs from the tool modules; each narrows to what the caller may read on that project. */
 export interface ReportingDeps {
-  platform: Pick<PlatformApi, 'listProjects'>;
+  platform: Pick<PlatformApi, 'listProjects' | 'getProject'>;
   rfis: Tool;
   defects: Tool;
   submittals: Tool;

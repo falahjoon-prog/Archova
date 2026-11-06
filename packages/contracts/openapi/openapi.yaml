@@ -12145,6 +12145,103 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listProjectRisks
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.read
+      summary: 'The project risk register, highest score first.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [open, mitigating, occurred, closed] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRiskList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.write
+      summary: 'Add a risk. It is numbered per project (R-1, R-2 ...).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectRiskRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRisk' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks/summary:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: getProjectRiskSummary
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.read
+      summary: 'Open risks by level, the risk RAG for the project health model, and the top risks.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRiskSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/RiskId' }
+    patch:
+      operationId: updateProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.write
+      summary: 'Change a risk. Closing it stamps the closed time; reopening clears it.'
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectRiskRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRisk' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.manage
+      summary: 'Remove a risk from the register.'
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -12793,6 +12890,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+    RiskId:
+      name: riskId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rsk_[0-9A-Za-z]{26}$' }
     FileId:
       name: fileId
       in: path
@@ -14191,6 +14293,102 @@ components:
           type: array
           description: One row per fiscal year, then the all-years total last.
           items: { $ref: '#/components/schemas/OwnerCapitalTotals' }
+    RiskCategory:
+      type: string
+      enum: [scope, time, cost, quality, safety, commercial, other]
+    RiskStatus:
+      type: string
+      enum: [open, mitigating, occurred, closed]
+    ProjectRisk:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          category,
+          likelihood,
+          impact,
+          score,
+          level,
+          status,
+          ownerName,
+          mitigation,
+          reviewDate,
+          closedAt,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        score: { type: integer, description: 'likelihood x impact, 1 to 25' }
+        level: { type: string, enum: [high, medium, low] }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'] }
+        mitigation: { type: string }
+        reviewDate: { type: [string, 'null'], format: date }
+        closedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectRiskList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectRisk' }
+    CreateProjectRiskRequest:
+      type: object
+      required: [title, category, likelihood, impact]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'], maxLength: 120 }
+        mitigation: { type: string, maxLength: 4000 }
+        reviewDate: { type: [string, 'null'], format: date }
+    UpdateProjectRiskRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'], maxLength: 120 }
+        mitigation: { type: string, maxLength: 4000 }
+        reviewDate: { type: [string, 'null'], format: date }
+    ProjectRiskSummary:
+      type: object
+      required: [rag, open, high, medium, low, overdueReviews, top]
+      properties:
+        rag:
+          type: [string, 'null']
+          enum: [red, amber, green, null]
+          description: 'Null when no risk has ever been recorded: unknown, never green.'
+        open: { type: integer, description: 'Risks not yet closed' }
+        high: { type: integer }
+        medium: { type: integer }
+        low: { type: integer }
+        overdueReviews: { type: integer }
+        top:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectRisk' }
     MeetingSeries:
       type: object
       required:

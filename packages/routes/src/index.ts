@@ -83,6 +83,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   budget: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/budget`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  risks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/risks`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,

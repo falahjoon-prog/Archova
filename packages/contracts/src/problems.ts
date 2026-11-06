@@ -269,6 +269,9 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  // risk register
+  'risk.not_found': 404,
+
   // meetings
   'meeting.series_not_found': 404,
   'meeting.not_found': 404,

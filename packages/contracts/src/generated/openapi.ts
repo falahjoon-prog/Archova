@@ -8968,6 +8968,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project risk register, highest score first. */
+        get: operations["listProjectRisks"];
+        put?: never;
+        /** Add a risk. It is numbered per project (R-1, R-2 ...). */
+        post: operations["createProjectRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Open risks by level, the risk RAG for the project health model, and the top risks. */
+        get: operations["getProjectRiskSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a risk from the register. */
+        delete: operations["deleteProjectRisk"];
+        options?: never;
+        head?: never;
+        /** Change a risk. Closing it stamps the closed time; reopening clears it. */
+        patch: operations["updateProjectRisk"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -10088,6 +10151,77 @@ export interface components {
             items: components["schemas"]["OwnerCapitalItem"][];
             /** @description One row per fiscal year, then the all-years total last. */
             totals: components["schemas"]["OwnerCapitalTotals"][];
+        };
+        /** @enum {string} */
+        RiskCategory: "scope" | "time" | "cost" | "quality" | "safety" | "commercial" | "other";
+        /** @enum {string} */
+        RiskStatus: "open" | "mitigating" | "occurred" | "closed";
+        ProjectRisk: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            /** @description likelihood x impact, 1 to 25 */
+            score: number;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            status: components["schemas"]["RiskStatus"];
+            ownerName: string | null;
+            mitigation: string;
+            /** Format: date */
+            reviewDate: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProjectRiskList: {
+            data: components["schemas"]["ProjectRisk"][];
+        };
+        CreateProjectRiskRequest: {
+            title: string;
+            description?: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        UpdateProjectRiskRequest: {
+            title?: string;
+            description?: string;
+            category?: components["schemas"]["RiskCategory"];
+            likelihood?: number;
+            impact?: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        ProjectRiskSummary: {
+            /**
+             * @description Null when no risk has ever been recorded: unknown, never green.
+             * @enum {string|null}
+             */
+            rag: "red" | "amber" | "green" | null;
+            /** @description Risks not yet closed */
+            open: number;
+            high: number;
+            medium: number;
+            low: number;
+            overdueReviews: number;
+            top: components["schemas"]["ProjectRisk"][];
         };
         MeetingSeries: {
             id: string;
@@ -17091,6 +17225,7 @@ export interface components {
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
+        RiskId: string;
         FileId: string;
         SpecBookId: string;
         FolderId: string;
@@ -31810,6 +31945,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectRisks: {
+        parameters: {
+            query?: {
+                status?: "open" | "mitigating" | "occurred" | "closed";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectRiskSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectRisk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
                 };
             };
             default: components["responses"]["Problem"];

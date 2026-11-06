@@ -2853,6 +2853,33 @@ export const VoidClaimEvidenceServiceParams = z.object({
 export const VoidClaimEvidenceServiceBody = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
+export const ListProjectRisksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectRisksQuery = z.object({
+  "status": z.enum(["open", "mitigating", "occurred", "closed"]).optional(),
+});
+export const CreateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectRiskBody = s.CreateProjectRiskRequestSchema;
+export const GetProjectRiskSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskBody = s.UpdateProjectRiskRequestSchema;
+export const DeleteProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9334,6 +9361,66 @@ export const operations = {
     params: VoidClaimEvidenceServiceParams,
     query: null,
     body: VoidClaimEvidenceServiceBody,
+  },
+  listProjectRisks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectRisksParams,
+    query: ListProjectRisksQuery,
+    body: null,
+  },
+  createProjectRisk: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectRiskParams,
+    query: null,
+    body: CreateProjectRiskBody,
+  },
+  getProjectRiskSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/summary',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectRiskSummaryParams,
+    query: null,
+    body: null,
+  },
+  updateProjectRisk: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectRiskParams,
+    query: null,
+    body: UpdateProjectRiskBody,
+  },
+  deleteProjectRisk: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteProjectRiskParams,
+    query: null,
+    body: null,
   },
   listMeetingSeries: {
     method: 'GET',
