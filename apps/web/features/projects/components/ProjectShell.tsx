@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import {
@@ -33,6 +33,8 @@ import {
   CorrespondenceIcon,
   AdminIcon,
   type LucideIcon,
+  ChevronLeft,
+  ChevronRight,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -80,10 +82,9 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         companyId: perms?.companyId ?? null,
       }}
     >
-      <div className="project-shell">
-        <ProjectNav projectName={p.name} groups={groups} />
-        <div className="project-shell__content">{children}</div>
-      </div>
+      <ShellFrame projectName={p.name} groups={groups}>
+        {children}
+      </ShellFrame>
     </CurrentProjectProvider>
   );
 }
@@ -335,3 +336,57 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     tools: ['Late submissions', 'Imports', 'SharePoint and Drive'],
   },
 ];
+
+const SIDEBAR_KEY = 'archova.sidebar.collapsed';
+
+/** Sidebar plus content. The edge handle folds the sidebar away on desktop; the choice is remembered per browser. */
+function ShellFrame({
+  projectName,
+  groups,
+  children,
+}: {
+  projectName: string;
+  groups: ProjectNavGroup[];
+  children: ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === '1');
+    } catch {
+      /* storage blocked: stays open */
+    }
+  }, []);
+  const toggle = () => {
+    setCollapsed((c) => {
+      try {
+        window.localStorage.setItem(SIDEBAR_KEY, c ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
+  };
+  return (
+    <div className="project-shell" data-collapsed={collapsed}>
+      <div className="project-shell__side">
+        <ProjectNav projectName={projectName} groups={groups} />
+        <button
+          type="button"
+          className="project-shell__edge ac-focusable"
+          aria-label={collapsed ? 'Show project menu' : 'Hide project menu'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Show project menu' : 'Hide project menu'}
+          onClick={toggle}
+        >
+          {collapsed ? (
+            <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
+          )}
+        </button>
+      </div>
+      <div className="project-shell__content">{children}</div>
+    </div>
+  );
+}

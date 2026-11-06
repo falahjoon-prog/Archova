@@ -180,12 +180,14 @@ export function AppShell({
             <button
               type="button"
               className="app-shell__assistant-toggle ac-focusable"
+              aria-label={assistant.label}
               aria-expanded={assistantOpen}
               aria-controls="assistant-panel"
               aria-keyshortcuts="Control+J Meta+J"
               onClick={toggleAssistant}
             >
-              <NovaIcon size={16} /> {assistant.label}
+              <NovaIcon size={16} />
+              <span className="app-shell__assistant-label">{assistant.label}</span>
             </button>
           ) : null}
           {actions}
