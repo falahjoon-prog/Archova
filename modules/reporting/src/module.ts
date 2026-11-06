@@ -3,6 +3,7 @@ import { reportingRoutes } from './api/routes';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createReadinessService } from './application/readiness';
+import { createRiskRegisterService } from './application/risk-register';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
 import { REPORTING_PERMISSIONS } from './permissions';
@@ -18,10 +19,14 @@ export function createReportingModule(deps: ReportingDeps & RiskDeps & { databas
   const reports = createReportsService(deps);
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
+  const riskRegister = createRiskRegisterService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
-    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness),
-    api: {},
+    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness, riskRegister),
+    api: {
+      /** Open risks by level and the risk RAG, for the project health model. */
+      riskSummary: riskRegister.summary,
+    },
   };
 }
 

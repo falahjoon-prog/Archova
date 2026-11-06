@@ -2006,6 +2006,25 @@ export const CreateProjectRequestSchema = z.object({
 }).strict();
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
+export const RiskCategorySchema = z.enum(["scope", "time", "cost", "quality", "safety", "commercial", "other"]);
+export type RiskCategory = z.infer<typeof RiskCategorySchema>;
+
+export const RiskStatusSchema = z.enum(["open", "mitigating", "occurred", "closed"]);
+export type RiskStatus = z.infer<typeof RiskStatusSchema>;
+
+export const CreateProjectRiskRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(4000).optional(),
+  "category": RiskCategorySchema,
+  "likelihood": z.number().int().min(1).max(5),
+  "impact": z.number().int().min(1).max(5),
+  "status": RiskStatusSchema.optional(),
+  "ownerName": z.string().max(120).nullable().optional(),
+  "mitigation": z.string().max(4000).optional(),
+  "reviewDate": z.string().date().nullable().optional(),
+});
+export type CreateProjectRiskRequest = z.infer<typeof CreateProjectRiskRequestSchema>;
+
 export const QuoteSourceRefSchema = z.object({
   "page": z.number().int().min(1),
   "snippet": z.string().max(500),
@@ -5413,6 +5432,44 @@ export const ProjectPageSchema = z.object({
 });
 export type ProjectPage = z.infer<typeof ProjectPageSchema>;
 
+export const ProjectRiskSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string(),
+  "category": RiskCategorySchema,
+  "likelihood": z.number().int().min(1).max(5),
+  "impact": z.number().int().min(1).max(5),
+  "score": z.number().int(),
+  "level": z.enum(["high", "medium", "low"]),
+  "status": RiskStatusSchema,
+  "ownerName": z.string().nullable(),
+  "mitigation": z.string(),
+  "reviewDate": z.string().date().nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type ProjectRisk = z.infer<typeof ProjectRiskSchema>;
+
+export const ProjectRiskListSchema = z.object({
+  "data": z.array(ProjectRiskSchema),
+});
+export type ProjectRiskList = z.infer<typeof ProjectRiskListSchema>;
+
+export const ProjectRiskSummarySchema = z.object({
+  "rag": z.enum(["red", "amber", "green"]).nullable(),
+  "open": z.number().int(),
+  "high": z.number().int(),
+  "medium": z.number().int(),
+  "low": z.number().int(),
+  "overdueReviews": z.number().int(),
+  "top": z.array(ProjectRiskSchema),
+});
+export type ProjectRiskSummary = z.infer<typeof ProjectRiskSummarySchema>;
+
 export const PublicPriceBookSchema = z.object({
   "version": z.string(),
   "effectiveFrom": z.string().datetime({ offset: true }).nullable(),
@@ -7310,6 +7367,19 @@ export const UpdateProjectRequestSchema = z.object({
   "endDate": z.string().date().nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
+
+export const UpdateProjectRiskRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "description": z.string().max(4000).optional(),
+  "category": RiskCategorySchema.optional(),
+  "likelihood": z.number().int().min(1).max(5).optional(),
+  "impact": z.number().int().min(1).max(5).optional(),
+  "status": RiskStatusSchema.optional(),
+  "ownerName": z.string().max(120).nullable().optional(),
+  "mitigation": z.string().max(4000).optional(),
+  "reviewDate": z.string().date().nullable().optional(),
+});
+export type UpdateProjectRiskRequest = z.infer<typeof UpdateProjectRiskRequestSchema>;
 
 export const UpdateQuoteRequestSchema = z.object({
   "reference": z.string().max(100).nullable().optional(),
