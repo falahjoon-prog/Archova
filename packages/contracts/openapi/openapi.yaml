@@ -14935,7 +14935,8 @@ components:
         version: { type: integer }
     OrgBranding:
       type: object
-      required: [logoFileId, accentColor, dashboardWidgets, availableWidgets, version]
+      required:
+        [logoFileId, accentColor, dashboardWidgets, dashboardLayout, availableWidgets, version]
       properties:
         logoFileId: { type: [string, 'null'] }
         accentColor: { type: [string, 'null'], description: 'Six-digit hex such as #1F6FEB.' }
@@ -14943,6 +14944,10 @@ components:
           type: array
           description: The Portfolio widgets that show, in order.
           items: { type: string }
+        dashboardLayout:
+          type: [array, 'null']
+          description: The saved Portfolio tile layout, or null while the default one is used.
+          items: { $ref: '#/components/schemas/DashboardTile' }
         availableWidgets:
           type: array
           items:
@@ -14963,6 +14968,24 @@ components:
           minItems: 1
           maxItems: 20
           items: { type: string }
+        dashboardLayout:
+          type: [array, 'null']
+          maxItems: 40
+          description: Replaces the tile layout; null puts the default layout back.
+          items: { $ref: '#/components/schemas/DashboardTile' }
+    DashboardTile:
+      type: object
+      description: A tile on the 12-column dashboard grid. `type` is a tile from the web tile library.
+      required: [id, type, x, y, w, h]
+      additionalProperties: false
+      properties:
+        id: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+        type: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+        x: { type: integer, minimum: 0, maximum: 11 }
+        y: { type: integer, minimum: 0, maximum: 1000 }
+        w: { type: integer, minimum: 1, maximum: 12 }
+        h: { type: integer, minimum: 1, maximum: 40 }
+        config: { type: object, additionalProperties: true }
     SupportAccessGrant:
       type: object
       required: [id, ticketRef, level, projectIds, createdAt, expiresAt, grantedBy, status]

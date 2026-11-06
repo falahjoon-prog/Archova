@@ -22,6 +22,42 @@ export const DASHBOARD_WIDGETS = [
 
 const WIDGET_KEYS: ReadonlySet<string> = new Set(DASHBOARD_WIDGETS.map((w) => w.key));
 export const DEFAULT_WIDGETS: readonly string[] = DASHBOARD_WIDGETS.map((w) => w.key);
+/** A placed dashboard tile on a 12-column grid. `type` comes from the web tile library, so only its shape is checked here. */
+export interface DashboardTile {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  config?: Record<string, unknown>;
+}
+const GRID_COLS = 12;
+const MAX_TILES = 40;
+const MAX_CONFIG_CHARS = 2000;
+const TILE_TYPE = /^[a-z][a-z0-9_]{0,39}$/;
+const TILE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const isInt = (n: unknown, min: number, max: number): n is number =>
+  Number.isInteger(n) && (n as number) >= min && (n as number) <= max;
+
+function tileProblem(tiles: DashboardTile[]): string | null {
+  if (tiles.length > MAX_TILES) return `Use at most ${MAX_TILES} tiles`;
+  if (new Set(tiles.map((t) => t.id)).size !== tiles.length) return 'Repeated tile id';
+  for (const t of tiles) {
+    if (!TILE_ID.test(t.id) || !TILE_TYPE.test(t.type)) return 'Bad tile id or type';
+    if (
+      !isInt(t.w, 1, GRID_COLS) ||
+      !isInt(t.x, 0, GRID_COLS - 1) ||
+      t.x + t.w > GRID_COLS ||
+      !isInt(t.h, 1, 40) ||
+      !isInt(t.y, 0, 1000)
+    )
+      return 'A tile is outside the grid';
+    if (t.config !== undefined && JSON.stringify(t.config).length > MAX_CONFIG_CHARS)
+      return 'Tile settings are too long';
+  }
+  return null;
+}
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /** WCAG relative luminance of a #RRGGBB colour. Accents are only marks and bars, so they just need to stand out from both page surfaces. */
@@ -48,6 +84,8 @@ export interface BrandingView {
   logoFileId: string | null;
   accentColor: string | null;
   dashboardWidgets: string[];
+  /** The saved tile layout, or null while the company still uses the default one. */
+  dashboardLayout: DashboardTile[] | null;
   version: number;
 }
 
@@ -55,11 +93,14 @@ export interface BrandingInput {
   logoFileId?: string | null;
   accentColor?: string | null;
   dashboardWidgets?: string[];
+  /** null puts the default layout back. */
+  dashboardLayout?: DashboardTile[] | null;
 }
 
 interface Stored {
   accentColor?: string | null;
   dashboardWidgets?: string[];
+  dashboardLayout?: DashboardTile[] | null;
 }
 
 export function createBrandingService(files: () => BrandingFilesPort | undefined) {
@@ -69,6 +110,7 @@ export function createBrandingService(files: () => BrandingFilesPort | undefined
       logoFileId: o.logoFileId,
       accentColor: b.accentColor ?? null,
       dashboardWidgets: b.dashboardWidgets ?? [...DEFAULT_WIDGETS],
+      dashboardLayout: b.dashboardLayout ?? null,
       version: o.version,
     };
   };
@@ -108,6 +150,11 @@ export function createBrandingService(files: () => BrandingFilesPort | undefined
       else if (w.length === 0)
         problems.push({ path: 'dashboardWidgets', message: 'Keep at least one widget' });
       else next.dashboardWidgets = w;
+    }
+    if (input.dashboardLayout !== undefined) {
+      const problem = input.dashboardLayout ? tileProblem(input.dashboardLayout) : null;
+      if (problem) problems.push({ path: 'dashboardLayout', message: problem });
+      else next.dashboardLayout = input.dashboardLayout;
     }
     let logoFileId = o.logoFileId;
     if (input.logoFileId !== undefined) {

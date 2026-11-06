@@ -85,6 +85,7 @@ const toBrandingDto = (b: BrandingView) => ({
   logoFileId: b.logoFileId ? encodeId('file', b.logoFileId) : null,
   accentColor: b.accentColor,
   dashboardWidgets: b.dashboardWidgets,
+  dashboardLayout: b.dashboardLayout,
   availableWidgets: DASHBOARD_WIDGETS.map((w) => ({ ...w })),
   version: b.version,
 });
@@ -163,6 +164,7 @@ export function platformRoutes(d: PlatformRouteDeps) {
           ...(body.dashboardWidgets !== undefined
             ? { dashboardWidgets: body.dashboardWidgets }
             : {}),
+          ...(body.dashboardLayout !== undefined ? { dashboardLayout: body.dashboardLayout } : {}),
         }),
       );
       return { status: 200, body: toBrandingDto(b) };

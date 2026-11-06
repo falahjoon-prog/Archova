@@ -52,6 +52,25 @@ describe('org branding (GET/PUT /v1/orgs/{orgId}/branding)', () => {
     });
   });
 
+  it('saves a tile layout, resets it with null, and refuses tiles outside the grid', async () => {
+    const owner = await signUp(t.app, 'brand-layout');
+    const org = await createOrg(owner.browser);
+    const url = `/v1/orgs/${org.id}/branding`;
+    const tiles = [
+      { id: 'a1', type: 'big_number', x: 0, y: 0, w: 3, h: 2, config: { metric: 'rfisOpen' } },
+      { id: 'b2', type: 'text_box', x: 3, y: 0, w: 9, h: 2 },
+    ];
+    const ok = await owner.browser.put(url, { dashboardLayout: tiles });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({ dashboardLayout: tiles });
+    const bad = [{ id: 'c3', type: 'text_box', x: 10, y: 0, w: 5, h: 2 }];
+    expect((await owner.browser.put(url, { dashboardLayout: bad })).statusCode).toBe(422);
+    const dup = [tiles[0], { ...tiles[1], id: 'a1' }];
+    expect((await owner.browser.put(url, { dashboardLayout: dup })).statusCode).toBe(422);
+    const reset = await owner.browser.put(url, { dashboardLayout: null });
+    expect(reset.json()).toMatchObject({ dashboardLayout: null });
+  });
+
   it('refuses a bad colour, an unknown widget, an empty list and a logo that is not a file', async () => {
     const owner = await signUp(t.app, 'brand-bad');
     const org = await createOrg(owner.browser);
