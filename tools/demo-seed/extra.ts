@@ -3,6 +3,7 @@
 // there, so re-runs don't duplicate; a step that fails logs a warning and the rest carry on. Sample data only.
 import { addDays, type LocalDate, localDateOf } from '@archova/time';
 import { makePdf } from './pdf';
+import { DEMO_MODELS } from './ifc';
 import { Session } from './session';
 
 export interface Api {
@@ -38,6 +39,7 @@ export interface ExtraContext {
     module: string,
     filename: string,
     bytes: Uint8Array,
+    mime?: string,
   ) => Promise<string>;
   /** The drawing sheets to give a project that has none. */
   sheets: Array<{ number: string; title: string; discipline: string }>;
@@ -480,6 +482,45 @@ export async function seedExtra(ctx: ExtraContext) {
     for (let i = have; i < target; i++) await make(i);
     return `${Math.max(target - have, 0)} added, ${Math.min(have, target)} existing`;
   };
+
+  // Three small IFC models and two clashes between them, so the 3D viewer has something to open. Skipped when the
+  // project already has models, so a re-run adds nothing.
+  await step('BIM models and coordination issues', async () => {
+    if ((await count(`${pp}/bim-models`)) > 0) return 'existing';
+    const specs = [
+      ['Architectural', 'architectural', 'architectural.ifc', DEMO_MODELS.architectural],
+      ['Mechanical services', 'mechanical', 'mechanical.ifc', DEMO_MODELS.mechanical],
+      ['Structure', 'structural', 'structural.ifc', DEMO_MODELS.structural],
+    ] as const;
+    const ids: string[] = [];
+    for (const [name, discipline, file, bytes] of specs) {
+      const fileId = await ctx.upload(primary.id, 'bim', file, bytes, 'model/ifc');
+      const m = await s.ok<{ id: string }>('POST', `${pp}/bim-models`, {
+        name,
+        discipline,
+        versionLabel: 'Rev A',
+        fileId,
+      });
+      ids.push(m.id);
+    }
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Supply duct D-01 passes through wall W-01',
+      description:
+        'The duct has no penetration in the wall. Confirm a sleeve and fire stopping with the architect.',
+      priority: 'high',
+      modelId: ids[1],
+      elementGuids: ['0DEMOMECHDUCT000000001', '0DEMOARCHWALL000000001'],
+      location: 'Level 1, grid A',
+    });
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Beam B-12 clashes with return duct D-02',
+      priority: 'medium',
+      modelId: ids[2],
+      elementGuids: ['0DEMOSTRUBEAM000000001', '0DEMOMECHDUCT000000002'],
+      location: 'Level 1, mid span',
+    });
+    return '3 models, 2 issues';
+  });
 
   await step('companies', async () => {
     const existing = await s.ok<{ data: Array<{ name: string }> }>('GET', `${org}/companies`);

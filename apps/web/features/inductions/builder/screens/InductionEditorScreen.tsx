@@ -15,7 +15,7 @@ import {
   Tabs,
   TextField,
 } from '@archova/ui';
-import { InductionsIcon } from '@archova/ui/icons';
+import { InductionsIcon, Save, Upload } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
@@ -136,10 +136,10 @@ function Editor({ induction, back }: { induction: Induction; back: React.ReactNo
                 )
               }
             >
-              Save draft
+              <Save size={16} aria-hidden="true" /> Save draft
             </Button>
             <Button disabled={!canPublish} onClick={() => setPublishing(true)}>
-              Publish version {nextNumber}
+              <Upload size={16} aria-hidden="true" /> Publish version {nextNumber}
             </Button>
           </>
         }

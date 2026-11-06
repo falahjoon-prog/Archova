@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
+import { NovaIcon } from '@archova/ui/icons';
 import { BrandLogo } from './BrandLogo';
 
 export interface NavItem {
@@ -184,7 +185,7 @@ export function AppShell({
               aria-keyshortcuts="Control+J Meta+J"
               onClick={toggleAssistant}
             >
-              {assistant.label}
+              <NovaIcon size={16} /> {assistant.label}
             </button>
           ) : null}
           {actions}
