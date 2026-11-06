@@ -3,6 +3,7 @@ import type { EvalSuite } from './harness';
 import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
+import { contractSovSuite } from './suites/contract-sov';
 import { defectTagSuite } from './suites/defect-tag';
 import { diarySummarySuite } from './suites/diary-summary';
 import { diaryWeeklySuite } from './suites/diary-weekly';
@@ -53,5 +54,6 @@ export const SUITES: readonly AnySuite[] = [
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,
+  contractSovSuite,
   takeoffDetectSuite,
 ];

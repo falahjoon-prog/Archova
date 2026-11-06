@@ -2472,6 +2472,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova to propose a contract's schedule of values from its PDF.
+         * @description For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+         *     contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+         *     and the printed row it came from, and is shown only when code found that row on the page and the amount is
+         *     printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+         *     blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+         *     against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+         *     saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+         *     by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+         */
+        post: operations["draftContractSov"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
         parameters: {
             query?: never;
@@ -11436,6 +11466,39 @@ export interface components {
             unreadPages: number[];
             /** @description Part of the contract was left out (too long to read in one go). */
             truncated: boolean;
+        };
+        NovaContractSovDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read, so the list may miss lines on them. */
+            unreadPages: number[];
+            /** @description Part of the document was left out (too long to read in one go). */
+            truncated: boolean;
+            lines: {
+                /** @description Blank when the document prints no code for the line. */
+                code: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                source: {
+                    page: number;
+                    quote: string;
+                };
+            }[];
+            /** @enum {string} */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            /** @description The total the document prints, when code found it on a page. */
+            statedTotalExGst: components["schemas"]["FinancialsMoney"] | null;
+            linesTotalExGst: components["schemas"]["FinancialsMoney"];
+            contractValueExGst: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string} */
+            totalCheck: "matches" | "differs" | "no_value";
+            /** @description Lines total less the contract value, signed; null when no value was entered. */
+            difference: string | null;
+            /** @description Lines left out because their words or amount were not on the page. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "items_dropped" | "total_differs" | "no_lines")[];
         };
         NovaContractReview: {
             /** Format: date-time */
@@ -21036,6 +21099,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaContractAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftContractSov: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    /** @description The contract value ex GST the person has entered, to check the lines against. */
+                    contractValue?: components["schemas"]["FinancialsMoney"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The proposed lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractSovDraft"];
                 };
             };
             default: components["responses"]["Problem"];

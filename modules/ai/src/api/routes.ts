@@ -19,6 +19,7 @@ import type {
   ContractReviewRow,
   ContractReviewService,
 } from '../application/contract-review';
+import type { ContractSovService } from '../application/contract-sov';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
@@ -293,6 +294,7 @@ export function aiRoutes(
   quoteNegotiations: QuoteNegotiateService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
+  contractSov: ContractSovService,
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
@@ -613,6 +615,15 @@ export function aiRoutes(
           other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
         },
       };
+    },
+    draftContractSov: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const d = await contractSov.draft(requireTenant(input), projectUuid(input.params.projectId), {
+        fileId,
+        contractValue: input.body.contractValue ?? null,
+      });
+      return { status: 200, body: { ...d, runId: encodeId('aiRun', d.runId) } };
     },
     transcribeSpeech: async (input) => {
       const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {

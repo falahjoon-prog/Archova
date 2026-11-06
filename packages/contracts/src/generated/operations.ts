@@ -748,6 +748,14 @@ export const AskContractParams = z.object({
 export const AskContractBody = z.object({
   "question": z.string().min(3).max(500),
 }).strict();
+export const DraftContractSovParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftContractSovBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractValue": z.union([s.FinancialsMoneySchema, z.null()]).optional(),
+}).strict();
 export const CompareContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4719,6 +4727,18 @@ export const operations = {
     params: AskContractParams,
     query: null,
     body: AskContractBody,
+  },
+  draftContractSov: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "financials.contracts.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftContractSovParams,
+    query: null,
+    body: DraftContractSovBody,
   },
   compareContracts: {
     method: 'POST',

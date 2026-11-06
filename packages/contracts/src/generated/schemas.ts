@@ -4619,6 +4619,32 @@ export const NovaContractReviewSchema = z.object({
 });
 export type NovaContractReview = z.infer<typeof NovaContractReviewSchema>;
 
+export const NovaContractSovDraftSchema = z.object({
+  "runId": z.string(),
+  "fileName": z.string(),
+  "pageCount": z.number().int().min(1),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+  "lines": z.array(z.object({
+  "code": z.string(),
+  "description": z.string(),
+  "amount": FinancialsMoneySchema,
+  "source": z.object({
+  "page": z.number().int().min(1),
+  "quote": z.string(),
+}),
+})),
+  "prices": z.enum(["exclude_gst", "include_gst", "unclear"]),
+  "statedTotalExGst": z.union([FinancialsMoneySchema, z.null()]),
+  "linesTotalExGst": FinancialsMoneySchema,
+  "contractValueExGst": z.union([FinancialsMoneySchema, z.null()]),
+  "totalCheck": z.enum(["matches", "differs", "no_value"]),
+  "difference": z.string().nullable(),
+  "dropped": z.number().int().min(0),
+  "warnings": z.array(z.enum(["prices_include_gst", "items_dropped", "total_differs", "no_lines"])),
+});
+export type NovaContractSovDraft = z.infer<typeof NovaContractSovDraftSchema>;
+
 export const NovaDefectTagSchema = z.object({
   "runId": z.string(),
   "suggestionId": z.string(),

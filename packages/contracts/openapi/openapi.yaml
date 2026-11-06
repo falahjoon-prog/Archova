@@ -3259,6 +3259,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftContractSov
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.contracts.manage
+      summary: Ask Nova to propose a contract's schedule of values from its PDF.
+      description: |
+        For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+        contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+        and the printed row it came from, and is shown only when code found that row on the page and the amount is
+        printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+        blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+        against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+        saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+        by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { $ref: '#/components/schemas/FileRef' }
+                contractValue:
+                  description: The contract value ex GST the person has entered, to check the lines against.
+                  oneOf:
+                    - { $ref: '#/components/schemas/FinancialsMoney' }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: The proposed lines
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractSovDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16252,6 +16293,78 @@ components:
         truncated:
           type: boolean
           description: Part of the contract was left out (too long to read in one go).
+    NovaContractSovDraft:
+      type: object
+      required:
+        - runId
+        - fileName
+        - pageCount
+        - unreadPages
+        - truncated
+        - lines
+        - prices
+        - statedTotalExGst
+        - linesTotalExGst
+        - contractValueExGst
+        - totalCheck
+        - difference
+        - dropped
+        - warnings
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        fileName: { type: string }
+        pageCount: { type: integer, minimum: 1 }
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read, so the list may miss lines on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          type: boolean
+          description: Part of the document was left out (too long to read in one go).
+        lines:
+          type: array
+          items:
+            type: object
+            required: [code, description, amount, source]
+            properties:
+              code:
+                { type: string, description: Blank when the document prints no code for the line. }
+              description: { type: string }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              source:
+                type: object
+                required: [page, quote]
+                properties:
+                  page: { type: integer, minimum: 1 }
+                  quote: { type: string }
+        prices:
+          type: string
+          enum: [exclude_gst, include_gst, unclear]
+        statedTotalExGst:
+          description: The total the document prints, when code found it on a page.
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        linesTotalExGst: { $ref: '#/components/schemas/FinancialsMoney' }
+        contractValueExGst:
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        totalCheck:
+          type: string
+          enum: [matches, differs, no_value]
+        difference:
+          description: Lines total less the contract value, signed; null when no value was entered.
+          type: [string, 'null']
+        dropped:
+          type: integer
+          minimum: 0
+          description: Lines left out because their words or amount were not on the page.
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [prices_include_gst, items_dropped, total_differs, no_lines]
     NovaContractReview:
       type: object
       required:
