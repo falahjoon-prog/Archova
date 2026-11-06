@@ -3180,3 +3180,118 @@ fieldset.worker-card > legend {
 .row-end > :first-child {
   flex: 1 1 16rem;
 }
+
+/* Project overview (v4 mockup, john 6 Nov 2026): two columns of cards above the full-width members table. */
+.project-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.project-overview__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.project-overview__below {
+  margin-block-start: var(--space-4);
+}
+@media (min-width: 1100px) {
+  .project-overview {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+.overview-hint {
+  margin: 0 0 var(--space-3);
+}
+.overview-rows,
+.overview-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overview-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--space-12);
+  border-top: 1px solid var(--c-border-divider);
+  font-weight: 600;
+}
+.overview-row:first-child {
+  border-top: 0;
+}
+.overview-row__label {
+  flex: 1;
+}
+.overview-row__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-secondary);
+}
+.overview-row__dot {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--c-text-muted);
+}
+.overview-row__dot--overdue {
+  background: var(--c-accent-hivis);
+}
+.overview-row__dot--today {
+  background: var(--brand-amber);
+}
+.overview-row__dot--next {
+  background: var(--c-status-success);
+}
+.overview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--c-border-divider);
+}
+.overview-item:first-child {
+  border-top: 0;
+  padding-block-start: 0;
+}
+.overview-item__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Project sidebar as a dark slate panel (v4 mockup). Built from brand tokens, so it follows light and dark. */
+.project-shell__side {
+  --nav-bg: color-mix(in srgb, var(--brand-slate-deep) 45%, var(--brand-ink));
+  --nav-fg: color-mix(in srgb, white 88%, transparent);
+  --nav-fg-muted: var(--brand-slate-on-dark);
+  --nav-hover: color-mix(in srgb, white 8%, transparent);
+  --nav-current: var(--brand-slate-deep);
+}
+.project-shell__side .project-nav {
+  background: var(--nav-bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-2);
+}
+.project-shell__side .project-nav__link,
+.project-shell__side .project-nav .cgroup__header {
+  color: var(--nav-fg);
+}
+.project-shell__side .project-nav .cgroup__header {
+  color: var(--nav-fg-muted);
+}
+.project-shell__side .project-nav__link:hover,
+.project-shell__side .project-nav .cgroup__header:hover {
+  color: white;
+  background: var(--nav-hover);
+}
+.project-shell__side .project-nav__link[aria-current='page'] {
+  color: white;
+  background: var(--nav-current);
+}
+.project-shell__side .project-nav .cgroup__count {
+  background: var(--nav-hover);
+}
+.project-shell__side .project-nav__group-label {
+  color: var(--nav-fg-muted);
+}
