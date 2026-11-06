@@ -3,34 +3,10 @@
 import Link from 'next/link';
 import { Button, EmptyState, PageHeader, SkeletonRows, StatusPill } from '@archova/ui';
 import { Bookmark as BookmarkIcon, X } from '@archova/ui/icons';
-import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import type { Bookmark } from '../data/api';
+import { bookmarkLabel, bookmarkTarget } from '../lib/target';
 import { useBookmarks, useRemoveBookmark } from '../hooks/useBookmarks';
-
-const LABEL: Record<Bookmark['entityType'], string> = {
-  rfi: 'RFI',
-  submittal: 'Submittal',
-  defect: 'Defect',
-  drawing_sheet: 'Drawing',
-  meeting: 'Meeting',
-};
-
-function target(orgSlug: string, b: Bookmark): string {
-  switch (b.entityType) {
-    case 'rfi':
-      return webRoutes.rfi(orgSlug, b.projectId, b.entityId);
-    case 'submittal':
-      return webRoutes.submittal(orgSlug, b.projectId, b.entityId);
-    case 'defect':
-      return webRoutes.defect(orgSlug, b.projectId, b.entityId);
-    case 'drawing_sheet':
-      return webRoutes.drawing(orgSlug, b.projectId, b.entityId);
-    case 'meeting':
-      return webRoutes.meeting(orgSlug, b.projectId, b.entityId);
-  }
-}
 
 /** The person's saved shortcuts to RFIs, drawings, submittals and other records, newest first. */
 export function BookmarksScreen() {
@@ -60,14 +36,14 @@ export function BookmarksScreen() {
             <li key={b.id} className="inbox-list__item">
               <div className="inbox-list__main">
                 <p className="inbox-list__title">
-                  <Link className="link" href={target(orgSlug, b)}>
+                  <Link className="link" href={bookmarkTarget(orgSlug, b)}>
                     {b.title}
                   </Link>
                 </p>
                 {b.subtitle ? <p className="inbox-list__body">{b.subtitle}</p> : null}
               </div>
               <div className="inbox-list__side">
-                <StatusPill tone="neutral">{LABEL[b.entityType]}</StatusPill>
+                <StatusPill tone="neutral">{bookmarkLabel[b.entityType]}</StatusPill>
                 <Button
                   variant="tertiary"
                   size="sm"

@@ -13,10 +13,13 @@ function useApi() {
 }
 
 /** All of the person's bookmarks; every toggle on a screen shares this one query. */
-export function useBookmarks() {
+export function useBookmarks(projectId?: string) {
   const { orgId } = useCurrentOrg();
   const source = useApi();
-  return useQuery({ queryKey: key(orgId), queryFn: () => source.list() });
+  return useQuery({
+    queryKey: projectId ? [...key(orgId), { projectId }] : key(orgId),
+    queryFn: () => source.list(projectId),
+  });
 }
 
 export function useSaveBookmark() {
