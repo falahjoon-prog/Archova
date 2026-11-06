@@ -5413,6 +5413,13 @@ export const ProjectPageSchema = z.object({
 });
 export type ProjectPage = z.infer<typeof ProjectPageSchema>;
 
+export const ProjectPhotoSchema = z.object({
+  "file": FileObjectSchema,
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ProjectPhoto = z.infer<typeof ProjectPhotoSchema>;
+
 export const PublicPriceBookSchema = z.object({
   "version": z.string(),
   "effectiveFrom": z.string().datetime({ offset: true }).nullable(),
