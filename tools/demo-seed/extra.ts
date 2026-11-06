@@ -785,7 +785,7 @@ export async function seedExtra(ctx: ExtraContext) {
         itemType: 'contractor_licence',
         title: 'NSW builder licence',
         issuingState: 'NSW',
-        number: 'BL-771203',
+        number: '771203C',
         expiresOn: day(400),
       },
     ] as const;
