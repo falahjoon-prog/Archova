@@ -38,6 +38,7 @@
     "@archova/mod-precon": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-reporting": "workspace:*",
+    "@archova/mod-search": "workspace:*",
     "@archova/mod-rfis": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-scheduling": "workspace:*",

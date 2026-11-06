@@ -14,6 +14,9 @@ export const webRoutes = {
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   bookmarks: (orgSlug: string) => `/${enc(orgSlug)}/bookmarks`,
+  /** Global search; `q` pre-fills the box. */
+  search: (orgSlug: string, q?: string) =>
+    `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,

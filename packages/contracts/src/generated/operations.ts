@@ -915,6 +915,13 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const SearchOrgParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SearchOrgQuery = z.object({
+  "q": z.string().min(1).max(200),
+  "perType": z.coerce.number().int().min(1).max(25).default(8),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5056,6 +5063,18 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  searchOrg: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/search',
+    module: "search",
+    auth: "required",
+    permission: "search.global.read",
+    internal: false,
+    contentType: null,
+    params: SearchOrgParams,
+    query: SearchOrgQuery,
     body: null,
   },
   getLateSopaClaimRisk: {
