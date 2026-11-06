@@ -3,17 +3,17 @@
 
 export const color = {
   light: {
-    bg: '#F9FAFB',
+    bg: '#F1F4F7',
     surface: '#FFFFFF',
-    text: '#111827',
+    text: '#18222B',
     textSecondary: '#4B5563',
     textMuted: '#6B7280',
     borderControl: '#6B7280',
-    borderDivider: '#E5E7EB',
-    actionPrimary: '#0B5C5E',
-    actionPrimaryHover: '#083E40',
+    borderDivider: '#DCE2E8',
+    actionPrimary: '#3F5B73',
+    actionPrimaryHover: '#2C4458',
     actionPrimaryText: '#FFFFFF',
-    focusRing: '#0B5C5E',
+    focusRing: '#3F5B73',
     statusSuccess: '#157A3D',
     statusWarning: '#A65A00',
     statusDanger: '#B42318',
@@ -23,17 +23,17 @@ export const color = {
     accentHivis: '#E8590C',
   },
   dark: {
-    bg: '#0F141C',
-    surface: '#171E29',
+    bg: '#0F171D',
+    surface: '#16212A',
     text: '#F3F4F6',
     textSecondary: '#AEB6C2',
     textMuted: '#AEB6C2',
     borderControl: '#AEB6C2',
-    borderDivider: '#2A3342',
-    actionPrimary: '#5FC3B8',
-    actionPrimaryHover: '#8FD6CE',
-    actionPrimaryText: '#0F141C',
-    focusRing: '#5FC3B8',
+    borderDivider: '#273540',
+    actionPrimary: '#8FB0CB',
+    actionPrimaryHover: '#B1CAE0',
+    actionPrimaryText: '#0F171D',
+    focusRing: '#8FB0CB',
     statusSuccess: '#4ADE80',
     statusWarning: '#FBBF24',
     statusDanger: '#F87171',
@@ -47,17 +47,17 @@ export const color = {
 export type ColorToken = keyof typeof color.light;
 
 /**
- * Logo colours, the Verdigris palette (design/02 §2.1, brand/archova-logo). Copper is decorative: the keystone and
- * small brand marks only, never text and never status. Safety orange (`accentHivis`) is a functional colour, not
- * brand. These are also the seeded brand defaults for the marketing site.
+ * Brand colours: slate blue-grey with amber (john, 6 Nov 2026; same values as the marketing site). Amber is the
+ * accent: use it for brand marks, highlights and large fills with dark text (`amberText`), never as small text on
+ * white and never for status. Safety orange (`accentHivis`) is a functional colour, not brand, and stays distinct.
  */
 export const brand = {
   ink: '#111827',
-  verdigris: '#0B5C5E',
-  verdigrisDeep: '#083E40',
-  verdigrisOnDark: '#5FC3B8',
-  copper: '#B4542A',
-  copperLight: '#E7A977',
+  slate: '#3F5B73',
+  slateDeep: '#2C4458',
+  slateOnDark: '#8FB0CB',
+  amber: '#E08A1E',
+  amberText: '#18222B',
 } as const;
 
 /** 4 px base spacing scale. */
