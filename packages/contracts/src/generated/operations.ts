@@ -97,6 +97,20 @@ export const MarkNotificationReadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "notificationId": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
 });
+export const ListBookmarksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListBookmarksQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+});
+export const SaveBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SaveBookmarkBody = s.BookmarkInputSchema;
+export const DeleteBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bookmarkId": z.string().regex(new RegExp("^bmk_[0-9A-Za-z]{26}$")),
+});
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3432,6 +3446,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: MarkNotificationReadParams,
+    query: null,
+    body: null,
+  },
+  listBookmarks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bookmarks',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListBookmarksParams,
+    query: ListBookmarksQuery,
+    body: null,
+  },
+  saveBookmark: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/bookmarks',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SaveBookmarkParams,
+    query: null,
+    body: SaveBookmarkBody,
+  },
+  deleteBookmark: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/bookmarks/{bookmarkId}',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: DeleteBookmarkParams,
     query: null,
     body: null,
   },

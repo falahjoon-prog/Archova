@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import { MARKUP_VISIBILITIES, type MarkupVisibility, type Point } from '@archova/markup';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import {
   Alert,
@@ -275,6 +276,12 @@ export function DrawingViewerScreen({
           </div>
         </div>
         <div className="drawing-viewer__controls">
+          <BookmarkButton
+            entityType="drawing_sheet"
+            entityId={s.id}
+            projectId={project.projectId}
+            title={`${s.sheetNumber} ${s.title}`}
+          />
           <Select
             label="Revision"
             value={revision.id}

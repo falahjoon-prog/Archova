@@ -111,6 +111,7 @@ export const ID_PREFIXES = {
   scheduleLink: 'slk',
   report: 'rpt',
   notification: 'ntf',
+  bookmark: 'bmk',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
   inspection: 'ins',

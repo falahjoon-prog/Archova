@@ -493,6 +493,34 @@ export const BimModelListSchema = z.object({
 });
 export type BimModelList = z.infer<typeof BimModelListSchema>;
 
+export const BookmarkEntityTypeSchema = z.enum(["rfi", "submittal", "defect", "drawing_sheet", "meeting"]);
+export type BookmarkEntityType = z.infer<typeof BookmarkEntityTypeSchema>;
+
+export const BookmarkSchema = z.object({
+  "id": z.string().regex(new RegExp("^bmk_[0-9A-Za-z]{26}$")),
+  "entityType": BookmarkEntityTypeSchema,
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "subtitle": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Bookmark = z.infer<typeof BookmarkSchema>;
+
+export const BookmarkInputSchema = z.object({
+  "entityType": BookmarkEntityTypeSchema,
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "title": z.string().min(1).max(200),
+  "subtitle": z.string().max(200).optional(),
+});
+export type BookmarkInput = z.infer<typeof BookmarkInputSchema>;
+
+export const BookmarkListSchema = z.object({
+  "data": z.array(BookmarkSchema),
+});
+export type BookmarkList = z.infer<typeof BookmarkListSchema>;
+
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),

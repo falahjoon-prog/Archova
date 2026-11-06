@@ -51,6 +51,7 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -296,6 +297,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const bookmarks = createBookmarksModule(services);
 
   const financials = createFinancialsModule(services, {
     access: access.api,
@@ -496,6 +498,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     financials,
     quality,
     precon,
@@ -534,6 +537,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     financials,
     quality,
     precon,

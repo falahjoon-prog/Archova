@@ -14,6 +14,7 @@ import {
   StatusPill,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
@@ -97,6 +98,13 @@ function Detail({ d }: { d: SubmittalDetail }) {
         }
         actions={
           <>
+            <BookmarkButton
+              entityType="submittal"
+              entityId={s.id}
+              projectId={project.projectId}
+              title={`${s.numberLabel} ${s.title}`}
+              subtitle={s.status}
+            />
             {canSend ? (
               <Button onClick={() => setSending(true)}>
                 {s.status === 'draft' ? 'Submit for review' : 'Resubmit'}
