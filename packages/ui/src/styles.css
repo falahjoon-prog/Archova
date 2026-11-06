@@ -805,7 +805,7 @@
   padding: var(--space-3) var(--space-4);
   background: color-mix(in srgb, var(--c-ai) 5%, var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--c-ai) 30%, transparent);
-  border-left: 4px solid var(--c-ai);
+  border-left: 4px solid var(--brand-amber);
   border-radius: var(--radius-md);
 }
 .ac-nova__label {

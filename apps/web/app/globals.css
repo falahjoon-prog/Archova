@@ -1468,7 +1468,7 @@ section.diary-section .diary-section__summary {
 .source-snippet {
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--c-ai);
+  border-left: 3px solid var(--brand-amber);
   font-family: var(--font-mono, monospace);
 }
 
@@ -2163,7 +2163,7 @@ fieldset.worker-card > legend {
   padding-top: var(--space-4);
 }
 .negotiate__counter {
-  border-left: var(--space-1) solid var(--c-ai);
+  border-left: var(--space-1) solid var(--brand-amber);
   padding-left: var(--space-3);
 }
 @media (min-width: 768px) {
