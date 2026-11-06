@@ -1476,6 +1476,19 @@ section.diary-section .diary-section__summary {
   max-height: 100vh;
   overflow-y: auto;
 }
+/* On narrow screens it is a docked drawer over the page (it must come after the sticky rule above, which
+   otherwise wins and leaves the panel as a tall block below the content). */
+@media (max-width: 900px) {
+  .app-shell__assistant {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(100vw, 380px);
+    height: 100dvh;
+    max-height: none;
+    z-index: 40;
+    box-shadow: var(--shadow-lg, -8px 0 24px rgb(0 0 0 / 0.18));
+  }
+}
 .assistant-panel__head {
   justify-content: space-between;
 }
@@ -3086,4 +3099,15 @@ fieldset.worker-card > legend {
 
 .diary-nav {
   align-items: flex-end;
+}
+
+/* Fields and their button on one baseline. */
+.row-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.row-end > :first-child {
+  flex: 1 1 16rem;
 }
