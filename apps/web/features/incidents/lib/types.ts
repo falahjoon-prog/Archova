@@ -1,3 +1,4 @@
+import type { BodyPart, HarmSource, InjuryOutcome, InjuryType } from '@archova/domain';
 export type IncidentType =
   'injury' | 'near_miss' | 'property_damage' | 'environmental' | 'dangerous_occurrence';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
@@ -129,6 +130,14 @@ export interface PersonInput {
   personName: string;
   companyId?: string;
   role: PersonRole;
+  /** Body part, type, cause, outcome and days lost; only for the injured (they feed the injury analytics). */
+  injury?: {
+    bodyPart?: BodyPart;
+    injuryType?: InjuryType;
+    harmSource?: HarmSource;
+    outcome?: InjuryOutcome;
+    daysLost?: number;
+  };
 }
 
 export interface ReportInput {

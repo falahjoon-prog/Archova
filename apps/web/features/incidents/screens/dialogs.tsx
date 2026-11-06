@@ -1,6 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  BODY_PARTS,
+  BODY_PART_LABELS,
+  type BodyPart,
+  type HarmSource,
+  type InjuryOutcome,
+  type InjuryType,
+  HARM_SOURCES,
+  HARM_SOURCE_LABELS,
+  INJURY_OUTCOMES,
+  INJURY_OUTCOME_LABELS,
+  INJURY_TYPES,
+  INJURY_TYPE_LABELS,
+} from '@archova/domain';
 import { Button, Dialog, Select, TextField, Textarea } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import type { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -56,6 +70,12 @@ export function ReportDialog({
   const [name, setName] = useState('');
   const [role, setRole] = useState<PersonRole>('injured');
   const [company, setCompany] = useState('');
+  const [bodyPart, setBodyPart] = useState('');
+  const [injuryType, setInjuryType] = useState('');
+  const [harmSource, setHarmSource] = useState('');
+  const [outcome, setOutcome] = useState('');
+  const [daysLost, setDaysLost] = useState('');
+  const lostTime = outcome === 'lost_time' || outcome === 'fatality';
   const iso = projectLocalToIso(when, timeZone);
   return (
     <Dialog
@@ -149,15 +169,79 @@ export function ReportDialog({
               .map((c) => ({ value: c.id, label: c.name }))}
             onChange={(e) => setCompany(e.target.value)}
           />
+          {role === 'injured' ? (
+            <>
+              <Select
+                label="Body part"
+                value={bodyPart}
+                placeholder="Not recorded"
+                options={BODY_PARTS.map((v) => ({ value: v, label: BODY_PART_LABELS[v] }))}
+                onChange={(e) => setBodyPart(e.target.value)}
+              />
+              <Select
+                label="Injury type"
+                value={injuryType}
+                placeholder="Not recorded"
+                options={INJURY_TYPES.map((v) => ({ value: v, label: INJURY_TYPE_LABELS[v] }))}
+                onChange={(e) => setInjuryType(e.target.value)}
+              />
+              <Select
+                label="What caused it"
+                value={harmSource}
+                placeholder="Not recorded"
+                options={HARM_SOURCES.map((v) => ({ value: v, label: HARM_SOURCE_LABELS[v] }))}
+                onChange={(e) => setHarmSource(e.target.value)}
+              />
+              <Select
+                label="Outcome"
+                value={outcome}
+                placeholder="Not recorded"
+                options={INJURY_OUTCOMES.map((v) => ({
+                  value: v,
+                  label: INJURY_OUTCOME_LABELS[v],
+                }))}
+                onChange={(e) => setOutcome(e.target.value)}
+              />
+              {lostTime ? (
+                <TextField
+                  label="Days lost"
+                  type="number"
+                  min={0}
+                  max={3650}
+                  value={daysLost}
+                  onChange={(e) => setDaysLost(e.target.value)}
+                />
+              ) : null}
+            </>
+          ) : null}
           <Button
             variant="secondary"
             disabled={!name.trim()}
             onClick={() => {
+              const injury = {
+                ...(bodyPart ? { bodyPart: bodyPart as BodyPart } : {}),
+                ...(injuryType ? { injuryType: injuryType as InjuryType } : {}),
+                ...(harmSource ? { harmSource: harmSource as HarmSource } : {}),
+                ...(outcome ? { outcome: outcome as InjuryOutcome } : {}),
+                ...(lostTime && Number(daysLost) > 0
+                  ? { daysLost: Math.floor(Number(daysLost)) }
+                  : {}),
+              };
               setPeople((cur) => [
                 ...cur,
-                { personName: name.trim(), role, ...(company ? { companyId: company } : {}) },
+                {
+                  personName: name.trim(),
+                  role,
+                  ...(company ? { companyId: company } : {}),
+                  ...(role === 'injured' && Object.keys(injury).length > 0 ? { injury } : {}),
+                },
               ]);
               setName('');
+              setBodyPart('');
+              setInjuryType('');
+              setHarmSource('');
+              setOutcome('');
+              setDaysLost('');
             }}
           >
             Add person

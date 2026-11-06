@@ -15,6 +15,7 @@ export const webRoutes = {
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
+  incidentAnalytics: (orgSlug: string) => `/${enc(orgSlug)}/incident-analytics`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,

@@ -2,6 +2,7 @@ import { defineModule, type Database } from '@archova/kernel';
 import { reportingRoutes } from './api/routes';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
+import { createIncidentAnalyticsService } from './application/incident-analytics';
 import { createReadinessService } from './application/readiness';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
@@ -18,9 +19,10 @@ export function createReportingModule(deps: ReportingDeps & RiskDeps & { databas
   const reports = createReportsService(deps);
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
+  const incidentAnalytics = createIncidentAnalyticsService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
-    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness),
+    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness, incidentAnalytics),
     api: {},
   };
 }

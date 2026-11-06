@@ -3069,6 +3069,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/incident-analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Injury analytics across projects - body map, harm source, injury type, LTIFR and TRIFR, days without an injury.
+         * @description Counts injured people recorded on incidents, for the projects the caller can see. Injury detail is health
+         *     information, so projects where the caller lacks the view_medical permission are counted in
+         *     `projectsRestricted` and left out. Rates are per million hours worked, from submitted, approved and exported
+         *     timesheets; they are null when hours are not available. LTIFR counts lost time injuries (a full day or shift
+         *     or more) and TRIFR counts lost time, restricted work and medical treatment injuries. The range defaults to
+         *     the last 12 months and is limited to five years. `bodyPart` narrows the rows and the totals.
+         */
+        get: operations["getIncidentAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/risk/late-sopa-claims": {
         parameters: {
             query?: never;
@@ -9622,6 +9649,73 @@ export interface components {
             /** @enum {string} */
             insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
             summary: string;
+        };
+        /** @enum {string} */
+        BodyPart: "head" | "eye" | "face" | "neck" | "shoulder" | "upper_arm" | "elbow" | "forearm" | "wrist" | "hand" | "fingers" | "chest" | "upper_back" | "lower_back" | "abdomen" | "hip_groin" | "thigh" | "knee" | "lower_leg" | "ankle" | "foot" | "toes" | "multiple" | "systemic";
+        /** @enum {string} */
+        InjuryType: "fracture" | "laceration" | "sprain_strain" | "contusion" | "burn" | "foreign_body" | "amputation" | "concussion" | "dermatitis" | "hearing_loss" | "respiratory" | "psychological" | "other";
+        /** @enum {string} */
+        HarmSource: "falls_trips_slips" | "hitting_objects" | "being_hit" | "body_stressing" | "vehicle_plant" | "electricity_heat" | "chemicals" | "sound_pressure" | "biological" | "mental_stress" | "other";
+        /** @enum {string} */
+        InjuryOutcome: "first_aid" | "medical_treatment" | "restricted_work" | "lost_time" | "fatality";
+        InjuryCount: {
+            /** @description The category, or `unknown` when it was not recorded. */
+            key: string;
+            count: number;
+        };
+        IncidentAnalyticsSummary: {
+            injuries: number;
+            lostTimeInjuries: number;
+            /** @description Lost time */
+            recordableInjuries: number;
+            daysLost: number;
+            notifiable: number;
+            hoursWorked: number | null;
+            /** @description Lost time injuries per million hours worked. */
+            ltifr: number | null;
+            /** @description Recordable injuries per million hours worked. */
+            trifr: number | null;
+            byBodyPart: components["schemas"]["InjuryCount"][];
+            byHarmSource: components["schemas"]["InjuryCount"][];
+            byInjuryType: components["schemas"]["InjuryCount"][];
+            byOutcome: components["schemas"]["InjuryCount"][];
+        };
+        IncidentAnalyticsRow: {
+            incidentId: string;
+            projectId: string;
+            projectName: string;
+            ref: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /**
+             * Format: date
+             * @description The day it happened in the project's time zone.
+             */
+            localDate: string;
+            personName: string;
+            companyId: string | null;
+            bodyPart: components["schemas"]["BodyPart"] | null;
+            injuryType: components["schemas"]["InjuryType"] | null;
+            harmSource: components["schemas"]["HarmSource"] | null;
+            outcome: components["schemas"]["InjuryOutcome"] | null;
+            daysLost: number;
+            notifiable: boolean;
+        };
+        IncidentAnalytics: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            summary: components["schemas"]["IncidentAnalyticsSummary"];
+            /** @description Days since the latest injury on the projects covered; null when none is recorded. */
+            daysWithoutInjury: number | null;
+            /** @description Days since the latest incident of any type; null when none is recorded. */
+            daysWithoutIncident: number | null;
+            /** @description Projects left out because the caller may not view health information there. */
+            projectsRestricted: number;
+            projectsTruncated: boolean;
+            rowsTruncated: boolean;
+            rows: components["schemas"]["IncidentAnalyticsRow"][];
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -16758,7 +16852,15 @@ export interface components {
             companyId?: components["schemas"]["CompanyRef"];
             /** @enum {string} */
             role: "injured" | "witness" | "involved";
+            /** @description Free-text keys are kept. The recognised keys below feed the injury analytics. */
             injury?: {
+                bodyPart?: components["schemas"]["BodyPart"];
+                injuryType?: components["schemas"]["InjuryType"];
+                harmSource?: components["schemas"]["HarmSource"];
+                outcome?: components["schemas"]["InjuryOutcome"];
+                /** @description Needs the lost_time or fatality outcome. */
+                daysLost?: number;
+            } & {
                 [key: string]: unknown;
             };
         };
@@ -21718,6 +21820,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getIncidentAnalytics: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                companyId?: components["schemas"]["CompanyRef"];
+                bodyPart?: components["schemas"]["BodyPart"];
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentAnalytics"];
                 };
             };
             default: components["responses"]["Problem"];
