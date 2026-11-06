@@ -4010,6 +4010,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/my-work:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getMyWork
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.mywork.read
+      summary: The caller's open RFIs, defects and submittals due across their projects, recent items and bookmarks.
+      description: |
+        The My Work page. Across the active, tender and on-hold projects the caller can see, lists open items that are
+        overdue, due today or due in the next 7 days (dates in each project's own time zone), most urgent first, with
+        a count per bucket. `recent` is open items raised in the last 14 days, newest first. Every item is read as the
+        caller: a project where they cannot read a tool counts in `restrictedProjects` and shows nothing from it.
+        `bookmarks` are the caller's own and are never shown to anyone else. Staff only.
+      responses:
+        '200':
+          description: My Work
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyWork' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/my-work/bookmarks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: createBookmark
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.mywork.manage
+      summary: Bookmark a page. Saving the same path again returns the existing bookmark.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/my-work/bookmarks/{bookmarkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BookmarkId'
+    delete:
+      operationId: deleteBookmark
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.mywork.manage
+      summary: Remove one of the caller's own bookmarks.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13052,6 +13110,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    BookmarkId:
+      name: bookmarkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bkm_[0-9A-Za-z]{26}$' }
     DataExportId:
       name: exportId
       in: path
@@ -13692,6 +13755,59 @@ components:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
         filename: { type: string }
+    Bookmark:
+      type: object
+      required: [id, label, path, projectId, createdAt]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        path: { type: string, description: 'An in-app page, starting with a single "/".' }
+        projectId: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    BookmarkInput:
+      type: object
+      required: [label, path]
+      additionalProperties: false
+      properties:
+        label: { type: string, minLength: 1, maxLength: 120 }
+        path: { type: string, minLength: 1, maxLength: 300, pattern: '^/(?!/)[^\\\x00-\x1f]*$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+    MyWorkItem:
+      type: object
+      required: [source, projectId, project, ref, title, status, dueDate, createdAt, bucket]
+      properties:
+        source: { type: string, enum: [rfis, defects, submittals] }
+        projectId: { type: string }
+        project: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+        bucket: { type: [string, 'null'], enum: [overdue, today, next7, null] }
+    MyWork:
+      type: object
+      required: [counts, items, recent, bookmarks, restrictedProjects, truncated, generatedAt]
+      properties:
+        counts:
+          type: object
+          required: [overdue, today, next7]
+          properties:
+            overdue: { type: integer }
+            today: { type: integer }
+            next7: { type: integer }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MyWorkItem' }
+        recent:
+          type: array
+          items: { $ref: '#/components/schemas/MyWorkItem' }
+        bookmarks:
+          type: array
+          items: { $ref: '#/components/schemas/Bookmark' }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
+        generatedAt: { type: string, format: date-time }
     ReportList:
       type: object
       required: [data]

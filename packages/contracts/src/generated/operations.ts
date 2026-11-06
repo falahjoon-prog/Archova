@@ -901,6 +901,17 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetMyWorkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateBookmarkBody = s.BookmarkInputSchema;
+export const DeleteBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bookmarkId": z.string().regex(new RegExp("^bkm_[0-9A-Za-z]{26}$")),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5006,6 +5017,42 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  getMyWork: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/my-work',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.mywork.read",
+    internal: false,
+    contentType: null,
+    params: GetMyWorkParams,
+    query: null,
+    body: null,
+  },
+  createBookmark: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/my-work/bookmarks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.mywork.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBookmarkParams,
+    query: null,
+    body: CreateBookmarkBody,
+  },
+  deleteBookmark: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/my-work/bookmarks/{bookmarkId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.mywork.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteBookmarkParams,
+    query: null,
     body: null,
   },
   getLateSopaClaimRisk: {

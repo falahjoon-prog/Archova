@@ -5,6 +5,7 @@ export {
   AlertTriangle,
   ArrowLeft,
   Bell,
+  Bookmark,
   Calendar,
   Camera,
   Captions,

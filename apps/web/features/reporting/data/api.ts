@@ -2,6 +2,9 @@
 import { unwrap } from '@archova/api-client';
 import { api } from '@/shared/lib/api';
 import type {
+  Bookmark,
+  BookmarkInput,
+  MyWork,
   Portfolio,
   ReadinessPack,
   Report,
@@ -19,6 +22,24 @@ export function createReportingApi(orgId: string) {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/portfolio', {
           params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
+        }),
+      );
+    },
+    async myWork(): Promise<MyWork> {
+      return unwrap(await api.GET('/v1/orgs/{orgId}/my-work', { params: { path } }));
+    },
+    async addBookmark(body: BookmarkInput): Promise<Bookmark> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/my-work/bookmarks', {
+          params: { path, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async removeBookmark(bookmarkId: string): Promise<void> {
+      unwrap(
+        await api.DELETE('/v1/orgs/{orgId}/my-work/bookmarks/{bookmarkId}', {
+          params: { path: { orgId, bookmarkId } },
         }),
       );
     },

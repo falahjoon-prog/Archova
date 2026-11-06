@@ -7,6 +7,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { MyWorkService } from '../application/mywork';
 import type { PortfolioService } from '../application/portfolio';
 import type { RiskService } from '../application/risk';
 import type { ReadinessService } from '../application/readiness';
@@ -18,6 +19,7 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  myWork: MyWorkService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -29,7 +31,25 @@ export function reportingRoutes(
     return v;
   };
 
+  const bookmarkId = (p: { bookmarkId: string }) => {
+    const v = decodeId('bookmark', p.bookmarkId);
+    if (!v) throw new AppError('bookmark.not_found');
+    return v;
+  };
+
   return defineRoutes({
+    getMyWork: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => myWork.get(s)),
+    }),
+    createBookmark: async (input) => ({
+      status: 201,
+      body: await tx(input, (s) => myWork.addBookmark(s, input.body)),
+    }),
+    deleteBookmark: async (input) => {
+      await tx(input, (s) => myWork.removeBookmark(s, bookmarkId(input.params)));
+      return { status: 204 };
+    },
     getPortfolio: async (input) => ({
       status: 200,
       body: await read(input, (s) =>

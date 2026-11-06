@@ -493,6 +493,22 @@ export const BimModelListSchema = z.object({
 });
 export type BimModelList = z.infer<typeof BimModelListSchema>;
 
+export const BookmarkSchema = z.object({
+  "id": z.string(),
+  "label": z.string(),
+  "path": z.string(),
+  "projectId": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Bookmark = z.infer<typeof BookmarkSchema>;
+
+export const BookmarkInputSchema = z.object({
+  "label": z.string().min(1).max(120),
+  "path": z.string().min(1).max(300).regex(new RegExp("^/(?!/)[^\\\\\\x00-\\x1f]*$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type BookmarkInput = z.infer<typeof BookmarkInputSchema>;
+
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
@@ -4435,6 +4451,34 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
+
+export const MyWorkItemSchema = z.object({
+  "source": z.enum(["rfis", "defects", "submittals"]),
+  "projectId": z.string(),
+  "project": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "dueDate": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "bucket": z.enum(["overdue", "today", "next7"]).nullable(),
+});
+export type MyWorkItem = z.infer<typeof MyWorkItemSchema>;
+
+export const MyWorkSchema = z.object({
+  "counts": z.object({
+  "overdue": z.number().int(),
+  "today": z.number().int(),
+  "next7": z.number().int(),
+}),
+  "items": z.array(MyWorkItemSchema),
+  "recent": z.array(MyWorkItemSchema),
+  "bookmarks": z.array(BookmarkSchema),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+  "generatedAt": z.string().datetime({ offset: true }),
+});
+export type MyWork = z.infer<typeof MyWorkSchema>;
 
 export const NccReferenceSchema = z.object({
   "provisionKey": z.string(),
