@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { previewAnswer } from '../data/preview-answers';
 
-const noProject = { projectId: null } as Parameters<typeof previewAnswer>[1];
+const noProject = {} as Parameters<typeof previewAnswer>[1];
 const today = '2026-11-06' as Parameters<typeof previewAnswer>[2];
 
 describe('Ask Nova outside a project', () => {
