@@ -1324,6 +1324,24 @@ main:focus {
   outline: 2px solid var(--c-action-primary);
   outline-offset: -2px;
 }
+.diary-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.diary-sections > * {
+  grid-column: 1 / -1;
+}
+/* Lists with no lines yet (delays, plant, deliveries, visitors) sit two to a row. */
+.diary-sections > .diary-section--list:not(:has(.diary-line, fieldset)) {
+  grid-column: auto;
+}
+@media (max-width: 700px) {
+  .diary-sections > .diary-section--list:not(:has(.diary-line, fieldset)) {
+    grid-column: 1 / -1;
+  }
+}
 .diary-section {
   border: 1px solid var(--c-border-divider);
   border-radius: var(--radius-md);
@@ -3064,4 +3082,8 @@ fieldset.worker-card > legend {
   .two-col {
     grid-template-columns: 1fr;
   }
+}
+
+.diary-nav {
+  align-items: flex-end;
 }
