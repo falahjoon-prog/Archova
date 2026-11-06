@@ -76,6 +76,9 @@ h3 {
 
 /* Header and mobile menu (no script: details/summary) */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   background: var(--c-surface);
   border-bottom: 1px solid var(--c-border-divider);
 }
