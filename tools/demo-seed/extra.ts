@@ -581,13 +581,13 @@ export async function seedExtra(ctx: ExtraContext) {
           ['22 00 00', 'Hydraulic Services', 'Division 22 Plumbing', 91, 106],
           ['26 05 00', 'Electrical Services', 'Division 26 Electrical', 107, 125],
         ] as const;
-        const book = await s.ok<{ id: string }>('POST', `${base}/spec-books`, {
+        const created = await s.ok<{ book: { id: string } }>('POST', `${base}/spec-books`, {
           name: `${p.name} Specification`,
           issuedDate: date,
         });
         await s.ok(
           'PUT',
-          `${base}/spec-books/${book.id}/sections`,
+          `${base}/spec-books/${created.book.id}/sections`,
           {
             sections: sections.map(([sectionNumber, title, division, pageFrom, pageTo]) => ({
               sectionNumber,
