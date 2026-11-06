@@ -17,6 +17,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -800,7 +801,24 @@ export function createDefectService(deps: DefectsDeps) {
     return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
   }
 
+  /** Global search (`search`): the defects the caller can see that match the words, newest first. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     list,
     create,
     detail,

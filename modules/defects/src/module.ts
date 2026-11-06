@@ -191,6 +191,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       openForMeeting: service.openForMeeting,
       /** Portfolio dashboard and report builder (`reporting`): counts and flat rows of the defects the caller can see. */
       portfolioCounts: service.portfolioCounts,
+      /** Global search (`search`): defects the caller can see that match some words. */
+      searchHits: service.searchHits,
       reportRows: service.reportRows,
       /** Nova Ask: issued defects with their history notes, to index (one defect when `only` is given). Called by `ai` only. */
       aiSources: service.aiSources,

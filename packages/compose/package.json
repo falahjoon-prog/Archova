@@ -36,6 +36,7 @@
     "@archova/mod-rfis": "workspace:*",
     "@archova/mod-exports": "workspace:*",
     "@archova/mod-reporting": "workspace:*",
+    "@archova/mod-search": "workspace:*",
     "@archova/mod-scheduling": "workspace:*",
     "@archova/mod-submittals": "workspace:*",
     "@archova/mod-sync": "workspace:*",
