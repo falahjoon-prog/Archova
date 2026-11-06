@@ -486,6 +486,202 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${added} added`;
   });
 
+  // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register
+  // with a mix of qualified, expiring (within 30 days), pending and not-qualified companies.
+  await step('prequalification', async () => {
+    const flagOn = await s.call('GET', `${org}/prequal-templates`);
+    if (flagOn.status === 404) return 'flag is off, skipped';
+    if (flagOn.status >= 300) throw new Error(`prequal-templates -> ${flagOn.status}`);
+    const templates = (
+      flagOn.json as { data: Array<{ id: string; name: string; published: boolean }> }
+    ).data;
+    let template = templates.find(
+      (t) => t.name === 'Subcontractor prequalification' && t.published,
+    );
+    if (!template) {
+      const q = (
+        id: string,
+        section: string,
+        prompt: string,
+        type: 'yes_no' | 'number' | 'text',
+        extra: Record<string, unknown> = {},
+      ) => ({
+        id,
+        section,
+        prompt,
+        type,
+        options: [],
+        required: true,
+        expect: null,
+        points: 0,
+        critical: false,
+        ...extra,
+      });
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequal-templates`, {
+        name: 'Subcontractor prequalification',
+        validityMonths: 12,
+        questions: [
+          q('abn', 'Company', 'Do you hold a current ABN and GST registration?', 'yes_no', {
+            expect: 'yes',
+            points: 10,
+          }),
+          q('licence', 'Company', 'Do you hold the contractor licence for your trade?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q(
+            'insurance',
+            'Insurance',
+            'Is public liability cover current for at least $20M?',
+            'yes_no',
+            {
+              expect: 'yes',
+              points: 20,
+              critical: true,
+            },
+          ),
+          q('wc', 'Insurance', 'Is workers compensation insurance current?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q('ltifr', 'Safety', 'Lost-time injuries in the last 12 months', 'number', {
+            points: 10,
+          }),
+          q('swms', 'Safety', 'Do you prepare a SWMS for every high-risk task?', 'yes_no', {
+            expect: 'yes',
+            points: 15,
+          }),
+          q('refs', 'Experience', 'Name two recent projects of similar size', 'text', {
+            required: false,
+            points: 5,
+          }),
+        ],
+      });
+      await s.ok(
+        'POST',
+        `${org}/prequal-templates/${created.id}/publish`,
+        {},
+        { 'if-match': s.etag ?? '' },
+      );
+      template = { id: created.id, name: 'Subcontractor prequalification', published: true };
+    }
+    const have = new Set(
+      (
+        await s.ok<{ data: Array<{ companyId: { id?: string } | string }> }>(
+          'GET',
+          `${org}/prequalifications`,
+        )
+      ).data.map((p) => (typeof p.companyId === 'string' ? p.companyId : p.companyId.id)),
+    );
+    const companies = (
+      await s.ok<{ data: Array<{ id: string; name: string; type: string; trades: string[] }> }>(
+        'GET',
+        `${org}/companies`,
+      )
+    ).data.filter((c) => c.type === 'subcontractor');
+    const good = { abn: true, licence: true, insurance: true, wc: true, ltifr: 0, swms: true };
+    // The outcome per company, in order: qualified, expiring soon, pending, then a rejected one.
+    const plan = [
+      { to: 'approved', expires: day(240), answers: good },
+      { to: 'approved', expires: day(11), answers: { ...good, ltifr: 1 } },
+      { to: 'approved', expires: day(26), answers: good },
+      { to: 'approved', expires: day(170), answers: { ...good, ltifr: 2 } },
+      { to: 'submitted', answers: good },
+      { to: 'submitted', answers: { ...good, wc: false } },
+      { to: 'draft', answers: { abn: true, licence: true } },
+      { to: 'rejected', answers: { ...good, insurance: false, swms: false } },
+    ] as const;
+    let added = 0;
+    for (const c of companies) {
+      const step = plan[added];
+      if (!step) break;
+      if (have.has(c.id)) continue;
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequalifications`, {
+        companyId: c.id,
+        templateId: template.id,
+        trades: c.trades.slice(0, 3),
+      });
+      const at = `${org}/prequalifications/${created.id}`;
+      await s.ok('PATCH', at, { answers: step.answers }, { 'if-match': s.etag ?? '' });
+      added++;
+      if (step.to === 'draft') continue;
+      await s.ok('POST', `${at}/submit`, {}, { 'if-match': s.etag ?? '' });
+      if (step.to === 'submitted') continue;
+      if (step.to === 'rejected')
+        await s.ok(
+          'POST',
+          `${at}/reject`,
+          {
+            note: 'Public liability cover is below the required limit. Resubmit with a current certificate.',
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+      else
+        await s.ok(
+          'POST',
+          `${at}/approve`,
+          { note: 'Approved after document check.', expiresOn: step.expires },
+          { 'if-match': s.etag ?? '' },
+        );
+    }
+    return `${added} added`;
+  });
+
+  // Subcontractor compliance wallet (flag subcontractor_wallet): the demo builder's own insurance and licences,
+  // self-declared so no files are needed.
+  await step('compliance wallet', async () => {
+    const r = await s.call('GET', `${org}/compliance-documents`);
+    if (r.status === 404) return 'flag is off, skipped';
+    if (r.status >= 300) throw new Error(`compliance-documents -> ${r.status}`);
+    const existing = new Set(
+      (r.json as { data: Array<{ title: string }> }).data.map((d) => d.title),
+    );
+    const docs = [
+      {
+        itemType: 'public_liability',
+        title: 'Public liability $20M',
+        insurer: 'Southern Mutual',
+        limitCents: 2_000_000_000,
+        number: 'PL-884201',
+        expiresOn: day(180),
+      },
+      {
+        itemType: 'workers_comp',
+        title: 'Workers compensation',
+        insurer: 'icare',
+        number: 'WC-553917',
+        expiresOn: day(20),
+      },
+      {
+        itemType: 'contract_works',
+        title: 'Contract works',
+        insurer: 'Southern Mutual',
+        number: 'CW-120554',
+        expiresOn: day(300),
+      },
+      {
+        itemType: 'contractor_licence',
+        title: 'NSW builder licence',
+        issuingState: 'NSW',
+        number: 'BL-771203',
+        expiresOn: day(400),
+      },
+    ] as const;
+    let added = 0;
+    for (const d of docs) {
+      if (existing.has(d.title)) continue;
+      await s.ok('POST', `${org}/compliance-documents`, {
+        ...d,
+        startsOn: day(-180),
+        selfDeclared: true,
+      });
+      added++;
+    }
+    return `${added} added`;
+  });
+
   await step('projects', async () => {
     const existing = await s.ok<{ data: Array<{ name: string }> }>('GET', `${org}/projects`);
     const names = new Set(existing.data.map((p) => p.name));

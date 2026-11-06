@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
 import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
 import { seedExtra } from './extra';
+import { enableAllFlags } from './flags';
 import { makePdf } from './pdf';
 import { Session } from './session';
 
@@ -513,6 +514,19 @@ for (const [i, p] of PROJECTS.entries()) {
   }
   console.log(
     `Seeded ${p.name} sign-ins for ${today}: ${CREW.filter((c) => !c.out).length} on site, ${CREW.filter((c) => c.out).length} signed out`,
+  );
+}
+
+// Every feature flag on for the demo org (staff-managed rules, so this needs direct database access).
+if (process.env.SEED_DB_URL) {
+  try {
+    console.log(`Flags: ${await enableAllFlags(process.env.SEED_DB_URL, orgId!)}`);
+  } catch (e) {
+    console.warn(`Flags failed: ${(e as Error).message}`);
+  }
+} else {
+  console.warn(
+    'SEED_DB_URL is not set: feature flags left as they are (prequalification etc. stay off).',
   );
 }
 
