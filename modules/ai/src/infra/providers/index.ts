@@ -22,6 +22,7 @@ import { heuristicQuoteRead } from '../../eval/suites/quote-read';
 import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
+import { heuristicSwmsDraft } from '../../eval/suites/swms-draft';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
 import { createTextractOcr } from './textract';
@@ -46,6 +47,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'minutes.extract': heuristicMeetingMinutes,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,
+  'swms.draft': heuristicSwmsDraft,
   'drawing.compare': heuristicDrawingCompare,
   'drawing.compare_visual': heuristicDrawingCompareVisual,
   'defect.tag': heuristicDefectTag,

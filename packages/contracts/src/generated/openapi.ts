@@ -129,6 +129,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the consent page shows for a partner app. Needs a signed-in web session. */
+        get: operations["getOauthConsent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Partner apps this organisation has registered. Owners and admins only. */
+        get: operations["listOauthApps"];
+        put?: never;
+        /** Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client secret is in the response once. A private app can be installed only into this organisation. */
+        post: operations["createOauthApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace an app's client secret. The old one stops working at once. Needs a recent sign-in. */
+        post: operations["rotateOauthAppSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Apps installed in this organisation, with their approved scopes and last use. Owners and admins only. */
+        get: operations["listAppInstalls"];
+        put?: never;
+        /** Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed. */
+        post: operations["installApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs/{appInstallId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an app. Every token it holds stops working on its next request. */
+        delete: operations["revokeAppInstall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/token": {
         parameters: {
             query?: never;
@@ -697,6 +794,28 @@ export interface paths {
         head?: never;
         /** Change dates, progress, name or assignee. Returns the whole programme. */
         patch: operations["updateScheduleActivity"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the current dates as the baseline, replacing any earlier one. Returns the whole programme. */
+        put: operations["setScheduleBaseline"];
+        post?: never;
+        /** Remove the baseline. Returns the whole programme. */
+        delete: operations["clearScheduleBaseline"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies": {
@@ -1901,7 +2020,7 @@ export interface paths {
          *     access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
          *     people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
          *     `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
-         *     called; nothing when no visible passage matches.
+         *     called; nothing when no visible passage matches. `nccReferences` lists signed NCC provisions the answer touches.
          */
         post: operations["askNova"];
         delete?: never;
@@ -2630,6 +2749,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+         * @description Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+         *     particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+         *     draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+         *     adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+         *     Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+         *     are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+         *     a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+         *     `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+         *     register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+         *     it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+         *     on for pilots.
+         */
+        post: operations["draftSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency": {
         parameters: {
             query?: never;
@@ -2909,6 +3061,62 @@ export interface paths {
          *     is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
          */
         get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Search RFIs, documents, defects, submittals and correspondence across the projects the caller can see.
+         * @description Global search from the header. Looks for the words in every project the caller can see (archived projects are
+         *     left out, at most 100 projects), in each tool the caller may read on that project, and returns at most
+         *     `perType` rows of each type. Each tool applies its own permission and visibility rules, so a row only appears
+         *     if the caller could open it from that tool's own list. `truncated` is true when more rows or projects matched
+         *     than were returned. A query under two characters returns nothing. Staff only.
+         */
+        get: operations["searchOrg"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/risk/late-sopa-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+         * @description Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+         *     payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+         *     both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+         *     subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+         *     low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+         *     as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+         *     a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+         *     a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+         *     Staff only.
+         */
+        get: operations["getLateSopaClaimRisk"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3231,6 +3439,66 @@ export interface paths {
         put?: never;
         /** Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2). */
         post: operations["inviteToTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email an invited company a new link to the package. The earlier link stops working (X45). */
+        post: operations["resendTenderInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The package behind the current link session. */
+        get: operations["getTenderAccess"];
+        put?: never;
+        /**
+         * Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openTenderAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The invited company says it intends to quote or declines. It can change its answer until a quote is submitted. */
+        post: operations["respondTenderAccess"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4744,6 +5012,54 @@ export interface paths {
         /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
         get: operations["getRfiActivity"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone's marks on the RFI's photos, for anyone who can see the RFI. */
+        get: operations["listRfiAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+         * @description Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+         *     The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+         *     closed or void. The original photo is never changed.
+         */
+        put: operations["putRfiFileAnnotation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -9135,6 +9451,8 @@ export interface components {
             source: components["schemas"]["ScheduleSource"];
             /** Format: date */
             dataDate: string | null;
+            /** Format: date-time */
+            baselineSetAt: string | null;
             activityCount: number;
             /** Format: date */
             startDate: string | null;
@@ -9164,6 +9482,12 @@ export interface components {
             /** @description Total float in working days, from the dates on the programme. */
             floatDays: number;
             critical: boolean;
+            /** Format: date */
+            baselineStart: string | null;
+            /** Format: date */
+            baselineFinish: string | null;
+            /** @description Working days the finish is after the baseline finish (negative = ahead); null without a baseline. */
+            varianceDays: number | null;
         };
         ScheduleDependency: {
             id: string;
@@ -9224,6 +9548,17 @@ export interface components {
             open: number;
             overdue: number;
         };
+        /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
+        PortfolioBudget: {
+            /** @description True when the caller may not read the budget or forecast; figures are then zero. */
+            restricted: boolean;
+            hasBudget: boolean;
+            revised: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            variance: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Cost codes whose forecast is over their revised budget. */
+            overBudgetCodes: number;
+        };
         PortfolioProject: {
             id: string;
             name: string;
@@ -9236,7 +9571,12 @@ export interface components {
             claims: components["schemas"]["PortfolioTool"];
             /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
             variations: components["schemas"]["PortfolioTool"];
-            /** @description Overdue RFIs, defects, submittals and claims together. */
+            /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
+            incidents: components["schemas"]["PortfolioTool"];
+            /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
+            programme: components["schemas"]["PortfolioTool"];
+            budget: components["schemas"]["PortfolioBudget"];
+            /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;
         };
         PortfolioTotals: {
@@ -9251,6 +9591,80 @@ export interface components {
             claimsOverdue: number;
             variationsOpen: number;
             variationsOverdue: number;
+            incidentsOpen: number;
+            incidentsOverdue: number;
+            programmeOpen: number;
+            programmeOverdue: number;
+            /** @description Projects with a budget the caller can see. */
+            budgetProjects: number;
+            projectsOverBudget: number;
+            budgetRevised: components["schemas"]["FinancialsSignedMoney"];
+            budgetForecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            budgetVariance: components["schemas"]["FinancialsSignedMoney"];
+        };
+        LateSopaClaimRisk: {
+            projects: components["schemas"]["LateSopaClaimRiskProject"][];
+            /** @description Projects left out because the caller cannot read their claims. */
+            unreadableProjects: number;
+            truncated: boolean;
+        };
+        LateSopaClaimRiskProject: {
+            projectId: string;
+            projectName: string;
+            number: string | null;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            insuranceProblem: boolean;
+            scheduleSlip: boolean;
+            /** @description Signals Nova could not read, so a gap is never shown as no risk. */
+            unknown: string[];
+            claims: components["schemas"]["LateSopaClaimRiskClaim"][];
+            slip: {
+                lateCount: number;
+                worst: {
+                    id: string;
+                    wbs: string;
+                    name: string;
+                    /** Format: date */
+                    finish: string;
+                    daysLate: number;
+                }[];
+            };
+        };
+        LateSopaClaimRiskClaim: {
+            claimId: string;
+            claimNumber: number;
+            contractNumber: number;
+            contractTitle: string;
+            subbieName: string | null;
+            claimedTotal: string;
+            /** Format: date */
+            scheduleDueOn: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** @enum {string} */
+            deadline: "overdue" | "due_soon";
+            daysToScheduleDue: number;
+            /** @enum {string} */
+            insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
+            summary: string;
+        };
+        SearchResults: {
+            /** @description The words searched for, trimmed. */
+            query: string;
+            results: components["schemas"]["SearchResult"][];
+            truncated: boolean;
+        };
+        SearchResult: {
+            /** @enum {string} */
+            type: "rfi" | "document" | "defect" | "submittal" | "correspondence";
+            id: string;
+            projectId: string;
+            projectName: string;
+            /** @description Human reference such as RFI-012. */
+            ref: string;
+            title: string;
+            status: string;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -9331,7 +9745,7 @@ export interface components {
         };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals" | "claims" | "variations";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations" | "incidents" | "programme";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}
@@ -9458,6 +9872,8 @@ export interface components {
             finish?: string;
             pctComplete?: number;
             assignee?: string;
+            /** @description Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule). */
+            cascade?: boolean;
         };
         CreateScheduleDependencyRequest: {
             predecessorId: string;
@@ -10128,6 +10544,8 @@ export interface components {
             redirect_uri?: string;
             code_verifier?: string;
             refresh_token?: string;
+            /** @description Required for partner apps. */
+            client_secret?: string;
         };
         TokenResponse: {
             access_token: string;
@@ -10135,6 +10553,8 @@ export interface components {
             token_type: "Bearer";
             expires_in: number;
             refresh_token: string;
+            /** @description Partner apps only. The scopes approved */
+            scope?: string;
         };
         RevokeRequest: {
             token: string;
@@ -10758,6 +11178,34 @@ export interface components {
             citations: components["schemas"]["NovaCitation"][];
             /** @description When not found, the nearest passages so the user can check themselves. */
             closestMatches: components["schemas"]["NovaSource"][];
+            /**
+             * @description National Construction Code provisions from Archova's signed table (edition, volume, clause, link) that the
+             *     question or answer touches. Chosen by matching the table's keywords, never written by the model, and
+             *     empty when no signed provision applies.
+             */
+            nccReferences?: components["schemas"]["NccReference"][];
+            /** @description Fixed wording to show with `nccReferences` when there are any. */
+            nccNote?: string;
+        };
+        NccReference: {
+            provisionKey: string;
+            /**
+             * @description The NCC edition the clause number was checked against.
+             * @example 2022
+             */
+            edition: string;
+            /** @enum {string} */
+            volume: "1" | "2" | "3";
+            /** @example J3D3 */
+            clause: string;
+            title: string;
+            /** @description In Archova's own words */
+            summary: string;
+            /** Format: uri */
+            url: string;
+            signedBy: string;
+            /** Format: date */
+            signedOn: string;
         };
         NovaRfiDraft: {
             /** @description For feedback (`air_`) */
@@ -11083,6 +11531,17 @@ export interface components {
                 days: number | null;
                 /** @enum {string} */
                 dayType: "business" | "calendar" | "unclear";
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
+            /** @description Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed. */
+            obligations?: {
+                /** @enum {string} */
+                party: "builder" | "other_party" | "both" | "unclear";
+                /** @enum {string} */
+                category: "payment" | "notice" | "insurance" | "security" | "reporting" | "programme" | "quality" | "other";
+                action: string;
+                /** @description The contract's own words for when. Nova works out no dates. */
+                timing: string | null;
                 source: components["schemas"]["ContractSourceRef"];
             }[];
             /** @description Highest severity first. Each cites its clause. */
@@ -12553,6 +13012,8 @@ export interface components {
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
+            /** @description Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`). */
+            fileIds: string[];
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -12603,6 +13064,7 @@ export interface components {
             /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
             location?: string;
             pin?: components["schemas"]["RfiPinInput"];
+            fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
         };
@@ -12624,12 +13086,34 @@ export interface components {
             specSection?: string | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
+            /** @description The files attached to the question; replaces the list. */
+            fileIds?: components["schemas"]["FileRef"][];
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
+        };
+        RfiAnnotation: {
+            id: string;
+            rfiId: string;
+            fileId: string;
+            authorId: string | null;
+            shapes: components["schemas"]["MarkupShape"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RfiAnnotationList: {
+            data: components["schemas"]["RfiAnnotation"][];
+        };
+        RfiAnnotationResult: {
+            annotation: components["schemas"]["RfiAnnotation"] | null;
+        };
+        PutRfiAnnotationRequest: {
+            shapes: components["schemas"]["MarkupShape"][];
         };
         RfiActivityItem: {
             id: string;
@@ -12755,6 +13239,46 @@ export interface components {
             viewedAt: string | null;
             /** Format: date-time */
             respondedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the invite email last went out; null if it has not (no contact email, or the send failed)
+             */
+            deliveredAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the last reminder email went out; null if none has
+             */
+            lastRemindedAt: string | null;
+        };
+        RespondTenderAccessRequest: {
+            /** @enum {string} */
+            response: "intends_to_quote" | "declined";
+        };
+        TenderAccess: {
+            package: {
+                number: string;
+                name: string;
+                trade: string;
+                /** Format: date-time */
+                dueAt: string | null;
+                scope: {
+                    description: string;
+                }[];
+                fromOrg: string;
+                projectName: string;
+            };
+            invite: {
+                companyId: string;
+                email: string | null;
+                status: components["schemas"]["PackageInviteStatus"];
+                /** Format: date-time */
+                viewedAt: string | null;
+                /** Format: date-time */
+                respondedAt: string | null;
+            };
+            actions: ("view" | "respond")[];
+            /** Format: date-time */
+            expiresAt: string;
         };
         PackageAward: {
             quoteId: string;
@@ -13320,6 +13844,67 @@ export interface components {
             /** Format: date-time */
             finishedAt: string | null;
             version: number;
+        };
+        OauthConsent: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            /** @description The only organisation this app can be installed into. */
+            ownerOrgId: string;
+            scopes: string[];
+        };
+        OauthApp: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            redirectUris: string[];
+            scopes: string[];
+            disabled: boolean;
+        };
+        OauthAppList: {
+            data: components["schemas"]["OauthApp"][];
+            availableScopes: string[];
+        };
+        CreateOauthAppRequest: {
+            name: string;
+            description?: string;
+            redirectUris: string[];
+            scopes: string[];
+        };
+        OauthAppCreated: components["schemas"]["OauthApp"] & {
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        OauthAppSecret: {
+            clientId: string;
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        InstallAppRequest: {
+            clientId: string;
+            redirectUri: string;
+            codeChallenge: string;
+            state: string;
+            scopes: string[];
+        };
+        InstallAppResponse: {
+            redirectUrl: string;
+        };
+        AppInstall: {
+            id: string;
+            clientId: string;
+            appName: string;
+            scopes: string[];
+            installedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        AppInstallList: {
+            data: components["schemas"]["AppInstall"][];
         };
         ApiToken: {
             id: string;
@@ -15082,7 +15667,50 @@ export interface components {
             /** @description Filled in from the document register; ignored on input. */
             title?: string | null;
         };
-        InductionBlock: components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
+        /** @description One drawn thing on a scene. Positions and sizes are percentages of the scene (0 to 100). */
+        InductionAnimationElement: {
+            id: string;
+            /** @enum {string} */
+            kind: "text" | "icon" | "arrow" | "box";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            text?: string | null;
+            /** @enum {string|null} */
+            icon?: "hazard" | "helmet" | "vest" | "boots" | "glasses" | "gloves" | "hearing" | "fire" | "exit" | "first_aid" | "stop" | "forklift" | "person" | "tick" | "cross" | null;
+            /** @enum {string} */
+            tone: "neutral" | "info" | "warning" | "danger" | "safe";
+            /** @description Degrees; arrows only. */
+            rotation?: number;
+            motion: {
+                /** @enum {string} */
+                preset: "none" | "fade_in" | "slide_up" | "slide_left" | "pop" | "pulse" | "draw_on";
+                startMs: number;
+                durationMs: number;
+            };
+        };
+        InductionAnimationScene: {
+            id: string;
+            /**
+             * @description The starting layout the editor used; the player only draws the elements.
+             * @enum {string}
+             */
+            template: "blank" | "hazard_callout" | "steps" | "site_walkthrough" | "ppe_checklist" | "emergency_route";
+            title: string;
+            /** @description Read aloud when voiceover is on, and shown as the caption otherwise. */
+            narration?: string | null;
+            durationMs: number;
+            elements: components["schemas"]["InductionAnimationElement"][];
+        };
+        /** @description A scene-based motion lesson, played to the end like a video (the worker cannot skip ahead). */
+        InductionAnimationBlock: {
+            /** @enum {string} */
+            type: "animation";
+            title?: string | null;
+            scenes: components["schemas"]["InductionAnimationScene"][];
+        };
+        InductionBlock: components["schemas"]["InductionAnimationBlock"] | components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
         InductionSection: {
             key: components["schemas"]["InductionSectionKey"];
             title: string;
@@ -16764,6 +17392,176 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getOauthConsent: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthConsent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOauthApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOauthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOauthAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rotateOauthAppSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppSecret"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAppInstalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInstallList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    installApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Installed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallAppResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeAppInstall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     oauthToken: {
         parameters: {
             query?: never;
@@ -17639,6 +18437,56 @@ export interface operations {
                 "application/json": components["schemas"]["UpdateScheduleActivityRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -20530,6 +21378,45 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    siteAddress: string;
+                    activity: string;
+                    highRiskWorkCategories: components["schemas"]["HighRiskWorkCategory"][];
+                    workArea: string;
+                    access: string;
+                    plant: string[];
+                    adjacentTrades: string[];
+                    /** @description True on projects of $250,000 or more (Vic $350,000). */
+                    whsPlanApplies?: boolean;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getInductionDraftCurrency: {
         parameters: {
             query?: never;
@@ -20877,6 +21764,56 @@ export interface operations {
                 };
             };
             default: components["responses"]["Problem"];
+        };
+    };
+    searchOrg: {
+        parameters: {
+            query: {
+                q: string;
+                perType?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getLateSopaClaimRisk: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects at risk */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSopaClaimRisk"];
+                };
+            };
         };
     };
     getReadinessPack: {
@@ -21402,6 +22339,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resendTenderInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package; the invite's `deliveredAt` shows when the email went out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The package behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondTenderAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -24161,6 +25195,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiActivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfiAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putRfiFileAnnotation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutRfiAnnotationRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's layer after the change; `null` when it was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationResult"];
                 };
             };
             default: components["responses"]["Problem"];

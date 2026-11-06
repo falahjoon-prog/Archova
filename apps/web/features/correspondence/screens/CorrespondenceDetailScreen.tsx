@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -115,58 +116,56 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
         </Alert>
       ) : null}
 
-      {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
-
-      <section className="stack" aria-labelledby="cor-details">
-        <h2 id="cor-details" className="u-h3">
-          Details
-        </h2>
-        <DescriptionList
-          items={[
-            { label: 'Type', value: i.typeName },
-            { label: 'From', value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—' },
-            {
-              label: 'To',
-              value: i.toCompanyIds.length
-                ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
-                : '—',
-            },
-            {
-              label: 'Sent',
-              value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
-            },
-            {
-              label: 'Event date',
-              value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
-            },
-            {
-              label: 'Response due',
-              value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
-            },
-          ]}
-        />
-      </section>
-
-      <section className="stack" aria-labelledby="cor-replies">
-        <h2 id="cor-replies" className="u-h3">
-          Responses
-        </h2>
-        {d.responses.length === 0 ? (
-          <p className="u-muted u-m-0">No responses yet.</p>
-        ) : (
-          d.responses.map((r) => (
-            <article key={r.id} className="stack" aria-label="Response">
-              <p className="u-caption u-m-0">
-                {dir.personName(r.authorId)}
-                {r.authorCompanyId ? ` · ${dir.companyName(r.authorCompanyId)}` : ''} ·{' '}
-                {formatInstant(r.sentAt, project.timezone)}
-              </p>
-              <p className="u-m-0 u-prewrap">{r.body}</p>
-            </article>
-          ))
-        )}
-        {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
-      </section>
+      <div className="detail-grid">
+        <div className="stack-lg">
+          {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
+          <Card title="Responses">
+            <div className="stack">
+              {d.responses.length === 0 ? (
+                <p className="u-muted u-m-0">No responses yet.</p>
+              ) : (
+                d.responses.map((r) => (
+                  <article key={r.id} className="stack" aria-label="Response">
+                    <p className="u-caption u-m-0">
+                      {dir.personName(r.authorId)}
+                      {r.authorCompanyId ? ` · ${dir.companyName(r.authorCompanyId)}` : ''} ·{' '}
+                      {formatInstant(r.sentAt, project.timezone)}
+                    </p>
+                    <p className="u-m-0 u-prewrap">{r.body}</p>
+                  </article>
+                ))
+              )}
+              {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
+            </div>
+          </Card>
+        </div>
+        <Card title="Details">
+          <DescriptionList
+            items={[
+              { label: 'Type', value: i.typeName },
+              { label: 'From', value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—' },
+              {
+                label: 'To',
+                value: i.toCompanyIds.length
+                  ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
+                  : '—',
+              },
+              {
+                label: 'Sent',
+                value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
+              },
+              {
+                label: 'Event date',
+                value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
+              },
+              {
+                label: 'Response due',
+                value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
+              },
+            ]}
+          />
+        </Card>
+      </div>
 
       <VoidDialog
         open={voiding}
@@ -186,12 +185,9 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
 
 function Record({ d }: { d: CorrespondenceDetail }) {
   return (
-    <section className="stack" aria-labelledby="cor-body">
-      <h2 id="cor-body" className="u-h3">
-        {d.item.subject}
-      </h2>
+    <Card title={d.item.subject}>
       <p className="u-m-0 u-prewrap">{d.item.body}</p>
-    </section>
+    </Card>
   );
 }
 

@@ -1,5 +1,6 @@
 // Where a worker is in the online induction and what to ask next (IND-US1). Pure, so it runs in Node tests.
 import type { InductionCompletion } from '@archova/contracts';
+import { animationKey } from './animation';
 
 type Section = InductionCompletion['content']['sections'][number];
 
@@ -52,7 +53,15 @@ export function quizOutcome(result: {
 }
 
 /** Block kinds the phone shows in full: text and slides inline; images, documents, videos and SWMS from a download link. */
-const READABLE_BLOCKS = new Set(['text', 'slides', 'image', 'document', 'video', 'swms']);
+const READABLE_BLOCKS = new Set([
+  'text',
+  'slides',
+  'animation',
+  'image',
+  'document',
+  'video',
+  'swms',
+]);
 
 /** A document must stay open this long before it counts as read; opening it and closing it at once is not reading. */
 export const MIN_DOCUMENT_MS = 5000;
@@ -68,7 +77,9 @@ export function unviewedFiles(section: Section, viewed: ReadonlySet<string>): st
         ? b.fileId
         : b.type === 'swms'
           ? b.documentId
-          : null;
+          : b.type === 'animation'
+            ? animationKey(b)
+            : null;
     return id !== null && !viewed.has(id) ? [id] : [];
   });
 }

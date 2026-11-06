@@ -11,9 +11,15 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNova, sendAnswerFeedback } from '../data/ask';
+import { actionRedirect } from '../data/actions';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
-import { useAssistantPanelState, useAssistantScope, type AssistantScope } from './AssistantScope';
+import {
+  useAssistantPanelState,
+  useAssistantScope,
+  useRunAssistantAction,
+  type AssistantScope,
+} from './AssistantScope';
 
 interface Turn {
   id: number;
@@ -121,13 +127,14 @@ export function AssistantPanel() {
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
-        previewDataOnly || !s.projectId
+        actionRedirect(question, s) ??
+        (previewDataOnly || !s.projectId
           ? await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
             )
-          : await askNova(org.orgId, s.projectId, question, controller.signal);
+          : await askNova(org.orgId, s.projectId, question, controller.signal));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
@@ -301,6 +308,7 @@ function AnswerBlock({
   onFeedback: (v: 'up' | 'down') => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const runAction = useRunAssistantAction();
   if (turn.status === 'thinking') {
     return (
       <div className="row-actions">
@@ -343,6 +351,13 @@ function AnswerBlock({
         <NovaIcon size={14} aria-hidden="true" /> {a?.kind === 'not_found' ? 'Not found' : 'Nova'}
       </p>
       <p className="u-m-0">{turn.shown}</p>
+      {turn.status === 'done' && a?.action ? (
+        <div className="row-actions">
+          <Button size="sm" onClick={() => runAction(a.action!.id)}>
+            {a.action.label}
+          </Button>
+        </div>
+      ) : null}
       {turn.status === 'done' && a?.kind === 'not_found' && a.citations.length ? (
         <p className="u-caption u-m-0">Closest matches, so you can check yourself:</p>
       ) : null}

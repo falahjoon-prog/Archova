@@ -4,6 +4,7 @@ type S = components['schemas'];
 export type Portfolio = S['Portfolio'];
 export type PortfolioProject = S['PortfolioProject'];
 export type PortfolioTool = S['PortfolioTool'];
+export type PortfolioBudget = S['PortfolioBudget'];
 export type ReadinessPack = S['ReadinessPack'];
 export type Report = S['Report'];
 export type ReportConfig = S['ReportConfig'];
@@ -20,6 +21,8 @@ export const SOURCE_LABELS: Record<ReportSource, string> = {
   submittals: 'Submittals',
   claims: 'Payment claims',
   variations: 'Variations',
+  incidents: 'Safety incidents',
+  programme: 'Programme activities',
 };
 
 export const STATE_LABELS: Record<ReportState, string> = {

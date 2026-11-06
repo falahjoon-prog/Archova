@@ -89,6 +89,8 @@ export function createWorkforceModule(
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
       getInductionVersion: inductions.versionForAi,
+      /** For `reporting` (Nova project risk): subcontractor insurance read through live wallet grants. */
+      insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
     },

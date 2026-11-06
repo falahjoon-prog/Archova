@@ -27,6 +27,8 @@ export interface WorkerConfig {
    * the API's verification keyring. Unset leaves send proofs unsigned (still hashed and timestamped).
    */
   evidenceSigning: { keyId: string; privateKeyPem: string } | null;
+  /** Object Lock bucket for write-once copies of sent claim emails; unset or `none` leaves archiving off (local runs, demo). */
+  evidenceStore: { store: 's3' | 'none'; bucket: string | null; region: string };
   files: {
     store: 's3' | 'none';
     bucket: string;
@@ -86,6 +88,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     },
     evidenceTimestampUrl: env.WORKER_EVIDENCE_TSA_URL || null,
     evidenceTimestampCaFile: env.WORKER_EVIDENCE_TSA_CA_FILE || null,
+    evidenceStore: {
+      store: env.WORKER_EVIDENCE_STORE === 's3' ? 's3' : 'none',
+      bucket: env.WORKER_EVIDENCE_BUCKET || null,
+      region: env.WORKER_EVIDENCE_REGION ?? 'ap-southeast-2',
+    },
     evidenceSigning: env.WORKER_EVIDENCE_SIGNING_KEY
       ? {
           keyId: required(env, 'WORKER_EVIDENCE_SIGNING_KEY_ID'),

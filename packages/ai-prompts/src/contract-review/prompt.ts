@@ -44,6 +44,24 @@ export const TIME_BAR_EVENTS = [
 ] as const;
 export type TimeBarEvent = (typeof TIME_BAR_EVENTS)[number];
 
+/** Whose duty it is, from the point of view of the side the builder is on. */
+export const OBLIGATION_PARTIES = ['builder', 'other_party', 'both', 'unclear'] as const;
+export type ObligationParty = (typeof OBLIGATION_PARTIES)[number];
+
+export const OBLIGATION_CATEGORIES = [
+  'payment',
+  'notice',
+  'insurance',
+  'security',
+  'reporting',
+  'programme',
+  'quality',
+  'other',
+] as const;
+export type ObligationCategory = (typeof OBLIGATION_CATEGORIES)[number];
+
+export const MAX_OBLIGATIONS = 80;
+
 export const ContractPage = z.object({
   /** 1-based page of the PDF. */
   page: z.number().int().min(1).max(MAX_CONTRACT_PAGES),
@@ -107,6 +125,21 @@ export const ContractReviewOutput = z.object({
       }),
     )
     .max(30),
+  /** What each party must do, and by when, as the contract words it. Nothing is worked out or assumed. */
+  obligations: z
+    .array(
+      z.object({
+        party: z.enum(OBLIGATION_PARTIES),
+        category: z.enum(OBLIGATION_CATEGORIES),
+        /** What the party must do, in one plain sentence. */
+        action: z.string().min(1).max(300),
+        /** When, as the contract words it (for example "within 5 business days of receiving a claim"), or null. */
+        timing: z.string().max(200).nullable(),
+        ...Source,
+      }),
+    )
+    .max(MAX_OBLIGATIONS)
+    .optional(),
   departures: z
     .array(
       z.object({
@@ -144,6 +177,7 @@ Rules:
 - Report only what the pages say. Never fill in a term, a date, an amount or a period that is not printed. When a term cannot be found, leave it out.
 - summary: one entry for each of the key terms you can find (parties, contract_sum, start_date, practical_completion, security, retention, defects_period, insurance, liquidated_damages): a plain sentence saying what the contract says. For liquidated damages give the rate and any cap only.
 - timeBars: every notice period and time bar in the contract for delay notices, EOT claims, variations, payment claims and disputes. period is the contract's own words for the period. days is the number the contract states, or null. dayType is business or calendar only when the contract says which, else unclear. Never convert, add up or work out a date.
+- obligations: the main duties each party has under the contract (payment, notices, insurance, security, reporting, programme, quality). party is builder or other_party from the point of view of the side the builder is on (both or unclear when the contract says so or is not clear). action is one plain sentence saying what must be done. timing is the contract's own words for when, or null when it states none. Do not repeat the notice periods already in timeBars, do not list every sentence that says "shall", and do not work out dates. Leave obligations empty when none can be found.
 - departures: for each playbook topic, find the clause that deals with it. Report it only when the clause departs from the builder's position, from the point of view of the side the builder is on. Say in finding what the clause says and how it differs from the position in the playbook. Use the topic's key as topicKey. Do not report a clause that meets the position. Do not report topics that are not in the playbook.
 - statutory: when <statutory> rules are given, find each clause that matches a rule's description and report its ruleKey with the page, clause number and quote. Report only the clause. Do not say what the law requires, whether the clause is void or valid, or anything else about it; the wording shown to the reader comes from the rule. Report nothing for a rule when no clause matches. When no <statutory> rules are given, statutory is empty.
 - Every entry has the page number, the clause number as printed (or null) and a quote copied exactly from that page (a short quote, not a whole clause). Do not paraphrase the quote.
@@ -160,7 +194,7 @@ const topic = (t: PlaybookTopicInput) =>
 
 export const contractReviewPrompt = definePrompt({
   id: 'contract.review',
-  version: 2,
+  version: 3,
   feature: 'contract_review',
   kind: 'interactive',
   tier: 'advanced',

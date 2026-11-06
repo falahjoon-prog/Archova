@@ -63,6 +63,16 @@ export function createProgrammeApi(orgId: string) {
         }),
       );
     },
+    async setBaseline(projectId: string, scheduleId: string): Promise<ScheduleDetail> {
+      return unwrap(
+        await api.PUT(`${P}/{scheduleId}/baseline`, { params: path(projectId, scheduleId) }),
+      );
+    },
+    async clearBaseline(projectId: string, scheduleId: string): Promise<ScheduleDetail> {
+      return unwrap(
+        await api.DELETE(`${P}/{scheduleId}/baseline`, { params: path(projectId, scheduleId) }),
+      );
+    },
     async deleteActivity(projectId: string, scheduleId: string, activityId: string) {
       return unwrap(
         await api.DELETE(`${P}/{scheduleId}/activities/{activityId}`, {

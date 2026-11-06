@@ -30,6 +30,8 @@ afterAll(async () => {
 
 describe('outbox relay', () => {
   it('relays unpublished events across tenants in order, once', async () => {
+    // Earlier test files in the same database may have left unpublished events; start clean.
+    await relayOnce(platform, async () => {});
     await emit(orgA, 'x.thing.created.v1');
     await emit(orgB, 'x.thing.created.v1');
     await emit(orgA, 'x.thing.closed.v1');

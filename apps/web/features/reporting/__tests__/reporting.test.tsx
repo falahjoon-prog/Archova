@@ -30,6 +30,16 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   submittals: tool(0, 0),
   claims: tool(0, 0),
   variations: tool(0, 0),
+  incidents: tool(0, 0),
+  programme: tool(0, 0),
+  budget: {
+    restricted: true,
+    hasBudget: false,
+    revised: '0.00',
+    forecastFinal: '0.00',
+    variance: '0.00',
+    overBudgetCodes: 0,
+  },
   attention: 0,
   ...over,
 });
@@ -56,9 +66,29 @@ describe('PortfolioScreen', () => {
         claimsOverdue: 0,
         variationsOpen: 0,
         variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 0,
+        projectsOverBudget: 0,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
       },
       projects: [
-        project('prj_a', 'Alpha Tower', { rfis: tool(5, 2), attention: 2 }),
+        project('prj_a', 'Alpha Tower', {
+          rfis: tool(5, 2),
+          attention: 2,
+          budget: {
+            restricted: false,
+            hasBudget: true,
+            revised: '100000.00',
+            forecastFinal: '112500.00',
+            variance: '-12500.00',
+            overBudgetCodes: 2,
+          },
+        }),
         project('prj_b', 'Bravo Lofts', { defects: tool(1, 0), rfis: tool(0, 0, true) }),
       ],
       truncated: false,
@@ -67,8 +97,11 @@ describe('PortfolioScreen', () => {
     const table = await screen.findByRole('table', { name: /Projects with open/ });
     expect(within(table).getByRole('link', { name: 'Alpha Tower' })).toBeTruthy();
     expect(within(table).getByText('2 overdue')).toBeTruthy();
-    expect(within(table).getByText('No access')).toBeTruthy();
-    expect(screen.getByText('5 (2 overdue)')).toBeTruthy();
+    expect(screen.getByText('RFIs open').parentElement?.textContent).toBe('RFIs open52 overdue');
+    // Over budget shows the shortfall; Bravo has no budget the caller can see.
+    expect(within(table).getByText(/12,500\.00/)).toBeTruthy();
+    expect(within(table).getByText('over budget')).toBeTruthy();
+    expect(within(table).getAllByText('No access').length).toBe(2);
   });
 
   it('asks for closed projects when ticked', async () => {
@@ -85,6 +118,15 @@ describe('PortfolioScreen', () => {
         claimsOverdue: 0,
         variationsOpen: 0,
         variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 0,
+        projectsOverBudget: 0,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
       },
       projects: [],
       truncated: false,

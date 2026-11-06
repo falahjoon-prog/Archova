@@ -6,10 +6,10 @@ import {
   Alert,
   Checkbox,
   DataTable,
-  DescriptionList,
   EmptyState,
   PageHeader,
   SkeletonRows,
+  StatGrid,
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
@@ -17,8 +17,9 @@ import { HomeIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { formatMoney } from '@/shared/lib/format';
 import { usePortfolio } from '../hooks/useReporting';
-import type { PortfolioProject, PortfolioTool } from '../lib/types';
+import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
 /** "4 open" with a red "2 overdue" beside it; "No access" when the caller cannot open that tool on the project. */
 function ToolCell({ tool }: { tool: PortfolioTool }) {
@@ -32,6 +33,33 @@ function ToolCell({ tool }: { tool: PortfolioTool }) {
           <StatusPill tone="danger">{tool.overdue} overdue</StatusPill>
         </>
       ) : null}
+    </>
+  );
+}
+
+/** One tile: the open count, with the overdue count underneath and the tile turning red only when something is overdue. */
+function stat(label: string, open: number, overdue: number, word: string) {
+  return {
+    label,
+    value: open,
+    hint: `${overdue} ${word}`,
+    tone: overdue > 0 ? ('danger' as const) : undefined,
+  };
+}
+
+const aud = (amount: string) => formatMoney({ amount, currency: 'AUD' });
+
+/** Forecast final cost against the revised budget: the shortfall in red when over, the headroom when under. */
+function BudgetCell({ budget }: { budget: PortfolioBudget }) {
+  if (budget.restricted) return <span className="u-muted">No access</span>;
+  if (!budget.hasBudget) return <span className="u-muted">No budget</span>;
+  const over = budget.variance.startsWith('-');
+  return (
+    <>
+      <div>{over ? aud(budget.variance.slice(1)) : aud(budget.variance)}</div>
+      <StatusPill tone={over ? 'danger' : 'success'}>
+        {over ? 'over budget' : 'under budget'}
+      </StatusPill>
     </>
   );
 }
@@ -57,33 +85,52 @@ export function PortfolioScreen() {
     },
     {
       id: 'rfis',
-      header: 'RFIs open',
+      header: 'RFIs',
       sortValue: (r) => r.rfis.open,
       cell: (r) => <ToolCell tool={r.rfis} />,
     },
     {
       id: 'defects',
-      header: 'Defects open',
+      header: 'Defects',
       sortValue: (r) => r.defects.open,
       cell: (r) => <ToolCell tool={r.defects} />,
     },
     {
       id: 'submittals',
-      header: 'Submittals with reviewers',
+      header: 'Submittals',
       sortValue: (r) => r.submittals.open,
       cell: (r) => <ToolCell tool={r.submittals} />,
     },
     {
       id: 'claims',
-      header: 'Claims unpaid',
+      header: 'Claims',
       sortValue: (r) => r.claims.open,
       cell: (r) => <ToolCell tool={r.claims} />,
     },
     {
       id: 'variations',
-      header: 'Variations to decide',
+      header: 'Variations',
       sortValue: (r) => r.variations.open,
       cell: (r) => <ToolCell tool={r.variations} />,
+    },
+    {
+      id: 'incidents',
+      header: 'Incidents',
+      sortValue: (r) => r.incidents.open,
+      cell: (r) => <ToolCell tool={r.incidents} />,
+    },
+    {
+      id: 'programme',
+      header: 'Programme',
+      sortValue: (r) => r.programme.open,
+      cell: (r) => <ToolCell tool={r.programme} />,
+    },
+    {
+      id: 'budget',
+      header: 'Forecast vs budget',
+      sortValue: (r) =>
+        r.budget.hasBudget && !r.budget.restricted ? Number(r.budget.variance) : 0,
+      cell: (r) => <BudgetCell budget={r.budget} />,
     },
     {
       id: 'attention',
@@ -99,33 +146,45 @@ export function PortfolioScreen() {
       <PageHeader
         eyebrow="Company"
         title="Portfolio"
-        description="What is open and what is overdue on every project you can see. Counts only include what you are allowed to open on each project."
+        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
       {data ? (
-        <DescriptionList
+        <StatGrid
           items={[
             { label: 'Projects', value: data.totals.projects },
-            {
-              label: 'RFIs open',
-              value: `${data.totals.rfisOpen} (${data.totals.rfisOverdue} overdue)`,
-            },
-            {
-              label: 'Defects open',
-              value: `${data.totals.defectsOpen} (${data.totals.defectsOverdue} overdue)`,
-            },
-            {
-              label: 'Submittals with reviewers',
-              value: `${data.totals.submittalsOpen} (${data.totals.submittalsOverdue} overdue)`,
-            },
-            {
-              label: 'Claims unpaid',
-              value: `${data.totals.claimsOpen} (${data.totals.claimsOverdue} overdue)`,
-            },
-            {
-              label: 'Variations to decide',
-              value: String(data.totals.variationsOpen),
-            },
+            stat('RFIs open', data.totals.rfisOpen, data.totals.rfisOverdue, 'overdue'),
+            stat('Defects open', data.totals.defectsOpen, data.totals.defectsOverdue, 'overdue'),
+            stat(
+              'Submittals with reviewers',
+              data.totals.submittalsOpen,
+              data.totals.submittalsOverdue,
+              'overdue',
+            ),
+            stat('Claims unpaid', data.totals.claimsOpen, data.totals.claimsOverdue, 'overdue'),
+            { label: 'Variations to decide', value: data.totals.variationsOpen },
+            stat(
+              'Incidents open',
+              data.totals.incidentsOpen,
+              data.totals.incidentsOverdue,
+              'to notify',
+            ),
+            stat(
+              'Programme activities open',
+              data.totals.programmeOpen,
+              data.totals.programmeOverdue,
+              'late',
+            ),
+            ...(data.totals.budgetProjects > 0
+              ? [
+                  {
+                    label: 'Forecast vs budget',
+                    value: aud(data.totals.budgetVariance.replace('-', '')),
+                    tone: data.totals.projectsOverBudget > 0 ? ('danger' as const) : undefined,
+                    hint: `${data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'} across ${data.totals.budgetProjects} ${data.totals.budgetProjects === 1 ? 'project' : 'projects'} (${data.totals.projectsOverBudget} over budget)`,
+                  },
+                ]
+              : []),
           ]}
         />
       ) : null}

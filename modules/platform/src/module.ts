@@ -141,7 +141,9 @@ export function createPlatformModule(
         return [...users.values()].map((u) => ({ email: u.email, name: u.name }));
       },
       companyExists: companies.exists,
+      companyContacts: companies.contacts,
       companyIdentity: companies.identity,
+      companyLinkedOrgs: companies.linkedOrgs,
       projectCompanies: companies.onProject,
       projectCompaniesWithTrades: companies.onProjectWithTrades,
     },

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   attention,
+  budgetTotals,
+  budgetView,
   normaliseColumns,
   normaliseConfig,
   orderPortfolio,
@@ -17,6 +19,8 @@ const counts = (r: [number, number], d: [number, number], s: [number, number]): 
   submittals: tool(...s),
   claims: tool(0, 0),
   variations: tool(0, 0),
+  incidents: tool(0, 0),
+  programme: tool(0, 0),
 });
 
 describe('columns and config', () => {
@@ -105,6 +109,53 @@ describe('claims and variations in the portfolio', () => {
       claimsOverdue: 2,
       variationsOpen: 4,
       variationsOverdue: 0,
+    });
+  });
+});
+
+describe('budget against forecast', () => {
+  const b = (revised: number, forecast: number, over = 0) => ({
+    restricted: false,
+    hasBudget: true,
+    revisedCents: revised,
+    forecastFinalCents: forecast,
+    varianceCents: revised - forecast,
+    overBudgetCodes: over,
+  });
+  const none = { ...b(0, 0), hasBudget: false };
+  const locked = { ...b(900_000, 100), restricted: true };
+
+  it('shows decimal strings, negative when over budget', () => {
+    expect(budgetView(b(1_000_050, 1_200_000, 2))).toEqual({
+      restricted: false,
+      hasBudget: true,
+      revised: '10000.50',
+      forecastFinal: '12000.00',
+      variance: '-1999.50',
+      overBudgetCodes: 2,
+    });
+  });
+
+  it('shows no figures for a restricted project or one without a budget', () => {
+    expect(budgetView(locked)).toMatchObject({
+      restricted: true,
+      revised: '0.00',
+      variance: '0.00',
+    });
+    expect(budgetView(none)).toMatchObject({
+      hasBudget: false,
+      revised: '0.00',
+      overBudgetCodes: 0,
+    });
+  });
+
+  it('totals only the budgets the caller can see', () => {
+    expect(budgetTotals([b(100_000, 80_000), b(50_000, 70_000), none, locked])).toEqual({
+      budgetProjects: 2,
+      projectsOverBudget: 1,
+      budgetRevised: '1500.00',
+      budgetForecastFinal: '1500.00',
+      budgetVariance: '0.00',
     });
   });
 });

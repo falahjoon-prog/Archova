@@ -15,6 +15,8 @@ export interface AiConfig {
   embedDailyTokens?: number;
   /** Scanned pages one org may have read with OCR in a local day (ai/05 §4). Unset means the default. */
   ocrDailyPages?: number;
+  /** SWMS drafting (F20). Off until Grace and the WHS lawyer clear it for pilots (compliance/08 §9). */
+  swmsDrafts?: boolean;
 }
 
 /** Embedding model id the fake provider reports. */
@@ -58,7 +60,9 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     throw new Error(`API_AI_PROVIDER must be fake or bedrock, not ${kind}`);
   const embedDailyTokens = wholeNumber(env, 'API_AI_EMBED_DAILY_TOKENS');
   const ocrDailyPages = wholeNumber(env, 'API_AI_OCR_DAILY_PAGES');
+  const swmsDrafts = ['1', 'true', 'on'].includes((env.API_AI_SWMS_DRAFTS ?? '').toLowerCase());
   const cap = {
+    ...(swmsDrafts ? { swmsDrafts } : {}),
     ...(embedDailyTokens === undefined ? {} : { embedDailyTokens }),
     ...(ocrDailyPages === undefined ? {} : { ocrDailyPages }),
   };

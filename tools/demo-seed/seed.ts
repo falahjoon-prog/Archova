@@ -6,8 +6,9 @@
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
 import { createHash } from 'node:crypto';
 import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
-import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
+import { COMPANIES, type CompanyKey, DOCS, ORG, PROJECTS } from './data';
 import { seedExtra } from './extra';
+import { enableAllFlags } from './flags';
 import { makePdf } from './pdf';
 import { Session } from './session';
 
@@ -68,12 +69,18 @@ const existingProjects = new Map(
 );
 const projectIds: string[] = [];
 
-async function upload(projectId: string, module: string, filename: string, bytes: Uint8Array) {
+async function upload(
+  projectId: string,
+  module: string,
+  filename: string,
+  bytes: Uint8Array,
+  mime = 'application/pdf',
+) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const up = await s.ok<{ id: string; uploadUrl: string; uploadHeaders: Record<string, string> }>(
     'POST',
     `${o()}/uploads`,
-    { filename, mime: 'application/pdf', sizeBytes: bytes.length, sha256, module, projectId },
+    { filename, mime, sizeBytes: bytes.length, sha256, module, projectId },
   );
   const put = await fetch(up.uploadUrl, { method: 'PUT', headers: up.uploadHeaders, body: bytes });
   if (!put.ok) throw new Error(`upload of ${filename} -> ${put.status} ${await put.text()}`);
@@ -516,6 +523,19 @@ for (const [i, p] of PROJECTS.entries()) {
   );
 }
 
+// Every feature flag on for the demo org (staff-managed rules, so this needs direct database access).
+if (process.env.SEED_DB_URL) {
+  try {
+    console.log(`Flags: ${await enableAllFlags(process.env.SEED_DB_URL, orgId!)}`);
+  } catch (e) {
+    console.warn(`Flags failed: ${(e as Error).message}`);
+  }
+} else {
+  console.warn(
+    'SEED_DB_URL is not set: feature flags left as they are (prequalification etc. stay off).',
+  );
+}
+
 // Ten records of each major kind on the first active project (see extra.ts).
 await seedExtra({
   s,
@@ -530,6 +550,9 @@ await seedExtra({
   userId: me.user.id,
   origin: ORIGIN,
   password: PASSWORD,
+  upload,
+  sheets: PROJECTS[0]!.sheets,
+  documents: DOCS,
 });
 
 // Ask Nova answers only from indexed documents and drawings. Indexing is idempotent, so every run brings each

@@ -60,6 +60,7 @@ import {
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
@@ -81,6 +82,7 @@ export const MODULE_PERMISSIONS = [
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
@@ -114,14 +116,28 @@ export interface ModuleOptions {
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
-  const identity = await createIdentityModule(services, opts.identity);
+  // The identity module is built first; it tells an org's admins about partner app changes through platform, built later.
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
+  const identity = await createIdentityModule(services, {
+    ...opts.identity,
+    partnerApps: {
+      ...opts.identity.partnerApps,
+      notifyAdmins: async (orgId, subject, text) => {
+        const admins = await platformApi!.orgAdminContacts(orgId);
+        await Promise.all(
+          admins.map((a) =>
+            opts.messages.email(a.email, { subject, text: `Hi ${a.name},\n\n${text}` }),
+          ),
+        );
+      },
+    },
+  });
   const billing = createBillingModule(
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
   // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
-  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
@@ -321,6 +337,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     files: files.api,
     financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -384,6 +409,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     submittals: submittals.api,
     platform: platform.api,
+    access: access.api,
   });
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
@@ -423,10 +449,26 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
+    incidents: safety.api.reporting,
+    programme: scheduling.api.reporting,
+    budget: { portfolioSummary: financials.api.budgetSummary },
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,
     financials: financials.api,
+    scheduling: scheduling.api,
+  });
+
+  const search = createSearchModule({
+    database: services.database as Database,
+    platform: platform.api,
+    sources: {
+      rfi: rfis.api,
+      document: documents.api,
+      defect: defects.api,
+      submittal: submittals.api,
+      correspondence: correspondence.api,
+    },
   });
 
   const sync = createSyncModule(services, {
@@ -477,6 +519,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
     exportsModule,
     workforce,
     sync,
@@ -516,6 +559,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
     exportsModule,
     workforce,
     routes,

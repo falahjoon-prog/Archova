@@ -18,11 +18,11 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { colorScheme: 'light dark' };
+export const viewport: Viewport = { colorScheme: 'light' };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" data-theme="light">
       <head>
         <ThemeStyle />
       </head>

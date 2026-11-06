@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
-import { createS3ObjectStore } from '@archova/mod-files';
+import { createS3ObjectStore, createS3WriteOnceStore } from '@archova/mod-files';
 import { createEvidenceSigner } from '@archova/mod-financials';
 import {
   createHttpsTransport,
@@ -14,6 +14,7 @@ import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
+import { inviteeReminders } from './jobs/invitee-reminders';
 import { trustReminders } from './jobs/trust-reminders';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
@@ -25,6 +26,7 @@ import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
 import { createSmtpSender } from './smtp';
+import { evidenceArchive } from './jobs/evidence-archive';
 import { evidenceDeliveries } from './jobs/evidence-deliveries';
 import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
@@ -113,6 +115,7 @@ async function main() {
     templateBackfill,
     meetingReminders,
     bidReminders,
+    inviteeReminders(emailSender, config.email.appBaseUrl),
     trustReminders,
     incidentActionNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
@@ -135,6 +138,24 @@ async function main() {
     jobs.push(webhooks.sweep);
   } else {
     log.warn({}, 'WORKER_WEBHOOK_SECRET_KEY is not set: webhooks are not delivered');
+  }
+  if (config.evidenceStore.store === 's3') {
+    if (!config.evidenceStore.bucket)
+      throw new Error('WORKER_EVIDENCE_STORE=s3 needs WORKER_EVIDENCE_BUCKET');
+    jobs.push(
+      evidenceArchive(
+        createS3WriteOnceStore({
+          bucket: config.evidenceStore.bucket,
+          region: config.evidenceStore.region,
+        }),
+        (msg, o) => log.warn(o, msg),
+      ),
+    );
+  } else if (process.env.NODE_ENV === 'production') {
+    log.warn(
+      {},
+      'WORKER_EVIDENCE_STORE is not s3: sent claim emails are not copied to write-once storage',
+    );
   }
   if (config.files.store === 's3') {
     const store = createS3ObjectStore({

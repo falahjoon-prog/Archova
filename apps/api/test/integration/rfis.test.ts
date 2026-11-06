@@ -351,6 +351,154 @@ describe('RFI lifecycle (product/03)', () => {
   });
 });
 
+const PHOTO = new Uint8Array(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  ),
+);
+const RECT = (id: string) => ({
+  id,
+  kind: 'rect',
+  from: { x: 0.1, y: 0.1 },
+  to: { x: 0.4, y: 0.3 },
+  color: '#D92D20',
+  strokeWidth: 2,
+});
+
+describe('RFI photos and annotation', () => {
+  it('attaches photos to the question, and keeps one mark layer per person per photo', async () => {
+    const s = await setup();
+    const photo = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      PHOTO,
+      'crack.png',
+      'image/png',
+    );
+    const draft = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Crack in slab edge',
+      question: 'Is this crack acceptable?',
+      assigneeIds: [s.eng.userId],
+      fileIds: [photo],
+    });
+    expect(draft.statusCode).toBe(201);
+    expect(draft.json().rfi.fileIds).toEqual([photo]);
+    const id = draft.json().rfi.id;
+    const opened = await s.pm.browser.post(`${s.base}/rfis/${id}/open`, undefined, {
+      'if-match': etagOf(draft),
+    });
+    expect(opened.statusCode).toBe(200);
+
+    // The raiser circles the crack; the consultant adds an arrow in their own layer.
+    const mine = await s.pm.browser.put(`${s.base}/rfis/${id}/files/${photo}/annotation`, {
+      shapes: [RECT('a1')],
+    });
+    expect(mine.statusCode).toBe(200);
+    expect(mine.json().annotation).toMatchObject({ authorId: s.pm.userId, fileId: photo });
+    const theirs = await s.eng.browser.put(`${s.base}/rfis/${id}/files/${photo}/annotation`, {
+      shapes: [{ id: 'b1', kind: 'arrow', from: { x: 0.8, y: 0.8 }, to: { x: 0.5, y: 0.3 } }],
+    });
+    expect(theirs.statusCode).toBe(200);
+
+    // Saving again replaces the caller's layer only.
+    await s.pm.browser.put(`${s.base}/rfis/${id}/files/${photo}/annotation`, {
+      shapes: [RECT('a1'), RECT('a2')],
+    });
+    // The subcontractor isn't on this RFI, so its marks are hidden from them entirely.
+    expect((await s.sub.browser.get(`${s.base}/rfis/${id}/annotations`)).statusCode).toBe(404);
+    const all = (await s.eng.browser.get(`${s.base}/rfis/${id}/annotations`)).json().data;
+    expect(all).toHaveLength(2);
+    const pmLayer = all.find((a: { authorId: string }) => a.authorId === s.pm.userId);
+    expect(pmLayer.shapes.map((x: { id: string }) => x.id)).toEqual(['a1', 'a2']);
+    expect(pmLayer.shapes[0]).toMatchObject({ color: '#D92D20', strokeWidth: 2 });
+
+    // An empty list removes the caller's layer and nobody else's.
+    const cleared = await s.eng.browser.put(`${s.base}/rfis/${id}/files/${photo}/annotation`, {
+      shapes: [],
+    });
+    expect(cleared.json()).toEqual({ annotation: null });
+    expect((await s.pm.browser.get(`${s.base}/rfis/${id}/annotations`)).json().data).toHaveLength(
+      1,
+    );
+  });
+
+  it('refuses marks on files that are not photos of this RFI, bad shapes, pins, and closed RFIs', async () => {
+    const s = await setup();
+    const photo = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      PHOTO,
+      'a.png',
+      'image/png',
+    );
+    const other = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      new Uint8Array([...PHOTO, 0]),
+      'b.png',
+      'image/png',
+    );
+    const sketch = await uploadFile(t, s.pm.browser, s.org.id, s.project.id, 'sketch.pdf', 'rfis');
+    const created = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Photos',
+      question: 'Look.',
+      assigneeIds: [s.eng.userId],
+      fileIds: [photo, sketch],
+    });
+    const id = created.json().rfi.id;
+    const url = (f: string) => `${s.base}/rfis/${id}/files/${f}/annotation`;
+
+    const notOnRfi = await s.pm.browser.put(url(other), { shapes: [RECT('a')] });
+    expect(notOnRfi.statusCode).toBe(422);
+    expect(notOnRfi.json().code).toBe('rfi.photo_not_markable');
+    const notImage = await s.pm.browser.put(url(sketch), { shapes: [RECT('a')] });
+    expect(notImage.json().code).toBe('rfi.photo_not_markable');
+    const pin = await s.pm.browser.put(url(photo), {
+      shapes: [{ id: 'p', kind: 'pin', at: { x: 0.5, y: 0.5 }, entityType: 'rfi', entityId: 'x' }],
+    });
+    expect(pin.statusCode).toBe(422);
+    const offSheet = await s.pm.browser.put(url(photo), {
+      shapes: [{ ...RECT('a'), to: { x: 1.4, y: 0.3 } }],
+    });
+    expect(offSheet.statusCode).toBe(422);
+    const badColour = await s.pm.browser.put(url(photo), {
+      shapes: [{ ...RECT('a'), color: 'red' }],
+    });
+    expect(badColour.statusCode).toBe(422);
+
+    // Someone who can't see the RFI can't mark it up either.
+    const hidden = await s.outsider.browser.put(url(photo), { shapes: [RECT('a')] });
+    expect(hidden.statusCode).toBe(404);
+
+    // Photos added in a response can be marked up too; a closed RFI is frozen.
+    const opened = await s.pm.browser.post(`${s.base}/rfis/${id}/open`, undefined, {
+      'if-match': etagOf(await s.pm.browser.get(`${s.base}/rfis/${id}`)),
+    });
+    expect(opened.statusCode).toBe(200);
+    const answered = await s.eng.browser.post(`${s.base}/rfis/${id}/responses`, {
+      body: 'Fine.',
+      fileIds: [other],
+    });
+    expect(answered.statusCode).toBe(201);
+    expect((await s.eng.browser.put(url(other), { shapes: [RECT('a')] })).statusCode).toBe(200);
+    const closed = await s.pm.browser.post(
+      `${s.base}/rfis/${id}/close`,
+      { officialResponseId: answered.json().responses[0].id },
+      { 'if-match': etagOf(answered) },
+    );
+    expect(closed.statusCode).toBe(200);
+    const frozen = await s.eng.browser.put(url(other), { shapes: [RECT('b')] });
+    expect(frozen.statusCode).toBe(409);
+  });
+});
+
 describe('RFI import (X49)', () => {
   it('keeps the original number, is idempotent on sourceRef and moves the counter on', async () => {
     const s = await setup();

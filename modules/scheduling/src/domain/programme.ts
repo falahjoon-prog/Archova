@@ -180,7 +180,7 @@ export function lookahead(
       activityId: a.id,
       startsInWindow: a.start >= start,
       finishesInWindow: a.finish <= end,
-      late: (a.start < today && a.pctComplete === 0) || (a.finish < today && a.pctComplete < 100),
+      late: isLate(a, today),
     });
   }
   items.sort((x, y) =>
@@ -192,3 +192,67 @@ export function lookahead(
   );
   return { windowStart: start, windowEnd: end, items };
 }
+
+/** The date `n` working days (Monday-Friday) after `date`; `n` below 1 returns the date unchanged. */
+export function addWorkDays(date: LocalDate, n: number): LocalDate {
+  let d = date;
+  for (let left = n; left > 0;) {
+    d = addDays(d, 1);
+    if (isoWeekday(d) <= 5) left--;
+  }
+  return d;
+}
+
+/** Working days the finish sits after the baseline finish: positive is late, negative is ahead. */
+export function varianceDays(finish: LocalDate, baselineFinish: LocalDate): number {
+  return workDayOrdinal(finish) - workDayOrdinal(baselineFinish);
+}
+
+/**
+ * Re-flow after an activity moves: any successor whose link is now broken is pushed later, keeping its duration, and
+ * that push is carried down the chain. Nothing is ever pulled earlier, finished work is left alone and the moved
+ * activity itself is not returned. Returns only the activities whose dates changed.
+ */
+export function cascade(
+  activities: readonly ActivityInput[],
+  deps: readonly DependencyInput[],
+  movedId: string,
+): Map<string, { start: LocalDate; finish: LocalDate }> {
+  const cur = new Map(activities.map((a) => [a.id, { start: a.start, finish: a.finish }]));
+  const byId = new Map(activities.map((a) => [a.id, a]));
+  const outgoing = new Map<string, DependencyInput[]>();
+  for (const d of deps)
+    outgoing.set(d.predecessorId, [...(outgoing.get(d.predecessorId) ?? []), d]);
+  const changed = new Map<string, { start: LocalDate; finish: LocalDate }>();
+  const queue = [movedId];
+  // Acyclic by construction; the bound only protects against bad data.
+  for (let guard = activities.length * (deps.length + 1) + 1; queue.length && guard > 0; guard--) {
+    const pid = queue.shift()!;
+    const p = cur.get(pid);
+    if (!p) continue;
+    for (const d of outgoing.get(pid) ?? []) {
+      const s = byId.get(d.successorId);
+      const sd = cur.get(d.successorId);
+      if (!s || !sd || s.pctComplete >= 100) continue;
+      const slack = linkSlack(p, sd, d.type, d.lagDays);
+      if (slack >= 0) continue;
+      const next = { start: addWorkDays(sd.start, -slack), finish: addWorkDays(sd.finish, -slack) };
+      cur.set(s.id, next);
+      changed.set(s.id, next);
+      queue.push(s.id);
+    }
+  }
+  changed.delete(movedId);
+  return changed;
+}
+
+export type ProgrammeStatus = 'not_started' | 'in_progress' | 'complete';
+
+export const programmeStatus = (pctComplete: number): ProgrammeStatus =>
+  pctComplete >= 100 ? 'complete' : pctComplete > 0 ? 'in_progress' : 'not_started';
+
+/** Work that should have started (or finished) before today and has not; same rule as the look-ahead. */
+export const isLate = (
+  a: { start: LocalDate; finish: LocalDate; pctComplete: number },
+  today: LocalDate,
+): boolean => (a.start < today && a.pctComplete === 0) || (a.finish < today && a.pctComplete < 100);

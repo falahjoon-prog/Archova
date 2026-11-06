@@ -112,6 +112,24 @@ export function useProgrammeMutations(scheduleId: string | null) {
         source.updateActivity(projectId, id(), v.activityId, v.body),
       onSuccess: store,
     }),
+    /** Drag-to-reschedule: successors whose links the move breaks are pushed later by the API. */
+    reschedule: useMutation({
+      mutationFn: (v: { activityId: string; start: string; finish: string }) =>
+        source.updateActivity(projectId, id(), v.activityId, {
+          start: v.start,
+          finish: v.finish,
+          cascade: true,
+        }),
+      onSuccess: store,
+    }),
+    setBaseline: useMutation({
+      mutationFn: () => source.setBaseline(projectId, id()),
+      onSuccess: store,
+    }),
+    clearBaseline: useMutation({
+      mutationFn: () => source.clearBaseline(projectId, id()),
+      onSuccess: store,
+    }),
     deleteActivity: useMutation({
       mutationFn: (activityId: string) => source.deleteActivity(projectId, id(), activityId),
       onSuccess: store,

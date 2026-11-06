@@ -89,8 +89,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
-    'payload-locked-documents':
-      PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
@@ -147,7 +146,15 @@ export interface Page {
   title: string;
   slug: string;
   layout: (
-    HeroBlock | FeatureGridBlock | RichTextBlock | FaqBlock | CtaBlock | PricingTableBlock
+    | HeroBlock
+    | FeatureGridBlock
+    | RichTextBlock
+    | FaqBlock
+    | CtaBlock
+    | RoleSectionBlock
+    | TimelineBlock
+    | ChipsBlock
+    | PricingTableBlock
   )[];
   seo?: {
     title?: string | null;
@@ -245,6 +252,62 @@ export interface CtaBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'cta';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RoleSectionBlock".
+ */
+export interface RoleSectionBlock {
+  kicker?: string | null;
+  heading: string;
+  body?: string | null;
+  bullets?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * A file under public/, for example /home/site-diary.jpg
+   */
+  imagePath?: string | null;
+  imageAlt?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'roleSection';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TimelineBlock".
+ */
+export interface TimelineBlock {
+  heading: string;
+  steps?:
+    | {
+        label: string;
+        body: string;
+        id?: string | null;
+      }[]
+    | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'timeline';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ChipsBlock".
+ */
+export interface ChipsBlock {
+  heading?: string | null;
+  items?:
+    | {
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'chips';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -370,8 +433,7 @@ export interface HelpArticle {
   id: number;
   title: string;
   slug: string;
-  module:
-    'getting-started' | 'documents' | 'rfis' | 'site-diary' | 'workforce' | 'nova' | 'billing';
+  module: 'getting-started' | 'documents' | 'rfis' | 'site-diary' | 'workforce' | 'nova' | 'billing';
   summary: string;
   body: {
     root: {
@@ -612,6 +674,9 @@ export interface PagesSelect<T extends boolean = true> {
         richText?: T | RichTextBlockSelect<T>;
         faq?: T | FaqBlockSelect<T>;
         cta?: T | CtaBlockSelect<T>;
+        roleSection?: T | RoleSectionBlockSelect<T>;
+        timeline?: T | TimelineBlockSelect<T>;
+        chips?: T | ChipsBlockSelect<T>;
         pricingTable?: T | PricingTableBlockSelect<T>;
       };
   seo?:
@@ -691,6 +756,56 @@ export interface CtaBlockSelect<T extends boolean = true> {
   body?: T;
   label?: T;
   href?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RoleSectionBlock_select".
+ */
+export interface RoleSectionBlockSelect<T extends boolean = true> {
+  kicker?: T;
+  heading?: T;
+  body?: T;
+  bullets?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  imagePath?: T;
+  imageAlt?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TimelineBlock_select".
+ */
+export interface TimelineBlockSelect<T extends boolean = true> {
+  heading?: T;
+  steps?:
+    | T
+    | {
+        label?: T;
+        body?: T;
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ChipsBlock_select".
+ */
+export interface ChipsBlockSelect<T extends boolean = true> {
+  heading?: T;
+  items?:
+    | T
+    | {
+        label?: T;
+        id?: T;
+      };
   id?: T;
   blockName?: T;
 }
@@ -1001,6 +1116,7 @@ export interface TaskSchedulePublish {
 export interface Auth {
   [k: string]: unknown;
 }
+
 
 declare module 'payload' {
   export interface GeneratedTypes extends Config {}

@@ -2,6 +2,8 @@
 // uses. Runs after the base seed (seed.ts). Every step tops its list up to ten and skips when it is already
 // there, so re-runs don't duplicate; a step that fails logs a warning and the rest carry on. Sample data only.
 import { addDays, type LocalDate, localDateOf } from '@archova/time';
+import { makePdf } from './pdf';
+import { DEMO_MODELS } from './ifc';
 import { Session } from './session';
 
 export interface Api {
@@ -31,6 +33,18 @@ export interface ExtraContext {
   /** The app origin and the demo password, for signing up the sample colleagues. */
   origin: string;
   password: string;
+  /** Uploads a PDF for a project (seed.ts), returning the file id. */
+  upload: (
+    projectId: string,
+    module: string,
+    filename: string,
+    bytes: Uint8Array,
+    mime?: string,
+  ) => Promise<string>;
+  /** The drawing sheets to give a project that has none. */
+  sheets: Array<{ number: string; title: string; discipline: string }>;
+  /** The documents to give a project that has none. */
+  documents: ReadonlyArray<{ folder: string; title: string; docNumber: string; docType: string }>;
 }
 
 const TARGET = 10;
@@ -469,6 +483,45 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${Math.max(target - have, 0)} added, ${Math.min(have, target)} existing`;
   };
 
+  // Three small IFC models and two clashes between them, so the 3D viewer has something to open. Skipped when the
+  // project already has models, so a re-run adds nothing.
+  await step('BIM models and coordination issues', async () => {
+    if ((await count(`${pp}/bim-models`)) > 0) return 'existing';
+    const specs = [
+      ['Architectural', 'architectural', 'architectural.ifc', DEMO_MODELS.architectural],
+      ['Mechanical services', 'mechanical', 'mechanical.ifc', DEMO_MODELS.mechanical],
+      ['Structure', 'structural', 'structural.ifc', DEMO_MODELS.structural],
+    ] as const;
+    const ids: string[] = [];
+    for (const [name, discipline, file, bytes] of specs) {
+      const fileId = await ctx.upload(primary.id, 'bim', file, bytes, 'model/ifc');
+      const m = await s.ok<{ id: string }>('POST', `${pp}/bim-models`, {
+        name,
+        discipline,
+        versionLabel: 'Rev A',
+        fileId,
+      });
+      ids.push(m.id);
+    }
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Supply duct D-01 passes through wall W-01',
+      description:
+        'The duct has no penetration in the wall. Confirm a sleeve and fire stopping with the architect.',
+      priority: 'high',
+      modelId: ids[1],
+      elementGuids: ['0DEMOMECHDUCT000000001', '0DEMOARCHWALL000000001'],
+      location: 'Level 1, grid A',
+    });
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Beam B-12 clashes with return duct D-02',
+      priority: 'medium',
+      modelId: ids[2],
+      elementGuids: ['0DEMOSTRUBEAM000000001', '0DEMOMECHDUCT000000002'],
+      location: 'Level 1, mid span',
+    });
+    return '3 models, 2 issues';
+  });
+
   await step('companies', async () => {
     const existing = await s.ok<{ data: Array<{ name: string }> }>('GET', `${org}/companies`);
     const names = new Set(existing.data.map((c) => c.name));
@@ -480,6 +533,310 @@ export async function seedExtra(ctx: ExtraContext) {
         type: c.type,
         trades: [...c.trades],
         email: `office@${c.name.toLowerCase().replace(/[^a-z]+/g, '')}.example.com`,
+      });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  // Drawings and specification books on every project that has none (the base seed only covers its own three
+  // projects, so the extra ones, or a project from an earlier partial run, would show empty registers).
+  await step('drawings and specifications on every project', async () => {
+    const all = (
+      await s.ok<{
+        data: Array<{
+          id: string;
+          name: string;
+          number?: string;
+          status: string;
+          startDate?: string;
+        }>;
+      }>('GET', `${org}/projects`)
+    ).data;
+    let drawings = 0;
+    let books = 0;
+    for (const p of all) {
+      const base = `${org}/projects/${p.id}`;
+      const date = p.startDate ?? day(-120);
+      const sheetList = await s.ok<{ data?: unknown[] }>('GET', `${base}/drawings`);
+      if (!sheetList.data?.length) {
+        const set = await s.ok<{ id: string }>('POST', `${base}/drawing-sets`, {
+          name: p.status === 'tender' ? 'Tender Issue' : 'Issued for Construction',
+          issuedDate: date,
+          receivedDate: date,
+        });
+        for (const sh of ctx.sheets) {
+          const fileId = await ctx.upload(
+            p.id,
+            'drawings',
+            `${sh.number}.pdf`,
+            makePdf({ project: p.name, number: sh.number, title: sh.title, rev: 'A' }),
+          );
+          await s.ok('POST', `${base}/drawing-sets/${set.id}/revisions`, {
+            sheetNumber: sh.number,
+            title: sh.title,
+            discipline: sh.discipline,
+            rev: 'A',
+            issuedFor: p.status === 'tender' ? 'for_tender' : 'for_construction',
+            fileId,
+            drawingDate: date,
+          });
+        }
+        await s.ok('POST', `${base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
+        drawings++;
+      }
+      const docList = await s.ok<{ data?: unknown[] }>('GET', `${base}/documents`);
+      if (!docList.data?.length) {
+        const folders = new Map<string, string>();
+        for (const name of new Set(ctx.documents.map((d) => d.folder))) {
+          const f = await s.ok<{ id: string }>('POST', `${base}/folders`, { name });
+          folders.set(name, f.id);
+        }
+        for (const d of ctx.documents) {
+          const fileId = await ctx.upload(
+            p.id,
+            'documents',
+            `${d.docNumber}.pdf`,
+            makePdf({ project: p.name, number: d.docNumber, title: d.title, rev: '1' }),
+          );
+          await s.ok('POST', `${base}/documents`, {
+            folderId: folders.get(d.folder),
+            title: d.title,
+            docNumber: d.docNumber,
+            docType: d.docType,
+            status: 'approved',
+            revision: { rev: '1', fileId, issuedFor: 'Construction', issuedDate: date },
+          });
+        }
+      }
+      const bookList = await s.ok<{ data?: unknown[] }>('GET', `${base}/spec-books`);
+      if (!bookList.data?.length) {
+        const sections = [
+          ['01 10 00', 'Preliminaries and General Requirements', 'Division 01 General', 1, 12],
+          ['03 30 00', 'Cast-in-place Concrete', 'Division 03 Concrete', 13, 30],
+          ['05 12 00', 'Structural Steel Framing', 'Division 05 Metals', 31, 44],
+          ['07 21 00', 'Thermal Insulation', 'Division 07 Thermal and Moisture', 45, 52],
+          ['08 11 00', 'Doors and Frames', 'Division 08 Openings', 53, 64],
+          ['09 29 00', 'Plasterboard Linings', 'Division 09 Finishes', 65, 78],
+          ['21 13 00', 'Fire Sprinkler Systems', 'Division 21 Fire Suppression', 79, 90],
+          ['22 00 00', 'Hydraulic Services', 'Division 22 Plumbing', 91, 106],
+          ['26 05 00', 'Electrical Services', 'Division 26 Electrical', 107, 125],
+        ] as const;
+        const created = await s.ok<{ book: { id: string } }>('POST', `${base}/spec-books`, {
+          name: `${p.name} Specification`,
+          issuedDate: date,
+        });
+        await s.ok(
+          'PUT',
+          `${base}/spec-books/${created.book.id}/sections`,
+          {
+            sections: sections.map(([sectionNumber, title, division, pageFrom, pageTo]) => ({
+              sectionNumber,
+              title,
+              division,
+              pageFrom,
+              pageTo,
+              revision: 'A',
+            })),
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+        books++;
+      }
+    }
+    return `${drawings} projects got drawings, ${books} got a specification book`;
+  });
+
+  // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register
+  // with a mix of qualified, expiring (within 30 days), pending and not-qualified companies.
+  await step('prequalification', async () => {
+    const flagOn = await s.call('GET', `${org}/prequal-templates`);
+    if (flagOn.status === 404) return 'flag is off, skipped';
+    if (flagOn.status >= 300) throw new Error(`prequal-templates -> ${flagOn.status}`);
+    const templates = (
+      flagOn.json as { data: Array<{ id: string; name: string; published: boolean }> }
+    ).data;
+    let template = templates.find(
+      (t) => t.name === 'Subcontractor prequalification' && t.published,
+    );
+    if (!template) {
+      const q = (
+        id: string,
+        section: string,
+        prompt: string,
+        type: 'yes_no' | 'number' | 'text',
+        extra: Record<string, unknown> = {},
+      ) => ({
+        id,
+        section,
+        prompt,
+        type,
+        options: [],
+        required: true,
+        expect: null,
+        points: 0,
+        critical: false,
+        ...extra,
+      });
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequal-templates`, {
+        name: 'Subcontractor prequalification',
+        validityMonths: 12,
+        questions: [
+          q('abn', 'Company', 'Do you hold a current ABN and GST registration?', 'yes_no', {
+            expect: 'yes',
+            points: 10,
+          }),
+          q('licence', 'Company', 'Do you hold the contractor licence for your trade?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q(
+            'insurance',
+            'Insurance',
+            'Is public liability cover current for at least $20M?',
+            'yes_no',
+            {
+              expect: 'yes',
+              points: 20,
+              critical: true,
+            },
+          ),
+          q('wc', 'Insurance', 'Is workers compensation insurance current?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q('ltifr', 'Safety', 'Lost-time injuries in the last 12 months', 'number', {
+            points: 10,
+          }),
+          q('swms', 'Safety', 'Do you prepare a SWMS for every high-risk task?', 'yes_no', {
+            expect: 'yes',
+            points: 15,
+          }),
+          q('refs', 'Experience', 'Name two recent projects of similar size', 'text', {
+            required: false,
+            points: 5,
+          }),
+        ],
+      });
+      await s.ok(
+        'POST',
+        `${org}/prequal-templates/${created.id}/publish`,
+        {},
+        { 'if-match': s.etag ?? '' },
+      );
+      template = { id: created.id, name: 'Subcontractor prequalification', published: true };
+    }
+    const have = new Set(
+      (
+        await s.ok<{ data: Array<{ companyId: { id?: string } | string }> }>(
+          'GET',
+          `${org}/prequalifications`,
+        )
+      ).data.map((p) => (typeof p.companyId === 'string' ? p.companyId : p.companyId.id)),
+    );
+    const companies = (
+      await s.ok<{ data: Array<{ id: string; name: string; type: string; trades: string[] }> }>(
+        'GET',
+        `${org}/companies`,
+      )
+    ).data.filter((c) => c.type === 'subcontractor');
+    const good = { abn: true, licence: true, insurance: true, wc: true, ltifr: 0, swms: true };
+    // The outcome per company, in order: qualified, expiring soon, pending, then a rejected one.
+    const plan = [
+      { to: 'approved', expires: day(240), answers: good },
+      { to: 'approved', expires: day(11), answers: { ...good, ltifr: 1 } },
+      { to: 'approved', expires: day(26), answers: good },
+      { to: 'approved', expires: day(170), answers: { ...good, ltifr: 2 } },
+      { to: 'submitted', answers: good },
+      { to: 'submitted', answers: { ...good, wc: false } },
+      { to: 'draft', answers: { abn: true, licence: true } },
+      { to: 'rejected', answers: { ...good, insurance: false, swms: false } },
+    ] as const;
+    let added = 0;
+    for (const c of companies) {
+      const step = plan[added];
+      if (!step) break;
+      if (have.has(c.id)) continue;
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequalifications`, {
+        companyId: c.id,
+        templateId: template.id,
+        trades: c.trades.slice(0, 3),
+      });
+      const at = `${org}/prequalifications/${created.id}`;
+      await s.ok('PATCH', at, { answers: step.answers }, { 'if-match': s.etag ?? '' });
+      added++;
+      if (step.to === 'draft') continue;
+      await s.ok('POST', `${at}/submit`, {}, { 'if-match': s.etag ?? '' });
+      if (step.to === 'submitted') continue;
+      if (step.to === 'rejected')
+        await s.ok(
+          'POST',
+          `${at}/reject`,
+          {
+            note: 'Public liability cover is below the required limit. Resubmit with a current certificate.',
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+      else
+        await s.ok(
+          'POST',
+          `${at}/approve`,
+          { note: 'Approved after document check.', expiresOn: step.expires },
+          { 'if-match': s.etag ?? '' },
+        );
+    }
+    return `${added} added`;
+  });
+
+  // Subcontractor compliance wallet (flag subcontractor_wallet): the demo builder's own insurance and licences,
+  // self-declared so no files are needed.
+  await step('compliance wallet', async () => {
+    const r = await s.call('GET', `${org}/compliance-documents`);
+    if (r.status === 404) return 'flag is off, skipped';
+    if (r.status >= 300) throw new Error(`compliance-documents -> ${r.status}`);
+    const existing = new Set(
+      (r.json as { data: Array<{ title: string }> }).data.map((d) => d.title),
+    );
+    const docs = [
+      {
+        itemType: 'public_liability',
+        title: 'Public liability $20M',
+        insurer: 'Southern Mutual',
+        limitCents: 2_000_000_000,
+        number: 'PL-884201',
+        expiresOn: day(180),
+      },
+      {
+        itemType: 'workers_comp',
+        title: 'Workers compensation',
+        insurer: 'icare',
+        number: 'WC-553917',
+        expiresOn: day(20),
+      },
+      {
+        itemType: 'contract_works',
+        title: 'Contract works',
+        insurer: 'Southern Mutual',
+        number: 'CW-120554',
+        expiresOn: day(300),
+      },
+      {
+        itemType: 'contractor_licence',
+        title: 'NSW builder licence',
+        issuingState: 'NSW',
+        number: '771203C',
+        expiresOn: day(400),
+      },
+    ] as const;
+    let added = 0;
+    for (const d of docs) {
+      if (existing.has(d.title)) continue;
+      await s.ok('POST', `${org}/compliance-documents`, {
+        ...d,
+        startsOn: day(-180),
+        selfDeclared: true,
       });
       added++;
     }

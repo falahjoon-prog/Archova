@@ -6,7 +6,7 @@ import { brand } from '@archova/design-tokens';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 const appOrigin = process.env.EXPO_PUBLIC_APP_ORIGIN ?? 'http://localhost:3000';
 
-const VERDIGRIS = brand.verdigris;
+const BRAND_SLATE = brand.slate;
 
 // Build profile (eas.json sets APP_VARIANT). Dev and preview get their own ids so all three sit on one phone
 // (docs/mobile/06 §6.1). Production keeps com.archova.app, which can never change after the first release.
@@ -28,7 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'com.archova.app',
   orientation: 'default',
   userInterfaceStyle: 'automatic',
-  // Keystone mark on Verdigris (docs/mobile/06 §6.1, design 02 §2); files come from the brand pack.
+  // Keystone mark on slate (docs/mobile/06 §6.1, design 02 §2); files come from the brand pack.
   icon: './assets/icon.png',
   // New Architecture (Fabric, TurboModules) is always on from SDK 55; the old `newArchEnabled` flag no longer exists.
   ios: {
@@ -40,7 +40,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: appId,
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: VERDIGRIS,
+      backgroundColor: BRAND_SLATE,
     },
   },
   web: { favicon: './assets/favicon.png' },
@@ -48,7 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
     [
       'expo-splash-screen',
-      { image: './assets/splash-mark.png', imageWidth: 160, backgroundColor: VERDIGRIS },
+      { image: './assets/splash-mark.png', imageWidth: 160, backgroundColor: BRAND_SLATE },
     ],
     'expo-secure-store',
     'expo-web-browser',

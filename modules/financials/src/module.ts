@@ -54,6 +54,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     },
     api: {
       ledgerSource: service.ledgerSource,
+      sopaRiskSignals: service.sopaRiskSignals,
       recordPayment: service.recordPayment,
       createContract: service.createContract,
       contractForQuote: service.contractForQuote,
@@ -61,6 +62,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
+      budgetSummary: budget.portfolioSummary,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
       reporting: reportingSources,
     },

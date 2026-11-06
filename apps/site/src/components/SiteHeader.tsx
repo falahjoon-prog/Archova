@@ -8,6 +8,8 @@ const DEFAULT_LINKS = [
   { label: 'Help', href: '/help' },
 ];
 
+const APP_URL = process.env.SITE_APP_URL ?? 'https://app.archova.com.au';
+
 export function SiteHeader({ settings }: { settings: SiteSetting }) {
   const links = settings.headerLinks?.length ? settings.headerLinks : DEFAULT_LINKS;
   return (
@@ -28,6 +30,7 @@ export function SiteHeader({ settings }: { settings: SiteSetting }) {
                 {l.label}
               </Link>
             ))}
+            <a href={`${APP_URL}/login`}>Log in</a>
             <Link href="/demo" className={buttonClassName('primary')}>
               Request a demo
             </Link>

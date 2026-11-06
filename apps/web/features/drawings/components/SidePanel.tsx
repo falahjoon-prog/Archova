@@ -112,7 +112,8 @@ export function SidePanel({
         <ErrorAlert error={mutations.setVisibility.error ?? mutations.remove.error} />
         {markups.length === 0 ? (
           <p className="u-muted">
-            No markups you can see. Pick a markup tool, then click twice on the sheet.
+            No markups you can see. Pick a markup tool, then drag on the sheet (or click twice for a
+            shape).
           </p>
         ) : (
           <ul className="plain-list">

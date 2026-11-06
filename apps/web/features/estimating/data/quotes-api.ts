@@ -89,6 +89,8 @@ export function createQuotesApi(orgId: string): QuotesSource {
       companyId: i.companyId,
       status: i.status,
       invitedAt: i.invitedAt,
+      deliveredAt: i.deliveredAt,
+      lastRemindedAt: i.lastRemindedAt,
     })),
     allowances: Object.fromEntries(Object.entries(p.allowances).map(([k, v]) => [k, toCents(v)])),
     award: p.award
@@ -228,6 +230,16 @@ export function createQuotesApi(orgId: string): QuotesSource {
         await api.POST(`${PKG}/invites`, {
           params: { path: { orgId, projectId, packageId }, header: idempotencyKey() },
           body: overrideReason ? { companyIds, overrideReason } : { companyIds },
+        }),
+      );
+      return toPackage(updated, await names(projectId));
+    },
+
+    async resendInvite(projectId, packageId, companyId) {
+      await ensureCsrfToken();
+      const updated = unwrap(
+        await api.POST(`${PKG}/invites/{companyId}/resend`, {
+          params: { path: { orgId, projectId, packageId, companyId } },
         }),
       );
       return toPackage(updated, await names(projectId));

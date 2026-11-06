@@ -34,6 +34,15 @@ export interface BudgetLineView {
   codeDescription: string;
 }
 
+const NO_BUDGET = {
+  restricted: false,
+  hasBudget: false,
+  revisedCents: 0,
+  forecastFinalCents: 0,
+  varianceCents: 0,
+  overBudgetCodes: 0,
+};
+
 export function createBudgetService(
   deps: BudgetDeps & {
     /** Forecast inputs for the budget comparison; the forecast service owns how they're read. */
@@ -378,8 +387,33 @@ export function createBudgetService(
     return { budget, ...r, byId };
   }
 
+  /**
+   * One line per project for the portfolio dashboard (`reporting`): revised budget, forecast final cost and the
+   * variance between them. Needs the same permissions as the budget-vs-forecast screen and staff only; anything less
+   * reads as `restricted` with no figures. Margin lines are left out unless the caller may see them, exactly as on
+   * that screen, so the totals cannot be used to work a hidden amount out.
+   */
+  async function portfolioSummary(scope: TenantScope, projectId: string) {
+    const ok =
+      scope.ctx.principalType === 'member' &&
+      (await deps.access.can(scope, 'financials.budget.read', { projectId })) &&
+      (await deps.access.can(scope, 'financials.forecast.read', { projectId }));
+    if (!ok) return { ...NO_BUDGET, restricted: true };
+    const r = await budgetVsForecastFor(scope, projectId);
+    if (!r.budget) return NO_BUDGET;
+    return {
+      restricted: false,
+      hasBudget: true,
+      revisedCents: r.totals.revisedCents,
+      forecastFinalCents: r.totals.forecastFinalCents,
+      varianceCents: r.totals.varianceCents,
+      overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
+    };
+  }
+
   return {
     budgetVsForecastFor,
+    portfolioSummary,
     listCostCodes,
     createCostCode,
     updateCostCode,

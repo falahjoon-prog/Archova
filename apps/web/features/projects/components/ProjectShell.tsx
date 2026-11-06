@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import {
@@ -31,6 +31,10 @@ import {
   SubmittalsIcon,
   CoordinationIcon,
   CorrespondenceIcon,
+  AdminIcon,
+  type LucideIcon,
+  ChevronLeft,
+  ChevronRight,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -78,10 +82,9 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         companyId: perms?.companyId ?? null,
       }}
     >
-      <div className="project-shell">
-        <ProjectNav projectName={p.name} groups={groups} />
-        <div className="project-shell__content">{children}</div>
-      </div>
+      <ShellFrame projectName={p.name} groups={groups}>
+        {children}
+      </ShellFrame>
     </CurrentProjectProvider>
   );
 }
@@ -239,6 +242,27 @@ export function projectToolGroups(
       icon: FolderLinksIcon,
     },
   ];
+  const estimating: ProjectNavItem[] = [
+    {
+      href: webRoutes.tenderPackages(orgSlug, projectId),
+      label: 'Tender packages',
+      icon: EstimatingIcon,
+    },
+    { href: webRoutes.estimates(orgSlug, projectId), label: 'Estimates', icon: EstimatingIcon },
+    {
+      href: webRoutes.costLibrary(orgSlug, projectId),
+      label: 'Cost library',
+      icon: EstimatingIcon,
+    },
+  ];
+  const byLabel = new Map<string, ProjectNavItem>();
+  for (const item of [...core, ...estimating]) if (item) byLabel.set(item.label, item);
+  const categorised = TOOL_CATEGORIES.map(({ id, label, icon, tools }) => ({
+    id,
+    label,
+    icon,
+    items: tools.flatMap((t) => byLabel.get(t) ?? []),
+  })).filter((g) => g.items.length > 0);
   return [
     {
       items: [
@@ -250,26 +274,119 @@ export function projectToolGroups(
         },
       ],
     },
-    { label: 'Core', items: core.filter((x): x is ProjectNavItem => Boolean(x)) },
-    {
-      label: 'Estimating',
-      items: [
-        {
-          href: webRoutes.tenderPackages(orgSlug, projectId),
-          label: 'Tender packages',
-          icon: EstimatingIcon,
-        },
-        {
-          href: webRoutes.estimates(orgSlug, projectId),
-          label: 'Estimates',
-          icon: EstimatingIcon,
-        },
-        {
-          href: webRoutes.costLibrary(orgSlug, projectId),
-          label: 'Cost library',
-          icon: EstimatingIcon,
-        },
-      ],
-    },
+    ...categorised,
   ];
+}
+
+/** Categories for the sidebar and the project page tool grid; a tool the caller cannot read just drops out. */
+const TOOL_CATEGORIES: ReadonlyArray<{
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  tools: readonly string[];
+}> = [
+  {
+    id: 'documents',
+    label: 'Documents',
+    icon: DocumentsIcon,
+    tools: ['Documents', 'Drawings', 'Specifications', 'Coordination'],
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    icon: CorrespondenceIcon,
+    tools: ['Transmittals', 'RFIs', 'Submittals', 'Correspondence', 'Meetings'],
+  },
+  {
+    id: 'site',
+    label: 'Site & programme',
+    icon: ProgrammeIcon,
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+  },
+  {
+    id: 'quality-safety',
+    label: 'Quality & safety',
+    icon: InductionsIcon,
+    tools: [
+      'Defects',
+      'Inspections',
+      'Observations',
+      'SWMS',
+      'Incidents',
+      'Safety signals',
+      'Inductions',
+    ],
+  },
+  {
+    id: 'commercial',
+    label: 'Commercial',
+    icon: ContractsIcon,
+    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+  },
+  {
+    id: 'estimating',
+    label: 'Estimating',
+    icon: EstimatingIcon,
+    tools: ['Tender packages', 'Estimates', 'Cost library'],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    icon: AdminIcon,
+    tools: ['Late submissions', 'Imports', 'SharePoint and Drive'],
+  },
+];
+
+const SIDEBAR_KEY = 'archova.sidebar.collapsed';
+
+/** Sidebar plus content. The edge handle folds the sidebar away on desktop; the choice is remembered per browser. */
+function ShellFrame({
+  projectName,
+  groups,
+  children,
+}: {
+  projectName: string;
+  groups: ProjectNavGroup[];
+  children: ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === '1');
+    } catch {
+      /* storage blocked: stays open */
+    }
+  }, []);
+  const toggle = () => {
+    setCollapsed((c) => {
+      try {
+        window.localStorage.setItem(SIDEBAR_KEY, c ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
+  };
+  return (
+    <div className="project-shell" data-collapsed={collapsed}>
+      <div className="project-shell__side">
+        <ProjectNav projectName={projectName} groups={groups} />
+        <button
+          type="button"
+          className="project-shell__edge ac-focusable"
+          aria-label={collapsed ? 'Show project menu' : 'Hide project menu'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Show project menu' : 'Hide project menu'}
+          onClick={toggle}
+        >
+          {collapsed ? (
+            <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
+          )}
+        </button>
+      </div>
+      <div className="project-shell__content">{children}</div>
+    </div>
+  );
 }

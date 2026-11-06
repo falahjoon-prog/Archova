@@ -10,6 +10,8 @@ import type { TileUrls } from './infra/tile-urls';
 export {
   createMemoryObjectStore,
   createS3ObjectStore,
+  createS3WriteOnceStore,
+  type WriteOnceStore,
   type ObjectStore,
   type S3Credentials,
   type S3StoreConfig,

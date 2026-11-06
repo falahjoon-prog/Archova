@@ -9,6 +9,7 @@ import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { CollapsibleGroup, useGroupState } from '@/shared/layout/CollapsibleGroup';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { MemberList } from '../components/MemberList';
@@ -26,6 +27,7 @@ import { AU_STATE_NAMES, isAuState, statusLabel } from '../lib/labels';
 export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const org = useCurrentOrg();
   const [addingMember, setAddingMember] = useState(false);
+  const groupState = useGroupState('tools');
   usePublishAssistantScope({ projectId });
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
@@ -64,13 +66,11 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   }
 
   const p = project.data;
-  const tools = projectToolGroups(
+  const toolGroups = projectToolGroups(
     org.orgSlug,
     projectId,
     permissions.data as EffectivePermissions | undefined,
-  )
-    .flatMap((g) => g.items)
-    .filter((item) => !item.exact);
+  ).filter((g) => g.id);
   return (
     <>
       <nav aria-label="Breadcrumb" className="breadcrumb">
@@ -88,19 +88,55 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           permissions={permissions.data as EffectivePermissions | undefined}
         />
         <section aria-labelledby="tools-heading" className="stack">
-          <h2 id="tools-heading" className="panel-heading">
-            Tools
-          </h2>
-          <ul className="project-grid tool-grid">
-            {tools.map(({ href, label, icon: Icon }) => (
-              <li key={href} className="project-card tool-card">
-                <Icon size={20} aria-hidden="true" />
-                <Link className="project-card__link tool-card__link" href={href}>
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="tool-sections__bar">
+            <h2 id="tools-heading" className="panel-heading">
+              Tools
+            </h2>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                groupState.setAll(
+                  toolGroups.map((g) => g.id!),
+                  true,
+                )
+              }
+            >
+              Expand all
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                groupState.setAll(
+                  toolGroups.map((g) => g.id!),
+                  false,
+                )
+              }
+            >
+              Collapse all
+            </Button>
+          </div>
+          {toolGroups.map((g) => (
+            <CollapsibleGroup
+              key={g.id}
+              variant="panel"
+              label={g.label!}
+              icon={g.icon}
+              count={g.items.length}
+              open={groupState.isOpen(g.id!)}
+              onToggle={() => groupState.toggle(g.id!)}
+            >
+              <ul className="project-grid tool-grid">
+                {g.items.map(({ href, label, icon: Icon }) => (
+                  <li key={href} className="project-card tool-card">
+                    <Icon size={20} aria-hidden="true" />
+                    <Link className="project-card__link tool-card__link" href={href}>
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleGroup>
+          ))}
         </section>
 
         <Card title="Details">
