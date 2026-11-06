@@ -282,6 +282,36 @@ await ensure('pages', 'pricing', {
           answer:
             'Yes. Request a demo and we will set up a walk-through, then a pilot on your own project.',
         },
+        {
+          question: 'What is Ask Nova?',
+          answer:
+            'Ask Nova is the AI assistant built into every module. It answers questions about your contracts, claims, drawings and site records, and drafts text for you to review. It never acts without a person approving it.',
+        },
+        {
+          question: 'Can Ask Nova see other companies’ data?',
+          answer:
+            'No. Ask Nova only uses what your own users are allowed to see, and your data is kept separate from every other company’s.',
+        },
+        {
+        {
+          question: 'Can I use it with Xero or MYOB?',
+          answer:
+            'Yes. Archova connects to Xero and MYOB so approved costs and payments flow through without re-keying.',
+        },
+        {
+          question: 'Can I export my data?',
+          answer:
+            'Yes. You can download a full export of your company data at any time, so you are never locked in.',
+        },
+        {
+          question: 'Does it cover security of payment claims?',
+          answer:
+            'Archova helps you prepare, send and keep a record of payment claims. It is a tool, not legal advice, so have your lawyer confirm how your contracts apply.',
+        },
+        {
+          question: 'Is there a mobile app?',
+          answer: 'Yes, for iOS and Android, built for site teams as well as the office.',
+        },
       ],
     },
   ],
