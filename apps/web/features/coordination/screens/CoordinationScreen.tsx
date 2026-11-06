@@ -5,7 +5,9 @@ import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
 import {
   Button,
+  Card,
   DataTable,
+  DescriptionList,
   Dialog,
   EmptyState,
   PageHeader,
@@ -17,7 +19,7 @@ import {
   buttonClassName,
   type DataTableColumn,
 } from '@archova/ui';
-import { CoordinationIcon } from '@archova/ui/icons';
+import { CoordinationIcon, Plus } from '@archova/ui/icons';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useUrlState } from '@/shared/hooks/useUrlState';
@@ -124,8 +126,11 @@ export function CoordinationScreen() {
   const modelColumns: DataTableColumn<BimModel>[] = [
     { id: 'name', header: 'Model', rowHeader: true, cell: (x) => x.name },
     { id: 'discipline', header: 'Discipline', cell: (x) => DISCIPLINE_LABEL[x.discipline] },
-    { id: 'version', header: 'Version', cell: (x) => x.versionLabel || '—' },
-    { id: 'file', header: 'IFC file', cell: (x) => (x.fileId ? 'Attached' : 'None') },
+    {
+      id: 'version',
+      header: 'Version',
+      cell: (x) => `${x.versionLabel || '—'}${x.fileId ? '' : ' · no IFC file'}`,
+    },
     {
       id: 'status',
       header: 'Status',
@@ -150,7 +155,7 @@ export function CoordinationScreen() {
               className={buttonClassName('secondary')}
               href={webRoutes.coordinationModels(org.orgSlug, project.projectId)}
             >
-              Open 3D viewer
+              <CoordinationIcon size={16} aria-hidden="true" /> Open 3D viewer
             </Link>
             <Button
               onClick={() => {
@@ -165,149 +170,162 @@ export function CoordinationScreen() {
                 setRaising(true);
               }}
             >
-              Raise an issue
+              <Plus size={16} aria-hidden="true" /> Raise an issue
             </Button>
           </>
         }
       />
-      <div className="u-row">
-        <Select
-          label="Status"
-          value={status ?? ''}
-          options={[
-            { value: '', label: 'All' },
-            ...STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
-          ]}
-          onChange={(e) => setParams({ status: e.target.value })}
-        />
-      </div>
-      <ErrorAlert error={issues.error} title="We couldn't load the coordination issues" />
-      {issues.isPending ? (
-        <SkeletonRows label="Loading coordination issues…" />
-      ) : (issues.data ?? []).length === 0 ? (
-        <EmptyState
-          icon={CoordinationIcon}
-          title="No coordination issues"
-          description="Raise one when you find a clash or a gap in a model."
-        />
-      ) : (
-        <DataTable
-          caption="Coordination issues"
-          columns={issueColumns}
-          rows={issues.data ?? []}
-          getRowId={(i) => i.id}
-        />
-      )}
-
-      {selected ? (
-        <section aria-labelledby="issue-title" className="stack">
-          <ErrorAlert error={detail.error} title="We couldn't load this issue" />
-          {detail.isPending ? (
-            <SkeletonRows label="Loading the issue…" />
-          ) : d ? (
-            <>
-              <h2 id="issue-title" className="u-m-0">
-                {`CI-${String(d.issue.number).padStart(3, '0')} ${d.issue.title}`}
-              </h2>
-              {d.issue.description ? <p className="u-m-0">{d.issue.description}</p> : null}
-              <dl className="u-m-0">
-                <dt>Model</dt>
-                <dd>{modelName_(d.issue.modelId)}</dd>
-                <dt>Location</dt>
-                <dd>{d.issue.location || '—'}</dd>
-                <dt>Elements</dt>
-                <dd>{d.issue.elementGuids.length ? d.issue.elementGuids.join(', ') : '—'}</dd>
-              </dl>
-              <div className="u-row">
-                <StatusPill tone={statusTone(d.issue.status)}>
-                  {STATUS_LABEL[d.issue.status]}
-                </StatusPill>
-                {nextStatuses(d.issue.status).map((s) => (
-                  <Button
-                    key={s}
-                    variant="secondary"
-                    disabled={m.change.isPending}
-                    onClick={() =>
-                      m.change.mutate({
-                        issueId: d.issue.id,
-                        version: d.issue.version,
-                        changes: { status: s },
-                      })
-                    }
-                  >
-                    {s === 'open' ? 'Reopen' : `Mark ${STATUS_LABEL[s].toLowerCase()}`}
-                  </Button>
-                ))}
-              </div>
-              <ErrorAlert error={m.change.error} title="We couldn't change this issue" />
-              <h3 className="u-m-0">Comments</h3>
-              {d.comments.length === 0 ? <p className="u-m-0">No comments yet.</p> : null}
-              <ul aria-label="Comments" className="u-m-0">
-                {d.comments.map((c) => (
-                  <li key={c.id}>
-                    <strong>{dir.personName(c.authorId)}</strong>: {c.body}
-                  </li>
-                ))}
-              </ul>
-              <Textarea
-                label="Add a comment"
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+      <div className="stack-lg">
+        <div className="stack-lg">
+          <Card
+            title="Issues"
+            actions={
+              <Select
+                label="Status"
+                value={status ?? ''}
+                options={[
+                  { value: '', label: 'All' },
+                  ...STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+                ]}
+                onChange={(e) => setParams({ status: e.target.value })}
               />
-              <div className="u-row">
-                <Button
-                  disabled={!comment.trim() || m.comment.isPending}
-                  onClick={() =>
-                    m.comment.mutate(
-                      { issueId: d.issue.id, body: comment.trim() },
-                      { onSuccess: () => setComment('') },
-                    )
-                  }
-                >
-                  {m.comment.isPending ? 'Adding…' : 'Add comment'}
-                </Button>
-              </div>
-              <ErrorAlert error={m.comment.error} title="We couldn't add the comment" />
-            </>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section aria-labelledby="models-title" className="stack">
-        <div className="u-row">
-          <h2 id="models-title" className="u-m-0">
-            Models
-          </h2>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              m.registerModel.reset();
-              setModelName('');
-              setDiscipline('architectural');
-              setVersionLabel('');
-              setReplaces('');
-              setModelFile(null);
-              setRegistering(true);
-            }}
+            }
           >
-            Register a model
-          </Button>
+            <ErrorAlert error={issues.error} title="We couldn't load the coordination issues" />
+            {issues.isPending ? (
+              <SkeletonRows label="Loading coordination issues…" />
+            ) : (issues.data ?? []).length === 0 ? (
+              <EmptyState
+                icon={CoordinationIcon}
+                title="No coordination issues"
+                description="Raise one when you find a clash or a gap in a model."
+              />
+            ) : (
+              <DataTable
+                caption="Coordination issues"
+                columns={issueColumns}
+                rows={issues.data ?? []}
+                getRowId={(i) => i.id}
+              />
+            )}
+          </Card>
+          {selected ? (
+            <Card title="Issue">
+              <div className="stack">
+                <ErrorAlert error={detail.error} title="We couldn't load this issue" />
+                {detail.isPending ? (
+                  <SkeletonRows label="Loading the issue…" />
+                ) : d ? (
+                  <>
+                    <h3 id="issue-title" className="u-m-0">
+                      {`CI-${String(d.issue.number).padStart(3, '0')} ${d.issue.title}`}
+                    </h3>
+                    {d.issue.description ? <p className="u-m-0">{d.issue.description}</p> : null}
+                    <DescriptionList
+                      items={[
+                        { label: 'Model', value: modelName_(d.issue.modelId) },
+                        { label: 'Location', value: d.issue.location || '—' },
+                        {
+                          label: 'Elements',
+                          value: d.issue.elementGuids.length
+                            ? d.issue.elementGuids.join(', ')
+                            : '—',
+                        },
+                      ]}
+                    />
+                    <div className="u-row">
+                      <StatusPill tone={statusTone(d.issue.status)}>
+                        {STATUS_LABEL[d.issue.status]}
+                      </StatusPill>
+                      {nextStatuses(d.issue.status).map((s) => (
+                        <Button
+                          key={s}
+                          variant="secondary"
+                          disabled={m.change.isPending}
+                          onClick={() =>
+                            m.change.mutate({
+                              issueId: d.issue.id,
+                              version: d.issue.version,
+                              changes: { status: s },
+                            })
+                          }
+                        >
+                          {s === 'open' ? 'Reopen' : `Mark ${STATUS_LABEL[s].toLowerCase()}`}
+                        </Button>
+                      ))}
+                    </div>
+                    <ErrorAlert error={m.change.error} title="We couldn't change this issue" />
+                    <h3 className="u-m-0">Comments</h3>
+                    {d.comments.length === 0 ? <p className="u-m-0">No comments yet.</p> : null}
+                    <ul aria-label="Comments" className="u-m-0">
+                      {d.comments.map((c) => (
+                        <li key={c.id}>
+                          <strong>{dir.personName(c.authorId)}</strong>: {c.body}
+                        </li>
+                      ))}
+                    </ul>
+                    <Textarea
+                      label="Add a comment"
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                    />
+                    <div className="u-row">
+                      <Button
+                        disabled={!comment.trim() || m.comment.isPending}
+                        onClick={() =>
+                          m.comment.mutate(
+                            { issueId: d.issue.id, body: comment.trim() },
+                            { onSuccess: () => setComment('') },
+                          )
+                        }
+                      >
+                        {m.comment.isPending ? 'Adding…' : 'Add comment'}
+                      </Button>
+                    </div>
+                    <ErrorAlert error={m.comment.error} title="We couldn't add the comment" />
+                  </>
+                ) : null}
+              </div>
+            </Card>
+          ) : null}
         </div>
-        <ErrorAlert error={models.error} title="We couldn't load the models" />
-        {models.isPending ? (
-          <SkeletonRows label="Loading models…" />
-        ) : (models.data ?? []).length === 0 ? (
-          <p className="u-m-0">No models registered yet.</p>
-        ) : (
-          <DataTable
-            caption="Models"
-            columns={modelColumns}
-            rows={models.data ?? []}
-            getRowId={(x) => x.id}
-          />
-        )}
-      </section>
+        <Card
+          title="Models"
+          actions={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                m.registerModel.reset();
+                setModelName('');
+                setDiscipline('architectural');
+                setVersionLabel('');
+                setReplaces('');
+                setModelFile(null);
+                setRegistering(true);
+              }}
+            >
+              <Plus size={16} aria-hidden="true" /> Register a model
+            </Button>
+          }
+        >
+          <ErrorAlert error={models.error} title="We couldn't load the models" />
+          {models.isPending ? (
+            <SkeletonRows label="Loading models…" />
+          ) : (models.data ?? []).length === 0 ? (
+            <p className="u-muted u-m-0">
+              No models registered yet. Register an IFC model to pin issues to it and open it in 3D.
+            </p>
+          ) : (
+            <DataTable
+              caption="Models"
+              columns={modelColumns}
+              rows={models.data ?? []}
+              getRowId={(x) => x.id}
+            />
+          )}
+        </Card>
+      </div>
 
       <Dialog
         open={raising}
