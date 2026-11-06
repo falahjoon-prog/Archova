@@ -12,6 +12,3 @@ alter table quality.observations
     check (classification in ('serious_defect', 'potential_serious_defect', 'low_risk')),
   add column contributing_condition text
     check (contributing_condition in ('workmanship', 'design', 'materials', 'supervision', 'weather', 'coordination', 'documentation'));
-
-create index observations_classification on quality.observations (org_id, project_id, classification)
-  where deleted_at is null and classification is not null;
