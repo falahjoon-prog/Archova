@@ -11,33 +11,33 @@ describe('projectToolGroups', () => {
       'Documents',
       'Drawings',
       'Specifications',
+      'Coordination',
       'Transmittals',
       'RFIs',
       'Submittals',
       'Correspondence',
-      'Coordination',
+      'Meetings',
       'Site diary',
       'Delay register',
       'Programme',
-      'Defects',
-      'Meetings',
-      'Inductions',
-      'Contracts',
-      'Payment claims',
-      'Budget',
       'Attendance',
+      'Defects',
       'Inspections',
       'Observations',
       'SWMS',
       'Incidents',
       'Safety signals',
+      'Inductions',
+      'Contracts',
+      'Payment claims',
+      'Budget',
       'Owner portal',
-      'Late submissions',
-      'Imports',
-      'SharePoint and Drive',
       'Tender packages',
       'Estimates',
       'Cost library',
+      'Late submissions',
+      'Imports',
+      'SharePoint and Drive',
     ]);
   });
 
@@ -62,5 +62,16 @@ describe('projectToolGroups', () => {
   it('shows everything to org admins', () => {
     const groups = projectToolGroups('acme', 'prj_1', { orgRole: 'admin', toolLevels: {} });
     expect(labels(groups)).toContain('RFIs');
+  });
+
+  it('puts tools into named categories and drops empty ones', () => {
+    const groups = projectToolGroups('acme', 'prj_1', {
+      orgRole: null,
+      toolLevels: { defects: 'read' },
+    });
+    expect(groups.filter((g) => g.id).map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
+      ['Quality & safety', ['Defects']],
+      ['Estimating', ['Tender packages', 'Estimates', 'Cost library']],
+    ]);
   });
 });
