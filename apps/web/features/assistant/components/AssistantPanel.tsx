@@ -11,6 +11,7 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNova, sendAnswerFeedback } from '../data/ask';
+import { actionRedirect } from '../data/actions';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import { useAssistantPanelState, useAssistantScope, type AssistantScope } from './AssistantScope';
@@ -121,13 +122,14 @@ export function AssistantPanel() {
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
-        previewDataOnly || !s.projectId
+        actionRedirect(question, s) ??
+        (previewDataOnly || !s.projectId
           ? await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
             )
-          : await askNova(org.orgId, s.projectId, question, controller.signal);
+          : await askNova(org.orgId, s.projectId, question, controller.signal));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
