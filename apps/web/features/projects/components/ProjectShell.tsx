@@ -31,6 +31,8 @@ import {
   SubmittalsIcon,
   CoordinationIcon,
   CorrespondenceIcon,
+  AdminIcon,
+  type LucideIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -239,6 +241,27 @@ export function projectToolGroups(
       icon: FolderLinksIcon,
     },
   ];
+  const estimating: ProjectNavItem[] = [
+    {
+      href: webRoutes.tenderPackages(orgSlug, projectId),
+      label: 'Tender packages',
+      icon: EstimatingIcon,
+    },
+    { href: webRoutes.estimates(orgSlug, projectId), label: 'Estimates', icon: EstimatingIcon },
+    {
+      href: webRoutes.costLibrary(orgSlug, projectId),
+      label: 'Cost library',
+      icon: EstimatingIcon,
+    },
+  ];
+  const byLabel = new Map<string, ProjectNavItem>();
+  for (const item of [...core, ...estimating]) if (item) byLabel.set(item.label, item);
+  const categorised = TOOL_CATEGORIES.map(({ id, label, icon, tools }) => ({
+    id,
+    label,
+    icon,
+    items: tools.flatMap((t) => byLabel.get(t) ?? []),
+  })).filter((g) => g.items.length > 0);
   return [
     {
       items: [
@@ -250,26 +273,65 @@ export function projectToolGroups(
         },
       ],
     },
-    { label: 'Core', items: core.filter((x): x is ProjectNavItem => Boolean(x)) },
-    {
-      label: 'Estimating',
-      items: [
-        {
-          href: webRoutes.tenderPackages(orgSlug, projectId),
-          label: 'Tender packages',
-          icon: EstimatingIcon,
-        },
-        {
-          href: webRoutes.estimates(orgSlug, projectId),
-          label: 'Estimates',
-          icon: EstimatingIcon,
-        },
-        {
-          href: webRoutes.costLibrary(orgSlug, projectId),
-          label: 'Cost library',
-          icon: EstimatingIcon,
-        },
-      ],
-    },
+    ...categorised,
   ];
 }
+
+/** Categories for the sidebar and the project page tool grid; a tool the caller cannot read just drops out. */
+const TOOL_CATEGORIES: ReadonlyArray<{
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  tools: readonly string[];
+}> = [
+  {
+    id: 'documents',
+    label: 'Documents',
+    icon: DocumentsIcon,
+    tools: ['Documents', 'Drawings', 'Specifications', 'Coordination'],
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    icon: CorrespondenceIcon,
+    tools: ['Transmittals', 'RFIs', 'Submittals', 'Correspondence', 'Meetings'],
+  },
+  {
+    id: 'site',
+    label: 'Site & programme',
+    icon: ProgrammeIcon,
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+  },
+  {
+    id: 'quality-safety',
+    label: 'Quality & safety',
+    icon: InductionsIcon,
+    tools: [
+      'Defects',
+      'Inspections',
+      'Observations',
+      'SWMS',
+      'Incidents',
+      'Safety signals',
+      'Inductions',
+    ],
+  },
+  {
+    id: 'commercial',
+    label: 'Commercial',
+    icon: ContractsIcon,
+    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+  },
+  {
+    id: 'estimating',
+    label: 'Estimating',
+    icon: EstimatingIcon,
+    tools: ['Tender packages', 'Estimates', 'Cost library'],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    icon: AdminIcon,
+    tools: ['Late submissions', 'Imports', 'SharePoint and Drive'],
+  },
+];

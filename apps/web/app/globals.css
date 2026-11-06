@@ -90,6 +90,10 @@ main:focus {
   padding: var(--space-3) var(--space-6);
   background: var(--c-surface);
   border-bottom: 1px solid var(--c-border-divider);
+  /* Stays put on every signed-in page; its dropdown menus are positioned against it. */
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .app-shell__brand {
   display: flex;
@@ -292,9 +296,6 @@ main:focus {
 }
 /* Narrow screens: menus span the bar's width instead of hanging off the right edge. */
 @media (max-width: 900px) {
-  .app-shell__bar {
-    position: relative;
-  }
   .app-shell__nav-group {
     position: static;
   }
@@ -648,7 +649,10 @@ main:focus {
 }
 .project-nav {
   position: sticky;
-  top: var(--space-4);
+  top: calc(var(--app-bar-h, 0px) + var(--space-4));
+  /* Long groups scroll inside the sidebar instead of running under the sticky header. */
+  max-height: calc(100vh - var(--app-bar-h, 0px) - var(--space-8));
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -692,6 +696,86 @@ main:focus {
 .project-nav__label {
   flex: 1;
 }
+/* Collapsible groups (sidebar and project page tool grid) */
+.cgroup__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--c-text-secondary);
+  font: inherit;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.cgroup__header:hover {
+  color: var(--c-text);
+  background: color-mix(in srgb, var(--c-text) 6%, transparent);
+}
+.cgroup__label {
+  flex: 1;
+}
+.cgroup__count {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--c-text) 8%, transparent);
+  font-size: var(--font-xs);
+  letter-spacing: 0;
+}
+.cgroup__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--c-action-primary);
+}
+.cgroup__chevron {
+  transition: transform 0.18s;
+}
+.cgroup[data-open='false'] .cgroup__chevron {
+  transform: rotate(-90deg);
+}
+.cgroup[data-open='false'] .cgroup__body {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cgroup__chevron {
+    transition: none;
+  }
+}
+.cgroup--nav .cgroup__body {
+  margin-top: 2px;
+}
+.cgroup--panel {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+.cgroup--panel .cgroup__header {
+  min-height: var(--space-12);
+  padding: 0 var(--space-4);
+  color: var(--c-text);
+}
+.cgroup--panel .cgroup__body {
+  padding: var(--space-1) var(--space-4) var(--space-4);
+}
+.tool-sections__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tool-sections__bar .panel-heading {
+  flex: 1;
+  margin: 0;
+}
 @media (max-width: 1023px) {
   .project-shell {
     grid-template-columns: minmax(0, 1fr);
@@ -699,6 +783,7 @@ main:focus {
   }
   .project-nav {
     position: static;
+    max-height: none;
     flex-direction: row;
     overflow-x: auto;
     gap: var(--space-2);
@@ -714,8 +799,14 @@ main:focus {
   .project-nav ul {
     flex-direction: row;
   }
-  .project-nav__group-label {
+  .project-nav__group-label,
+  .project-nav .cgroup__header {
     display: none;
+  }
+  /* The horizontal strip shows every tool; collapsing only applies to the stacked sidebar. */
+  .project-nav .cgroup,
+  .project-nav .cgroup__body {
+    display: contents !important;
   }
   .project-nav__link {
     white-space: nowrap;

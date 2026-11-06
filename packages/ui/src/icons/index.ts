@@ -85,6 +85,7 @@ export {
   Users as MeetingsIcon,
   Send as TransmittalsIcon,
   Sparkles as NovaIcon,
+  Settings as AdminIcon,
 } from 'lucide-react';
 
 /** Default icon props: 20 px, 1.5 px stroke, hidden from assistive tech (the label carries the meaning). */
