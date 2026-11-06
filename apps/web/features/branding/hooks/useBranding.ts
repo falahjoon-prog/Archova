@@ -13,11 +13,11 @@ export type UpdateOrgBranding = components['schemas']['UpdateOrgBrandingRequest'
 const key = (orgId: string) => ['orgs', orgId, 'branding'] as const;
 
 /** Members only; the shell tolerates it failing and shows the Archova defaults. */
-export function useBranding() {
+export function useBranding(enabled = true) {
   const { orgId, kind } = useCurrentOrg();
   return useQuery({
     queryKey: key(orgId),
-    enabled: kind === 'member',
+    enabled: enabled && kind === 'member',
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: async () =>

@@ -197,6 +197,12 @@ function BrandingForm({ branding, canManage }: { branding: OrgBranding; canManag
         </div>
       </Card>
       <Card title="Portfolio widgets">
+        {branding.dashboardLayout ? (
+          <Alert tone="info" title="The Portfolio has its own layout">
+            Your company has arranged the Portfolio with Edit layout, so this list no longer changes
+            it. Use Reset to default on the Portfolio to go back to this list.
+          </Alert>
+        ) : null}
         <ol className="stack u-m-0" style={{ listStyle: 'none', padding: 0 }}>
           {order.map((key, i) => (
             <li key={key} className="row-actions">
