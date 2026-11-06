@@ -529,3 +529,29 @@ h2,
 .hero__actions {
   justify-content: center;
 }
+
+/* Tighter top of the home page so the first screenshot shows without scrolling (john, 6 Nov 2026) */
+.container:has(.hero) {
+  padding-top: var(--space-2);
+}
+.hero {
+  padding: var(--space-4) 0 var(--space-4);
+}
+.hero h1 {
+  margin-bottom: var(--space-2);
+}
+.hero__sub {
+  margin-top: 0;
+  margin-bottom: var(--space-3);
+}
+.hero__actions {
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .container:has(.hero) {
+    padding-top: var(--space-2);
+  }
+  .role {
+    padding: var(--space-6);
+  }
+}
