@@ -79,63 +79,177 @@ await payload.updateGlobal({
   },
 });
 
-await ensure('pages', 'home', {
+const homeData = {
   title: 'Home',
   seo: {
     title: 'Archova: construction project management for Australian builders',
     description:
-      'Documents, drawings, RFIs, site diary, inductions and Ask Nova in one place, with your data kept in Australia.',
+      'Drawings, RFIs, site diary, defects, site sign-in and Ask Nova in one place, with your data kept in Australia.',
   },
   layout: [
     {
       blockType: 'hero',
-      heading: 'Run every project from one place.',
+      heading: 'One system for the *whole job*, from the office to the site gate.',
       subheading:
-        'Archova brings drawings, RFIs, site diaries, inductions and sign-in together for Australian builders, with Ask Nova built in and your data kept in Australia.',
+        'Archova gives builders, site teams, subcontractors and clients what they each need, in one place, with Ask Nova built in and your data kept in Australia.',
       primaryLabel: 'Request a demo',
       primaryHref: '/demo',
-      secondaryLabel: 'See pricing',
-      secondaryHref: '/pricing',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'For builders and project managers',
+      heading: 'Know where every project stands',
+      body: 'Drawings, RFIs, programme, budget and claims on one project home.',
+      bullets: [
+        { text: 'Live RFI and defect counts' },
+        { text: 'Programme with baseline and drag to reschedule' },
+        { text: 'Variations and payment claims' },
+      ],
+      imagePath: '/home/03-project-home.jpg',
+      imageAlt: 'The Archova project home screen',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'Drawings and documents',
+      heading: 'One current revision, always',
+      body: 'Upload a revision and the old one is superseded, not lost. Mark up on the plan, pin an RFI or defect to the exact spot, and send a transmittal that records who received what.',
+      bullets: [
+        { text: 'Document and drawing register with revision history' },
+        { text: 'Markups and pinned items on the drawing' },
+        { text: 'Transmittals with a delivery record' },
+      ],
+      imagePath: '/home/05-drawings-register.jpg',
+      imageAlt: 'The drawings register',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'For site teams',
+      heading: 'Capture it on the phone, in the moment',
+      body: 'Photograph a defect, log the diary and raise an RFI from site. The mobile apps keep working with no signal and sync when you are back online.',
+      bullets: [
+        { text: 'Site diary that fills in who was on site' },
+        { text: 'Defects with photos, pinned to the drawing' },
+        { text: 'Works offline' },
+      ],
+      imagePath: '/home/09-site-diary.jpg',
+      imageAlt: 'The site diary',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'RFIs',
+      heading: 'Questions answered, with a record',
+      body: 'Raise an RFI with a drawing reference and a photo, route it to the right person, and track the reply against a due date.',
+      bullets: [
+        { text: 'Due dates and overdue flags' },
+        { text: 'Linked to the drawing, spec or submittal it is about' },
+      ],
+      imagePath: '/home/07-rfis.jpg',
+      imageAlt: 'The RFI register',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'Site sign-in and inductions',
+      heading: 'Everyone signed in, everyone inducted',
+      body: 'Workers complete the induction online before they arrive, then sign in by scanning a QR code at the gate. The register is ready if you are audited.',
+      bullets: [
+        { text: 'Online inductions, completed before the first day' },
+        { text: 'QR sign-in and sign-out, with timesheets from the same records' },
+        { text: 'Records kept for the periods the law requires' },
+      ],
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'For subcontractors',
+      heading: 'Free, always',
+      body: 'Answer RFIs, respond to submittals and keep your compliance wallet current. There is no fee to work with your builder, and you only see what is shared with you.',
+    },
+    {
+      blockType: 'roleSection',
+      kicker: 'For clients and owners',
+      heading: 'A clear, read-only window',
+      body: 'Progress, variations and key documents in the owner portal, without chasing emails.',
+      imagePath: '/home/10-defects.jpg',
+      imageAlt: 'The defects list',
+    },
+    {
+      blockType: 'timeline',
+      heading: 'A day on Archova',
+      steps: [
+        { label: '6:30', body: 'The crew signs in by QR and the induction is checked.' },
+        { label: '10:00', body: 'A defect is photographed and pinned to the drawing.' },
+        { label: '1:00', body: 'An RFI goes out and the engineer replies from their phone.' },
+        { label: '4:30', body: 'The diary closes with who was on site, the weather and photos.' },
+      ],
     },
     {
       blockType: 'featureGrid',
-      heading: 'Built for the site and the office',
+      heading: 'What is inside',
       items: [
         {
           title: 'Drawings and documents',
-          body: 'Version-controlled drawings with markups, transmittals and a document register.',
+          body: 'Registers, revisions, markups and transmittals.',
         },
         {
-          title: 'RFIs and site diary',
-          body: 'Raise an RFI from your phone, and keep a daily diary that fills in who was on site.',
+          title: 'RFIs and submittals',
+          body: 'Raise, route and close, with due dates and links to the drawing.',
+        },
+        { title: 'Site diary', body: 'A daily record that fills in who was on site.' },
+        {
+          title: 'Defects and inspections',
+          body: 'Photo, pin, assign, close out, and keep the checklist.',
         },
         {
           title: 'Inductions and sign-in',
-          body: 'Online inductions and QR site sign-in, with records ready for an audit.',
+          body: 'Online inductions and QR sign-in, with timesheets.',
         },
+        { title: 'Programme', body: 'A schedule with baseline, and drag to reschedule.' },
         {
-          title: 'Ask Nova',
-          body: 'AI help in every module. It runs only in Australia, and every plan includes a monthly allowance.',
+          title: 'Variations and claims',
+          body: 'Security of Payment claims with the evidence kept together.',
         },
+        { title: 'Budget and cost', body: 'Commitments, change orders and forecasting.' },
         {
-          title: 'Works offline',
-          body: 'The mobile apps keep working without signal and sync when you are back online.',
+          title: 'Tendering and estimating',
+          body: 'Invite subcontractors by link, compare quotes, take off from drawings.',
         },
-        {
-          title: 'Your data stays here',
-          body: 'Hosted in Australia, with tenant isolation and an audit log.',
-        },
+        { title: 'Meetings and correspondence', body: 'Minutes, actions and a searchable record.' },
+        { title: 'Owner portal', body: 'A read-only view for clients.' },
+        { title: 'Ask Nova', body: 'AI help in every module. It runs only in Australia.' },
+      ],
+    },
+    {
+      blockType: 'chips',
+      items: [
+        { label: 'Hosted in Australia' },
+        { label: 'Audit log on every record' },
+        { label: 'Works offline' },
+        { label: 'Free for subcontractors' },
+        { label: 'Xero and MYOB' },
+        { label: 'Public API and webhooks' },
       ],
     },
     {
       blockType: 'cta',
-      heading: 'See Archova with your projects in mind',
+      heading: 'Let us show you on a project like yours',
       body: 'Book a short walk-through. No obligation.',
       label: 'Request a demo',
       href: '/demo',
     },
   ],
-});
+};
+// The home page is refreshed on every run so the starter content stays current; other pages are only added when missing.
+{
+  const found = await payload.find({
+    collection: 'pages',
+    where: { slug: { equals: 'home' } },
+    limit: 1,
+    draft: true,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- seed data is checked at runtime by Payload
+  const data = { slug: 'home', _status: 'published', ...homeData } as any;
+  if (found.docs[0]) await payload.update({ collection: 'pages', id: found.docs[0].id, data });
+  else await payload.create({ collection: 'pages', data });
+}
 
 await ensure('pages', 'pricing', {
   title: 'Pricing',
