@@ -1357,6 +1357,12 @@
   width: 100%;
   height: auto;
 }
+.ia-body__outline {
+  fill: none;
+  stroke: var(--c-text-secondary);
+  stroke-width: 0.9;
+  pointer-events: none;
+}
 .ia-body__shape {
   fill: var(--c-border-divider);
   stroke: var(--c-border-control);
