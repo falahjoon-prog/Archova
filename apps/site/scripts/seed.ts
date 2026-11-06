@@ -293,7 +293,6 @@ await ensure('pages', 'pricing', {
             'No. Ask Nova only uses what your own users are allowed to see, and your data is kept separate from every other company’s.',
         },
         {
-        {
           question: 'Can I use it with Xero or MYOB?',
           answer:
             'Yes. Archova connects to Xero and MYOB so approved costs and payments flow through without re-keying.',
