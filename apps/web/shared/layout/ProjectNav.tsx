@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Star, type LucideIcon } from '@archova/ui/icons';
+import { Plus, Star, type LucideIcon } from '@archova/ui/icons';
 import { Badge } from '@archova/ui';
 import { CollapsibleGroup, useGroupState } from './CollapsibleGroup';
 
@@ -13,6 +13,10 @@ export interface ProjectNavItem {
   icon: LucideIcon;
   /** Count of open items assigned to me (design 03 §2), not totals. */
   assignedCount?: number;
+  /** Quick-add: where the "+" beside the tool goes, e.g. the new-RFI form. Only set when the caller can create. */
+  createHref?: string;
+  /** Accessible name of the quick-add, e.g. "New RFI". */
+  createLabel?: string;
   /** Matches only the exact path (project home), not sub-paths. */
   exact?: boolean;
 }
@@ -120,6 +124,16 @@ export function ProjectNav({
                 <Badge label={`${item.assignedCount} assigned to you`}>{item.assignedCount}</Badge>
               ) : null}
             </Link>
+            {item.createHref ? (
+              <Link
+                href={item.createHref}
+                className="project-nav__add ac-focusable"
+                aria-label={item.createLabel ?? `New ${item.label}`}
+                title={item.createLabel ?? `New ${item.label}`}
+              >
+                <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
+              </Link>
+            ) : null}
             {favouritesScope && !pinnedHome.has(item.label) ? (
               <button
                 type="button"
