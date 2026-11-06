@@ -16,6 +16,9 @@ export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
 export type DirectCost = S['DirectCost'];
 export type DirectCostList = S['DirectCostList'];
+export type LaborProductivity = S['LaborProductivity'];
+export type LaborProductivityRow = S['LaborProductivityRow'];
+export type CostCodeProduction = S['CostCodeProduction'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
@@ -78,6 +81,24 @@ export function createBudgetApi(orgId: string) {
       return unwrap(
         await api.POST(`${P}/budget/lines/{lineId}/adjustments`, {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async laborProductivity(
+      projectId: string,
+      filter: { divisionId?: string; subJobId?: string },
+    ): Promise<LaborProductivity> {
+      return unwrap(
+        await api.GET(`${P}/reports/labor-productivity`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async setProduction(projectId: string, costCodeId: string, body: CostCodeProduction) {
+      return unwrap(
+        await api.PUT(`${P}/cost-codes/{costCodeId}/production`, {
+          params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
           body,
         }),
       );
