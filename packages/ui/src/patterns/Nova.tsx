@@ -56,7 +56,7 @@ export interface NovaSuggestionProps {
 }
 
 /**
- * Nova suggestion block (design 02 §7.7): purple left border, "Drafted by Nova" label, source links and the
+ * Nova suggestion block (design 02 §7.7): amber left border, "Drafted by Nova" label, source links and the
  * caller's Accept / Edit / Discard actions. It never auto-saves (principle P6).
  */
 export function NovaSuggestion({

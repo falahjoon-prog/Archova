@@ -19,7 +19,7 @@ export const color = {
     statusDanger: '#B42318',
     statusInfo: '#0B6A9E',
     statusNeutral: '#4B5563',
-    ai: '#6D3FD1',
+    ai: '#2C4458',
     accentHivis: '#E8590C',
   },
   dark: {
@@ -39,7 +39,7 @@ export const color = {
     statusDanger: '#F87171',
     statusInfo: '#5CC4F5',
     statusNeutral: '#AEB6C2',
-    ai: '#B79CFF',
+    ai: '#B1CAE0',
     accentHivis: '#E8590C',
   },
 } as const;
