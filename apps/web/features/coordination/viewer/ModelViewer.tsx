@@ -47,7 +47,7 @@ interface Props {
   label: string;
 }
 
-const FLAG_COLOUR: Record<Flag, number> = { selected: 0xb4542a, clash: 0xd62839 };
+const FLAG_COLOUR: Record<Flag, number> = { selected: 0xe08a1e, clash: 0xd62839 };
 
 function meshFor(el: IfcElement): Mesh {
   let vertexCount = 0;
