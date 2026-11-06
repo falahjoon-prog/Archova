@@ -2440,6 +2440,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiUsage' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/help:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: askNovaForHelp
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.help.use
+      summary: Ask Nova where to find something in Archova, or what an error means and what to do about it.
+      description: |
+        Sends the person's question and, for an error, only its HTTP status, code and message, plus the name of the
+        screen they are on. No project records are read and nothing is stored beyond the usual run accounting. The
+        answer is a few plain sentences and steps, and up to three tools from a fixed list to open next; it never
+        contains links. Counts against the Ask Nova feature switch and credits (a fraction of one credit), and each
+        person's request rate limit. Processed in Australia like every Nova task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                question: { type: string, minLength: 1, maxLength: 500 }
+                area:
+                  { type: string, maxLength: 60, description: The screen they were on, e.g. RFIs }
+                error:
+                  type: object
+                  additionalProperties: false
+                  required: [message]
+                  properties:
+                    status: { type: [integer, 'null'], minimum: 100, maximum: 599 }
+                    code: { type: [string, 'null'], maxLength: 80 }
+                    message: { type: string, maxLength: 400 }
+      responses:
+        '200':
+          description: The explanation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaHelp' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/runs/{runId}/feedback:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15807,6 +15848,17 @@ components:
             snippet:
               type: string
               description: The start of the passage, or the stretch around the first query word it contains.
+    NovaHelp:
+      type: object
+      required: [runId, answer, steps, tools]
+      properties:
+        runId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+        answer: { type: string }
+        steps: { type: array, items: { type: string } }
+        tools:
+          description: Tools to open next, by the label the menus use.
+          type: array
+          items: { type: string }
     NovaAnswer:
       type: object
       required: [runId, found, answer, citations, closestMatches]

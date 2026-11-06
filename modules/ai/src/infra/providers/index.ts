@@ -6,6 +6,7 @@ import { heuristicDefectTag } from '../../eval/suites/defect-tag';
 import { heuristicHazardScan } from '../../eval/suites/hazard-scan';
 import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
+import { heuristicHelpExplain } from '../../eval/suites/help-explain';
 import { heuristicDiaryWeekly } from '../../eval/suites/diary-weekly';
 import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicDrawingCompareVisual } from '../../eval/suites/drawing-compare-visual';
@@ -44,6 +45,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.check': fakeTranslationCheck,
   'diary.summary': heuristicDiarySummary,
   'diary.weekly': heuristicDiaryWeekly,
+  'help.explain': heuristicHelpExplain,
   'minutes.extract': heuristicMeetingMinutes,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,

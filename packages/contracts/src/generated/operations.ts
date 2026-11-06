@@ -559,6 +559,18 @@ export const UpdateAiSettingsBody = s.UpdateAiSettingsRequestSchema;
 export const GetAiUsageParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const AskNovaForHelpParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const AskNovaForHelpBody = z.object({
+  "question": z.string().min(1).max(500).optional(),
+  "area": z.string().max(60).optional(),
+  "error": z.object({
+  "status": z.number().int().min(100).max(599).nullable().optional(),
+  "code": z.string().max(80).nullable().optional(),
+  "message": z.string().max(400),
+}).strict().optional(),
+}).strict();
 export const SubmitAiFeedbackParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
@@ -4473,6 +4485,18 @@ export const operations = {
     params: GetAiUsageParams,
     query: null,
     body: null,
+  },
+  askNovaForHelp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/ai/help',
+    module: "ai",
+    auth: "required",
+    permission: "ai.help.use",
+    internal: false,
+    contentType: "application/json",
+    params: AskNovaForHelpParams,
+    query: null,
+    body: AskNovaForHelpBody,
   },
   submitAiFeedback: {
     method: 'PUT',

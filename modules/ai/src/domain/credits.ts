@@ -38,6 +38,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'drawing.compare_visual': 0.5,
   // Nova Esti (ai/10 E1): one sheet image in, the found items out; one run per target on a sheet. Priya to confirm.
   'takeoff.detect': 1,
+  // Nova help: a short answer at the fast tier, no project records read. Priya to confirm.
+  'help.explain': 0.05,
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,

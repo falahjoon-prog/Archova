@@ -9,6 +9,7 @@ import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingCompareVisualSuite } from './suites/drawing-compare-visual';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { helpExplainSuite } from './suites/help-explain';
 import { hazardScanSuite } from './suites/hazard-scan';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
@@ -38,6 +39,7 @@ export const SUITES: readonly AnySuite[] = [
   inductionAskSuite,
   translationSuite,
   diarySummarySuite,
+  helpExplainSuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
   rfiDraftSuite,

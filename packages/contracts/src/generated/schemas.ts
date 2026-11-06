@@ -4732,6 +4732,14 @@ export const NovaHazardScanSchema = z.object({
 });
 export type NovaHazardScan = z.infer<typeof NovaHazardScanSchema>;
 
+export const NovaHelpSchema = z.object({
+  "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
+  "answer": z.string(),
+  "steps": z.array(z.string()),
+  "tools": z.array(z.string()),
+});
+export type NovaHelp = z.infer<typeof NovaHelpSchema>;
+
 export const NovaImportMappingSchema = z.object({
   "runId": z.string(),
   "suggestionId": z.string(),

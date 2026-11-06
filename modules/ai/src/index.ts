@@ -17,6 +17,7 @@ import { createProjectIndexService, type SourceRevision } from './application/pr
 import type { DefectSource } from './domain/defect-source';
 import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
+import { createHelpService } from './application/help';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
@@ -484,6 +485,7 @@ export function createAiModule(
     gateway,
     meeting: deps.meetingForMinutes,
   });
+  const help = createHelpService({ gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -518,6 +520,7 @@ export function createAiModule(
       minutesExtract,
       swmsDrafts,
       hazardScans,
+      help,
     ),
     permissions: AI_PERMISSIONS,
     provider,

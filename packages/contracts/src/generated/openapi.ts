@@ -1907,6 +1907,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/ai/help": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova where to find something in Archova, or what an error means and what to do about it.
+         * @description Sends the person's question and, for an error, only its HTTP status, code and message, plus the name of the
+         *     screen they are on. No project records are read and nothing is stored beyond the usual run accounting. The
+         *     answer is a few plain sentences and steps, and up to three tools from a fixed list to open next; it never
+         *     contains links. Counts against the Ask Nova feature switch and credits (a fraction of one credit), and each
+         *     person's request rate limit. Processed in Australia like every Nova task.
+         */
+        post: operations["askNovaForHelp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/runs/{runId}/feedback": {
         parameters: {
             query?: never;
@@ -11170,6 +11196,13 @@ export interface components {
             /** @description The start of the passage, or the stretch around the first query word it contains. */
             snippet: string;
         };
+        NovaHelp: {
+            runId: string;
+            answer: string;
+            steps: string[];
+            /** @description Tools to open next, by the label the menus use. */
+            tools: string[];
+        };
         NovaAnswer: {
             /** @description For feedback (`air_`); null when no model call was needed. */
             runId: string | null;
@@ -20379,6 +20412,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiUsage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askNovaForHelp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question?: string;
+                    /** @description The screen they were on */
+                    area?: string;
+                    error?: {
+                        status?: number | null;
+                        code?: string | null;
+                        message: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The explanation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHelp"];
                 };
             };
             default: components["responses"]["Problem"];

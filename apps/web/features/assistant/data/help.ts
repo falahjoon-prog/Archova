@@ -67,8 +67,7 @@ const TOOLS: ReadonlyArray<{ match: RegExp; text: string }> = [
   },
 ];
 
-const FIND =
-  /\b(where|find|how (do|can) i|go to|get to|navigate|menu|add|create|new|start|log)\b/;
+const FIND = /\b(where|find|how (do|can) i|go to|get to|navigate|menu|add|create|new|start|log)\b/;
 const STAR = /\b(star|favou?rite|pin)\b/;
 
 /** Null when the question isn't about finding or starting something. */
