@@ -148,7 +148,7 @@ export function AppShell({
       <header ref={barRef} className="app-shell__bar">
         <div className="app-shell__brand">
           <Link className="app-shell__logo ac-focusable" href={webRoutes.orgPicker()}>
-            <BrandLogo />
+            <BrandLogo height={36} />
           </Link>
           <span className="app-shell__org" title="Organisation">
             {orgName}
