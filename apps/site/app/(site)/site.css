@@ -516,3 +516,16 @@ h2,
 .timeline strong {
   font-family: var(--font-family);
 }
+
+/* Hero is centred on the page (john, 6 Nov 2026) */
+.hero {
+  margin-inline: auto;
+  text-align: center;
+}
+.hero__sub {
+  margin-inline: auto;
+  max-width: 640px;
+}
+.hero__actions {
+  justify-content: center;
+}
