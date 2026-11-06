@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createOrg, createProject, createTestContext, signUp, type TestContext } from './helpers';
+import {
+  addMember,
+  createOrg,
+  createProject,
+  createTestContext,
+  signUp,
+  type TestContext,
+} from './helpers';
 
 // My Work: due items across projects, narrowed to what the caller can open, and per-person bookmarks.
 let t: TestContext;
@@ -44,6 +51,7 @@ async function setup(tag: string) {
   const b = await createProject(pm.browser, org.id, { name: 'Bravo Lofts', state: 'QLD' });
   const baseA = `/v1/orgs/${org.id}/projects/${a.id}`;
   const baseB = `/v1/orgs/${org.id}/projects/${b.id}`;
+  await addMember(pm.browser, org.id, a.id, other.email, 'Subcontractor', 'Sparky');
   await openRfi(pm, baseA, 'Slab edge detail', '2020-01-10'); // overdue
   await openRfi(pm, baseA, 'Balustrade height', '2099-01-10'); // not due for a long time
   await openRfi(pm, baseB, 'Stair nosing', '2020-03-01'); // overdue, other project
@@ -84,7 +92,7 @@ describe('My Work', () => {
 
     for (const path of ['//evil.example', 'https://evil.example', 'javascript:alert(1)']) {
       const bad = await s.pm.browser.post(`${s.root}/bookmarks`, { label: 'x', path });
-      expect(bad.statusCode).toBe(400);
+      expect(bad.statusCode).toBe(422);
     }
 
     expect((await s.pm.browser.del(`${s.root}/bookmarks/${first.json().id}`)).statusCode).toBe(204);
