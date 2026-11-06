@@ -2,6 +2,7 @@
 // uses. Runs after the base seed (seed.ts). Every step tops its list up to ten and skips when it is already
 // there, so re-runs don't duplicate; a step that fails logs a warning and the rest carry on. Sample data only.
 import { addDays, type LocalDate, localDateOf } from '@archova/time';
+import { makePdf } from './pdf';
 import { Session } from './session';
 
 export interface Api {
@@ -31,6 +32,15 @@ export interface ExtraContext {
   /** The app origin and the demo password, for signing up the sample colleagues. */
   origin: string;
   password: string;
+  /** Uploads a PDF for a project (seed.ts), returning the file id. */
+  upload: (
+    projectId: string,
+    module: string,
+    filename: string,
+    bytes: Uint8Array,
+  ) => Promise<string>;
+  /** The drawing sheets to give a project that has none. */
+  sheets: Array<{ number: string; title: string; discipline: string }>;
 }
 
 const TARGET = 10;
@@ -484,6 +494,90 @@ export async function seedExtra(ctx: ExtraContext) {
       added++;
     }
     return `${added} added`;
+  });
+
+  // Drawings and specification books on every project that has none (the base seed only covers its own three
+  // projects, so the extra ones, or a project from an earlier partial run, would show empty registers).
+  await step('drawings and specifications on every project', async () => {
+    const all = (
+      await s.ok<{
+        data: Array<{
+          id: string;
+          name: string;
+          number?: string;
+          status: string;
+          startDate?: string;
+        }>;
+      }>('GET', `${org}/projects`)
+    ).data;
+    let drawings = 0;
+    let books = 0;
+    for (const p of all) {
+      const base = `${org}/projects/${p.id}`;
+      const date = p.startDate ?? day(-120);
+      const sheetList = await s.ok<{ data?: unknown[] }>('GET', `${base}/drawings`);
+      if (!sheetList.data?.length) {
+        const set = await s.ok<{ id: string }>('POST', `${base}/drawing-sets`, {
+          name: p.status === 'tender' ? 'Tender Issue' : 'Issued for Construction',
+          issuedDate: date,
+          receivedDate: date,
+        });
+        for (const sh of ctx.sheets) {
+          const fileId = await ctx.upload(
+            p.id,
+            'drawings',
+            `${sh.number}.pdf`,
+            makePdf({ project: p.name, number: sh.number, title: sh.title, rev: 'A' }),
+          );
+          await s.ok('POST', `${base}/drawing-sets/${set.id}/revisions`, {
+            sheetNumber: sh.number,
+            title: sh.title,
+            discipline: sh.discipline,
+            rev: 'A',
+            issuedFor: p.status === 'tender' ? 'for_tender' : 'for_construction',
+            fileId,
+            drawingDate: date,
+          });
+        }
+        await s.ok('POST', `${base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
+        drawings++;
+      }
+      const bookList = await s.ok<{ data?: unknown[] }>('GET', `${base}/spec-books`);
+      if (!bookList.data?.length) {
+        const sections = [
+          ['01 10 00', 'Preliminaries and General Requirements', 'Division 01 General', 1, 12],
+          ['03 30 00', 'Cast-in-place Concrete', 'Division 03 Concrete', 13, 30],
+          ['05 12 00', 'Structural Steel Framing', 'Division 05 Metals', 31, 44],
+          ['07 21 00', 'Thermal Insulation', 'Division 07 Thermal and Moisture', 45, 52],
+          ['08 11 00', 'Doors and Frames', 'Division 08 Openings', 53, 64],
+          ['09 29 00', 'Plasterboard Linings', 'Division 09 Finishes', 65, 78],
+          ['21 13 00', 'Fire Sprinkler Systems', 'Division 21 Fire Suppression', 79, 90],
+          ['22 00 00', 'Hydraulic Services', 'Division 22 Plumbing', 91, 106],
+          ['26 05 00', 'Electrical Services', 'Division 26 Electrical', 107, 125],
+        ] as const;
+        const book = await s.ok<{ id: string }>('POST', `${base}/spec-books`, {
+          name: `${p.name} Specification`,
+          issuedDate: date,
+        });
+        await s.ok(
+          'PUT',
+          `${base}/spec-books/${book.id}/sections`,
+          {
+            sections: sections.map(([sectionNumber, title, division, pageFrom, pageTo]) => ({
+              sectionNumber,
+              title,
+              division,
+              pageFrom,
+              pageTo,
+              revision: 'A',
+            })),
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+        books++;
+      }
+    }
+    return `${drawings} projects got drawings, ${books} got a specification book`;
   });
 
   // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register

@@ -544,6 +544,8 @@ await seedExtra({
   userId: me.user.id,
   origin: ORIGIN,
   password: PASSWORD,
+  upload,
+  sheets: PROJECTS[0]!.sheets,
 });
 
 // Ask Nova answers only from indexed documents and drawings. Indexing is idempotent, so every run brings each
