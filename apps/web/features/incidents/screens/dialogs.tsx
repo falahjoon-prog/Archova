@@ -219,7 +219,7 @@ export function ReportDialog({
             disabled={!name.trim()}
             onClick={() => {
               const injury = {
-                ...(bodyPart ? { bodyPart: bodyPart as BodyPart } : {}),
+                ...(bodyPart ? { bodyArea: bodyPart as BodyPart } : {}),
                 ...(injuryType ? { injuryType: injuryType as InjuryType } : {}),
                 ...(harmSource ? { harmSource: harmSource as HarmSource } : {}),
                 ...(outcome ? { outcome: outcome as InjuryOutcome } : {}),

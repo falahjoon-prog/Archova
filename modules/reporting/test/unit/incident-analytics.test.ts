@@ -27,15 +27,16 @@ const row = (projectId: string, over: Partial<InjuryRecord> = {}): InjuryRecord 
 });
 
 function build(opts: { restricted?: string; hours?: Record<string, number | null> } = {}) {
-  const injuryRows = vi.fn(async (_s: TenantScope, id: string) =>
-    id === opts.restricted
-      ? { restricted: true, rows: [], lastInjuryOn: null, lastIncidentOn: null }
-      : {
-          restricted: false,
-          rows: [row(id), row(id, { bodyPart: 'knee', outcome: 'first_aid', daysLost: 0 })],
-          lastInjuryOn: '2026-10-30',
-          lastIncidentOn: '2026-11-01',
-        },
+  const injuryRows = vi.fn(
+    async (_s: TenantScope, id: string, _f: { from?: string; to?: string }) =>
+      id === opts.restricted
+        ? { restricted: true, rows: [], lastInjuryOn: null, lastIncidentOn: null }
+        : {
+            restricted: false,
+            rows: [row(id), row(id, { bodyPart: 'knee', outcome: 'first_aid', daysLost: 0 })],
+            lastInjuryOn: '2026-10-30',
+            lastIncidentOn: '2026-11-01',
+          },
   );
   const hoursWorked = vi.fn(async (_s: TenantScope, id: string) =>
     opts.hours && id in opts.hours ? (opts.hours[id] as number | null) : 500_000,
@@ -71,6 +72,12 @@ describe('incident analytics', () => {
     expect(r.daysWithoutInjury).toBe(7);
     expect(r.daysWithoutIncident).toBe(5);
     expect(r.rows[0]).toMatchObject({ projectName: 'Alpha', ref: 'INC-0001' });
+  });
+
+  it('does not cut off today for a project ahead of UTC', async () => {
+    const { svc, injuryRows } = build();
+    await svc.get(scope, {});
+    expect(injuryRows.mock.calls[0]![2]).toMatchObject({ from: '2025-11-07', to: '2026-11-07' });
   });
 
   it('leaves out a project the caller may not see health information on', async () => {

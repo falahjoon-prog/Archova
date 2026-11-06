@@ -3525,13 +3525,7 @@ export const IncidentPersonInputSchema = z.object({
   "personName": z.string().min(1).max(200),
   "companyId": CompanyRefSchema.optional(),
   "role": z.enum(["injured", "witness", "involved"]),
-  "injury": z.object({
-  "bodyPart": BodyPartSchema.optional(),
-  "injuryType": InjuryTypeSchema.optional(),
-  "harmSource": HarmSourceSchema.optional(),
-  "outcome": InjuryOutcomeSchema.optional(),
-  "daysLost": z.number().int().min(0).max(3650).optional(),
-}).optional(),
+  "injury": z.record(z.string(), z.unknown()).optional(),
 }).strict();
 export type IncidentPersonInput = z.infer<typeof IncidentPersonInputSchema>;
 

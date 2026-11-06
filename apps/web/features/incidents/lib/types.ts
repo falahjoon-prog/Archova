@@ -132,7 +132,7 @@ export interface PersonInput {
   role: PersonRole;
   /** Body part, type, cause, outcome and days lost; only for the injured (they feed the injury analytics). */
   injury?: {
-    bodyPart?: BodyPart;
+    bodyArea?: BodyPart;
     injuryType?: InjuryType;
     harmSource?: HarmSource;
     outcome?: InjuryOutcome;

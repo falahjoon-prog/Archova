@@ -16852,15 +16852,12 @@ export interface components {
             companyId?: components["schemas"]["CompanyRef"];
             /** @enum {string} */
             role: "injured" | "witness" | "involved";
-            /** @description Free-text keys are kept. The recognised keys below feed the injury analytics. */
+            /**
+             * @description Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
+             *     and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
+             *     and daysLost (0 to 3650, only with the lost_time or fatality outcome).
+             */
             injury?: {
-                bodyPart?: components["schemas"]["BodyPart"];
-                injuryType?: components["schemas"]["InjuryType"];
-                harmSource?: components["schemas"]["HarmSource"];
-                outcome?: components["schemas"]["InjuryOutcome"];
-                /** @description Needs the lost_time or fatality outcome. */
-                daysLost?: number;
-            } & {
                 [key: string]: unknown;
             };
         };

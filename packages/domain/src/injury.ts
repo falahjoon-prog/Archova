@@ -145,7 +145,7 @@ export const MAPPED_BODY_PARTS = BODY_PARTS.filter(
   (p) => p !== 'multiple' && p !== 'systemic',
 ) as readonly BodyPart[];
 
-/** The structured part of an injured person's record. Free-text keys already stored are kept alongside it. */
+/** The structured part of an injured person's record (stored as bodyArea, injuryType, harmSource, outcome, daysLost). */
 export interface InjuryDetail {
   bodyPart: BodyPart | null;
   injuryType: InjuryType | null;
@@ -164,8 +164,17 @@ function pick<T extends string>(value: unknown, allowed: readonly T[]): T | null
 /** Reads the structured fields out of the stored injury object; anything unrecognised becomes null. */
 export function readInjury(raw: Record<string, unknown> | null | undefined): InjuryDetail {
   const days = raw?.['daysLost'];
+  // The phone records a free-text `bodyPart` ("Lower back"); it counts when it matches a part by name.
+  const legacy = raw?.['bodyPart'];
+  const legacyPart =
+    typeof legacy === 'string'
+      ? legacy
+          .trim()
+          .toLowerCase()
+          .replace(/[\s-]+/g, '_')
+      : null;
   return {
-    bodyPart: pick(raw?.['bodyPart'], BODY_PARTS),
+    bodyPart: pick(raw?.['bodyArea'], BODY_PARTS) ?? pick(legacyPart, BODY_PARTS),
     injuryType: pick(raw?.['injuryType'], INJURY_TYPES),
     harmSource: pick(raw?.['harmSource'], HARM_SOURCES),
     outcome: pick(raw?.['outcome'], INJURY_OUTCOMES),
@@ -186,7 +195,7 @@ export function injuryProblems(raw: Record<string, unknown>): InjuryProblem[] {
     if (v !== undefined && v !== null && !(typeof v === 'string' && allowed.includes(v)))
       out.push({ path: `injury.${key}`, message: 'Not a recognised value' });
   };
-  bad('bodyPart', BODY_PARTS);
+  bad('bodyArea', BODY_PARTS);
   bad('injuryType', INJURY_TYPES);
   bad('harmSource', HARM_SOURCES);
   bad('outcome', INJURY_OUTCOMES);

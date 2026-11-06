@@ -90,7 +90,7 @@ describe('Incidents', () => {
       title: 'Bad injury',
       type: 'injury',
       occurredAt: when(),
-      people: [{ personName: 'A. Worker', role: 'injured', injury: { bodyPart: 'elbowish' } }],
+      people: [{ personName: 'A. Worker', role: 'injured', injury: { bodyArea: 'elbowish' } }],
     });
     expect(bad.statusCode).toBe(422);
     const sent = await s.sub.browser.post(`${s.base}/incidents`, {
@@ -103,7 +103,7 @@ describe('Incidents', () => {
           role: 'injured',
           companyId: s.subCo.companyId,
           injury: {
-            bodyPart: 'hand',
+            bodyArea: 'hand',
             injuryType: 'laceration',
             harmSource: 'hitting_objects',
             outcome: 'lost_time',

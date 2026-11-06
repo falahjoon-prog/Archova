@@ -24955,19 +24955,10 @@ components:
         injury:
           type: object
           additionalProperties: true
-          description: Free-text keys are kept. The recognised keys below feed the injury analytics.
-          properties:
-            bodyPart: { $ref: '#/components/schemas/BodyPart' }
-            injuryType: { $ref: '#/components/schemas/InjuryType' }
-            harmSource: { $ref: '#/components/schemas/HarmSource' }
-            outcome: { $ref: '#/components/schemas/InjuryOutcome' }
-            daysLost:
-              {
-                type: integer,
-                minimum: 0,
-                maximum: 3650,
-                description: Needs the lost_time or fatality outcome.,
-              }
+          description: |
+            Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
+            and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
+            and daysLost (0 to 3650, only with the lost_time or fatality outcome).
     IncidentSource:
       type: object
       additionalProperties: false

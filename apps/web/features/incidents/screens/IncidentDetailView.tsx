@@ -63,7 +63,14 @@ const NEXT: Record<string, IncidentAction | undefined> = {
 /** "Hand · Laceration · Lost time (3 days)" from the structured fields, then any free-text ones. */
 function injurySummary(injury: Record<string, unknown>): string {
   const d = readInjury(injury);
-  const known = new Set(['bodyPart', 'injuryType', 'harmSource', 'outcome', 'daysLost']);
+  const known = new Set([
+    'bodyArea',
+    'bodyPart',
+    'injuryType',
+    'harmSource',
+    'outcome',
+    'daysLost',
+  ]);
   return [
     d.bodyPart ? BODY_PART_LABELS[d.bodyPart] : null,
     d.injuryType ? INJURY_TYPE_LABELS[d.injuryType] : null,

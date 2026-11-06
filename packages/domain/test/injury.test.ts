@@ -44,20 +44,28 @@ describe('readInjury', () => {
       daysLost: 3,
     });
     expect(readInjury(null).bodyPart).toBeNull();
+    expect(readInjury({ bodyPart: 'Lower back' }).bodyPart).toBe('lower_back');
+    expect(readInjury({ bodyPart: 'Wrist-ish' }).bodyPart).toBeNull();
   });
 });
 
 describe('injuryProblems', () => {
   it('accepts free text keys and valid structured ones', () => {
     expect(
-      injuryProblems({ note: 'x', bodyPart: 'knee', outcome: 'lost_time', daysLost: 2 }),
+      injuryProblems({
+        note: 'x',
+        bodyPart: 'Knee',
+        bodyArea: 'knee',
+        outcome: 'lost_time',
+        daysLost: 2,
+      }),
     ).toEqual([]);
   });
   it('flags unknown values and days lost without a lost time outcome', () => {
-    const paths = injuryProblems({ bodyPart: 'elbowish', outcome: 'first_aid', daysLost: 2 }).map(
+    const paths = injuryProblems({ bodyArea: 'elbowish', outcome: 'first_aid', daysLost: 2 }).map(
       (p) => p.path,
     );
-    expect(paths).toEqual(['injury.bodyPart', 'injury.daysLost']);
+    expect(paths).toEqual(['injury.bodyArea', 'injury.daysLost']);
     expect(injuryProblems({ outcome: 'lost_time', daysLost: -1 })).toHaveLength(1);
   });
 });

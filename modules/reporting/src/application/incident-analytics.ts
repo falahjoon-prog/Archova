@@ -34,6 +34,8 @@ export function createIncidentAnalyticsService(deps: ReportingDeps & { now?: () 
     const today = localDateOf(now(), 'UTC');
     const to = q.to ?? today;
     const from = q.from ?? addDays(to, -364);
+    // Without an end date, include tomorrow's UTC date too: a project east of UTC is already a day ahead.
+    const upper = q.to ?? addDays(today, 1);
     if (to < from)
       throw new AppError('validation_failed', 'The range must not end before it starts.', [
         { path: 'to', message: 'Must be on or after the start' },
@@ -60,7 +62,7 @@ export function createIncidentAnalyticsService(deps: ReportingDeps & { now?: () 
     const { projects, truncated } = await visibleProjects(deps, scope, { includeClosed: true });
     const chosen = projectId ? projects.filter((p) => p.id === projectId) : projects;
     const names = new Map(projects.map((p) => [p.id, p.name]));
-    const filters = { from, to, ...(companyId ? { companyId } : {}) };
+    const filters = { from, to: upper, ...(companyId ? { companyId } : {}) };
 
     const records: InjuryRecord[] = [];
     let restricted = 0;
