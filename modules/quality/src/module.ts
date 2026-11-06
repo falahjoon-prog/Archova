@@ -10,6 +10,7 @@ import {
 } from '@archova/kernel';
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
+import { createDbpSources } from './application/dbpSources';
 import { createObservationService } from './application/observations';
 import type { QualityDeps } from './application/shared';
 import { qualityRoutes } from './api/routes';
@@ -245,6 +246,8 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     definition: defineModule({ name: 'quality', permissions: QUALITY_PERMISSIONS }),
     routes: qualityRoutes(services.database, inspections, observations),
     api: {
+      /** Per-project rows for the DBP Act insights view in `reporting`. */
+      dbp: createDbpSources(deps),
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */

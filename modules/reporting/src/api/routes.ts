@@ -7,6 +7,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { DbpService } from '../application/dbp';
 import type { PortfolioService } from '../application/portfolio';
 import type { RiskService } from '../application/risk';
 import type { ReadinessService } from '../application/readiness';
@@ -18,6 +19,7 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  dbp: DbpService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -34,6 +36,12 @@ export function reportingRoutes(
       status: 200,
       body: await read(input, (s) =>
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
+      ),
+    }),
+    getDbpInsights: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        dbp.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
     getLateSopaClaimRisk: async (input) => ({

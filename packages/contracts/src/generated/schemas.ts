@@ -1111,6 +1111,9 @@ export const ContractSourceRefSchema = z.object({
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
+export const ContributingConditionSchema = z.enum(["workmanship", "design", "materials", "supervision", "weather", "coordination", "documentation"]);
+export type ContributingCondition = z.infer<typeof ContributingConditionSchema>;
+
 export const CoordinationCommentSchema = z.object({
   "id": z.string(),
   "authorId": z.string(),
@@ -1776,6 +1779,9 @@ export const CreateInspectionRequestSchema = z.object({
 }).strict();
 export type CreateInspectionRequest = z.infer<typeof CreateInspectionRequestSchema>;
 
+export const TradeCategorySchema = z.enum(["fire_safety", "waterproofing", "structural", "external_cladding", "building_services", "other"]);
+export type TradeCategory = z.infer<typeof TradeCategorySchema>;
+
 export const InspectionResponseTypeSchema = z.enum(["pass_fail_na", "yes_no", "number", "text", "photo", "signature", "select"]);
 export type InspectionResponseType = z.infer<typeof InspectionResponseTypeSchema>;
 
@@ -1792,6 +1798,7 @@ export type InspectionTemplateItemInput = z.infer<typeof InspectionTemplateItemI
 export const CreateInspectionTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "type": z.string().min(1).max(50).optional(),
+  "tradeCategory": TradeCategorySchema.optional(),
   "items": z.array(InspectionTemplateItemInputSchema).max(300),
 }).strict();
 export type CreateInspectionTemplateRequest = z.infer<typeof CreateInspectionTemplateRequestSchema>;
@@ -1905,12 +1912,18 @@ export type CreateOauthAppRequest = z.infer<typeof CreateOauthAppRequestSchema>;
 export const ObservationTypeSchema = z.enum(["safety", "quality", "environmental", "commercial"]);
 export type ObservationType = z.infer<typeof ObservationTypeSchema>;
 
+export const ObservationClassificationSchema = z.enum(["serious_defect", "potential_serious_defect", "low_risk"]);
+export type ObservationClassification = z.infer<typeof ObservationClassificationSchema>;
+
 export const CreateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema,
   "hazard": z.string().min(1).max(200).optional(),
   "description": z.string().min(1).max(20000),
   "location": z.string().min(1).max(300).optional(),
   "priority": DefectPrioritySchema.optional(),
+  "tradeCategory": TradeCategorySchema.optional(),
+  "classification": ObservationClassificationSchema.optional(),
+  "contributingCondition": ContributingConditionSchema.optional(),
   "assigneeCompanyId": CompanyRefSchema.optional(),
   "dueDate": z.string().date().optional(),
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")).optional(),
@@ -2345,6 +2358,50 @@ export const DateRangeRequestSchema = z.object({
   "to": z.string().date(),
 }).strict();
 export type DateRangeRequest = z.infer<typeof DateRangeRequestSchema>;
+
+export const DbpClassCountsSchema = z.object({
+  "serious_defect": z.number().int(),
+  "potential_serious_defect": z.number().int(),
+  "low_risk": z.number().int(),
+  "unclassified": z.number().int(),
+});
+export type DbpClassCounts = z.infer<typeof DbpClassCountsSchema>;
+
+export const DbpInsightsSchema = z.object({
+  "categories": z.array(z.object({
+  "category": z.union([TradeCategorySchema, z.enum(["uncategorised"])]),
+  "itemsPassing": z.object({
+  "pass": z.number().int(),
+  "fail": z.number().int(),
+  "rate": z.number().int().nullable(),
+}),
+  "lateInspections": z.number().int(),
+  "lateObservations": z.number().int(),
+  "classifications": DbpClassCountsSchema,
+})),
+  "classificationTotals": DbpClassCountsSchema,
+  "passRateTrend": z.array(z.object({
+  "month": z.string(),
+  "pass": z.number().int(),
+  "fail": z.number().int(),
+  "rate": z.number().int().nullable(),
+})),
+  "conditions": z.array(z.object({
+  "condition": z.union([ContributingConditionSchema, z.enum(["not_recorded"])]),
+  "count": z.number().int(),
+})),
+  "projects": z.array(z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "restricted": z.boolean(),
+  "classifications": DbpClassCountsSchema,
+  "lateInspections": z.number().int(),
+  "lateObservations": z.number().int(),
+})),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+});
+export type DbpInsights = z.infer<typeof DbpInsightsSchema>;
 
 export const DecideOwnerApprovalRequestSchema = z.object({
   "decision": z.enum(["approved", "rejected"]),
@@ -3958,6 +4015,7 @@ export const InspectionTemplateSchema = z.object({
   "projectId": z.string(),
   "name": z.string(),
   "type": z.string(),
+  "tradeCategory": z.union([TradeCategorySchema, z.null()]),
   "version": z.number().int(),
   "published": z.boolean(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -4949,6 +5007,9 @@ export const ObservationSchema = z.object({
   "description": z.string(),
   "location": z.string().nullable(),
   "priority": DefectPrioritySchema,
+  "tradeCategory": z.union([TradeCategorySchema, z.null()]),
+  "classification": z.union([ObservationClassificationSchema, z.null()]),
+  "contributingCondition": z.union([ContributingConditionSchema, z.null()]),
   "assigneeCompanyId": z.string().nullable(),
   "raisedByCompanyId": z.string().nullable(),
   "status": ObservationStatusSchema,
@@ -7176,6 +7237,7 @@ export type UpdateInductionRequest = z.infer<typeof UpdateInductionRequestSchema
 export const UpdateInspectionTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "type": z.string().min(1).max(50).optional(),
+  "tradeCategory": z.union([TradeCategorySchema, z.null()]).optional(),
   "items": z.array(InspectionTemplateItemInputSchema).max(300).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateInspectionTemplateRequest = z.infer<typeof UpdateInspectionTemplateRequestSchema>;
@@ -7239,6 +7301,9 @@ export const UpdateObservationRequestSchema = z.object({
   "description": z.string().min(1).max(20000).optional(),
   "location": z.string().min(1).max(300).nullable().optional(),
   "priority": DefectPrioritySchema.optional(),
+  "tradeCategory": z.union([TradeCategorySchema, z.null()]).optional(),
+  "classification": z.union([ObservationClassificationSchema, z.null()]).optional(),
+  "contributingCondition": z.union([ContributingConditionSchema, z.null()]).optional(),
   "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
   "dueDate": z.string().date().nullable().optional(),
   "swmsId": z.union([z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")), z.null()]).optional(),

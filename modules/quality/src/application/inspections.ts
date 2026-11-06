@@ -19,6 +19,7 @@ import {
   type ResponseState,
   type ResponseType,
 } from '../domain/inspection';
+import type { TradeCategory } from '../domain/dbp';
 import { inspections, responses, templateItems, templates } from '../infra/tables';
 import { uniqueViolation } from './errors';
 import { checkFiles, requireInternal, type QualityDeps } from './shared';
@@ -135,7 +136,12 @@ export function createInspectionService(deps: QualityDeps) {
   async function createTemplate(
     scope: TenantScope,
     projectId: string,
-    input: { name: string; type?: string; items: TemplateItemInput[] },
+    input: {
+      name: string;
+      type?: string;
+      tradeCategory?: TradeCategory | null;
+      items: TemplateItemInput[];
+    },
   ) {
     await deps.platform.getProject(scope, projectId);
     checkItems(input.items);
@@ -147,6 +153,7 @@ export function createInspectionService(deps: QualityDeps) {
         projectId,
         name: input.name.trim(),
         type: input.type ?? 'ITP',
+        tradeCategory: input.tradeCategory ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       });
@@ -163,7 +170,12 @@ export function createInspectionService(deps: QualityDeps) {
     scope: TenantScope,
     projectId: string,
     id: string,
-    input: { name?: string; type?: string; items?: TemplateItemInput[] },
+    input: {
+      name?: string;
+      type?: string;
+      tradeCategory?: TradeCategory | null;
+      items?: TemplateItemInput[];
+    },
   ) {
     const template = await loadTemplate(scope, projectId, id);
     if (template.published)
@@ -178,6 +190,7 @@ export function createInspectionService(deps: QualityDeps) {
         .set({
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
           ...(input.type !== undefined ? { type: input.type } : {}),
+          ...(input.tradeCategory !== undefined ? { tradeCategory: input.tradeCategory } : {}),
           updatedAt: now(),
           updatedBy: scope.ctx.userId,
         })
@@ -243,6 +256,7 @@ export function createInspectionService(deps: QualityDeps) {
       projectId,
       name: template.name,
       type: template.type,
+      tradeCategory: template.tradeCategory,
       version: (latest?.version ?? template.version) + 1,
       createdBy: scope.ctx.userId,
       updatedBy: scope.ctx.userId,

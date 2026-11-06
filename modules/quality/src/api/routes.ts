@@ -46,6 +46,9 @@ function observationFields(b: ObservationBody): ObservationFields {
   if (b.description !== undefined) out.description = b.description;
   if (b.location !== undefined) out.location = b.location;
   if (b.priority !== undefined) out.priority = b.priority;
+  if (b.tradeCategory !== undefined) out.tradeCategory = b.tradeCategory;
+  if (b.classification !== undefined) out.classification = b.classification;
+  if (b.contributingCondition !== undefined) out.contributingCondition = b.contributingCondition;
   if (b.dueDate !== undefined) out.dueDate = b.dueDate;
   if (b.assigneeCompanyId !== undefined)
     out.assigneeCompanyId =

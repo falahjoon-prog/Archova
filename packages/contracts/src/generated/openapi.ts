@@ -3069,6 +3069,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/dbp-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Inspection pass rates and observation risk classifications by building element, for DBP Act reporting.
+         * @description Counts only; Archova records what a person classified and never classifies a defect itself. Covers the projects
+         *     the caller can see (same rules as the portfolio) and, per project, only what the caller may read in the
+         *     inspections tool: other projects count in `restrictedProjects` and add nothing. Observations that are not
+         *     closed are counted; "late" is an inspection still open past its scheduled date or an open observation past its
+         *     due date, in the project's local date. The pass-rate trend covers the last 12 months by submission month.
+         */
+        get: operations["getDbpInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/risk/late-sopa-claims": {
         parameters: {
             query?: never;
@@ -9622,6 +9648,60 @@ export interface components {
             /** @enum {string} */
             insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
             summary: string;
+        };
+        /**
+         * @description The building element an inspection or observation concerns.
+         * @enum {string}
+         */
+        TradeCategory: "fire_safety" | "waterproofing" | "structural" | "external_cladding" | "building_services" | "other";
+        /**
+         * @description A person's risk classification of an observation (serious defect as in the NSW DBP and RAB Acts).
+         * @enum {string}
+         */
+        ObservationClassification: "serious_defect" | "potential_serious_defect" | "low_risk";
+        /** @enum {string} */
+        ContributingCondition: "workmanship" | "design" | "materials" | "supervision" | "weather" | "coordination" | "documentation";
+        DbpClassCounts: {
+            serious_defect: number;
+            potential_serious_defect: number;
+            low_risk: number;
+            unclassified: number;
+        };
+        DbpInsights: {
+            categories: {
+                category: components["schemas"]["TradeCategory"] | "uncategorised";
+                itemsPassing: {
+                    pass: number;
+                    fail: number;
+                    /** @description Whole percent; null when nothing was answered. */
+                    rate: number | null;
+                };
+                lateInspections: number;
+                lateObservations: number;
+                classifications: components["schemas"]["DbpClassCounts"];
+            }[];
+            classificationTotals: components["schemas"]["DbpClassCounts"];
+            passRateTrend: {
+                /** @description yyyy-mm */
+                month: string;
+                pass: number;
+                fail: number;
+                rate: number | null;
+            }[];
+            conditions: {
+                condition: components["schemas"]["ContributingCondition"] | "not_recorded";
+                count: number;
+            }[];
+            projects: {
+                id: string;
+                name: string;
+                restricted: boolean;
+                classifications: components["schemas"]["DbpClassCounts"];
+                lateInspections: number;
+                lateObservations: number;
+            }[];
+            restrictedProjects: number;
+            truncated: boolean;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -16521,6 +16601,7 @@ export interface components {
             name: string;
             /** @description ITP, pre-pour, handover, safety walk or your own */
             type: string;
+            tradeCategory: components["schemas"]["TradeCategory"] | null;
             version: number;
             published: boolean;
             /** Format: date-time */
@@ -16558,11 +16639,13 @@ export interface components {
         CreateInspectionTemplateRequest: {
             name: string;
             type?: string;
+            tradeCategory?: components["schemas"]["TradeCategory"];
             items: components["schemas"]["InspectionTemplateItemInput"][];
         };
         UpdateInspectionTemplateRequest: {
             name?: string;
             type?: string;
+            tradeCategory?: components["schemas"]["TradeCategory"] | null;
             items?: components["schemas"]["InspectionTemplateItemInput"][];
         };
         InspectionSignature: {
@@ -16656,6 +16739,9 @@ export interface components {
             description: string;
             location: string | null;
             priority: components["schemas"]["DefectPriority"];
+            tradeCategory: components["schemas"]["TradeCategory"] | null;
+            classification: components["schemas"]["ObservationClassification"] | null;
+            contributingCondition: components["schemas"]["ContributingCondition"] | null;
             assigneeCompanyId: string | null;
             raisedByCompanyId: string | null;
             status: components["schemas"]["ObservationStatus"];
@@ -16689,6 +16775,9 @@ export interface components {
             description: string;
             location?: string;
             priority?: components["schemas"]["DefectPriority"];
+            tradeCategory?: components["schemas"]["TradeCategory"];
+            classification?: components["schemas"]["ObservationClassification"];
+            contributingCondition?: components["schemas"]["ContributingCondition"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
             /** Format: date */
             dueDate?: string;
@@ -16701,6 +16790,9 @@ export interface components {
             description?: string;
             location?: string | null;
             priority?: components["schemas"]["DefectPriority"];
+            tradeCategory?: components["schemas"]["TradeCategory"] | null;
+            classification?: components["schemas"]["ObservationClassification"] | null;
+            contributingCondition?: components["schemas"]["ContributingCondition"] | null;
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
             /** Format: date */
             dueDate?: string | null;
@@ -21718,6 +21810,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDbpInsights: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The insights */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DbpInsights"];
                 };
             };
             default: components["responses"]["Problem"];

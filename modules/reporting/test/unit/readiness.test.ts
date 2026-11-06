@@ -91,6 +91,14 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     variations: tool,
     incidents: tool,
     programme: tool,
+    quality: {
+      dbpRows: async () => ({
+        restricted: true,
+        truncated: false,
+        inspections: [],
+        observations: [],
+      }),
+    },
     budget: {
       portfolioSummary: async () => ({
         restricted: true,

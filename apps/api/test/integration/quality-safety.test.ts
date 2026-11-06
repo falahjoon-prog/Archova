@@ -368,3 +368,49 @@ describe('SWMS register', () => {
     expect((await s.pm.browser.get(`${s.base}/swms?status=accepted`)).json().data).toEqual([]);
   });
 });
+
+describe('DBP Act insights', () => {
+  it('rolls a checklist result and a classified observation up by building element', async () => {
+    const s = await setup();
+    const created = await s.pm.browser.post(`${s.base}/inspection-templates`, {
+      name: 'Fire stopping',
+      tradeCategory: 'fire_safety',
+      items: [{ prompt: 'Penetrations sealed', responseType: 'pass_fail_na' }],
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().template.tradeCategory).toBe('fire_safety');
+    const tpl = created.json().template;
+    const item = created.json().items[0] as { id: string };
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.id}/publish`);
+    const started = await s.pm.browser.post(`${s.base}/inspections`, { templateId: tpl.id });
+    const answered = await s.pm.browser.put(
+      `${s.base}/inspections/${started.json().inspection.id}/responses`,
+      { responses: [{ templateItemId: item.id, result: 'pass' }] },
+    );
+    expect(answered.statusCode).toBe(200);
+
+    const obs = await s.pm.browser.post(`${s.base}/observations`, {
+      type: 'quality',
+      description: 'Fire collar missing at riser',
+      tradeCategory: 'fire_safety',
+      classification: 'serious_defect',
+      contributingCondition: 'workmanship',
+    });
+    expect(obs.statusCode).toBe(201);
+    expect(obs.json().classification).toBe('serious_defect');
+
+    const res = await s.pm.browser.get(`/v1/orgs/${s.org.id}/dbp-insights`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const fire = body.categories.find((c: { category: string }) => c.category === 'fire_safety');
+    expect(fire.itemsPassing).toEqual({ pass: 1, fail: 0, rate: 100 });
+    expect(fire.classifications.serious_defect).toBe(1);
+    expect(body.classificationTotals.serious_defect).toBe(1);
+    expect(body.conditions).toContainEqual({ condition: 'workmanship', count: 1 });
+    expect(body.projects[0]).toMatchObject({ name: 'Tower Q', restricted: false });
+    expect(body.passRateTrend).toHaveLength(12);
+
+    // A subcontractor has no org role, so the company view is closed to them.
+    expect((await s.sub.browser.get(`/v1/orgs/${s.org.id}/dbp-insights`)).statusCode).toBe(403);
+  });
+});

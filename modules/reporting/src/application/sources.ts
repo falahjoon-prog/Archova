@@ -1,5 +1,6 @@
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
+import type { DbpInspection, DbpObservation } from '../domain/dbp';
 import {
   PROJECT_LIMIT,
   type BudgetSummary,
@@ -24,6 +25,18 @@ export interface ReportingDeps {
   variations: Tool;
   incidents: Tool;
   programme: Tool;
+  /** Inspection and observation rows for the DBP Act insights view (`quality`); restricted unless the caller may read them. */
+  quality: {
+    dbpRows(
+      scope: TenantScope,
+      projectId: string,
+    ): Promise<{
+      restricted: boolean;
+      truncated: boolean;
+      inspections: readonly DbpInspection[];
+      observations: readonly DbpObservation[];
+    }>;
+  };
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
