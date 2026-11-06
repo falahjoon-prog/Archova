@@ -6,7 +6,7 @@
   box-sizing: border-box;
 }
 html {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 body {
   margin: 0;
@@ -91,14 +91,6 @@ h3 {
 }
 .logo-dark {
   display: none;
-}
-@media (prefers-color-scheme: dark) {
-  .logo-light {
-    display: none;
-  }
-  .logo-dark {
-    display: inline;
-  }
 }
 .site-header__logo {
   display: inline-flex;
@@ -383,15 +375,6 @@ body {
   --site-accent: #e08a1e;
   --site-accent-text: #18222b;
 }
-@media (prefers-color-scheme: dark) {
-  body {
-    --c-bg: #0f171d;
-    --c-action-primary: #8fb0cb;
-    --c-action-primary-hover: #b1cae0;
-    --c-action-primary-text: #0f171d;
-    --c-focus-ring: #8fb0cb;
-  }
-}
 
 /* Home page sections */
 .role {
@@ -505,7 +488,7 @@ h2,
   font-family: Georgia, 'Times New Roman', serif;
 }
 .hero h1 {
-  font-size: clamp(2.25rem, 7vw, 4.25rem);
+  font-size: clamp(2rem, 5.5vw, 3.25rem);
   line-height: 1.05;
   letter-spacing: -0.02em;
 }
@@ -513,7 +496,7 @@ h2,
   color: var(--site-accent);
 }
 .hero__sub {
-  font-size: var(--font-xl);
+  font-size: var(--font-lg);
 }
 .ac-button--primary {
   background: var(--site-accent);
