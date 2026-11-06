@@ -115,7 +115,7 @@ services:
     environment:
       SEED_APP_ORIGIN: ${DEMO_ORIGIN:-http://demo.localhost:8080}
       SEED_PASSWORD: *demo-password
-      SEED_DB_URL: postgres://app_platform:app_platform@postgres:5432/archova
+      SEED_DB_URL: postgres://app_rw:app_rw@postgres:5432/archova
     extra_hosts: ['demo.localhost:host-gateway']
     entrypoint: ['/bin/sh', '-c']
     command:
