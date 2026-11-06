@@ -3143,6 +3143,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Who did what, when, across the company, newest first. Org owners and admins only.
+         * @description The audit log, read from the events every change writes in the same transaction. Each line is the action
+         *     (`rfis.rfi.created`), the kind of record it touched, the project, the person (or `link` for someone on an
+         *     access link, `system` for the platform) and the time. Event details are never returned. Filter by project,
+         *     module, person and date range; `to` is exclusive.
+         */
+        get: operations["listAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -9762,6 +9787,27 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             filename: string;
+        };
+        AuditLogPage: {
+            data: components["schemas"]["AuditEvent"][];
+            nextCursor: string | null;
+        };
+        AuditEvent: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            action: string;
+            module: string;
+            summary: string;
+            entityType: string;
+            projectId: string | null;
+            projectName: string | null;
+            actor: {
+                /** @enum {string} */
+                kind: "user" | "link" | "system";
+                id: string | null;
+                name: string | null;
+            };
         };
         ReportList: {
             data: components["schemas"]["Report"][];
@@ -21788,6 +21834,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAuditLog: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                module?: string;
+                actorId?: string;
+                from?: string;
+                to?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             default: components["responses"]["Problem"];
