@@ -77,6 +77,8 @@ export const space = {
 export const radius = { sm: 4, md: 6, lg: 8, full: 9999 } as const;
 export const font = {
   family: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  /** Display serif for page titles (brand book, 6 Nov 2026). Body and data stay in `family`. */
+  serif: "Georgia, 'Times New Roman', serif",
   size: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30 },
   weight: { regular: 400, medium: 500, semibold: 600, bold: 700 },
 } as const;
@@ -96,6 +98,7 @@ export function toCssVariables(): string {
     ...Object.entries(radius).map(([k, v]) => `  --radius-${k}: ${v}px;`),
     ...Object.entries(font.size).map(([k, v]) => `  --font-${k}: ${v}px;`),
     `  --font-family: ${font.family};`,
+    `  --font-serif: ${font.serif};`,
     ...Object.entries(brand).map(([k, v]) => `  --brand-${kebab(k)}: ${v};`),
   ].join('\n');
   return [

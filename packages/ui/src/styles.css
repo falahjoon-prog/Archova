@@ -178,8 +178,10 @@
 }
 .ac-page-header__title {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: var(--font-2xl);
   line-height: 1.33;
+  letter-spacing: -0.01em;
   font-weight: 600;
   color: var(--c-text);
 }
