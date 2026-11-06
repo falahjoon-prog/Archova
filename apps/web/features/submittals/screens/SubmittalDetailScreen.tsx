@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -130,52 +131,50 @@ function Detail({ d }: { d: SubmittalDetail }) {
 
       {turn ? <RespondForm key={turn.id} detail={d} step={turn} /> : null}
 
-      <section className="stack" aria-labelledby="sub-details">
-        <h2 id="sub-details" className="u-h3">
-          Details
-        </h2>
-        <DescriptionList
-          items={[
-            { label: 'Type', value: TYPE_LABELS[s.type] },
-            { label: 'Spec section', value: s.specSection ?? '—' },
-            {
-              label: 'Responsible',
-              value: s.responsibleCompanyId ? dir.companyName(s.responsibleCompanyId) : '—',
-            },
-            {
-              label: 'Builder reviewer',
-              value: s.managerId ? dir.personName(s.managerId) : '—',
-            },
-            {
-              label: 'Required on site',
-              value: s.requiredOnSite ? formatLocalDate(s.requiredOnSite) : '—',
-            },
-            { label: 'Lead time', value: `${s.leadTimeDays} business days` },
-            { label: 'Review time', value: `${s.reviewDays} business days` },
-          ]}
-        />
-      </section>
-
-      <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
-
-      <section className="stack" aria-labelledby="sub-history">
-        <h2 id="sub-history" className="u-h3">
-          Review
-        </h2>
-        {d.revisions.length === 0 ? (
-          <p className="u-muted u-m-0">Not sent for review yet.</p>
-        ) : (
-          [...d.revisions]
-            .reverse()
-            .map((r) => (
-              <Revision
-                key={r.revision}
-                revision={r}
-                isCurrent={r.revision === s.currentRevision}
-              />
-            ))
-        )}
-      </section>
+      <div className="detail-grid">
+        <Card title="Review">
+          <div className="stack">
+            {d.revisions.length === 0 ? (
+              <p className="u-muted u-m-0">Not sent for review yet.</p>
+            ) : (
+              [...d.revisions]
+                .reverse()
+                .map((r) => (
+                  <Revision
+                    key={r.revision}
+                    revision={r}
+                    isCurrent={r.revision === s.currentRevision}
+                  />
+                ))
+            )}
+          </div>
+        </Card>
+        <div className="stack-lg">
+          <Card title="Details">
+            <DescriptionList
+              items={[
+                { label: 'Type', value: TYPE_LABELS[s.type] },
+                { label: 'Spec section', value: s.specSection ?? '—' },
+                {
+                  label: 'Responsible',
+                  value: s.responsibleCompanyId ? dir.companyName(s.responsibleCompanyId) : '—',
+                },
+                {
+                  label: 'Builder reviewer',
+                  value: s.managerId ? dir.personName(s.managerId) : '—',
+                },
+                {
+                  label: 'Required on site',
+                  value: s.requiredOnSite ? formatLocalDate(s.requiredOnSite) : '—',
+                },
+                { label: 'Lead time', value: `${s.leadTimeDays} business days` },
+                { label: 'Review time', value: `${s.reviewDays} business days` },
+              ]}
+            />
+          </Card>
+          <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
+        </div>
+      </div>
 
       <SendDialog
         open={sending}

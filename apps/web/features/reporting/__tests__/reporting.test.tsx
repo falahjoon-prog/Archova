@@ -97,7 +97,7 @@ describe('PortfolioScreen', () => {
     const table = await screen.findByRole('table', { name: /Projects with open/ });
     expect(within(table).getByRole('link', { name: 'Alpha Tower' })).toBeTruthy();
     expect(within(table).getByText('2 overdue')).toBeTruthy();
-    expect(screen.getByText('5 (2 overdue)')).toBeTruthy();
+    expect(screen.getByText('RFIs open').parentElement?.textContent).toBe('RFIs open52 overdue');
     // Over budget shows the shortfall; Bravo has no budget the caller can see.
     expect(within(table).getByText(/12,500\.00/)).toBeTruthy();
     expect(within(table).getByText('over budget')).toBeTruthy();

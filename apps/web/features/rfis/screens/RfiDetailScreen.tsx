@@ -6,6 +6,7 @@ import {
   ActivityTimeline,
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -371,64 +372,69 @@ function DetailsBody({ rfi }: { rfi: Rfi }) {
       ? { sheetId: match.sheetId, revisionId: match.revisionId, label: match.label }
       : null;
   return (
-    <div className="stack-lg">
-      <section aria-labelledby="rfi-q" className="stack">
-        <h2 id="rfi-q" className="panel-heading">
-          Question
-        </h2>
-        <p className="body-lg u-m-0 u-prewrap">{rfi.question}</p>
-      </section>
-      <DescriptionList
-        items={[
-          {
-            label: 'Assignee',
-            value: rfi.assigneeId
-              ? `${dir.personName(rfi.assigneeId)} · ${dir.companyName(rfi.assigneeCompanyId)}`
-              : '—',
-          },
-          {
-            label: 'Drawing',
-            value: drawing ? (
-              <Link
-                className="link"
-                href={webRoutes.drawing(
-                  org.orgSlug,
-                  project.projectId,
-                  drawing.sheetId,
-                  drawing.revisionId,
-                )}
-              >
-                {drawing.label}
-              </Link>
-            ) : rfi.drawing ? (
-              'Pinned on an earlier revision'
-            ) : (
-              '—'
-            ),
-          },
-          { label: 'Spec section', value: rfi.specSection ?? '—' },
-          { label: 'Location', value: rfi.location ?? '—' },
-          {
-            label: 'Cost impact',
-            value:
-              rfi.costImpact === 'yes' ? 'Yes' : rfi.costImpact === 'no' ? 'No' : 'To be confirmed',
-          },
-          {
-            label: 'Delay',
-            value: rfi.scheduleImpactDays ? `${rfi.scheduleImpactDays} days` : '—',
-          },
-          {
-            label: 'Distribution',
-            value: rfi.distributionCompanyIds.length
-              ? rfi.distributionCompanyIds.map(dir.companyName).join(', ')
-              : '—',
-          },
-          { label: 'Raised', value: formatInstant(rfi.createdAt, project.timezone) },
-          ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
-        ]}
-      />
-      <RfiPhotos rfi={rfi} />
-      <OnProgramme kind="rfi" itemId={rfi.id} />
+    <div className="detail-grid">
+      <div className="stack-lg">
+        <Card title="Question">
+          <p className="body-lg u-m-0 u-prewrap">{rfi.question}</p>
+        </Card>
+        <RfiPhotos rfi={rfi} />
+        <OnProgramme kind="rfi" itemId={rfi.id} />
+      </div>
+      <Card title="Details">
+        <DescriptionList
+          items={[
+            {
+              label: 'Assignee',
+              value: rfi.assigneeId
+                ? `${dir.personName(rfi.assigneeId)} · ${dir.companyName(rfi.assigneeCompanyId)}`
+                : '—',
+            },
+            {
+              label: 'Drawing',
+              value: drawing ? (
+                <Link
+                  className="link"
+                  href={webRoutes.drawing(
+                    org.orgSlug,
+                    project.projectId,
+                    drawing.sheetId,
+                    drawing.revisionId,
+                  )}
+                >
+                  {drawing.label}
+                </Link>
+              ) : rfi.drawing ? (
+                'Pinned on an earlier revision'
+              ) : (
+                '—'
+              ),
+            },
+            { label: 'Spec section', value: rfi.specSection ?? '—' },
+            { label: 'Location', value: rfi.location ?? '—' },
+            {
+              label: 'Cost impact',
+              value:
+                rfi.costImpact === 'yes'
+                  ? 'Yes'
+                  : rfi.costImpact === 'no'
+                    ? 'No'
+                    : 'To be confirmed',
+            },
+            {
+              label: 'Delay',
+              value: rfi.scheduleImpactDays ? `${rfi.scheduleImpactDays} days` : '—',
+            },
+            {
+              label: 'Distribution',
+              value: rfi.distributionCompanyIds.length
+                ? rfi.distributionCompanyIds.map(dir.companyName).join(', ')
+                : '—',
+            },
+            { label: 'Raised', value: formatInstant(rfi.createdAt, project.timezone) },
+            ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
+          ]}
+        />
+      </Card>
     </div>
   );
 }
