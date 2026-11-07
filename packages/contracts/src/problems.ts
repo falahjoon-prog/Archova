@@ -303,6 +303,7 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  'snapshot.not_found': 404,
   // data export (one-click full export)
   'data_export.not_found': 404,
   'data_export.in_progress': 409,

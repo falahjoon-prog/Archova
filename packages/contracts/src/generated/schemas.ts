@@ -2526,6 +2526,111 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DashboardSnapshotSchema = z.object({
+  "id": z.string(),
+  "title": z.string(),
+  "currentAsOf": z.string(),
+  "program": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "createdBy": z.object({
+  "id": z.string(),
+  "name": z.string().nullable(),
+}),
+});
+export type DashboardSnapshot = z.infer<typeof DashboardSnapshotSchema>;
+
+export const PortfolioTotalsSchema = z.object({
+  "projects": z.number().int(),
+  "rfisOpen": z.number().int(),
+  "rfisOverdue": z.number().int(),
+  "defectsOpen": z.number().int(),
+  "defectsOverdue": z.number().int(),
+  "submittalsOpen": z.number().int(),
+  "submittalsOverdue": z.number().int(),
+  "claimsOpen": z.number().int(),
+  "claimsOverdue": z.number().int(),
+  "variationsOpen": z.number().int(),
+  "variationsOverdue": z.number().int(),
+  "incidentsOpen": z.number().int(),
+  "incidentsOverdue": z.number().int(),
+  "programmeOpen": z.number().int(),
+  "programmeOverdue": z.number().int(),
+  "budgetProjects": z.number().int(),
+  "projectsOverBudget": z.number().int(),
+  "budgetRevised": FinancialsSignedMoneySchema,
+  "budgetForecastFinal": FinancialsSignedMoneySchema,
+  "budgetVariance": FinancialsSignedMoneySchema,
+});
+export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
+
+export const PortfolioToolSchema = z.object({
+  "restricted": z.boolean(),
+  "open": z.number().int(),
+  "overdue": z.number().int(),
+});
+export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
+
+export const PortfolioProgrammeSchema = z.intersection(PortfolioToolSchema, z.object({
+  "notStarted": z.number().int(),
+  "completed": z.number().int(),
+  "lateDays": z.number().int(),
+}));
+export type PortfolioProgramme = z.infer<typeof PortfolioProgrammeSchema>;
+
+export const PortfolioBudgetSchema = z.object({
+  "restricted": z.boolean(),
+  "hasBudget": z.boolean(),
+  "revised": FinancialsSignedMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "spent": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+  "overBudgetCodes": z.number().int(),
+});
+export type PortfolioBudget = z.infer<typeof PortfolioBudgetSchema>;
+
+export const PortfolioProjectSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "number": z.string().nullable(),
+  "status": z.string(),
+  "phase": z.union([ProjectPhaseSchema, z.null()]),
+  "siteLocation": z.union([GeoPointSchema, z.null()]),
+  "rfis": PortfolioToolSchema,
+  "defects": PortfolioToolSchema,
+  "submittals": PortfolioToolSchema,
+  "claims": PortfolioToolSchema,
+  "variations": PortfolioToolSchema,
+  "incidents": PortfolioToolSchema,
+  "programme": PortfolioProgrammeSchema,
+  "budget": PortfolioBudgetSchema,
+  "attention": z.number().int(),
+});
+export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
+
+export const PortfolioSchema = z.object({
+  "totals": PortfolioTotalsSchema,
+  "projects": z.array(PortfolioProjectSchema),
+  "truncated": z.boolean(),
+});
+export type Portfolio = z.infer<typeof PortfolioSchema>;
+
+export const DashboardSnapshotDetailSchema = z.intersection(DashboardSnapshotSchema, z.object({
+  "dashboard": PortfolioSchema,
+}));
+export type DashboardSnapshotDetail = z.infer<typeof DashboardSnapshotDetailSchema>;
+
+export const DashboardSnapshotInputSchema = z.object({
+  "title": z.string().min(1).max(120),
+  "currentAsOf": z.string().regex(new RegExp("^\\d{4}-\\d{2}-\\d{2}$")).optional(),
+  "program": z.string().max(80).nullable().optional(),
+}).strict();
+export type DashboardSnapshotInput = z.infer<typeof DashboardSnapshotInputSchema>;
+
+export const DashboardSnapshotListSchema = z.object({
+  "data": z.array(DashboardSnapshotSchema),
+});
+export type DashboardSnapshotList = z.infer<typeof DashboardSnapshotListSchema>;
+
 export const DataExportSchema = z.object({
   "id": z.string(),
   "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
@@ -5511,81 +5616,6 @@ export const PermissionTemplateSchema = z.object({
   "version": z.number().int(),
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
-
-export const PortfolioTotalsSchema = z.object({
-  "projects": z.number().int(),
-  "rfisOpen": z.number().int(),
-  "rfisOverdue": z.number().int(),
-  "defectsOpen": z.number().int(),
-  "defectsOverdue": z.number().int(),
-  "submittalsOpen": z.number().int(),
-  "submittalsOverdue": z.number().int(),
-  "claimsOpen": z.number().int(),
-  "claimsOverdue": z.number().int(),
-  "variationsOpen": z.number().int(),
-  "variationsOverdue": z.number().int(),
-  "incidentsOpen": z.number().int(),
-  "incidentsOverdue": z.number().int(),
-  "programmeOpen": z.number().int(),
-  "programmeOverdue": z.number().int(),
-  "budgetProjects": z.number().int(),
-  "projectsOverBudget": z.number().int(),
-  "budgetRevised": FinancialsSignedMoneySchema,
-  "budgetForecastFinal": FinancialsSignedMoneySchema,
-  "budgetVariance": FinancialsSignedMoneySchema,
-});
-export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
-
-export const PortfolioToolSchema = z.object({
-  "restricted": z.boolean(),
-  "open": z.number().int(),
-  "overdue": z.number().int(),
-});
-export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
-
-export const PortfolioProgrammeSchema = z.intersection(PortfolioToolSchema, z.object({
-  "notStarted": z.number().int(),
-  "completed": z.number().int(),
-  "lateDays": z.number().int(),
-}));
-export type PortfolioProgramme = z.infer<typeof PortfolioProgrammeSchema>;
-
-export const PortfolioBudgetSchema = z.object({
-  "restricted": z.boolean(),
-  "hasBudget": z.boolean(),
-  "revised": FinancialsSignedMoneySchema,
-  "forecastFinal": FinancialsSignedMoneySchema,
-  "spent": FinancialsSignedMoneySchema,
-  "variance": FinancialsSignedMoneySchema,
-  "overBudgetCodes": z.number().int(),
-});
-export type PortfolioBudget = z.infer<typeof PortfolioBudgetSchema>;
-
-export const PortfolioProjectSchema = z.object({
-  "id": z.string(),
-  "name": z.string(),
-  "number": z.string().nullable(),
-  "status": z.string(),
-  "phase": z.union([ProjectPhaseSchema, z.null()]),
-  "siteLocation": z.union([GeoPointSchema, z.null()]),
-  "rfis": PortfolioToolSchema,
-  "defects": PortfolioToolSchema,
-  "submittals": PortfolioToolSchema,
-  "claims": PortfolioToolSchema,
-  "variations": PortfolioToolSchema,
-  "incidents": PortfolioToolSchema,
-  "programme": PortfolioProgrammeSchema,
-  "budget": PortfolioBudgetSchema,
-  "attention": z.number().int(),
-});
-export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
-
-export const PortfolioSchema = z.object({
-  "totals": PortfolioTotalsSchema,
-  "projects": z.array(PortfolioProjectSchema),
-  "truncated": z.boolean(),
-});
-export type Portfolio = z.infer<typeof PortfolioSchema>;
 
 export const PostConversationMessageRequestSchema = z.object({
   "body": z.string().min(1).max(5000),

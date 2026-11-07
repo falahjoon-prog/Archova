@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Alert,
   Checkbox,
@@ -22,7 +22,7 @@ import { formatMoney } from '@/shared/lib/format';
 import { StatusReport } from '../components/StatusReport';
 import { PortfolioCharts } from '../components/PortfolioCharts';
 import { usePortfolio } from '../hooks/useReporting';
-import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
+import type { Portfolio, PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
 /** "4 open" with a red "2 overdue" beside it; "No access" when the caller cannot open that tool on the project. */
 function ToolCell({ tool }: { tool: PortfolioTool }) {
@@ -69,11 +69,46 @@ function BudgetCell({ budget }: { budget: PortfolioBudget }) {
 
 /** Every project in the company at a glance: what is open and what is overdue, most overdue first. */
 export function PortfolioScreen() {
-  const org = useCurrentOrg();
   const [includeClosed, setIncludeClosed] = useState(false);
-  const [view, setView] = useState('overview');
   const portfolio = usePortfolio(includeClosed);
-  const data = portfolio.data;
+  return (
+    <div className="stack-lg">
+      <PageHeader
+        eyebrow="Company"
+        title="Portfolio"
+        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
+      />
+      <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
+      <PortfolioDashboard
+        data={portfolio.data}
+        loading={portfolio.isPending}
+        toolbar={
+          <Checkbox
+            label="Include closed and archived projects"
+            checked={includeClosed}
+            onChange={(e) => setIncludeClosed(e.target.checked)}
+          />
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * The dashboard itself (overview and status report) for a portfolio. The live page feeds it the current numbers; a
+ * saved snapshot feeds it the numbers as they were, so both look identical.
+ */
+export function PortfolioDashboard({
+  data,
+  loading = false,
+  toolbar,
+}: {
+  data: Portfolio | undefined;
+  loading?: boolean;
+  toolbar?: ReactNode;
+}) {
+  const org = useCurrentOrg();
+  const [view, setView] = useState('overview');
 
   const columns: DataTableColumn<PortfolioProject>[] = [
     {
@@ -147,12 +182,6 @@ export function PortfolioScreen() {
 
   return (
     <div className="stack-lg">
-      <PageHeader
-        eyebrow="Company"
-        title="Portfolio"
-        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
-      />
-      <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
       <Tabs
         label="Portfolio views"
         tabs={[
@@ -226,12 +255,8 @@ export function PortfolioScreen() {
                 Close out finished projects to bring the rest into view.
               </Alert>
             ) : null}
-            <Checkbox
-              label="Include closed and archived projects"
-              checked={includeClosed}
-              onChange={(e) => setIncludeClosed(e.target.checked)}
-            />
-            {portfolio.isPending ? (
+            {toolbar}
+            {loading ? (
               <SkeletonRows label="Loading the portfolio…" />
             ) : (
               <DataTable

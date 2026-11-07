@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 import { queries } from '@/shared/lib/api';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { createReportingApi } from '../data/api';
-import type { AuditFilters, ReportConfig, ReportInput } from '../lib/types';
+import type { AuditFilters, DashboardSnapshotInput, ReportConfig, ReportInput } from '../lib/types';
 
 function useApi() {
   const { orgId } = useCurrentOrg();
@@ -96,5 +96,42 @@ export function useAuditLog(filters: AuditFilters) {
     queryFn: ({ pageParam }) => api.auditLog(filters, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+const snapshotsKey = (orgId: string) => ['orgs', orgId, 'dashboard-snapshots'] as const;
+
+export function useSnapshots() {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({ queryKey: snapshotsKey(orgId), queryFn: () => api.snapshots() });
+}
+
+export function useSnapshot(snapshotId: string) {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({
+    queryKey: [...snapshotsKey(orgId), snapshotId],
+    queryFn: () => api.snapshot(snapshotId),
+  });
+}
+
+export function useCreateSnapshot() {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DashboardSnapshotInput) => api.createSnapshot(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: snapshotsKey(orgId) }),
+  });
+}
+
+export function useDeleteSnapshot() {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.removeSnapshot(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: snapshotsKey(orgId) }),
   });
 }

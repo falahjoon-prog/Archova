@@ -112,6 +112,7 @@ export const ID_PREFIXES = {
   scheduleDependency: 'sdp',
   scheduleLink: 'slk',
   report: 'rpt',
+  dashboardSnapshot: 'dsn',
   notification: 'ntf',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
