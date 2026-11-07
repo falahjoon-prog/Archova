@@ -22,6 +22,7 @@ import type {
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
+import type { LaborProductivityService } from '../application/labor-productivity';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -291,6 +292,7 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  laborProductivity: LaborProductivityService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
   speech: SpeechService,
@@ -649,6 +651,31 @@ export function aiRoutes(
           counterExGst: r.counterExGst,
           counterReason: r.counterReason,
           draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    explainLaborProductivity: async (input) => {
+      const costCodeId = decodeId('costCode', input.body.costCodeId);
+      if (!costCodeId) throw new AppError('financials.cost_code.not_found');
+      const r = await laborProductivity.explain(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          costCodeId,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          causes: r.causes,
+          questions: r.questions,
           notes: r.notes,
           history: r.history,
           disclaimer: r.disclaimer,

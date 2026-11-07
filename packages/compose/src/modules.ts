@@ -388,6 +388,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     quotePackage: (scope, projectId, packageId) =>
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
+    laborFacts: (scope, projectId, costCodeId) =>
+      financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
