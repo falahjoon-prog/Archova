@@ -12,8 +12,12 @@ export type BookmarkEntityType = S['BookmarkEntityType'];
 export function createBookmarksApi(orgId: string) {
   const path = { orgId };
   return {
-    async list(): Promise<Bookmark[]> {
-      return unwrap(await api.GET('/v1/orgs/{orgId}/bookmarks', { params: { path } })).data;
+    async list(projectId?: string): Promise<Bookmark[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/bookmarks', {
+          params: { path, query: projectId ? { projectId } : {} },
+        }),
+      ).data;
     },
     async save(input: BookmarkInput): Promise<Bookmark> {
       await ensureCsrfToken();
