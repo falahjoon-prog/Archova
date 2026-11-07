@@ -2151,6 +2151,15 @@ export const CreateOwnerApprovalRequestSchema = z.object({
 }).strict();
 export type CreateOwnerApprovalRequest = z.infer<typeof CreateOwnerApprovalRequestSchema>;
 
+export const CreateOwnerInvoiceRequestSchema = z.object({
+  "periodEnd": z.string().date(),
+  "markupPct": z.string().regex(new RegExp("^\\d{1,3}(\\.\\d{1,2})?$")),
+  "note": z.string().max(1000).optional(),
+  "claimIds": z.array(z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$"))).min(1).max(200),
+  "confirmedClaimIds": z.array(z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$"))).max(200),
+}).strict();
+export type CreateOwnerInvoiceRequest = z.infer<typeof CreateOwnerInvoiceRequestSchema>;
+
 export const OwnerMilestoneStatusSchema = z.enum(["done", "on_track", "at_risk", "late"]);
 export type OwnerMilestoneStatus = z.infer<typeof OwnerMilestoneStatusSchema>;
 
@@ -5396,6 +5405,82 @@ export const OwnerCapitalPlanSchema = z.object({
 });
 export type OwnerCapitalPlan = z.infer<typeof OwnerCapitalPlanSchema>;
 
+export const OwnerInvoiceSchema = z.object({
+  "id": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "markupPct": z.string(),
+  "subTotal": FinancialsMoneySchema,
+  "markupAmount": FinancialsMoneySchema,
+  "total": FinancialsMoneySchema,
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type OwnerInvoice = z.infer<typeof OwnerInvoiceSchema>;
+
+export const OwnerInvoiceBackupItemSchema = z.object({
+  "kind": z.enum(["claim_pdf", "payment_schedule_pdf", "subcontractor_statement"]),
+  "status": z.enum(["attached", "missing", "not_required"]),
+  "detail": z.string().nullable(),
+});
+export type OwnerInvoiceBackupItem = z.infer<typeof OwnerInvoiceBackupItemSchema>;
+
+export const PaymentClaimStatusSchema = z.enum(["submitted", "scheduled", "paid", "disputed", "adjudication", "withdrawn"]);
+export type PaymentClaimStatus = z.infer<typeof PaymentClaimStatusSchema>;
+
+export const OwnerInvoiceFlagSchema = z.object({
+  "code": z.enum(["duplicate", "outlier", "overclaim", "statement_missing", "invalid_claim"]),
+  "message": z.string(),
+});
+export type OwnerInvoiceFlag = z.infer<typeof OwnerInvoiceFlagSchema>;
+
+export const OwnerInvoiceCandidateSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "contractTitle": z.string(),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "status": PaymentClaimStatusSchema,
+  "thisPeriod": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "amount": FinancialsMoneySchema,
+  "withheld": FinancialsMoneySchema,
+  "flags": z.array(OwnerInvoiceFlagSchema),
+  "backup": z.array(OwnerInvoiceBackupItemSchema),
+});
+export type OwnerInvoiceCandidate = z.infer<typeof OwnerInvoiceCandidateSchema>;
+
+export const OwnerInvoiceLineSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "contractTitle": z.string(),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "flags": z.array(OwnerInvoiceFlagSchema),
+  "flagsConfirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "backup": z.array(OwnerInvoiceBackupItemSchema),
+});
+export type OwnerInvoiceLine = z.infer<typeof OwnerInvoiceLineSchema>;
+
+export const OwnerInvoiceDetailSchema = z.object({
+  "invoice": OwnerInvoiceSchema,
+  "lines": z.array(OwnerInvoiceLineSchema),
+  "missingBackup": z.number().int(),
+});
+export type OwnerInvoiceDetail = z.infer<typeof OwnerInvoiceDetailSchema>;
+
+export const OwnerInvoiceListSchema = z.object({
+  "data": z.array(OwnerInvoiceSchema),
+});
+export type OwnerInvoiceList = z.infer<typeof OwnerInvoiceListSchema>;
+
+export const OwnerInvoicePrefillSchema = z.object({
+  "periodEnd": z.string().date(),
+  "candidates": z.array(OwnerInvoiceCandidateSchema),
+});
+export type OwnerInvoicePrefill = z.infer<typeof OwnerInvoicePrefillSchema>;
+
 export const OwnerProgressUpdateSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -5448,9 +5533,6 @@ export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
-
-export const PaymentClaimStatusSchema = z.enum(["submitted", "scheduled", "paid", "disputed", "adjudication", "withdrawn"]);
-export type PaymentClaimStatus = z.infer<typeof PaymentClaimStatusSchema>;
 
 export const PaymentClaimSchema = z.object({
   "id": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),

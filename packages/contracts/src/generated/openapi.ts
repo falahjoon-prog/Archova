@@ -9306,6 +9306,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Approved subcontractor claims that can be compiled into the next owner invoice, each checked by Nova.
+         * @description Builder staff only, head contract only. Lists subcontractor claims with a payment schedule issued (or paid), up to the period end, that no owner invoice has taken yet. Each carries Nova's rule-based flags (possible duplicate, outlier, over contract sum, missing statement, invalid claim) and what backs it up.
+         */
+        get: operations["getOwnerInvoicePrefill"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Owner invoice drafts on a head contract, newest first. */
+        get: operations["listOwnerInvoices"];
+        put?: never;
+        /**
+         * Compile the chosen subcontractor claims into an owner invoice draft with its backup pack.
+         * @description Every claim Nova flagged must be listed in `confirmedClaimIds`, otherwise 422. A claim sits on one draft only; discarding the draft frees it.
+         */
+        post: operations["createOwnerInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        /** One owner invoice draft with the claims in it and its backup pack. */
+        get: operations["getOwnerInvoice"];
+        put?: never;
+        post?: never;
+        /** Discard a draft, freeing its claims for another owner invoice. */
+        delete: operations["discardOwnerInvoice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/payment-claims": {
         parameters: {
             query?: never;
@@ -15567,6 +15638,83 @@ export interface components {
         VoidDirectCostRequest: {
             note: string;
         };
+        OwnerInvoiceFlag: {
+            /** @enum {string} */
+            code: "duplicate" | "outlier" | "overclaim" | "statement_missing" | "invalid_claim";
+            message: string;
+        };
+        OwnerInvoiceBackupItem: {
+            /** @enum {string} */
+            kind: "claim_pdf" | "payment_schedule_pdf" | "subcontractor_statement";
+            /** @enum {string} */
+            status: "attached" | "missing" | "not_required";
+            /** @description For the statement, the day it was signed. */
+            detail: string | null;
+        };
+        OwnerInvoiceCandidate: {
+            claimId: string;
+            contractId: string;
+            contractTitle: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            status: components["schemas"]["PaymentClaimStatus"];
+            thisPeriod: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            amount: components["schemas"]["FinancialsMoney"];
+            withheld: components["schemas"]["FinancialsMoney"];
+            flags: components["schemas"]["OwnerInvoiceFlag"][];
+            backup: components["schemas"]["OwnerInvoiceBackupItem"][];
+        };
+        OwnerInvoicePrefill: {
+            /** Format: date */
+            periodEnd: string;
+            candidates: components["schemas"]["OwnerInvoiceCandidate"][];
+        };
+        CreateOwnerInvoiceRequest: {
+            /** Format: date */
+            periodEnd: string;
+            /** @description Margin added on the subcontract cost, in per cent (for example 12.5). */
+            markupPct: string;
+            note?: string;
+            claimIds: string[];
+            confirmedClaimIds: string[];
+        };
+        OwnerInvoice: {
+            id: string;
+            contractId: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            markupPct: string;
+            subTotal: components["schemas"]["FinancialsMoney"];
+            markupAmount: components["schemas"]["FinancialsMoney"];
+            total: components["schemas"]["FinancialsMoney"];
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OwnerInvoiceList: {
+            data: components["schemas"]["OwnerInvoice"][];
+        };
+        OwnerInvoiceLine: {
+            claimId: string;
+            contractTitle: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            flags: components["schemas"]["OwnerInvoiceFlag"][];
+            /** Format: date-time */
+            flagsConfirmedAt: string | null;
+            backup: components["schemas"]["OwnerInvoiceBackupItem"][];
+        };
+        OwnerInvoiceDetail: {
+            invoice: components["schemas"]["OwnerInvoice"];
+            lines: components["schemas"]["OwnerInvoiceLine"][];
+            /** @description Backup items still missing across all claims. */
+            missingBackup: number;
+        };
         CommitmentList: {
             data: components["schemas"]["Commitment"][];
         };
@@ -18106,6 +18254,7 @@ export interface components {
         VariationId: string;
         DirectCostId: string;
         CommitmentId: string;
+        OwnerInvoiceId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
@@ -33250,6 +33399,137 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Variation"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerInvoicePrefill: {
+        parameters: {
+            query: {
+                periodEnd: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoicePrefill"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    discardOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
