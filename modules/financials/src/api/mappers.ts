@@ -11,6 +11,7 @@ import type {
 } from '../application/financials';
 import type { CommitmentLineRow, CommitmentRow } from '../application/commitments';
 import type { InvoiceSummary } from '../domain/commitment-invoices';
+import type { PaymentApplication } from '../domain/payment-application';
 
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
 
@@ -147,4 +148,28 @@ export const toCommitmentInvoicesDto = (d: {
         })),
       }
     : null,
+});
+
+export const toPaymentApplicationDto = (
+  claimId: string,
+  commitmentTitle: string,
+  a: PaymentApplication,
+) => ({
+  claimId,
+  commitmentTitle,
+  contractNumber: a.contractNumber,
+  contractTitle: a.contractTitle,
+  claimNumber: a.claimNumber,
+  status: a.status,
+  periodStart: a.periodStart,
+  periodEnd: a.periodEnd,
+  receivedAt: a.receivedAt.toISOString(),
+  paymentDueOn: a.paymentDueOn,
+  scheduleDueOn: a.scheduleDueOn,
+  summary: a.summary,
+  changeOrders: a.changeOrders,
+  retentionPct: a.retentionPct,
+  rows: a.rows,
+  prior: a.prior,
+  findings: a.findings,
 });

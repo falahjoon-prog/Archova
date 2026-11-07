@@ -1480,6 +1480,34 @@ describe('Commitment invoices', () => {
     expect(inv.summary.rows).toHaveLength(1);
     expect(inv.summary.rows[0]).toMatchObject({ number: 1, percentComplete: '30.00' });
 
+    // The payment application behind that invoice, and its PDF.
+    const claimId = inv.summary.rows[0].claimId;
+    const app = await s.pm.browser.get(
+      `${s.base}/commitments/${commitment.id}/invoices/${claimId}`,
+    );
+    expect(app.statusCode).toBe(200);
+    expect(app.json()).toMatchObject({
+      claimNumber: 1,
+      summary: { revisedSum: '100000.00', completedToDate: '30000.00', percentComplete: '30.00' },
+    });
+    expect(app.json().rows).toHaveLength(1);
+    const pdf = await s.pm.browser.get(
+      `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf?sections=g702,breakdown&amountCertified=1.00&paper=letter`,
+    );
+    expect(pdf.statusCode).toBe(200);
+    expect(Buffer.from(pdf.json().dataBase64, 'base64').subarray(0, 5).toString()).toBe('%PDF-');
+    expect(
+      (
+        await s.pm.browser.get(
+          `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf?sections=bogus`,
+        )
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices/${claimId}`))
+        .statusCode,
+    ).toBe(403);
+
     // The same contract can't back a second commitment; a subcontractor sees none of it.
     const other = (
       await post('commitments', {

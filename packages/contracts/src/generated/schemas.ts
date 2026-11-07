@@ -850,6 +850,13 @@ export const CommitmentInvoiceSchema = z.object({
 });
 export type CommitmentInvoice = z.infer<typeof CommitmentInvoiceSchema>;
 
+export const CommitmentInvoicePdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type CommitmentInvoicePdf = z.infer<typeof CommitmentInvoicePdfSchema>;
+
 export const CommitmentInvoiceSummarySchema = z.object({
   "originalSum": FinancialsMoneySchema,
   "netChange": FinancialsMoneySchema,
@@ -5419,6 +5426,79 @@ export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
+
+export const PaymentApplicationSummarySchema = z.object({
+  "originalSum": FinancialsMoneySchema,
+  "netChange": FinancialsSignedMoneySchema,
+  "revisedSum": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "retainage": FinancialsMoneySchema,
+  "earnedLessRetainage": FinancialsMoneySchema,
+  "lessPrevious": FinancialsMoneySchema,
+  "thisPeriod": FinancialsSignedMoneySchema,
+  "gst": FinancialsMoneySchema,
+  "currentPaymentDue": FinancialsMoneySchema,
+  "scheduledAmount": z.string().nullable(),
+  "paid": FinancialsMoneySchema,
+  "balanceToFinish": FinancialsSignedMoneySchema,
+  "percentComplete": z.string(),
+});
+export type PaymentApplicationSummary = z.infer<typeof PaymentApplicationSummarySchema>;
+
+export const PaymentApplicationRowSchema = z.object({
+  "key": z.string(),
+  "code": z.string(),
+  "description": z.string(),
+  "kind": z.enum(["sov", "variation"]),
+  "costCode": z.string().nullable(),
+  "scheduledValue": FinancialsMoneySchema,
+  "previous": FinancialsMoneySchema,
+  "thisPeriod": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "percentComplete": z.string(),
+  "balanceToFinish": FinancialsSignedMoneySchema,
+});
+export type PaymentApplicationRow = z.infer<typeof PaymentApplicationRowSchema>;
+
+export const PaymentApplicationFindingSchema = z.object({
+  "code": z.string(),
+  "severity": z.enum(["error", "warning", "info"]),
+  "message": z.string(),
+  "itemCode": z.string().nullable(),
+});
+export type PaymentApplicationFinding = z.infer<typeof PaymentApplicationFindingSchema>;
+
+export const PaymentApplicationSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "commitmentTitle": z.string(),
+  "contractNumber": z.number().int(),
+  "contractTitle": z.string(),
+  "claimNumber": z.number().int(),
+  "status": z.string(),
+  "periodStart": z.string().date().nullable(),
+  "periodEnd": z.string().date(),
+  "receivedAt": z.string().datetime({ offset: true }),
+  "paymentDueOn": z.string().date().nullable(),
+  "scheduleDueOn": z.string().date().nullable(),
+  "summary": PaymentApplicationSummarySchema,
+  "changeOrders": z.object({
+  "previousAdditions": FinancialsMoneySchema,
+  "previousDeductions": FinancialsMoneySchema,
+  "thisAdditions": FinancialsMoneySchema,
+  "thisDeductions": FinancialsMoneySchema,
+  "net": FinancialsSignedMoneySchema,
+}),
+  "retentionPct": z.string(),
+  "rows": z.array(PaymentApplicationRowSchema),
+  "prior": z.union([z.object({
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "thisPeriod": FinancialsSignedMoneySchema,
+  "percentComplete": z.string(),
+}), z.null()]),
+  "findings": z.array(PaymentApplicationFindingSchema),
+});
+export type PaymentApplication = z.infer<typeof PaymentApplicationSchema>;
 
 export const PaymentClaimStatusSchema = z.enum(["submitted", "scheduled", "paid", "disputed", "adjudication", "withdrawn"]);
 export type PaymentClaimStatus = z.infer<typeof PaymentClaimStatusSchema>;
