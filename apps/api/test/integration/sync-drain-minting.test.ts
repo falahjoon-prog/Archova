@@ -211,6 +211,23 @@ describe('drain grant (X38), on the 401 for someone with no access left', () => 
     }
   });
 
+  it('stops a live grant when the person is later put on an organisation hold', async () => {
+    const w = await world('mint-held');
+    const sam = await w.worker('sam');
+    await removeMember(w.pm.browser, w.org.id, w.project.id, sam.email, 'ordinary');
+    const res = await sam.browser.get(
+      `/v1/orgs/${w.org.id}/sync/pull?scopes=${encodeURIComponent(`project:${w.project.id}:defects`)}&since=0`,
+    );
+    const grant = res.json().revokedScopes[0].drainGrant;
+    expect((await w.late(grant.token)).statusCode).toBe(200);
+    await t.adminDb.withTenantTx(w.ctx, ({ tx }) =>
+      tx.execute(sql`insert into platform.memberships (id, org_id, user_id, role, status)
+                     values (${uuidv7()}, ${w.ctx.orgId}, ${decodeId('user', sam.userId)!}, 'member', 'suspended')
+                     on conflict (org_id, user_id) do update set status = 'suspended'`),
+    );
+    expect((await w.late(grant.token)).statusCode).toBe(401);
+  });
+
   it('gives nothing when another removal in the window was for cause, or the person is held', async () => {
     const w = await world('ext-mixed');
     const second = (await createProject(w.pm.browser, w.org.id, { name: 'Tower B', state: 'NSW' }))

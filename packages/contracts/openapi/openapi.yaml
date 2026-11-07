@@ -4165,6 +4165,41 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: endDrainGrants
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: End a person's late-send access for this project, so their phone can no longer queue changes.
+      description: |
+        Ends every live drain grant the person holds for the project. Changes already waiting stay in the queue for an
+        admin to accept or reject. Ending is idempotent: `ended` is 0 when nothing was live.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userId]
+              properties:
+                userId: { $ref: '#/components/schemas/UserRef' }
+      responses:
+        '200':
+          description: Ended
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ended]
+                properties:
+                  ended: { type: integer, minimum: 0 }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bidder-lists:
     parameters:
       - $ref: '#/components/parameters/OrgId'
