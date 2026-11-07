@@ -387,6 +387,29 @@ export const AttendanceSiteListSchema = z.object({
 });
 export type AttendanceSiteList = z.infer<typeof AttendanceSiteListSchema>;
 
+export const AuditEventSchema = z.object({
+  "id": z.string(),
+  "at": z.string().datetime({ offset: true }),
+  "action": z.string(),
+  "module": z.string(),
+  "summary": z.string(),
+  "entityType": z.string(),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "actor": z.object({
+  "kind": z.enum(["user", "link", "system"]),
+  "id": z.string().nullable(),
+  "name": z.string().nullable(),
+}),
+});
+export type AuditEvent = z.infer<typeof AuditEventSchema>;
+
+export const AuditLogPageSchema = z.object({
+  "data": z.array(AuditEventSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type AuditLogPage = z.infer<typeof AuditLogPageSchema>;
+
 export const AwardPackageRequestSchema = z.object({
   "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
   "reason": z.string().min(1).max(1000).optional(),

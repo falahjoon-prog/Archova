@@ -455,6 +455,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
+    identity: identity.api,
     platform: platform.api,
     access: access.api,
     rfis: rfis.api,

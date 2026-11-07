@@ -942,6 +942,18 @@ export const GetReadinessPackParams = z.object({
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListAuditLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListAuditLogQuery = z.object({
+  "projectId": z.string().optional(),
+  "module": z.string().max(40).optional(),
+  "actorId": z.string().optional(),
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5220,6 +5232,18 @@ export const operations = {
     contentType: null,
     params: GetReadinessPackPdfParams,
     query: null,
+    body: null,
+  },
+  listAuditLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/audit-log',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.audit.read",
+    internal: false,
+    contentType: null,
+    params: ListAuditLogParams,
+    query: ListAuditLogQuery,
     body: null,
   },
   listReports: {
