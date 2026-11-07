@@ -64,7 +64,8 @@ export function useWarrantyMutations(projectId: string) {
       onSuccess: refresh,
     }),
     remove: useMutation({
-      mutationFn: (itemId: string) => source.remove(projectId, itemId),
+      mutationFn: (a: { itemId: string; version: number }) =>
+        source.remove(projectId, a.itemId, a.version),
       onSuccess: refresh,
     }),
   };

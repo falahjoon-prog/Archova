@@ -1,9 +1,21 @@
-import { and, asc, desc, eq, isNull, notInArray, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNull,
+  notInArray,
+  or,
+  sql,
+  type AnyColumn,
+  type SQL,
+} from 'drizzle-orm';
 import {
   CLAIM_RESPONSE_SLA_DAYS,
   defectLabel,
   uuidv7,
   warrantyExpiry,
+  warrantyLabel,
   warrantyFlags,
   warrantyState,
   type FlagClaim,
@@ -16,7 +28,7 @@ import { daysBetween, localDateOf, type LocalDate } from '@archova/time';
 import { AppError, nextNumber, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
-import { defects, warrantyItems } from '../infra/tables';
+import { defects, events, warrantyItems } from '../infra/tables';
 
 export type WarrantyRow = typeof warrantyItems.$inferSelect;
 export interface WarrantyItemView extends WarrantyRow {
@@ -69,10 +81,22 @@ export function createWarrantyService(deps: WarrantyDeps) {
    * Subcontractors hold the defects tool scoped to their company, so they see only the items they answer for and the
    * claims assigned to them. Builder staff, owners and clients see the whole project. Returns the company to scope to.
    */
-  async function companyScope(scope: TenantScope, projectId: string): Promise<string | null> {
+  async function audience(scope: TenantScope, projectId: string) {
     const perms = await deps.access.effectivePermissions(scope, projectId);
-    return perms.companyScopedTools.includes('defects') ? (perms.companyId ?? 'none') : null;
+    const scoped = perms.companyScopedTools.includes('defects');
+    return {
+      scoped,
+      companyId: perms.companyId,
+      /** Owners and clients: see every claim, but only a narrow summary of it (no assignee, disputes shown as open). */
+      narrow: !scoped && scope.ctx.principalType !== 'member',
+    };
   }
+  /** SQL for "this column is the caller's company"; constant false for a scoped caller with no company. */
+  const mine = (
+    aud: Awaited<ReturnType<typeof audience>>,
+    column: SQL | AnyColumn,
+  ): SQL | undefined =>
+    !aud.scoped ? undefined : aud.companyId ? eq(column as AnyColumn, aud.companyId) : sql`false`;
 
   /** The project's calendar: its time zone and today's date there (X34). */
   async function calendar(scope: TenantScope, projectId: string) {
@@ -94,11 +118,11 @@ export function createWarrantyService(deps: WarrantyDeps) {
     projectId: string,
     cal: { timezone: string; today: LocalDate },
   ) {
-    const only = await companyScope(scope, projectId);
+    const aud = await audience(scope, projectId);
     const rows = await scope.tx
       .select()
       .from(defects)
-      .where(and(claimCondition(projectId), only ? eq(defects.assigneeCompanyId, only) : undefined))
+      .where(and(claimCondition(projectId), mine(aud, defects.assigneeCompanyId)))
       .orderBy(desc(defects.issuedAt), desc(defects.id));
     return rows.map((r): WarrantyClaimView => {
       const raisedAt = r.issuedAt ?? r.createdAt;
@@ -110,11 +134,12 @@ export function createWarrantyService(deps: WarrantyDeps) {
         defectId: r.id,
         number: r.number,
         title: r.title,
-        status: r.status,
+        // Owners and clients get a narrow summary: a dispute reads as open and the answerable company is left out.
+        status: aud.narrow && r.status === 'disputed' ? 'open' : r.status,
         priority: r.priority,
         trade: r.trade,
         warrantyItemId: r.warrantyItemId,
-        assigneeCompanyId: r.assigneeCompanyId,
+        assigneeCompanyId: aud.narrow ? null : r.assigneeCompanyId,
         raisedAt,
         closedAt: r.closedAt,
         daysOpen,
@@ -151,8 +176,9 @@ export function createWarrantyService(deps: WarrantyDeps) {
       )
       .limit(1);
     if (!row) throw new AppError('warranty.not_found');
-    const only = await companyScope(scope, projectId);
-    if (only && row.responsibleCompanyId !== only) throw new AppError('warranty.not_found');
+    const aud = await audience(scope, projectId);
+    if (aud.scoped && (!aud.companyId || row.responsibleCompanyId !== aud.companyId))
+      throw new AppError('warranty.not_found');
     return row;
   }
 
@@ -178,8 +204,9 @@ export function createWarrantyService(deps: WarrantyDeps) {
       isNull(warrantyItems.deletedAt),
     ];
     if (opts.system) conditions.push(eq(warrantyItems.system, opts.system));
-    const only = await companyScope(scope, projectId);
-    if (only) conditions.push(eq(warrantyItems.responsibleCompanyId, only));
+    const aud = await audience(scope, projectId);
+    const own = mine(aud, warrantyItems.responsibleCompanyId);
+    if (own) conditions.push(own);
     const rows = await scope.tx
       .select()
       .from(warrantyItems)
@@ -243,6 +270,17 @@ export function createWarrantyService(deps: WarrantyDeps) {
       createdBy: scope.ctx.userId,
       updatedBy: scope.ctx.userId,
     });
+    scope.events.add({
+      type: 'defects.warranty_item.created.v1',
+      projectId,
+      entityType: 'warranty_item',
+      entityId: id,
+      entityVersion: 1,
+      data: {
+        warrantyItemId: id,
+        expiryDate: warrantyExpiry(input.startDate, input.durationMonths),
+      },
+    });
     return detail(scope, projectId, id);
   }
 
@@ -286,20 +324,61 @@ export function createWarrantyService(deps: WarrantyDeps) {
       .where(and(eq(warrantyItems.id, itemId), eq(warrantyItems.version, expectedVersion)))
       .returning({ id: warrantyItems.id });
     if (!updated) throw versionConflict();
+    scope.events.add({
+      type: 'defects.warranty_item.updated.v1',
+      projectId,
+      entityType: 'warranty_item',
+      entityId: itemId,
+      entityVersion: row.version + 1,
+      data: {
+        warrantyItemId: itemId,
+        expiryDate: [row.expiryDate, warrantyExpiry(startDate, durationMonths)],
+        responsibleType: [row.responsibleType, type],
+      },
+    });
     return detail(scope, projectId, itemId);
   }
 
   /** Removes the item from the register. Claims keep their defect row; the link is cleared so nothing dangles. */
-  async function remove(scope: TenantScope, projectId: string, itemId: string) {
-    await getRow(scope, projectId, itemId);
-    await scope.tx
+  async function remove(
+    scope: TenantScope,
+    projectId: string,
+    itemId: string,
+    expectedVersion: number,
+  ) {
+    const row = await getRow(scope, projectId, itemId);
+    if (row.version !== expectedVersion) throw versionConflict();
+    const linked = await scope.tx
       .update(defects)
       .set({ warrantyItemId: null })
-      .where(and(eq(defects.projectId, projectId), eq(defects.warrantyItemId, itemId)));
+      .where(and(eq(defects.projectId, projectId), eq(defects.warrantyItemId, itemId)))
+      .returning({ id: defects.id, status: defects.status });
+    // Each unlinked claim keeps a line in its own history saying why the link went.
+    for (const d of linked)
+      await scope.tx.insert(events).values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        defectId: d.id,
+        action: 'warranty_unlinked',
+        fromStatus: d.status,
+        toStatus: d.status,
+        note: `Warranty item ${warrantyLabel(row.number)} (${row.name}) was removed from the register.`,
+        actorId: scope.ctx.userId,
+        at: now(),
+      });
     await scope.tx
       .update(warrantyItems)
       .set({ deletedAt: now(), updatedBy: scope.ctx.userId, updatedAt: now() })
       .where(eq(warrantyItems.id, itemId));
+    scope.events.add({
+      type: 'defects.warranty_item.deleted.v1',
+      projectId,
+      entityType: 'warranty_item',
+      entityId: itemId,
+      entityVersion: row.version + 1,
+      data: { warrantyItemId: itemId, expiryDate: row.expiryDate, unlinkedClaims: linked.length },
+    });
   }
 
   async function claims(scope: TenantScope, projectId: string, opts: { warrantyItemId?: string }) {
@@ -310,7 +389,7 @@ export function createWarrantyService(deps: WarrantyDeps) {
   async function summary(scope: TenantScope, projectId: string) {
     const cal = await calendar(scope, projectId);
     const localToday = cal.today;
-    const only = await companyScope(scope, projectId);
+    const aud = await audience(scope, projectId);
     const rows = await scope.tx
       .select()
       .from(warrantyItems)
@@ -318,7 +397,7 @@ export function createWarrantyService(deps: WarrantyDeps) {
         and(
           eq(warrantyItems.projectId, projectId),
           isNull(warrantyItems.deletedAt),
-          only ? eq(warrantyItems.responsibleCompanyId, only) : undefined,
+          mine(aud, warrantyItems.responsibleCompanyId),
         ),
       );
     const all = await claimRows(scope, projectId, cal);

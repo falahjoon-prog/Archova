@@ -65,10 +65,13 @@ export function createWarrantyApi(orgId: string) {
         }),
       );
     },
-    async remove(projectId: string, itemId: string): Promise<void> {
+    async remove(projectId: string, itemId: string, version: number): Promise<void> {
       unwrap(
         await api.DELETE(`${P}/warranty-items/{itemId}`, {
-          params: { path: { ...path(projectId), itemId } },
+          params: {
+            path: { ...path(projectId), itemId },
+            header: { 'If-Match': `"${version}"` },
+          },
         }),
       );
     },

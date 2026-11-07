@@ -127,6 +127,11 @@ describe('Warranty and defects liability', () => {
       warrantyItemId: item.id,
     });
     expect(Object.keys(history[0])).not.toContain('description');
+    // Owners and clients get the narrow form: no answerable company.
+    expect(history[0].assigneeCompanyId).toBeNull();
+    expect(
+      (await pm.browser.get(`${base}/warranty/claims`)).json().data[0].assigneeCompanyId,
+    ).not.toBeNull();
 
     const detail = (await pm.browser.get(`${base}/warranty-items/${item.id}`)).json();
     expect(detail.item).toMatchObject({ claimCount: 1, openClaimCount: 1, state: 'expired' });
@@ -153,9 +158,27 @@ describe('Warranty and defects liability', () => {
     expect(patched.json().item.state).toBe('active');
 
     // Removing the item keeps the defect, clearing its link.
-    expect((await pm.browser.del(`${base}/warranty-items/${item.id}`)).statusCode).toBe(204);
+    // Deleting needs the current version, and a client cannot delete.
+    expect(
+      (
+        await client.browser.del(`${base}/warranty-items/${item.id}`, {
+          'if-match': patched.headers.etag as string,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect((await pm.browser.del(`${base}/warranty-items/${item.id}`)).statusCode).toBe(428);
+    expect(
+      (
+        await pm.browser.del(`${base}/warranty-items/${item.id}`, {
+          'if-match': patched.headers.etag as string,
+        })
+      ).statusCode,
+    ).toBe(204);
     expect((await pm.browser.get(`${base}/warranty-items/${item.id}`)).statusCode).toBe(404);
     const after = await pm.browser.get(`${base}/defects/${claim.json().defect.id}`);
     expect(after.json().defect.warrantyItemId).toBeNull();
+    expect(after.json().events.map((e: { action: string }) => e.action)).toContain(
+      'warranty_unlinked',
+    );
   });
 });

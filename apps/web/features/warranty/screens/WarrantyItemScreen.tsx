@@ -128,9 +128,13 @@ export function WarrantyItemScreen({ itemId }: { itemId: string }) {
               variant="secondary"
               disabled={m.remove.isPending}
               onClick={() =>
-                m.remove.mutate(item.id, {
-                  onSuccess: () => router.push(webRoutes.warranty(org.orgSlug, project.projectId)),
-                })
+                m.remove.mutate(
+                  { itemId: item.id, version: item.version },
+                  {
+                    onSuccess: () =>
+                      router.push(webRoutes.warranty(org.orgSlug, project.projectId)),
+                  },
+                )
               }
             >
               Remove from register

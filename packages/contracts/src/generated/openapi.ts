@@ -4749,7 +4749,10 @@ export interface paths {
         get: operations["getWarrantyItem"];
         put?: never;
         post?: never;
-        /** Remove an item from the register. Claims already raised against it stay on the defect register. */
+        /**
+         * Remove an item from the register. Claims already raised against it stay on the defect register.
+         * @description Each claim tied to the item is unlinked and gets a line in its history saying so.
+         */
         delete: operations["deleteWarrantyItem"];
         options?: never;
         head?: never;
@@ -4770,8 +4773,9 @@ export interface paths {
         /**
          * Claim history for the project, newest first (defects raised in the liability period or against a warranty item).
          * @description A summary for everyone who can read the warranty, so an owner or client can follow every claim on their
-         *     building: number, title, status, dates and who is answerable. It leaves out the description, photos and
-         *     history; those stay on the defect, which follows the defect register's own visibility rules.
+         *     building: number, title, status, dates. This deliberately bypasses the defect register's own visibility rules.
+         *     Owners and clients get the narrow form: a disputed claim reads as open and the answerable company is null.
+         *     Description, photos and history stay on the defect. Subcontractors see only claims assigned to their company.
          */
         get: operations["listWarrantyClaims"];
         put?: never;
@@ -25770,7 +25774,10 @@ export interface operations {
     deleteWarrantyItem: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
             path: {
                 orgId: components["parameters"]["OrgId"];
                 projectId: components["parameters"]["ProjectId"];

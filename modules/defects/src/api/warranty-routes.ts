@@ -149,7 +149,10 @@ export function warrantyRoutes(database: Database, warranty: WarrantyService) {
       );
     },
     deleteWarrantyItem: async (input) => {
-      await tx(input, (s) => warranty.remove(s, project(input.params), itemId(input.params)));
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) =>
+        warranty.remove(s, project(input.params), itemId(input.params), expected),
+      );
       return { status: 204 };
     },
     listWarrantyClaims: async (input) => {
