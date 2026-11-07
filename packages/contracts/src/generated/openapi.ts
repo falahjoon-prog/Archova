@@ -977,6 +977,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** The project directory. `q` matches name, email, phone, title, trade or company name. */
         get: operations["listProjectMembers"];
         put?: never;
         /** Add an existing user to the project with a company and permission template. */
@@ -985,6 +986,65 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the phone, job title or trade shown for a member in the directory. Null or empty clears a field. */
+        patch: operations["updateProjectMember"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/company-contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** People at companies who have no login. Org-wide, so every project sees the same entry. */
+        get: operations["listCompanyContacts"];
+        put?: never;
+        post: operations["createCompanyContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/company-contacts/{contactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteCompanyContact"];
+        options?: never;
+        head?: never;
+        patch: operations["updateCompanyContact"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove": {
@@ -11357,6 +11417,9 @@ export interface components {
             version: number;
         };
         ProjectMember: {
+            phone: string | null;
+            jobTitle: string | null;
+            trade: string | null;
             id: string;
             projectId: string;
             userId: string;
@@ -11377,6 +11440,45 @@ export interface components {
             /** @enum {string} */
             kind: "ordinary" | "for_cause" | "wipe_now";
             reason?: string;
+        };
+        UpdateProjectMemberRequest: {
+            phone?: string | null;
+            jobTitle?: string | null;
+            trade?: string | null;
+        };
+        CompanyContact: {
+            id: string;
+            companyId: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            jobTitle: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateCompanyContactRequest: {
+            companyId: string;
+            name: string;
+            email?: components["schemas"]["Email"];
+            phone?: string;
+            jobTitle?: string;
+            notes?: string;
+        };
+        UpdateCompanyContactRequest: {
+            name?: string;
+            /** Format: email */
+            email?: string | null;
+            phone?: string | null;
+            jobTitle?: string | null;
+            notes?: string | null;
+        };
+        CompanyContactPage: {
+            data: components["schemas"]["CompanyContact"][];
+            nextCursor: string | null;
         };
         ProjectMemberPage: {
             data: components["schemas"]["ProjectMember"][];
@@ -19422,6 +19524,9 @@ export interface operations {
             query?: {
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
+                q?: string;
+                companyId?: string;
+                trade?: string;
             };
             header?: never;
             path: {
@@ -19469,6 +19574,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCompanyContacts: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+                q?: string;
+                companyId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContactPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCompanyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContact"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContact"];
                 };
             };
             default: components["responses"]["Problem"];

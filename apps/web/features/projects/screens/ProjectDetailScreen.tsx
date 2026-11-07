@@ -14,6 +14,7 @@ import { CollapsibleGroup, useGroupState } from '@/shared/layout/CollapsibleGrou
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { PhotosCard } from '../components/PhotosCard';
+import { CompanyContactsCard } from '../components/CompanyContactsCard';
 import { MemberList } from '../components/MemberList';
 import { projectToolGroups } from '../components/ProjectShell';
 import { AddMemberForm } from '../forms/AddMemberForm';
@@ -181,9 +182,20 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
               members={members.data.data}
               companyNames={companyNames}
               templateNames={templateNames}
+              {...(canManageMembers ? { edit: { orgId: org.orgId, projectId } } : {})}
             />
           ) : null}
         </Card>
+
+        {companies.data ? (
+          <Card title="Company contacts">
+            <CompanyContactsCard
+              orgId={org.orgId}
+              companies={companyNames}
+              canManage={canManageMembers}
+            />
+          </Card>
+        ) : null}
 
         <ErrorAlert
           error={permissions.error}

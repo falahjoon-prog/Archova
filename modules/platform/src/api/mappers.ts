@@ -7,9 +7,10 @@ import type {
   Org,
   Project,
   ProjectMember,
+  CompanyContact,
 } from '@archova/contracts';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
-import type { companies, orgs, projectMembers, projects } from '../infra/tables';
+import type { companies, companyContacts, orgs, projectMembers, projects } from '../infra/tables';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -69,6 +70,9 @@ export const toProjectMemberDto = (
   userId: encodeId('user', m.userId),
   name: m.name,
   email: m.email,
+  phone: m.phone,
+  jobTitle: m.jobTitle,
+  trade: m.trade,
   companyId: encodeId('company', m.companyId),
   permissionTemplateId: encodeId('permissionTemplate', m.permissionTemplateId),
   isExternal: m.isExternal,
@@ -110,4 +114,17 @@ export const toKeyDateChangeDto = (
       ? { id: encodeId('user', c.changedBy), name: names.get(c.changedBy)! }
       : null,
   changedAt: c.changedAt.toISOString(),
+});
+
+export const toCompanyContactDto = (c: typeof companyContacts.$inferSelect): CompanyContact => ({
+  id: encodeId('companyContact', c.id),
+  companyId: encodeId('company', c.companyId),
+  name: c.name,
+  email: c.email,
+  phone: c.phone,
+  jobTitle: c.jobTitle,
+  notes: c.notes,
+  createdAt: iso(c.createdAt),
+  updatedAt: iso(c.updatedAt),
+  version: c.version,
 });

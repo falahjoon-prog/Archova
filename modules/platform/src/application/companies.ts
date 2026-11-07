@@ -140,8 +140,19 @@ export function createCompanyService() {
     return new Map(rows.map((r) => [r.id, { name: r.name, linkedOrgId: r.linkedOrgId }]));
   }
 
+  /** Names by id, for searching a directory by company. */
+  async function names(scope: TenantScope, companyIds: readonly string[]) {
+    if (companyIds.length === 0) return new Map<string, string>();
+    const rows = await scope.tx
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .where(inArray(companies.id, [...new Set(companyIds)]));
+    return new Map(rows.map((r) => [r.id, r.name]));
+  }
+
   return {
     list,
+    names,
     create,
     exists,
     contacts,

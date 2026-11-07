@@ -1179,9 +1179,13 @@ paths:
       tags: [projects]
       x-module: platform
       x-permission: platform.project_members.read
+      summary: The project directory. `q` matches name, email, phone, title, trade or company name.
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
       responses:
         '200':
           description: A page of project members
@@ -1208,6 +1212,98 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: memberId, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateProjectMember
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.manage
+      summary: Change the phone, job title or trade shown for a member in the directory. Null or empty clears a field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectMemberRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/company-contacts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCompanyContacts
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.read
+      summary: People at companies who have no login. Org-wide, so every project sees the same entry.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: A page of contacts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContactPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompanyContactRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContact' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/company-contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - { name: contactId, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCompanyContactRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContact' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      responses:
+        '204': { description: Deleted }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove:
     parameters:
@@ -15963,8 +16059,24 @@ components:
     ProjectMember:
       type: object
       required:
-        [id, projectId, userId, name, email, companyId, permissionTemplateId, isExternal, status]
+        [
+          id,
+          projectId,
+          userId,
+          name,
+          email,
+          phone,
+          jobTitle,
+          trade,
+          companyId,
+          permissionTemplateId,
+          isExternal,
+          status,
+        ]
       properties:
+        phone: { type: [string, 'null'] }
+        jobTitle: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
         id: { type: string }
         projectId: { type: string }
         userId: { type: string }
@@ -15989,6 +16101,55 @@ components:
       properties:
         kind: { type: string, enum: [ordinary, for_cause, wipe_now] }
         reason: { type: string, maxLength: 500 }
+    UpdateProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        phone: { type: [string, 'null'], maxLength: 50 }
+        jobTitle: { type: [string, 'null'], maxLength: 100 }
+        trade: { type: [string, 'null'], maxLength: 100 }
+    CompanyContact:
+      type: object
+      required: [id, companyId, name, email, phone, jobTitle, notes, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        companyId: { type: string }
+        name: { type: string }
+        email: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        jobTitle: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateCompanyContactRequest:
+      type: object
+      additionalProperties: false
+      required: [companyId, name]
+      properties:
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { $ref: '#/components/schemas/Email' }
+        phone: { type: string, maxLength: 50 }
+        jobTitle: { type: string, maxLength: 100 }
+        notes: { type: string, maxLength: 1000 }
+    UpdateCompanyContactRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        jobTitle: { type: [string, 'null'], maxLength: 100 }
+        notes: { type: [string, 'null'], maxLength: 1000 }
+    CompanyContactPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CompanyContact' }
+        nextCursor: { type: [string, 'null'] }
     ProjectMemberPage:
       type: object
       required: [data, nextCursor]

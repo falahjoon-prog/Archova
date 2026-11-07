@@ -248,12 +248,43 @@ export const ListProjectMembersParams = z.object({
 export const ListProjectMembersQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
+  "q": z.string().max(100).optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "trade": z.string().max(100).optional(),
 });
 export const AddProjectMemberParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddProjectMemberBody = s.AddProjectMemberRequestSchema;
+export const UpdateProjectMemberParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "memberId": z.string(),
+});
+export const UpdateProjectMemberBody = s.UpdateProjectMemberRequestSchema;
+export const ListCompanyContactsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContactsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+  "q": z.string().max(100).optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+});
+export const CreateCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCompanyContactBody = s.CreateCompanyContactRequestSchema;
+export const UpdateCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contactId": z.string(),
+});
+export const UpdateCompanyContactBody = s.UpdateCompanyContactRequestSchema;
+export const DeleteCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contactId": z.string(),
+});
 export const RemoveProjectMemberParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3888,6 +3919,66 @@ export const operations = {
     params: AddProjectMemberParams,
     query: null,
     body: AddProjectMemberBody,
+  },
+  updateProjectMember: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.project_members.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectMemberParams,
+    query: null,
+    body: UpdateProjectMemberBody,
+  },
+  listCompanyContacts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/company-contacts',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.read",
+    internal: false,
+    contentType: null,
+    params: ListCompanyContactsParams,
+    query: ListCompanyContactsQuery,
+    body: null,
+  },
+  createCompanyContact: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/company-contacts',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCompanyContactParams,
+    query: null,
+    body: CreateCompanyContactBody,
+  },
+  updateCompanyContact: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/company-contacts/{contactId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCompanyContactParams,
+    query: null,
+    body: UpdateCompanyContactBody,
+  },
+  deleteCompanyContact: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/company-contacts/{contactId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteCompanyContactParams,
+    query: null,
+    body: null,
   },
   removeProjectMember: {
     method: 'POST',

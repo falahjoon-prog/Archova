@@ -4,6 +4,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { createAccountDeletionService } from './application/account-deletion';
 import { createCompanyService } from './application/companies';
+import { createCompanyContactService } from './application/company-contacts';
 import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
@@ -39,6 +40,7 @@ export function createPlatformModule(
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
   const companies = createCompanyService();
+  const companyContacts = createCompanyContactService({ companies });
   const accountDeletion = createAccountDeletionService({
     database: services.database,
     orgs,
@@ -56,6 +58,7 @@ export function createPlatformModule(
       keyDates,
       companies,
       members,
+      companyContacts,
       accountDeletion,
       ...(deps.supportAccess ? { supportAccess: deps.supportAccess } : {}),
     }),
