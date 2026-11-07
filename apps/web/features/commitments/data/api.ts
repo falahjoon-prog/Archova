@@ -65,18 +65,16 @@ export function createCommitmentsApi(orgId: string) {
       o: InvoicePdfOptions,
     ): Promise<File> {
       const r = unwrap(
-        await api.GET(`${P}/commitments/{commitmentId}/invoices/{claimId}/pdf`, {
-          params: {
-            path: { orgId, projectId, commitmentId, claimId },
-            query: {
-              ...(o.sections?.length ? { sections: o.sections.join(',') } : {}),
-              ...(o.columns?.length ? { columns: o.columns.join(',') } : {}),
-              ...(o.paper ? { paper: o.paper } : {}),
-              ...(o.orientation ? { orientation: o.orientation } : {}),
-              ...(o.notes?.trim() ? { notes: o.notes.trim() } : {}),
-              ...(o.signatureBlock ? { signatureBlock: true } : {}),
-              ...(o.amountCertified ? { amountCertified: o.amountCertified } : {}),
-            },
+        await api.POST(`${P}/commitments/{commitmentId}/invoices/{claimId}/pdf`, {
+          params: { path: { orgId, projectId, commitmentId, claimId } },
+          body: {
+            ...(o.sections?.length ? { sections: o.sections as never } : {}),
+            ...(o.columns?.length ? { columns: o.columns as never } : {}),
+            ...(o.paper ? { paper: o.paper } : {}),
+            ...(o.orientation ? { orientation: o.orientation } : {}),
+            ...(o.notes?.trim() ? { notes: o.notes.trim() } : {}),
+            ...(o.signatureBlock ? { signatureBlock: true } : {}),
+            ...(o.amountCertified ? { amountCertified: o.amountCertified } : {}),
           },
         }),
       );

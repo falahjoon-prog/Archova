@@ -252,7 +252,7 @@ export async function renderPaymentApplicationPdf(
     heading('Architect / engineer certificate for payment');
     pair('Amount applied for', fmtMoney(s.currentPaymentDue));
     pair(
-      'Amount certified',
+      'Amount certified (entered in Archova, to be confirmed by signature)',
       options.amountCertified === null ? '____________' : fmtMoney(options.amountCertified),
       true,
     );
@@ -349,7 +349,7 @@ export async function renderPaymentApplicationPdf(
   if (options.sections.includes('payment')) {
     heading('Payment');
     pair('Received', app.receivedAt.toISOString().slice(0, 10));
-    pair('Payment schedule due', app.scheduleDueOn ?? 'Not set');
+    pair('Date payment schedule is due', app.scheduleDueOn ?? 'Not set');
     pair('Payment due', app.paymentDueOn ?? 'Not set');
     pair(
       'Scheduled amount',
@@ -380,13 +380,17 @@ export async function renderPaymentApplicationPdf(
     }
   }
 
-  // Page numbers last, so the total is known.
+  // Footer on every page: what this document is not. Page numbers last, so the total is known.
   const pages = doc.getPages();
   pages.forEach((p, i) => {
+    p.drawText(
+      'Prepared by Archova from claim data. Nothing is certified until signed. Not a payment claim or payment schedule under security of payment law.',
+      { x: margin, y: margin / 2 + 2, size: 7, font: regular, color: MUTED },
+    );
     const t = `Page ${i + 1} of ${pages.length}`;
     p.drawText(t, {
       x: size[0] - margin - regular.widthOfTextAtSize(t, 8),
-      y: margin / 2,
+      y: margin / 2 - 9,
       size: 8,
       font: regular,
       color: MUTED,
