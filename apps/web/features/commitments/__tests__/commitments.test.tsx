@@ -17,6 +17,7 @@ const c = (over: Partial<Commitment>): Commitment => ({
   kind: 'subcontract',
   title: 'Concrete supply',
   vendorCompanyId: null,
+  contractId: null,
   status: 'approved',
   total: '1000.50',
   overBudgetOverride: false,

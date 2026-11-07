@@ -9034,6 +9034,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Link a subcontract commitment to the contract its payment claims are made on, or clear the link. */
+        put: operations["linkCommitmentContract"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** The commitment's invoices (payment claims on its linked contract) with contract sum, retainage and payments. */
+        get: operations["getCommitmentInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
         parameters: {
             query?: never;
@@ -15250,6 +15292,7 @@ export interface components {
         CommitmentStatus: "draft" | "submitted" | "approved" | "rejected" | "void";
         Commitment: {
             id: string;
+            contractId: string | null;
             number: number;
             /** @enum {string} */
             kind: "subcontract" | "purchase_order";
@@ -15268,6 +15311,48 @@ export interface components {
             budgetLineId: string;
             description: string;
             amount: components["schemas"]["FinancialsMoney"];
+        };
+        LinkCommitmentContractRequest: {
+            /** @description The subcontract to link, or null to clear the link. */
+            contractId: string | null;
+        };
+        CommitmentInvoice: {
+            claimId: string;
+            number: number;
+            /** Format: date */
+            periodStart: string | null;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            status: string;
+            thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsSignedMoney"];
+            earnedLessRetainage: components["schemas"]["FinancialsSignedMoney"];
+            payable: components["schemas"]["FinancialsMoney"];
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            paymentDue: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            paymentDueOn: string | null;
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+            percentComplete: string;
+        };
+        CommitmentInvoiceSummary: {
+            originalSum: components["schemas"]["FinancialsMoney"];
+            netChange: components["schemas"]["FinancialsMoney"];
+            revisedSum: components["schemas"]["FinancialsMoney"];
+            invoiced: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsSignedMoney"];
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            remaining: components["schemas"]["FinancialsMoney"];
+            percentPaid: string;
+            rows: components["schemas"]["CommitmentInvoice"][];
+        };
+        CommitmentInvoices: {
+            linked: boolean;
+            contractId: string | null;
+            summary: components["schemas"]["CommitmentInvoiceSummary"] | null;
         };
         CommitmentDetail: {
             commitment: components["schemas"]["Commitment"];
@@ -32578,6 +32663,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    linkCommitmentContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkCommitmentContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentInvoices"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -3,7 +3,21 @@ import { encodeId, uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, recordRetentionBatch, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fromCents, toCents } from '../domain/money';
-import { budgetLines, commitmentLines, commitments } from '../infra/tables';
+import {
+  summariseInvoices,
+  type InvoiceClaimInput,
+  type InvoiceSummary,
+} from '../domain/commitment-invoices';
+import {
+  budgetLines,
+  commitmentLines,
+  commitments,
+  contracts,
+  paymentClaims,
+  paymentSchedules,
+  payments,
+  variations,
+} from '../infra/tables';
 
 export type CommitmentRow = typeof commitments.$inferSelect;
 export type CommitmentLineRow = typeof commitmentLines.$inferSelect;
@@ -271,7 +285,150 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
     return { commitment: updated, lines };
   }
 
+  /**
+   * Link a subcontract commitment to the contract its payment claims are made on (or clear the link with `null`).
+   * The Invoices tab is a view over that contract's claims, so the contract must be a subcontract on the same
+   * project, not already linked elsewhere, and (when both name one) with the commitment's vendor as its payee.
+   */
+  async function linkContract(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    contractId: string | null,
+  ) {
+    await need(scope, 'financials.commitments.manage', projectId);
+    const c = await row(scope, projectId, id);
+    if (c.kind !== 'subcontract')
+      throw new AppError(
+        'financials.commitment.not_subcontract',
+        'Only a subcontract has payment claims.',
+      );
+    if (c.status === 'void' || c.status === 'rejected')
+      throw new AppError(
+        'financials.commitment.bad_state',
+        `A commitment that is ${c.status} can't be linked to a contract.`,
+      );
+    if (contractId) {
+      const [k] = await scope.tx
+        .select()
+        .from(contracts)
+        .where(and(eq(contracts.id, contractId), eq(contracts.projectId, projectId)))
+        .limit(1);
+      if (!k) throw new AppError('financials.contract.not_found');
+      if (k.kind !== 'subcontract')
+        throw new AppError(
+          'financials.commitment.contract_kind',
+          'Link a subcontract, not the head contract.',
+        );
+      if (c.vendorCompanyId && k.payeeCompanyId && c.vendorCompanyId !== k.payeeCompanyId)
+        throw new AppError(
+          'financials.commitment.contract_company',
+          "The contract's payee is not this commitment's vendor.",
+        );
+      const [taken] = await scope.tx
+        .select({ id: commitments.id })
+        .from(commitments)
+        .where(eq(commitments.contractId, contractId))
+        .limit(1);
+      if (taken && taken.id !== id)
+        throw new AppError(
+          'financials.commitment.contract_taken',
+          'That contract is already linked to another commitment.',
+        );
+    }
+    const [updated] = await scope.tx
+      .update(commitments)
+      .set({ contractId, version: c.version + 1 })
+      .where(and(eq(commitments.id, id), eq(commitments.version, c.version)))
+      .returning();
+    if (!updated)
+      throw new AppError('conflict', 'This commitment just changed. Reload and try again.');
+    scope.events.add({
+      type: 'financials.commitment.contract_linked.v1',
+      projectId,
+      entityType: 'commitment',
+      entityId: id,
+      entityVersion: updated.version,
+      data: { commitmentId: id, contractId },
+    });
+    return { commitment: updated, lines: await linesOf(scope, id) };
+  }
+
+  /**
+   * The Invoices tab: the linked contract's claims with the contract sum, retainage, payments and what is left.
+   * Builder staff holding both commitments.read and claims.read. `linked: false` when no contract is linked yet.
+   */
+  async function invoicesFor(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+  ): Promise<{ linked: boolean; contractId: string | null; summary: InvoiceSummary | null }> {
+    await need(scope, 'financials.commitments.read', projectId);
+    await need(scope, 'financials.claims.read', projectId);
+    const c = await row(scope, projectId, id);
+    if (!c.contractId) return { linked: false, contractId: null, summary: null };
+    const [k] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, c.contractId))
+      .limit(1);
+    if (!k) return { linked: false, contractId: null, summary: null };
+    const claimRows = await scope.tx
+      .select()
+      .from(paymentClaims)
+      .where(eq(paymentClaims.contractId, k.id))
+      .orderBy(asc(paymentClaims.number));
+    const claimIds = claimRows.map((r) => r.id);
+    const schedules = claimIds.length
+      ? await scope.tx
+          .select({ claimId: paymentSchedules.claimId, amount: paymentSchedules.scheduledAmount })
+          .from(paymentSchedules)
+          .where(inArray(paymentSchedules.claimId, claimIds))
+      : [];
+    const paidRows = claimIds.length
+      ? await scope.tx
+          .select({
+            claimId: payments.claimId,
+            paid: sql<string>`coalesce(sum(${payments.amount}), 0)`,
+          })
+          .from(payments)
+          .where(inArray(payments.claimId, claimIds))
+          .groupBy(payments.claimId)
+      : [];
+    const approved = await scope.tx
+      .select({ amount: variations.amount })
+      .from(variations)
+      .where(and(eq(variations.contractId, k.id), eq(variations.status, 'approved')));
+    const sched = new Map(schedules.map((s) => [s.claimId, s.amount]));
+    const paid = new Map(paidRows.map((p) => [p.claimId, p.paid]));
+    const claims: InvoiceClaimInput[] = claimRows.map((r) => ({
+      id: r.id,
+      number: r.number,
+      periodEnd: r.periodEnd,
+      receivedAt: r.receivedAt,
+      status: r.status,
+      claimedGross: r.claimedGross,
+      lessPrevious: r.lessPrevious,
+      retention: r.retention,
+      claimedNet: r.claimedNet,
+      scheduledAmount: sched.get(r.id) ?? null,
+      paid: fromCents(toCents(paid.get(r.id) ?? '0')),
+      paymentDueOn: r.paymentDueOn,
+    }));
+    return {
+      linked: true,
+      contractId: k.id,
+      summary: summariseInvoices({
+        originalValue: k.originalValue,
+        approvedVariations: approved.map((a) => a.amount),
+        claims,
+      }),
+    };
+  }
+
   return {
+    linkContract,
+    invoicesFor,
     createCommitment,
     commitmentForQuote,
     listCommitments,

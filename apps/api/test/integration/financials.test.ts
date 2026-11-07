@@ -1437,6 +1437,72 @@ describe('Commitments against the budget', () => {
   });
 });
 
+describe('Commitment invoices', () => {
+  it('links a subcontract to its contract and lists that contract’s claims', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const cc = (await post('cost-codes', { code: '03', description: 'Electrical' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '150000.00' })).json();
+    const commitment = (
+      await post('commitments', {
+        kind: 'subcontract',
+        title: 'Electrical subcontract',
+        vendorCompanyId: s.subCo.companyId,
+        lines: [{ budgetLineId: line.id, description: 'All', amount: '100000.00' }],
+      })
+    ).json().commitment;
+    const none = await s.pm.browser.get(`${s.base}/commitments/${commitment.id}/invoices`);
+    expect(none.json()).toMatchObject({ linked: false, summary: null });
+
+    const created = (await post('contracts', contractBody(s.subCo.companyId))).json();
+    const link = await s.pm.browser.put(`${s.base}/commitments/${commitment.id}/contract`, {
+      contractId: created.contract.id,
+    });
+    expect(link.statusCode).toBe(200);
+    expect(link.json().commitment.contractId).toBe(created.contract.id);
+
+    const claim = await post(`contracts/${created.contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: created.sov[0].id, thisClaim: '30000.00' }],
+    });
+    expect(claim.statusCode).toBe(201);
+    const inv = (await s.pm.browser.get(`${s.base}/commitments/${commitment.id}/invoices`)).json();
+    expect(inv.linked).toBe(true);
+    expect(inv.summary).toMatchObject({
+      originalSum: '100000.00',
+      revisedSum: '100000.00',
+      invoiced: '30000.00',
+      paid: '0.00',
+    });
+    expect(inv.summary.rows).toHaveLength(1);
+    expect(inv.summary.rows[0]).toMatchObject({ number: 1, percentComplete: '30.00' });
+
+    // The same contract can't back a second commitment; a subcontractor sees none of it.
+    const other = (
+      await post('commitments', {
+        kind: 'subcontract',
+        title: 'Second',
+        lines: [{ budgetLineId: line.id, description: 'x', amount: '1.00' }],
+      })
+    ).json().commitment;
+    const dup = await s.pm.browser.put(`${s.base}/commitments/${other.id}/contract`, {
+      contractId: created.contract.id,
+    });
+    expect(dup.json().code).toBe('financials.commitment.contract_taken');
+    expect(
+      (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices`)).statusCode,
+    ).toBe(403);
+
+    const clear = await s.pm.browser.put(`${s.base}/commitments/${commitment.id}/contract`, {
+      contractId: null,
+    });
+    expect(clear.json().commitment.contractId).toBeNull();
+  });
+});
+
 describe('Budget against forecast', () => {
   it('compares revised budget with forecast final cost per cost code', async () => {
     const s = await setup('NSW');
