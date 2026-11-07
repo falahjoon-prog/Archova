@@ -1501,7 +1501,7 @@ describe('Commitment invoices', () => {
     expect(Buffer.from(pdf.json().dataBase64, 'base64').subarray(0, 5).toString()).toBe('%PDF-');
     expect(
       (await s.pm.browser.post(pdfUrl, { amountCertified: '9999999999999.00' })).statusCode,
-    ).toBe(400);
+    ).toBe(422);
     expect((await s.sub.browser.post(pdfUrl, {})).statusCode).toBe(403);
     expect(
       (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices/${claimId}`))
