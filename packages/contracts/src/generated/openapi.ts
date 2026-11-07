@@ -8466,6 +8466,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill a draft budget from spreadsheet rows, all or nothing. New cost codes are created from the row's description. */
+        post: operations["importBudgetLines"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}": {
         parameters: {
             query?: never;
@@ -14580,6 +14600,18 @@ export interface components {
             description?: string;
             original: components["schemas"]["FinancialsMoney"];
             isMargin?: boolean;
+        };
+        ImportBudgetLinesRequest: {
+            rows: {
+                code: string;
+                codeDescription?: string;
+                description?: string;
+                original: string;
+                isMargin?: boolean;
+            }[];
+        };
+        ImportBudgetLinesResult: components["schemas"]["Budget"] & {
+            imported: number;
         };
         UpdateBudgetLineRequest: {
             description?: string;
@@ -31371,6 +31403,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetLine"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    importBudgetLines: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBudgetLinesRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBudgetLinesResult"];
                 };
             };
             default: components["responses"]["Problem"];

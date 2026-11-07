@@ -20,6 +20,7 @@ import type { BudgetLine } from '../data/api';
 import { useBudget, useBudgetMutations, useCostCodes } from '../hooks/useBudget';
 import { aud } from '../lib/money';
 import { AdjustDialog } from './AdjustDialog';
+import { ImportDialog } from './ImportDialog';
 import { LineDialog } from './LineDialog';
 
 /**
@@ -34,6 +35,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
   const [editing, setEditing] = useState<BudgetLine | 'new' | null>(null);
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [confirmLock, setConfirmLock] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const budget = q.data;
   const locked = budget?.status === 'locked';
@@ -156,6 +158,9 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
             >
               Add line
             </Button>
+            <Button variant="secondary" onClick={() => setImporting(true)}>
+              Import
+            </Button>
             <Button onClick={() => setConfirmLock(true)} disabled={budget.lines.length === 0}>
               Lock budget
             </Button>
@@ -203,6 +208,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
           onClose={() => setEditing(null)}
         />
       ) : null}
+      {importing ? <ImportDialog onClose={() => setImporting(false)} /> : null}
       {adjustingLine ? (
         <AdjustDialog
           line={adjustingLine}
