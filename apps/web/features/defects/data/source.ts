@@ -41,6 +41,10 @@ function seedDefect(
     locationId: null,
     drawing: null,
     assigneeUserId: null,
+    assigneeUserIds: [],
+    managerUserId: null,
+    finalApproverUserId: null,
+    distributionUserIds: [],
     dueDate: null,
     raisedBy: 'Luca Romano',
     raisedByCompanyId: 'cmp_builder',
@@ -337,7 +341,11 @@ export const defectsSource: DefectsSource = {
       locationId: input.locationId,
       drawing: input.drawing,
       assigneeCompanyId: input.assigneeCompanyId!,
-      assigneeUserId: input.assigneeUserId,
+      assigneeUserId: input.assigneeUserIds[0] ?? input.assigneeUserId,
+      assigneeUserIds: input.assigneeUserIds,
+      managerUserId: input.managerUserId,
+      finalApproverUserId: input.finalApproverUserId,
+      distributionUserIds: input.distributionUserIds,
       dueDate: input.dueDate,
       raisedBy: actor.name,
       raisedByCompanyId: actor.companyId,
@@ -431,7 +439,7 @@ export const defectsSource: DefectsSource = {
   async withReason(
     projectId: string,
     id: string,
-    action: 'reject' | 'dispute' | 'void',
+    action: 'reject' | 'dispute' | 'void' | 'reopen',
     reason: string,
     actor: Actor,
   ): Promise<Defect> {
@@ -439,9 +447,14 @@ export const defectsSource: DefectsSource = {
     ensure(d, action);
     if (!reason.trim()) problem(422, 'validation', 'Give a reason.');
     const to: DefectStatus =
-      action === 'reject' ? 'open' : action === 'dispute' ? 'disputed' : 'void';
+      action === 'reject' || action === 'reopen'
+        ? 'open'
+        : action === 'dispute'
+          ? 'disputed'
+          : 'void';
     transition(d, to, actor, reason.trim());
-    if (action === 'reject') d.readyForReviewAt = null;
+    if (action === 'reject' || action === 'reopen') d.readyForReviewAt = null;
+    if (action === 'reopen') d.closedAt = null;
     return delay(d);
   },
 
@@ -569,7 +582,7 @@ export interface DefectsSource {
   withReason(
     projectId: string,
     id: string,
-    action: 'reject' | 'dispute' | 'void',
+    action: 'reject' | 'dispute' | 'void' | 'reopen',
     reason: string,
     actor: Actor,
   ): Promise<Defect>;

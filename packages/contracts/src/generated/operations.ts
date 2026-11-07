@@ -1690,6 +1690,14 @@ export const ListDiaryEntriesQuery = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
 });
+export const ListDiaryGapsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDiaryGapsQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
 export const GetDiaryEntryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2078,6 +2086,20 @@ export const SignInSelfParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const SignInSelfBody = s.SelfSignInRequestSchema;
+export const GetMySafetyBadgeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyEmergencyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyEmergencyContactBody = s.SetEmergencyContactRequestSchema;
+export const SetMyBadgePhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyBadgePhotoBody = s.SetBadgePhotoRequestSchema;
 export const SignOutSelfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2940,6 +2962,35 @@ export const SetVariationCostCodeParams = z.object({
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
+export const GetOwnerInvoicePrefillParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const GetOwnerInvoicePrefillQuery = z.object({
+  "periodEnd": z.string().date(),
+});
+export const ListOwnerInvoicesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceBody = s.CreateOwnerInvoiceRequestSchema;
+export const GetOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
+export const DiscardOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6879,6 +6930,18 @@ export const operations = {
     query: ListDiaryEntriesQuery,
     body: null,
   },
+  listDiaryGaps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/gaps',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: ListDiaryGapsParams,
+    query: ListDiaryGapsQuery,
+    body: null,
+  },
   getDiaryEntry: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}',
@@ -7610,6 +7673,42 @@ export const operations = {
     params: SignInSelfParams,
     query: null,
     body: SignInSelfBody,
+  },
+  getMySafetyBadge: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: null,
+    params: GetMySafetyBadgeParams,
+    query: null,
+    body: null,
+  },
+  setMyEmergencyContact: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SetMyEmergencyContactParams,
+    query: null,
+    body: SetMyEmergencyContactBody,
+  },
+  setMyBadgePhoto: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SetMyBadgePhotoParams,
+    query: null,
+    body: SetMyBadgePhotoBody,
   },
   signOutSelf: {
     method: 'POST',
@@ -9690,6 +9789,66 @@ export const operations = {
     params: SetVariationCostCodeParams,
     query: null,
     body: SetVariationCostCodeBody,
+  },
+  getOwnerInvoicePrefill: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoicePrefillParams,
+    query: GetOwnerInvoicePrefillQuery,
+    body: null,
+  },
+  listOwnerInvoices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerInvoicesParams,
+    query: null,
+    body: null,
+  },
+  createOwnerInvoice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerInvoiceParams,
+    query: null,
+    body: CreateOwnerInvoiceBody,
+  },
+  getOwnerInvoice: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoiceParams,
+    query: null,
+    body: null,
+  },
+  discardOwnerInvoice: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: null,
+    params: DiscardOwnerInvoiceParams,
+    query: null,
+    body: null,
   },
   listPaymentClaims: {
     method: 'GET',

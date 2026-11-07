@@ -1788,6 +1788,10 @@ export const CreateDefectRequestSchema = z.object({
   "stage": DefectStageSchema.optional(),
   "assigneeCompanyId": CompanyRefSchema.optional(),
   "assigneeUserId": UserRefSchema.optional(),
+  "assigneeUserIds": z.array(UserRefSchema).max(25).optional(),
+  "managerUserId": UserRefSchema.optional(),
+  "finalApproverUserId": UserRefSchema.optional(),
+  "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
   "dueDate": z.string().date().optional(),
   "pin": DrawingPinSchema,
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
@@ -2162,6 +2166,15 @@ export const CreateOwnerApprovalRequestSchema = z.object({
   "dueDate": z.string().date().nullable().optional(),
 }).strict();
 export type CreateOwnerApprovalRequest = z.infer<typeof CreateOwnerApprovalRequestSchema>;
+
+export const CreateOwnerInvoiceRequestSchema = z.object({
+  "periodEnd": z.string().date(),
+  "markupPct": z.string().regex(new RegExp("^\\d{1,3}(\\.\\d{1,2})?$")),
+  "note": z.string().max(1000).optional(),
+  "claimIds": z.array(z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$"))).min(1).max(200),
+  "confirmedClaimIds": z.array(z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$"))).max(200),
+}).strict();
+export type CreateOwnerInvoiceRequest = z.infer<typeof CreateOwnerInvoiceRequestSchema>;
 
 export const OwnerMilestoneStatusSchema = z.enum(["done", "on_track", "at_risk", "late"]);
 export type OwnerMilestoneStatus = z.infer<typeof OwnerMilestoneStatusSchema>;
@@ -2589,7 +2602,7 @@ export type DefectStatus = z.infer<typeof DefectStatusSchema>;
 export const DefectSourceSchema = z.enum(["manual", "inspection", "ai_suggested"]);
 export type DefectSource = z.infer<typeof DefectSourceSchema>;
 
-export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void"]);
+export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void", "reopen"]);
 export type DefectAction = z.infer<typeof DefectActionSchema>;
 
 export const DefectSchema = z.object({
@@ -2607,6 +2620,10 @@ export const DefectSchema = z.object({
   "pin": z.union([DrawingPinSchema, z.null()]),
   "assigneeCompanyId": z.string().nullable(),
   "assigneeUserId": z.string().nullable(),
+  "assigneeUserIds": z.array(z.string()),
+  "managerUserId": z.string().nullable(),
+  "finalApproverUserId": z.string().nullable(),
+  "distributionUserIds": z.array(z.string()),
   "dueDate": z.string().date().nullable(),
   "isOverdue": z.boolean(),
   "raisedByCompanyId": z.string().nullable(),
@@ -2877,6 +2894,15 @@ export const DiaryEntryListSchema = z.object({
 });
 export type DiaryEntryList = z.infer<typeof DiaryEntryListSchema>;
 
+export const DiaryGapListSchema = z.object({
+  "data": z.array(z.object({
+  "date": z.string().date(),
+  "state": z.enum(["missing", "draft"]),
+  "sources": z.array(z.enum(["attendance", "equipment"])),
+})),
+});
+export type DiaryGapList = z.infer<typeof DiaryGapListSchema>;
+
 export const DirectCostCategorySchema = z.enum(["labour", "materials", "plant", "fees", "other"]);
 export type DirectCostCategory = z.infer<typeof DirectCostCategorySchema>;
 
@@ -3128,6 +3154,13 @@ export const EligibilityCheckSchema = z.object({
   "checkedAt": z.string().datetime({ offset: true }),
 });
 export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
+
+export const EmergencyContactSchema = z.object({
+  "name": z.string(),
+  "relationship": z.string().nullable(),
+  "phone": z.string(),
+});
+export type EmergencyContact = z.infer<typeof EmergencyContactSchema>;
 
 export const EntitlementsSchema = z.object({
   "orgId": z.string(),
@@ -5425,6 +5458,82 @@ export const OwnerCapitalPlanSchema = z.object({
 });
 export type OwnerCapitalPlan = z.infer<typeof OwnerCapitalPlanSchema>;
 
+export const OwnerInvoiceSchema = z.object({
+  "id": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "markupPct": z.string(),
+  "subTotal": FinancialsMoneySchema,
+  "markupAmount": FinancialsMoneySchema,
+  "total": FinancialsMoneySchema,
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type OwnerInvoice = z.infer<typeof OwnerInvoiceSchema>;
+
+export const OwnerInvoiceBackupItemSchema = z.object({
+  "kind": z.enum(["claim_pdf", "payment_schedule_pdf", "subcontractor_statement"]),
+  "status": z.enum(["attached", "missing", "not_required"]),
+  "detail": z.string().nullable(),
+});
+export type OwnerInvoiceBackupItem = z.infer<typeof OwnerInvoiceBackupItemSchema>;
+
+export const PaymentClaimStatusSchema = z.enum(["submitted", "scheduled", "paid", "disputed", "adjudication", "withdrawn"]);
+export type PaymentClaimStatus = z.infer<typeof PaymentClaimStatusSchema>;
+
+export const OwnerInvoiceFlagSchema = z.object({
+  "code": z.enum(["duplicate", "outlier", "overclaim", "statement_missing", "invalid_claim"]),
+  "message": z.string(),
+});
+export type OwnerInvoiceFlag = z.infer<typeof OwnerInvoiceFlagSchema>;
+
+export const OwnerInvoiceCandidateSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "contractTitle": z.string(),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "status": PaymentClaimStatusSchema,
+  "thisPeriod": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "amount": FinancialsMoneySchema,
+  "withheld": FinancialsMoneySchema,
+  "flags": z.array(OwnerInvoiceFlagSchema),
+  "backup": z.array(OwnerInvoiceBackupItemSchema),
+});
+export type OwnerInvoiceCandidate = z.infer<typeof OwnerInvoiceCandidateSchema>;
+
+export const OwnerInvoiceLineSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "contractTitle": z.string(),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "flags": z.array(OwnerInvoiceFlagSchema),
+  "flagsConfirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "backup": z.array(OwnerInvoiceBackupItemSchema),
+});
+export type OwnerInvoiceLine = z.infer<typeof OwnerInvoiceLineSchema>;
+
+export const OwnerInvoiceDetailSchema = z.object({
+  "invoice": OwnerInvoiceSchema,
+  "lines": z.array(OwnerInvoiceLineSchema),
+  "missingBackup": z.number().int(),
+});
+export type OwnerInvoiceDetail = z.infer<typeof OwnerInvoiceDetailSchema>;
+
+export const OwnerInvoiceListSchema = z.object({
+  "data": z.array(OwnerInvoiceSchema),
+});
+export type OwnerInvoiceList = z.infer<typeof OwnerInvoiceListSchema>;
+
+export const OwnerInvoicePrefillSchema = z.object({
+  "periodEnd": z.string().date(),
+  "candidates": z.array(OwnerInvoiceCandidateSchema),
+});
+export type OwnerInvoicePrefill = z.infer<typeof OwnerInvoicePrefillSchema>;
+
 export const OwnerProgressUpdateSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -5477,9 +5586,6 @@ export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
-
-export const PaymentClaimStatusSchema = z.enum(["submitted", "scheduled", "paid", "disputed", "adjudication", "withdrawn"]);
-export type PaymentClaimStatus = z.infer<typeof PaymentClaimStatusSchema>;
 
 export const PaymentClaimSchema = z.object({
   "id": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
@@ -6501,6 +6607,28 @@ export const RollCallListSchema = z.object({
 });
 export type RollCallList = z.infer<typeof RollCallListSchema>;
 
+export const SafetyBadgeSchema = z.object({
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "fullName": z.string(),
+  "companyName": z.string().nullable(),
+  "status": z.enum(["active", "inactive"]),
+  "qrValue": z.string(),
+  "photoUrl": z.string().nullable(),
+  "emergencyContact": z.union([EmergencyContactSchema, z.null()]),
+  "credentials": z.array(z.object({
+  "kind": z.string(),
+  "numberLast4": z.string(),
+  "expiresOn": z.string().date().nullable(),
+  "status": z.enum(["recorded", "sighted"]),
+})),
+  "inductions": z.array(z.object({
+  "title": z.string(),
+  "completedAt": z.string().datetime({ offset: true }),
+  "expiresOn": z.string().date().nullable(),
+})),
+});
+export type SafetyBadge = z.infer<typeof SafetyBadgeSchema>;
+
 export const SaveContractTrustRequestSchema = z.object({
   "governmentClient": z.boolean().optional(),
   "institution": z.string().min(1).max(200).nullable().optional(),
@@ -6640,6 +6768,20 @@ export const SetAllowancesRequestSchema = z.object({
   "allowances": z.record(z.string(), z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"))),
 }).strict();
 export type SetAllowancesRequest = z.infer<typeof SetAllowancesRequestSchema>;
+
+export const SetBadgePhotoRequestSchema = z.object({
+  "fileId": z.string().nullable(),
+});
+export type SetBadgePhotoRequest = z.infer<typeof SetBadgePhotoRequestSchema>;
+
+export const SetEmergencyContactRequestSchema = z.object({
+  "contact": z.union([z.object({
+  "name": z.string().min(1).max(200),
+  "relationship": z.string().max(100).nullable().optional(),
+  "phone": z.string().min(8).max(30),
+}), z.null()]),
+});
+export type SetEmergencyContactRequest = z.infer<typeof SetEmergencyContactRequestSchema>;
 
 export const SetMeetingAttendeesRequestSchema = z.object({
   "attendees": z.array(z.intersection(MeetingPersonSchema, z.object({
@@ -7457,6 +7599,10 @@ export const UpdateDefectRequestSchema = z.object({
   "stage": DefectStageSchema.optional(),
   "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
   "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "assigneeUserIds": z.array(UserRefSchema).max(25).optional(),
+  "managerUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "finalApproverUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
   "dueDate": z.string().date().nullable().optional(),
   "pin": DrawingPinSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });

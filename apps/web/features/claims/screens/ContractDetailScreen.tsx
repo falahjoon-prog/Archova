@@ -20,6 +20,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DeadlineChip } from '../components/DeadlineChip';
+import { OwnerInvoicesPanel } from '../components/OwnerInvoicesPanel';
 import { PrimeContractSummary } from '../components/PrimeContractSummary';
 import { PaymentSummaryPanel } from '../components/PaymentSummaryPanel';
 import { RecordClaimForm } from '../components/RecordClaimForm';
@@ -162,6 +163,9 @@ function Detail({ d }: { d: ContractDetail }) {
           />
         }
       />
+      {c.kind === 'head' && !perms.data?.isExternal ? (
+        <OwnerInvoicesPanel contractId={c.id} canManage={canRecord} />
+      ) : null}
       <PaymentSummaryPanel
         contractId={c.id}
         canManageTrust={canDecide && !perms.data?.isExternal}
