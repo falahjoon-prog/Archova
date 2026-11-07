@@ -280,6 +280,39 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
         ),
       ),
     }),
+    getBudgetCostReport: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReport(s, project(input.params));
+        return {
+          hasBudget: r.hasBudget,
+          status: r.status,
+          lines: r.lines.map(({ line: l, ...x }) => ({
+            ...x,
+            lineId: encodeId('budgetLine', l.id),
+            description: l.description,
+          })),
+        };
+      }),
+    }),
+    getBudgetCostReportItems: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReportItems(
+          s,
+          project(input.params),
+          line(input.params),
+          input.query.column,
+        );
+        return {
+          ...r,
+          groups: r.groups.map((g) => ({
+            ...g,
+            sourceId: g.sourceId ? encodeId('commitment', g.sourceId) : null,
+          })),
+        };
+      }),
+    }),
     getBudgetReviewChecks: async (input) => ({
       status: 200,
       body: await read(input, async (s) => {

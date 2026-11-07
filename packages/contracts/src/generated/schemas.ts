@@ -544,6 +544,43 @@ export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
 export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
 export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
 
+export const BudgetCostReportSchema = z.object({
+  "hasBudget": z.boolean(),
+  "status": z.enum(["draft", "locked"]),
+  "lines": z.array(z.object({
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "description": z.string(),
+  "original": FinancialsSignedMoneySchema,
+  "approvedChanges": FinancialsSignedMoneySchema,
+  "revised": FinancialsSignedMoneySchema,
+  "approved": FinancialsSignedMoneySchema,
+  "pending": FinancialsSignedMoneySchema,
+  "nonCommitted": FinancialsSignedMoneySchema,
+  "projected": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+})),
+});
+export type BudgetCostReport = z.infer<typeof BudgetCostReportSchema>;
+
+export const BudgetCostReportItemsSchema = z.object({
+  "code": z.string(),
+  "total": FinancialsSignedMoneySchema,
+  "groups": z.array(z.object({
+  "kind": z.enum(["subcontract", "purchase_order", "direct_costs"]),
+  "sourceId": z.string().nullable(),
+  "label": z.string(),
+  "total": FinancialsSignedMoneySchema,
+  "items": z.array(z.object({
+  "number": z.number().int(),
+  "description": z.string(),
+  "amount": FinancialsSignedMoneySchema,
+})),
+})),
+});
+export type BudgetCostReportItems = z.infer<typeof BudgetCostReportItemsSchema>;
+
 export const BudgetFindingSchema = z.object({
   "id": z.string(),
   "kind": z.enum(["over_committed", "over_spent", "unbudgeted", "near_limit", "large_change"]),
