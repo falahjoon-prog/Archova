@@ -293,6 +293,8 @@ export const PROBLEM_CODES = {
   // bookmarks
   'bookmark.invalid_target': 422,
   'bookmark.limit_reached': 409,
+  // recents
+  'recent.invalid_target': 422,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -340,6 +342,7 @@ export const PROBLEM_CODES = {
   'financials.budget.locked': 409,
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
+  'financials.production.no_plan': 409,
   'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,

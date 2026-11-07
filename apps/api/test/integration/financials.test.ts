@@ -1082,6 +1082,57 @@ describe('Budget and cost codes', () => {
     expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
   });
 
+  it('reports approved, pending and non-committed cost per line, with the items behind each figure', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const get = async (path: string) => (await s.pm.browser.get(`${s.base}${path}`)).json();
+    expect((await get('/budget/cost-report')).hasBudget).toBe(false);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '100000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '5000.00', isMargin: true });
+    const mk = async (title: string, amount: string) =>
+      (
+        await post('/commitments', {
+          kind: 'subcontract',
+          title,
+          lines: [{ budgetLineId: l1.id, description: `${title} work`, amount }],
+        })
+      ).json().commitment.id;
+    const approved = await mk('Slab', '60000.00');
+    await post(`/commitments/${approved}/submit`);
+    await post(`/commitments/${approved}/approve`, {});
+    const pending = await mk('Footings', '30000.00');
+    await post(`/commitments/${pending}/submit`);
+    await mk('Draft only', '9000.00');
+    await post('/direct-costs', {
+      budgetLineId: l1.id,
+      category: 'materials',
+      description: 'Ties',
+      incurredOn: '2026-11-01',
+      amount: '20000.00',
+    });
+
+    const r = await get('/budget/cost-report');
+    expect(r.lines.find((l: { lineId: string }) => l.lineId === l1.id)).toMatchObject({
+      lineId: l1.id,
+      approved: '60000.00',
+      pending: '30000.00',
+      nonCommitted: '20000.00',
+      projected: '110000.00',
+      variance: '-10000.00',
+    });
+    const items = await get(`/budget/lines/${l1.id}/cost-report-items?column=pending`);
+    expect(items.total).toBe('30000.00');
+    expect(items.groups[0]).toMatchObject({ label: 'SC-2 - Footings', kind: 'subcontract' });
+    expect(items.groups[0].items[0].description).toBe('Footings work');
+    expect(
+      (await get(`/budget/lines/${l1.id}/cost-report-items?column=direct`)).groups[0].items,
+    ).toHaveLength(1);
+    expect((await s.sub.browser.get(`${s.base}/budget/cost-report`)).statusCode).toBe(403);
+  });
+
   it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
     const s = await setup('NSW');
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
@@ -1638,5 +1689,117 @@ describe('Direct costs', () => {
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/direct-costs`)).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);
+  });
+});
+
+describe('Labor productivity', () => {
+  it('keeps a production plan, logs quantity by day, reports and exports it, and talks to Nova', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const div = (await post('cost-codes', { code: '09', description: 'Finishes' })).json();
+    const code = (
+      await post('cost-codes', { code: '09-300', description: 'Wall tiling', parentId: div.id })
+    ).json();
+    const url = `cost-codes/${code.id}/production`;
+    const plan = { uom: 'm2', budgetedHours: 100, budgetedQuantity: 500, quantityComplete: 50 };
+
+    // A plan is staff and budget-manager work; logging needs a plan first.
+    expect((await post(`${url}/log`, { loggedOn: '2026-10-01', quantity: 10 })).json().code).toBe(
+      'financials.production.no_plan',
+    );
+    const put = await s.pm.browser.put(`${s.base}/${url}`, plan);
+    expect(put.statusCode, put.body).toBe(200);
+    expect(put.json()).toMatchObject({ costCodeId: code.id, quantityComplete: 50 });
+
+    // Logging adds to the running total; a correction needs a note and cannot go below zero.
+    const a = await post(`${url}/log`, { loggedOn: '2026-10-01', quantity: 12.5 });
+    expect(a.statusCode, a.body).toBe(201);
+    expect(a.json()).toMatchObject({ quantityComplete: 62.5, entry: { quantity: 12.5 } });
+    expect((await post(`${url}/log`, { loggedOn: '2026-10-02', quantity: -5 })).statusCode).toBe(
+      422,
+    );
+    const fix = await post(`${url}/log`, {
+      loggedOn: '2026-10-02',
+      quantity: -2.5,
+      note: 'Mis-keyed',
+    });
+    expect(fix.json().quantityComplete).toBe(60);
+    expect(
+      (await post(`${url}/log`, { loggedOn: '2026-10-02', quantity: -100, note: 'Too much' }))
+        .statusCode,
+    ).toBe(422);
+    expect((await post(`${url}/log`, { loggedOn: '2999-01-01', quantity: 1 })).statusCode).toBe(
+      422,
+    );
+    const log = (await get(`${url}/log`)).json();
+    expect(log.data.map((e: { quantity: number }) => e.quantity)).toEqual([-2.5, 12.5]);
+
+    // Re-saving the plan without a quantity keeps the running total.
+    await s.pm.browser.put(`${s.base}/${url}`, {
+      uom: 'm2',
+      budgetedHours: 120,
+      budgetedQuantity: 500,
+    });
+
+    // The report shows the plan; division and sub-job filters narrow it.
+    const rep = (await get('reports/labor-productivity')).json();
+    expect(rep.rows).toHaveLength(1);
+    expect(rep.rows[0]).toMatchObject({
+      code: '09-300',
+      divisionId: div.id,
+      uom: 'm2',
+      budgetedHours: 120,
+      quantityComplete: 60,
+      pctComplete: 0.12,
+      timesheetHours: 0,
+      flagged: false,
+    });
+    expect(rep.codes.map((c: { code: string }) => c.code)).toEqual(['09', '09-300']);
+    expect((await get(`reports/labor-productivity?divisionId=${div.id}`)).json().rows).toHaveLength(
+      1,
+    );
+    expect((await get(`reports/labor-productivity?subJobId=${code.id}`)).json().rows).toHaveLength(
+      1,
+    );
+    const other = (await post('cost-codes', { code: '10', description: 'Specialties' })).json();
+    expect(
+      (await get(`reports/labor-productivity?divisionId=${other.id}`)).json().rows,
+    ).toHaveLength(0);
+
+    const csv = (await get('reports/labor-productivity/export')).json();
+    expect(csv).toMatchObject({ filename: 'labor-productivity.csv', count: 1 });
+    expect(csv.csv.split('\r\n')[1]).toContain('09-300,Wall tiling');
+
+    // Nova suggests and discusses; the server keeps no conversation and changes nothing.
+    const before = t.ai.calls.length;
+    const nova = await post('ai/labor-productivity', { costCodeId: code.id });
+    expect(nova.statusCode, nova.body).toBe(200);
+    expect(nova.json().runId).toMatch(/^air_/);
+    expect(nova.json().history.at(-1).role).toBe('nova');
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'labor.productivity')!;
+    expect(call.text).toContain('09-300');
+    const next = await post('ai/labor-productivity', {
+      costCodeId: code.id,
+      question: 'Could weather explain it?',
+      history: nova.json().history,
+    });
+    expect(next.json().history.map((h: { role: string }) => h.role)).toEqual([
+      'nova',
+      'user',
+      'nova',
+    ]);
+    expect((await get(`${url}/log`)).json().data).toHaveLength(2);
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/reports/labor-productivity`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/${url}/log`, { loggedOn: '2026-10-01', quantity: 1 }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/ai/labor-productivity`, { costCodeId: code.id }))
+        .statusCode,
+    ).toBe(403);
   });
 });

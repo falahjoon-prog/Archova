@@ -590,6 +590,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/recents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The records the caller opened lately, newest first.
+         * @description Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+         */
+        get: operations["listRecentViews"];
+        put?: never;
+        /**
+         * Note that the caller opened a record (idempotent; it moves the record to the top).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. The caller keeps their newest 50 views.
+         */
+        post: operations["recordRecentView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bookmarks": {
         parameters: {
             query?: never;
@@ -3098,6 +3125,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a person's late-send access for this project, so their phone can no longer queue changes.
+         * @description Ends every live drain grant the person holds for the project. Changes already waiting stay in the queue for an
+         *     admin to accept or reject. Ending is idempotent: `ended` is 0 when nothing was live.
+         */
+        post: operations["endDrainGrants"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bidder-lists": {
         parameters: {
             query?: never;
@@ -3261,6 +3312,31 @@ export interface paths {
         };
         /** The tender-readiness pack as a PDF. */
         get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Who did what, when, across the company, newest first. Org owners and admins only.
+         * @description The audit log, read from the events every change writes in the same transaction. Each line is the action
+         *     (`rfis.rfi.created`), the kind of record it touched, the project, the person (or `link` for someone on an
+         *     access link, `system` for the platform) and the time. Event details are never returned. Filter by project,
+         *     module, person and date range; `to` is exclusive.
+         */
+        get: operations["listAuditLog"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6364,6 +6440,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * My digital Safety ID badge for this project.
+         * @description The caller's own badge: name, company, photo (a short-lived link), emergency contact, QR code value, the
+         *     white card and licences they have recorded (last four characters only, never "verified"), and the site
+         *     inductions they have completed on this project. Nobody else's record is reachable from this call.
+         */
+        get: operations["getMySafetyBadge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear my emergency contact. */
+        put: operations["setMyEmergencyContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or clear my badge photo.
+         * @description The file must be one you uploaded and that has passed scanning. `fileId: null` removes the photo.
+         */
+        put: operations["setMyBadgePhoto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out": {
         parameters: {
             query?: never;
@@ -8632,6 +8776,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The labor productivity report as CSV text, for the same filters. */
+        get: operations["exportLaborProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 100 quantity-in-place entries for a cost code, newest first. */
+        get: operations["listCostCodeQuantityLog"];
+        put?: never;
+        /** Log quantity put in place for a day. It adds to the cost code's quantity in place; a negative entry corrects and needs a note. */
+        post: operations["logCostCodeQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests why a cost code is behind plan and discusses it. Nothing is changed.
+         * @description Nova reads one cost code's labor productivity figures and recent quantity entries and suggests causes to check on
+         *     site and questions to ask. The server keeps no conversation: pass `history` from the last answer back with the next
+         *     `question`. Every figure in Nova's words is checked against the report. Staff only. Uses AI credits.
+         */
+        post: operations["explainLaborProductivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production": {
         parameters: {
             query?: never;
@@ -8731,6 +8942,53 @@ export interface paths {
          *     margin out too.
          */
         get: operations["getBudgetReviewChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/cost-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Per budget line, what is approved, pending and spent outside a commitment, and the projected cost.
+         * @description Approved is the lines of approved commitments; pending is the lines of submitted ones (waiting for a
+         *     decision); non-committed is the direct costs recorded against the line. Projected is the three added up and
+         *     variance is revised budget less projected, so a negative variance is over budget. Margin lines follow the
+         *     same rule as the budget. Builder staff only.
+         */
+        get: operations["getBudgetCostReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        /** The commitment lines or direct costs behind one figure on the cost report. */
+        get: operations["getBudgetCostReportItems"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10138,6 +10396,27 @@ export interface components {
             expiresAt: string;
             filename: string;
         };
+        AuditLogPage: {
+            data: components["schemas"]["AuditEvent"][];
+            nextCursor: string | null;
+        };
+        AuditEvent: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            action: string;
+            module: string;
+            summary: string;
+            entityType: string;
+            projectId: string | null;
+            projectName: string | null;
+            actor: {
+                /** @enum {string} */
+                kind: "user" | "link" | "system";
+                id: string | null;
+                name: string | null;
+            };
+        };
         ReportList: {
             data: components["schemas"]["Report"][];
         };
@@ -11357,6 +11636,28 @@ export interface components {
         NotificationList: {
             data: components["schemas"]["Notification"][];
             unreadCount: number;
+        };
+        /** @enum {string} */
+        RecentViewEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        RecentViewInput: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        RecentView: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            viewedAt: string;
+        };
+        RecentViewList: {
+            data: components["schemas"]["RecentView"][];
         };
         /** @enum {string} */
         BookmarkEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
@@ -14828,10 +15129,55 @@ export interface components {
             uom: string;
             budgetedHours: number;
             budgetedQuantity: number;
+            /** @description Opening quantity in place; leave out to keep the running total. Progress is logged with the quantity log. */
+            quantityComplete?: number;
+        };
+        CostCodeProductionSaved: {
+            costCodeId: string;
+            uom: string;
+            budgetedHours: number;
+            budgetedQuantity: number;
             quantityComplete: number;
         };
-        CostCodeProductionSaved: components["schemas"]["CostCodeProduction"] & {
+        ProductionLogEntry: {
+            id: string;
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LogQuantityRequest: {
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note?: string;
+        };
+        LaborTurn: {
+            /** @enum {string} */
+            role: "user" | "nova";
+            text: string;
+        };
+        ExplainLaborProductivityRequest: {
             costCodeId: string;
+            question?: string;
+            history?: components["schemas"]["LaborTurn"][];
+        };
+        LaborProductivityExplanation: {
+            runId: string;
+            reply: string;
+            causes: {
+                title: string;
+                why: string;
+                check: string;
+                /** @enum {string} */
+                likelihood: "likely" | "possible";
+            }[];
+            questions: string[];
+            notes: string[];
+            history: components["schemas"]["LaborTurn"][];
+            disclaimer: string;
         };
         LaborProductivityRow: {
             costCodeId: string;
@@ -14934,6 +15280,41 @@ export interface components {
             figures: {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
+        };
+        BudgetCostReport: {
+            hasBudget: boolean;
+            /** @enum {string} */
+            status: "draft" | "locked";
+            lines: {
+                lineId: string;
+                code: string;
+                codeDescription: string;
+                description: string;
+                original: components["schemas"]["FinancialsSignedMoney"];
+                approvedChanges: components["schemas"]["FinancialsSignedMoney"];
+                revised: components["schemas"]["FinancialsSignedMoney"];
+                approved: components["schemas"]["FinancialsSignedMoney"];
+                pending: components["schemas"]["FinancialsSignedMoney"];
+                nonCommitted: components["schemas"]["FinancialsSignedMoney"];
+                projected: components["schemas"]["FinancialsSignedMoney"];
+                variance: components["schemas"]["FinancialsSignedMoney"];
+            }[];
+        };
+        BudgetCostReportItems: {
+            code: string;
+            total: components["schemas"]["FinancialsSignedMoney"];
+            groups: {
+                /** @enum {string} */
+                kind: "subcontract" | "purchase_order" | "direct_costs";
+                sourceId: string | null;
+                label: string;
+                total: components["schemas"]["FinancialsSignedMoney"];
+                items: {
+                    number: number;
+                    description: string;
+                    amount: components["schemas"]["FinancialsSignedMoney"];
+                }[];
+            }[];
         };
         BudgetReviewChecks: {
             hasBudget: boolean;
@@ -16042,6 +16423,50 @@ export interface components {
             /** @enum {string} */
             status: "active" | "inactive";
             version: number;
+        };
+        EmergencyContact: {
+            name: string;
+            relationship: string | null;
+            phone: string;
+        };
+        SetEmergencyContactRequest: {
+            /** @description The person to call in an emergency, or null to clear it. */
+            contact: {
+                name: string;
+                relationship?: string | null;
+                phone: string;
+            } | null;
+        };
+        SetBadgePhotoRequest: {
+            /** Format: uuid */
+            fileId: string | null;
+        };
+        SafetyBadge: {
+            workerId: string;
+            fullName: string;
+            companyName: string | null;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            /** @description The text the badge QR encodes. It identifies the badge only; reading anything behind it needs a sign-in. */
+            qrValue: string;
+            /** @description Short-lived link; fetch a new badge when it expires. */
+            photoUrl: string | null;
+            emergencyContact: components["schemas"]["EmergencyContact"] | null;
+            credentials: {
+                kind: string;
+                numberLast4: string;
+                /** Format: date */
+                expiresOn: string | null;
+                /** @enum {string} */
+                status: "recorded" | "sighted";
+            }[];
+            inductions: {
+                title: string;
+                /** Format: date-time */
+                completedAt: string;
+                /** Format: date */
+                expiresOn: string | null;
+            }[];
         };
         WorkerList: {
             data: components["schemas"]["Worker"][];
@@ -18582,6 +19007,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Notification"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRecentViews: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                /** @description At most this many rows (default 10, at most 50). */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recent views */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentViewList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRecentView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecentViewInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -22344,6 +22821,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    endDrainGrants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userId: components["schemas"]["UserRef"];
+                };
+            };
+        };
+        responses: {
+            /** @description Ended */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ended: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listBidderLists: {
         parameters: {
             query?: {
@@ -22569,6 +23078,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAuditLog: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                module?: string;
+                actorId?: string;
+                from?: string;
+                to?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -28031,6 +28571,86 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getMySafetyBadge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEmergencyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyBadgePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBadgePhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     signOutSelf: {
         parameters: {
             query?: never;
@@ -31870,6 +32490,126 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    exportLaborProductivity: {
+        parameters: {
+            query?: {
+                divisionId?: string;
+                subJobId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file name, CSV text and row count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        filename: string;
+                        csv: string;
+                        count: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCostCodeQuantityLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProductionLogEntry"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logCostCodeQuantity: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogQuantityRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entry: components["schemas"]["ProductionLogEntry"];
+                        quantityComplete: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    explainLaborProductivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainLaborProductivityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborProductivityExplanation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     setCostCodeProduction: {
         parameters: {
             query?: never;
@@ -32025,6 +32765,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetReviewChecks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetCostReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetCostReport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetCostReportItems: {
+        parameters: {
+            query: {
+                column: "approved" | "pending" | "direct";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetCostReportItems"];
                 };
             };
             default: components["responses"]["Problem"];

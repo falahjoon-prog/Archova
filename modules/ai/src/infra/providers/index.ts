@@ -14,6 +14,7 @@ import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
+import { heuristicLaborProductivity } from '../../eval/suites/labor-productivity';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
 import { heuristicContractAsk } from '../../eval/suites/contract-ask';
 import { heuristicContractCompare } from '../../eval/suites/contract-compare';
@@ -57,6 +58,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
+  'labor.productivity': heuristicLaborProductivity,
   'contract.review': heuristicContractReview,
   'contract.ask': heuristicContractAsk,
   'contract.compare': heuristicContractCompare,

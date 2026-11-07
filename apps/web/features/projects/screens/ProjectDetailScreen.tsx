@@ -6,6 +6,7 @@ import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { BookmarksCard } from '@/features/bookmarks';
+import { RecentsCard } from '@/features/recents';
 import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
@@ -91,6 +92,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           permissions={permissions.data as EffectivePermissions | undefined}
         />
         <BookmarksCard projectId={projectId} />
+        <RecentsCard projectId={projectId} />
         <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         <PhotosCard projectId={projectId} timeZone={p.timezone} />
         <section aria-labelledby="tools-heading" className="stack">

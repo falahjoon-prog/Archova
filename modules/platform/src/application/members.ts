@@ -300,7 +300,20 @@ export function createMemberService(deps: {
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    // An organisation-level hold (suspended membership) is not an ordinary removal; the drain grant fails closed.
+    const [hold] = await scope.tx
+      .select({ id: memberships.id })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.orgId, scope.ctx.orgId),
+          eq(memberships.userId, userId),
+          eq(memberships.status, 'suspended'),
+        ),
+      )
+      .limit(1);
+    return { ...row, held: Boolean(hold) };
   }
 
   return { list, add, remove, getProjectMembership, getProjectAccessState, contactsOfCompany };

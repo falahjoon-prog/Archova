@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useState, type FormEvent } from 'react';
 import {
   Alert,
@@ -80,6 +81,12 @@ function Detail({ d }: { d: SubmittalDetail }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="submittal"
+        entityId={s.id}
+        projectId={project.projectId}
+        title={`${s.numberLabel} ${s.title}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.submittals(org.orgSlug, project.projectId)}>
           Submittals

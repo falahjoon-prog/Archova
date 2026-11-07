@@ -52,6 +52,7 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
+import { createRecentsModule } from '@archova/mod-recents';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -307,6 +308,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const notifications = createNotificationsModule(services);
   const bookmarks = createBookmarksModule(services);
+  const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
     access: access.api,
@@ -397,6 +399,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     quotePackage: (scope, projectId, packageId) =>
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
+    laborFacts: (scope, projectId, costCodeId) =>
+      financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
     budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
@@ -455,6 +459,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
+    identity: identity.api,
     platform: platform.api,
     access: access.api,
     rfis: rfis.api,
@@ -502,6 +507,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...quality.api.syncCommands,
       ...safety.api.syncCommands,
       ...documents.api.syncCommands,
+      ...files.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
   });
@@ -525,6 +531,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    recents,
     financials,
     quality,
     precon,
@@ -566,6 +573,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    recents,
     financials,
     quality,
     precon,

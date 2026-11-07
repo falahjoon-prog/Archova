@@ -48,6 +48,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: bookmarks
+  - name: recents
   - name: reporting
   - name: search
   - name: data-export
@@ -666,6 +667,48 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Notification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/recents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listRecentViews
+      tags: [recents]
+      x-module: platform
+      summary: The records the caller opened lately, newest first.
+      description: |
+        Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+      parameters:
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        - name: limit
+          in: query
+          description: At most this many rows (default 10, at most 50).
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: The recent views
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecentViewList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordRecentView
+      tags: [recents]
+      x-module: platform
+      summary: Note that the caller opened a record (idempotent; it moves the record to the top).
+      description: |
+        `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+        record's own module. The caller keeps their newest 50 views.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecentViewInput' }
+      responses:
+        '204':
+          description: Recorded
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bookmarks:
     parameters:
@@ -4027,6 +4070,41 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: endDrainGrants
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: End a person's late-send access for this project, so their phone can no longer queue changes.
+      description: |
+        Ends every live drain grant the person holds for the project. Changes already waiting stay in the queue for an
+        admin to accept or reject. Ending is idempotent: `ended` is 0 when nothing was live.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userId]
+              properties:
+                userId: { $ref: '#/components/schemas/UserRef' }
+      responses:
+        '200':
+          description: Ended
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ended]
+                properties:
+                  ended: { type: integer, minimum: 0 }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bidder-lists:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4239,6 +4317,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/audit-log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAuditLog
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.audit.read
+      summary: Who did what, when, across the company, newest first. Org owners and admins only.
+      description: |
+        The audit log, read from the events every change writes in the same transaction. Each line is the action
+        (`rfis.rfi.created`), the kind of record it touched, the project, the person (or `link` for someone on an
+        access link, `system` for the platform) and the time. Event details are never returned. Filter by project,
+        module, person and date range; `to` is exclusive.
+      parameters:
+        - { name: projectId, in: query, schema: { type: string } }
+        - { name: module, in: query, schema: { type: string, maxLength: 40 } }
+        - { name: actorId, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditLogPage' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
@@ -8605,6 +8712,72 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SignInResult' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getMySafetyBadge
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'My digital Safety ID badge for this project.'
+      description: |
+        The caller's own badge: name, company, photo (a short-lived link), emergency contact, QR code value, the
+        white card and licences they have recorded (last four characters only, never "verified"), and the site
+        inductions they have completed on this project. Nobody else's record is reachable from this call.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      operationId: setMyEmergencyContact
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Set or clear my emergency contact.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetEmergencyContactRequest' }
+      responses:
+        '200':
+          description: The updated badge
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      operationId: setMyBadgePhoto
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Set or clear my badge photo.'
+      description: 'The file must be one you uploaded and that has passed scanning. `fileId: null` removes the photo.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetBadgePhotoRequest' }
+      responses:
+        '200':
+          description: The updated badge
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11773,6 +11946,117 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LaborProductivity' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: exportLaborProductivity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The labor productivity report as CSV text, for the same filters.
+      parameters:
+        - {
+            name: divisionId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: subJobId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: The file name, CSV text and row count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [filename, csv, count]
+                properties:
+                  filename: { type: string }
+                  csv: { type: string }
+                  count: { type: integer }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    get:
+      operationId: listCostCodeQuantityLog
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The latest 100 quantity-in-place entries for a cost code, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductionLogEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logCostCodeQuantity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.production.log
+      summary: Log quantity put in place for a day. It adds to the cost code's quantity in place; a negative entry corrects and needs a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogQuantityRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entry, quantityComplete]
+                properties:
+                  entry: { $ref: '#/components/schemas/ProductionLogEntry' }
+                  quantityComplete: { type: number }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: explainLaborProductivity
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.budget.read
+      summary: Nova suggests why a cost code is behind plan and discusses it. Nothing is changed.
+      description: |
+        Nova reads one cost code's labor productivity figures and recent quantity entries and suggests causes to check on
+        site and questions to ask. The server keeps no conversation: pass `history` from the last answer back with the next
+        `question`. Every figure in Nova's words is checked against the report. Staff only. Uses AI credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExplainLaborProductivityRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaborProductivityExplanation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11891,6 +12175,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/cost-report:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetCostReport
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Per budget line, what is approved, pending and spent outside a commitment, and the projected cost.
+      description: |
+        Approved is the lines of approved commitments; pending is the lines of submitted ones (waiting for a
+        decision); non-committed is the direct costs recorded against the line. Projected is the three added up and
+        variance is revised budget less projected, so a negative variance is over budget. Margin lines follow the
+        same rule as the budget. Builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getBudgetCostReportItems
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The commitment lines or direct costs behind one figure on the cost report.
+      parameters:
+        - name: column
+          in: query
+          required: true
+          schema: { type: string, enum: [approved, pending, direct] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReportItems' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
     parameters:
@@ -14170,6 +14502,33 @@ components:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
         filename: { type: string }
+    AuditLogPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AuditEvent' }
+        nextCursor: { type: [string, 'null'] }
+    AuditEvent:
+      type: object
+      required: [id, at, action, module, summary, entityType, projectId, projectName, actor]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        action: { type: string }
+        module: { type: string }
+        summary: { type: string }
+        entityType: { type: string }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        actor:
+          type: object
+          required: [kind, id, name]
+          properties:
+            kind: { type: string, enum: [user, link, system] }
+            id: { type: [string, 'null'] }
+            name: { type: [string, 'null'] }
     ReportList:
       type: object
       required: [data]
@@ -15966,6 +16325,36 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Notification' }
         unreadCount: { type: integer, minimum: 0 }
+    RecentViewEntityType:
+      type: string
+      enum: [rfi, submittal, defect, drawing_sheet, meeting]
+    RecentViewInput:
+      type: object
+      required: [entityType, entityId, projectId, title]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId:
+          { type: string, description: Public id of the record, of the kind `entityType` names. }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        subtitle: { type: string, maxLength: 200 }
+    RecentView:
+      type: object
+      required: [entityType, entityId, projectId, title, subtitle, viewedAt]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId: { type: string }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        subtitle: { type: string }
+        viewedAt: { type: string, format: date-time }
+    RecentViewList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RecentView' }
     BookmarkEntityType:
       type: string
       enum: [rfi, submittal, defect, drawing_sheet, meeting]
@@ -21523,7 +21912,7 @@ components:
         totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
     CostCodeProduction:
       type: object
-      required: [uom, budgetedHours, budgetedQuantity, quantityComplete]
+      required: [uom, budgetedHours, budgetedQuantity]
       properties:
         uom:
           {
@@ -21534,14 +21923,78 @@ components:
           }
         budgetedHours: { type: number, minimum: 0, maximum: 9999999999 }
         budgetedQuantity: { type: number, minimum: 0, maximum: 999999999999 }
-        quantityComplete: { type: number, minimum: 0, maximum: 999999999999 }
+        quantityComplete:
+          {
+            type: number,
+            minimum: 0,
+            maximum: 999999999999,
+            description: 'Opening quantity in place; leave out to keep the running total. Progress is logged with the quantity log.',
+          }
     CostCodeProductionSaved:
-      allOf:
-        - $ref: '#/components/schemas/CostCodeProduction'
-        - type: object
-          required: [costCodeId]
-          properties:
-            costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+      type: object
+      required: [costCodeId, uom, budgetedHours, budgetedQuantity, quantityComplete]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        uom: { type: string }
+        budgetedHours: { type: number }
+        budgetedQuantity: { type: number }
+        quantityComplete: { type: number }
+    ProductionLogEntry:
+      type: object
+      required: [id, loggedOn, quantity, note, createdAt]
+      properties:
+        id: { type: string, pattern: '^pgl_[0-9A-Za-z]{26}$' }
+        loggedOn: { type: string, format: date }
+        quantity: { type: number }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    LogQuantityRequest:
+      type: object
+      required: [loggedOn, quantity]
+      properties:
+        loggedOn: { type: string, format: date }
+        quantity: { type: number, minimum: -999999999999, maximum: 999999999999 }
+        note: { type: string, minLength: 1, maxLength: 300 }
+    LaborTurn:
+      type: object
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    ExplainLaborProductivityRequest:
+      type: object
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        question: { type: string, maxLength: 1000 }
+        history:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/LaborTurn' }
+    LaborProductivityExplanation:
+      type: object
+      required: [runId, reply, causes, questions, notes, history, disclaimer]
+      properties:
+        runId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+        reply: { type: string }
+        causes:
+          type: array
+          items:
+            type: object
+            required: [title, why, check, likelihood]
+            properties:
+              title: { type: string }
+              why: { type: string }
+              check: { type: string }
+              likelihood: { type: string, enum: [likely, possible] }
+        questions:
+          type: array
+          items: { type: string }
+        notes: { type: array, items: { type: string } }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/LaborTurn' }
+        disclaimer: { type: string }
     LaborProductivityRow:
       type: object
       required:
@@ -21721,6 +22174,69 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReport:
+      type: object
+      required: [hasBudget, status, lines]
+      properties:
+        hasBudget: { type: boolean }
+        status: { type: string, enum: [draft, locked] }
+        lines:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                lineId,
+                code,
+                codeDescription,
+                description,
+                original,
+                approvedChanges,
+                revised,
+                approved,
+                pending,
+                nonCommitted,
+                projected,
+                variance,
+              ]
+            properties:
+              lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              codeDescription: { type: string }
+              description: { type: string }
+              original: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approvedChanges: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approved: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              pending: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              nonCommitted: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              projected: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReportItems:
+      type: object
+      required: [code, total, groups]
+      properties:
+        code: { type: string }
+        total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        groups:
+          type: array
+          items:
+            type: object
+            required: [kind, sourceId, label, total, items]
+            properties:
+              kind: { type: string, enum: [subcontract, purchase_order, direct_costs] }
+              sourceId: { type: [string, 'null'] }
+              label: { type: string }
+              total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [number, description, amount]
+                  properties:
+                    number: { type: integer }
+                    description: { type: string }
+                    amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     BudgetReviewChecks:
       type: object
       required: [hasBudget, status, lineCount, totals, findings]
@@ -23490,6 +24006,82 @@ components:
         kind: { type: string, enum: [worker, visitor, delivery] }
         status: { type: string, enum: [active, inactive] }
         version: { type: integer }
+    EmergencyContact:
+      type: object
+      required: [name, relationship, phone]
+      properties:
+        name: { type: string }
+        relationship: { type: [string, 'null'] }
+        phone: { type: string }
+    SetEmergencyContactRequest:
+      type: object
+      required: [contact]
+      properties:
+        contact:
+          description: The person to call in an emergency, or null to clear it.
+          oneOf:
+            - type: object
+              required: [name, phone]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                relationship: { type: [string, 'null'], maxLength: 100 }
+                phone: { type: string, minLength: 8, maxLength: 30 }
+            - type: 'null'
+    SetBadgePhotoRequest:
+      type: object
+      required: [fileId]
+      properties:
+        fileId: { type: [string, 'null'], format: uuid }
+    SafetyBadge:
+      type: object
+      required:
+        [
+          workerId,
+          fullName,
+          companyName,
+          status,
+          qrValue,
+          photoUrl,
+          emergencyContact,
+          credentials,
+          inductions,
+        ]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        fullName: { type: string }
+        companyName: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        qrValue:
+          type: string
+          description: The text the badge QR encodes. It identifies the badge only; reading anything behind it needs a sign-in.
+        photoUrl:
+          {
+            type: [string, 'null'],
+            description: 'Short-lived link; fetch a new badge when it expires.',
+          }
+        emergencyContact:
+          oneOf:
+            - $ref: '#/components/schemas/EmergencyContact'
+            - type: 'null'
+        credentials:
+          type: array
+          items:
+            type: object
+            required: [kind, numberLast4, expiresOn, status]
+            properties:
+              kind: { type: string }
+              numberLast4: { type: string }
+              expiresOn: { type: [string, 'null'], format: date }
+              status: { type: string, enum: [recorded, sighted] }
+        inductions:
+          type: array
+          items:
+            type: object
+            required: [title, completedAt, expiresOn]
+            properties:
+              title: { type: string }
+              completedAt: { type: string, format: date-time }
+              expiresOn: { type: [string, 'null'], format: date }
     WorkerList:
       type: object
       required: [data]
