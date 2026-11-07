@@ -1082,6 +1082,58 @@ describe('Budget and cost codes', () => {
     expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
   });
 
+  it('reports approved, pending and non-committed cost per line, with the items behind each figure', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const get = async (path: string) => (await s.pm.browser.get(`${s.base}${path}`)).json();
+    expect((await get('/budget/cost-report')).hasBudget).toBe(false);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '100000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '5000.00', isMargin: true });
+    const mk = async (title: string, amount: string) =>
+      (
+        await post('/commitments', {
+          kind: 'subcontract',
+          title,
+          lines: [{ budgetLineId: l1.id, description: `${title} work`, amount }],
+        })
+      ).json().commitment.id;
+    const approved = await mk('Slab', '60000.00');
+    await post(`/commitments/${approved}/submit`);
+    await post(`/commitments/${approved}/approve`, {});
+    const pending = await mk('Footings', '30000.00');
+    await post(`/commitments/${pending}/submit`);
+    await mk('Draft only', '9000.00');
+    await post('/direct-costs', {
+      budgetLineId: l1.id,
+      category: 'materials',
+      description: 'Ties',
+      incurredOn: '2026-11-01',
+      amount: '20000.00',
+    });
+
+    const r = await get('/budget/cost-report');
+    expect(r.lines).toHaveLength(1);
+    expect(r.lines[0]).toMatchObject({
+      lineId: l1.id,
+      approved: '60000.00',
+      pending: '30000.00',
+      nonCommitted: '20000.00',
+      projected: '110000.00',
+      variance: '-10000.00',
+    });
+    const items = await get(`/budget/lines/${l1.id}/cost-report-items?column=pending`);
+    expect(items.total).toBe('30000.00');
+    expect(items.groups[0]).toMatchObject({ label: 'SC-2 - Footings', kind: 'subcontract' });
+    expect(items.groups[0].items[0].description).toBe('Footings work');
+    expect(
+      (await get(`/budget/lines/${l1.id}/cost-report-items?column=direct`)).groups[0].items,
+    ).toHaveLength(1);
+    expect((await s.sub.browser.get(`${s.base}/budget/cost-report`)).statusCode).toBe(403);
+  });
+
   it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
     const s = await setup('NSW');
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);

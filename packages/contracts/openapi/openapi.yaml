@@ -11948,6 +11948,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/cost-report:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetCostReport
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Per budget line, what is approved, pending and spent outside a commitment, and the projected cost.
+      description: |
+        Approved is the lines of approved commitments; pending is the lines of submitted ones (waiting for a
+        decision); non-committed is the direct costs recorded against the line. Projected is the three added up and
+        variance is revised budget less projected, so a negative variance is over budget. Margin lines follow the
+        same rule as the budget. Builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getBudgetCostReportItems
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The commitment lines or direct costs behind one figure on the cost report.
+      parameters:
+        - name: column
+          in: query
+          required: true
+          schema: { type: string, enum: [approved, pending, direct] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReportItems' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -21805,6 +21853,69 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReport:
+      type: object
+      required: [hasBudget, status, lines]
+      properties:
+        hasBudget: { type: boolean }
+        status: { type: string, enum: [draft, locked] }
+        lines:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                lineId,
+                code,
+                codeDescription,
+                description,
+                original,
+                approvedChanges,
+                revised,
+                approved,
+                pending,
+                nonCommitted,
+                projected,
+                variance,
+              ]
+            properties:
+              lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              codeDescription: { type: string }
+              description: { type: string }
+              original: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approvedChanges: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approved: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              pending: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              nonCommitted: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              projected: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReportItems:
+      type: object
+      required: [code, total, groups]
+      properties:
+        code: { type: string }
+        total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        groups:
+          type: array
+          items:
+            type: object
+            required: [kind, sourceId, label, total, items]
+            properties:
+              kind: { type: string, enum: [subcontract, purchase_order, direct_costs] }
+              sourceId: { type: [string, 'null'] }
+              label: { type: string }
+              total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [number, description, amount]
+                  properties:
+                    number: { type: integer }
+                    description: { type: string }
+                    amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     BudgetReviewChecks:
       type: object
       required: [hasBudget, status, lineCount, totals, findings]
