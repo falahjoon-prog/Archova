@@ -2730,6 +2730,30 @@ export const GetLaborProductivityQuery = z.object({
   "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
   "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 });
+export const ExportLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExportLaborProductivityQuery = z.object({
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ListCostCodeQuantityLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityBody = s.LogQuantityRequestSchema;
+export const ExplainLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExplainLaborProductivityBody = s.ExplainLaborProductivityRequestSchema;
 export const SetCostCodeProductionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9145,6 +9169,54 @@ export const operations = {
     params: GetLaborProductivityParams,
     query: GetLaborProductivityQuery,
     body: null,
+  },
+  exportLaborProductivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ExportLaborProductivityParams,
+    query: ExportLaborProductivityQuery,
+    body: null,
+  },
+  listCostCodeQuantityLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListCostCodeQuantityLogParams,
+    query: null,
+    body: null,
+  },
+  logCostCodeQuantity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.production.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogCostCodeQuantityParams,
+    query: null,
+    body: LogCostCodeQuantityBody,
+  },
+  explainLaborProductivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ExplainLaborProductivityParams,
+    query: null,
+    body: ExplainLaborProductivityBody,
   },
   setCostCodeProduction: {
     method: 'PUT',

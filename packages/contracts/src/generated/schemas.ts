@@ -1408,13 +1408,17 @@ export const CostCodeProductionSchema = z.object({
   "uom": z.string().min(1).max(20),
   "budgetedHours": z.number().min(0).max(9999999999),
   "budgetedQuantity": z.number().min(0).max(999999999999),
-  "quantityComplete": z.number().min(0).max(999999999999),
+  "quantityComplete": z.number().min(0).max(999999999999).optional(),
 });
 export type CostCodeProduction = z.infer<typeof CostCodeProductionSchema>;
 
-export const CostCodeProductionSavedSchema = z.intersection(CostCodeProductionSchema, z.object({
+export const CostCodeProductionSavedSchema = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
-}));
+  "uom": z.string(),
+  "budgetedHours": z.number(),
+  "budgetedQuantity": z.number(),
+  "quantityComplete": z.number(),
+});
 export type CostCodeProductionSaved = z.infer<typeof CostCodeProductionSavedSchema>;
 
 export const ForecastAdjustmentCategorySchema = z.enum(["unawarded_work", "allowance", "risk", "saving", "other"]);
@@ -3195,6 +3199,19 @@ export const EstimatePageSchema = z.object({
 });
 export type EstimatePage = z.infer<typeof EstimatePageSchema>;
 
+export const LaborTurnSchema = z.object({
+  "role": z.enum(["user", "nova"]),
+  "text": z.string().min(1).max(1500),
+});
+export type LaborTurn = z.infer<typeof LaborTurnSchema>;
+
+export const ExplainLaborProductivityRequestSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "question": z.string().max(1000).optional(),
+  "history": z.array(LaborTurnSchema).max(10).optional(),
+});
+export type ExplainLaborProductivityRequest = z.infer<typeof ExplainLaborProductivityRequestSchema>;
+
 export const FeatureFlagsSchema = z.object({
   "orgId": z.string(),
   "flags": z.record(z.string(), z.boolean()),
@@ -4290,6 +4307,22 @@ export const LaborProductivitySchema = z.object({
 });
 export type LaborProductivity = z.infer<typeof LaborProductivitySchema>;
 
+export const LaborProductivityExplanationSchema = z.object({
+  "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
+  "reply": z.string(),
+  "causes": z.array(z.object({
+  "title": z.string(),
+  "why": z.string(),
+  "check": z.string(),
+  "likelihood": z.enum(["likely", "possible"]),
+})),
+  "questions": z.array(z.string()),
+  "notes": z.array(z.string()),
+  "history": z.array(LaborTurnSchema),
+  "disclaimer": z.string(),
+});
+export type LaborProductivityExplanation = z.infer<typeof LaborProductivityExplanationSchema>;
+
 export const LateSopaClaimRiskClaimSchema = z.object({
   "claimId": z.string(),
   "claimNumber": z.number().int(),
@@ -4367,6 +4400,13 @@ export const LogEquipmentHoursRequestSchema = z.object({
   "notes": z.string().min(1).max(2000).optional(),
 }).strict();
 export type LogEquipmentHoursRequest = z.infer<typeof LogEquipmentHoursRequestSchema>;
+
+export const LogQuantityRequestSchema = z.object({
+  "loggedOn": z.string().date(),
+  "quantity": z.number().min(-999999999999).max(999999999999),
+  "note": z.string().min(1).max(300).optional(),
+});
+export type LogQuantityRequest = z.infer<typeof LogQuantityRequestSchema>;
 
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
@@ -5591,6 +5631,15 @@ export const ProblemSchema = z.object({
 })).optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
+
+export const ProductionLogEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^pgl_[0-9A-Za-z]{26}$")),
+  "loggedOn": z.string().date(),
+  "quantity": z.number(),
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ProductionLogEntry = z.infer<typeof ProductionLogEntrySchema>;
 
 export const ProjectSchema = z.object({
   "id": z.string(),
