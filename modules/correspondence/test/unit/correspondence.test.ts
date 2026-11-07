@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   auDate,
+  canBePrivate,
   canClose,
+  checkFieldDefs,
+  diffFieldValues,
+  diffItem,
+  mergeFieldValues,
+  missingRequiredFields,
   canEditItem,
   canRespondAs,
   canSeeItem,
@@ -120,5 +126,106 @@ describe('templates', () => {
     const nod = TYPE_TEMPLATES.find((t) => t.key === 'notice_of_delay')!;
     expect(nod.isEvidential).toBe(true);
     expect(nod.timeBarDays).not.toBeNull();
+  });
+});
+
+describe('private items', () => {
+  const item = {
+    status: 'sent' as const,
+    createdBy: 'author',
+    fromCompanyId: 'a',
+    toCompanyIds: ['b'],
+    isPrivate: true,
+    accessUserIds: ['listed'],
+  };
+  const viewer = (userId: string, o: object = {}) => ({
+    userId,
+    companyId: 'b',
+    isInternal: false,
+    isAdmin: false,
+    ...o,
+  });
+
+  it('shows a private item only to its author, admins and the list', () => {
+    expect(canSeeItem(item, viewer('author', { isInternal: true }))).toBe(true);
+    expect(canSeeItem(item, viewer('boss', { isInternal: true, isAdmin: true }))).toBe(true);
+    expect(canSeeItem(item, viewer('listed'))).toBe(true);
+    // Not the receiving company, and not other staff.
+    expect(canSeeItem(item, viewer('other'))).toBe(false);
+    expect(canSeeItem(item, viewer('staff', { isInternal: true }))).toBe(false);
+    expect(canSeeItem({ ...item, isPrivate: false }, viewer('other'))).toBe(true);
+  });
+
+  it('keeps a draft with its author even for people on the list', () => {
+    expect(canSeeItem({ ...item, status: 'draft' }, viewer('listed'))).toBe(false);
+  });
+
+  it('does not let a sent notice that binds the company be made private', () => {
+    expect(canBePrivate({ isEvidential: true, status: 'draft' })).toBe(true);
+    expect(canBePrivate({ isEvidential: true, status: 'sent' })).toBe(false);
+    expect(canBePrivate({ isEvidential: false, status: 'sent' })).toBe(true);
+  });
+});
+
+describe('type-specific fields', () => {
+  const defs = [
+    { key: 'start', label: 'Start', kind: 'date' as const, required: true, options: [] },
+    { key: 'level', label: 'Level', kind: 'select' as const, required: false, options: ['A', 'B'] },
+    { key: 'qty', label: 'Qty', kind: 'number' as const, required: false, options: [] },
+  ];
+
+  it('refuses duplicate keys, empty selects and too many fields', () => {
+    expect(checkFieldDefs(defs)).toEqual([]);
+    expect(checkFieldDefs([defs[0]!, defs[0]!]).map((p) => p.path)).toEqual(['fields/1/key']);
+    expect(checkFieldDefs([{ ...defs[1]!, options: [] }]).map((p) => p.path)).toEqual([
+      'fields/0/options',
+    ]);
+    expect(checkFieldDefs([{ ...defs[0]!, key: 'Bad key' }])).toHaveLength(1);
+    expect(
+      checkFieldDefs(Array.from({ length: 13 }, (_, i) => ({ ...defs[2]!, key: `k${i}` }))),
+    ).toHaveLength(1);
+  });
+
+  it('merges values by kind, clears with null and flags the rest', () => {
+    const ok = mergeFieldValues(defs, { qty: 2 }, { start: '2027-03-01', level: 'B', qty: null });
+    expect(ok).toEqual({ values: { start: '2027-03-01', level: 'B' }, problems: [] });
+    const bad = mergeFieldValues(defs, {}, { start: '2027-02-30', level: 'C', qty: '5', nope: 1 });
+    expect(bad.problems.map((p) => p.path)).toEqual([
+      'fields/start',
+      'fields/level',
+      'fields/qty',
+      'fields/nope',
+    ]);
+  });
+
+  it('lists required fields with no value', () => {
+    expect(missingRequiredFields(defs, {}).map((p) => p.path)).toEqual(['fields/start']);
+    expect(missingRequiredFields(defs, { start: '2027-03-01' })).toEqual([]);
+  });
+});
+
+describe('change history', () => {
+  it('records short values, and only the name of a long text that changed', () => {
+    const long = 'x'.repeat(300);
+    expect(
+      diffItem(
+        { subject: 'a', body: long, dueDate: null, fileIds: [] },
+        { subject: 'b', body: `${long}y`, dueDate: '2027-01-01', fileIds: ['f'] },
+        ['subject', 'body', 'dueDate', 'fileIds'],
+      ),
+    ).toEqual([
+      { field: 'subject', from: 'a', to: 'b' },
+      { field: 'body' },
+      { field: 'dueDate', from: null, to: '2027-01-01' },
+      { field: 'fileIds', from: '0 items', to: '1 item' },
+    ]);
+    expect(diffItem({ a: 1 }, { a: 1 }, ['a'])).toEqual([]);
+  });
+
+  it('names type-specific changes fields.<key>', () => {
+    expect(diffFieldValues({ a: 'x', b: 1 }, { a: 'y', b: 1, c: true })).toEqual([
+      { field: 'fields.a', from: 'x', to: 'y' },
+      { field: 'fields.c', from: null, to: true },
+    ]);
   });
 });

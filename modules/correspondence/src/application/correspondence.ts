@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { atLeast } from '@archova/domain/permissions';
 import { localDateOf } from '@archova/time';
@@ -17,29 +17,41 @@ import type { FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   auDate,
+  canBePrivate,
   canClose,
   canEditItem,
+  canManageAccess,
   canRespond,
   canRespondAs,
   canSeeItem,
   canSend,
   canWriteDraft,
   canVoid,
+  checkFieldDefs,
+  diffFieldValues,
+  diffItem,
   dueDateFor,
+  mergeFieldValues,
+  missingRequiredFields,
   renderTemplate,
   sentInTime,
   timeBarDate,
   timeBarState,
   type CorrespondenceStatus,
   type CorrespondenceViewer,
+  type FieldChange,
+  type FieldDef,
+  type FieldValue,
   type RelatedLink,
 } from '../domain/correspondence';
 import { TYPE_TEMPLATES, findTemplate } from '../domain/templates';
-import { items, responses, types } from '../infra/tables';
+import { itemAccess, itemEmails, itemHistory, items, responses, types } from '../infra/tables';
 
 export type TypeRow = typeof types.$inferSelect;
 export type ItemRow = typeof items.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
+export type HistoryRow = typeof itemHistory.$inferSelect;
+export type EmailRow = typeof itemEmails.$inferSelect;
 export type ItemView = ItemRow & {
   timeBarState: ReturnType<typeof timeBarState>;
   sentInTime: boolean | null;
@@ -62,6 +74,7 @@ export interface TypeFields {
   timeBarDays?: number | null;
   subjectTemplate?: string;
   bodyTemplate?: string;
+  fieldDefs?: FieldDef[];
 }
 
 export interface ItemFields {
@@ -76,7 +89,27 @@ export interface ItemFields {
   timeBarDays?: number | null;
   fileIds?: string[];
   related?: RelatedLink[];
+  /** Values of the type's own fields; `null` clears one. */
+  fields?: Record<string, FieldValue | null>;
 }
+
+/** Fields whose changes the history records. */
+const TRACKED = [
+  'subject',
+  'body',
+  'fromCompanyId',
+  'toCompanyIds',
+  'responseRequired',
+  'dueDate',
+  'eventDate',
+  'timeBarDays',
+  'fileIds',
+  'related',
+] as const;
+
+/** Most emails one item may queue in an hour, so the mail log cannot be used to spam people. */
+const EMAILS_PER_HOUR = 100;
+export const MAX_EMAIL_RECIPIENTS = 20;
 
 export function createCorrespondenceService(deps: CorrespondenceDeps) {
   const now = deps.now ?? (() => new Date());
@@ -97,6 +130,11 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     const [row] = await scope.tx.select().from(types).where(eq(types.id, id)).limit(1);
     if (!row) throw new AppError('correspondence_type.not_found');
     return row;
+  }
+
+  function assertFieldDefs(defs: FieldDef[]) {
+    const problems = checkFieldDefs(defs);
+    if (problems.length) throw new AppError('validation_failed', 'Check the fields.', problems);
   }
 
   async function checkPrefix(scope: TenantScope, prefix: string, exceptId?: string) {
@@ -127,6 +165,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         { path: name ? 'prefix' : 'name', message: 'Required' },
       ]);
     await checkPrefix(scope, prefix);
+    if (input.fieldDefs) assertFieldDefs(input.fieldDefs);
     const id = uuidv7();
     const [row] = await scope.tx
       .insert(types)
@@ -144,6 +183,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
           input.timeBarDays !== undefined ? input.timeBarDays : (tpl?.timeBarDays ?? null),
         subjectTemplate: input.subjectTemplate ?? tpl?.subjectTemplate ?? '',
         bodyTemplate: input.bodyTemplate ?? tpl?.bodyTemplate ?? '',
+        fieldDefs: input.fieldDefs ?? [],
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -180,6 +220,10 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     if (patch.timeBarDays !== undefined) set.timeBarDays = patch.timeBarDays;
     if (patch.subjectTemplate !== undefined) set.subjectTemplate = patch.subjectTemplate;
     if (patch.bodyTemplate !== undefined) set.bodyTemplate = patch.bodyTemplate;
+    if (patch.fieldDefs !== undefined) {
+      assertFieldDefs(patch.fieldDefs);
+      set.fieldDefs = patch.fieldDefs;
+    }
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? now() : null;
     const [row] = await scope.tx
       .update(types)
@@ -227,10 +271,41 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
   function visibleTo(v: CorrespondenceViewer): SQL | null {
     if (v.isAdmin) return null;
     const own = sql`${items.createdBy} = ${v.userId}`;
-    if (v.isInternal) return sql`(${own} or ${items.status} <> 'draft')`;
-    if (!v.companyId) return own;
-    return sql`(${own} or (${items.status} <> 'draft' and (${items.fromCompanyId} = ${v.companyId}
-      or ${v.companyId} = any(${items.toCompanyIds}))))`;
+    const listed = sql`exists (select 1 from ${itemAccess} a
+      where a.item_id = ${items.id} and a.user_id = ${v.userId})`;
+    const audience = v.isInternal
+      ? sql`true`
+      : v.companyId
+        ? sql`(${items.fromCompanyId} = ${v.companyId} or ${v.companyId} = any(${items.toCompanyIds}))`
+        : sql`false`;
+    return sql`(${own} or (${items.status} <> 'draft'
+      and (case when ${items.isPrivate} then ${listed} else ${audience} end)))`;
+  }
+
+  async function accessIds(scope: TenantScope, itemId: string): Promise<string[]> {
+    const rows = await scope.tx
+      .select({ userId: itemAccess.userId })
+      .from(itemAccess)
+      .where(eq(itemAccess.itemId, itemId));
+    return rows.map((r) => r.userId);
+  }
+
+  /** One line in the item's change history, written in the same transaction as the change. */
+  async function log(
+    scope: TenantScope,
+    itemId: string,
+    action: string,
+    changes: FieldChange[] = [],
+  ) {
+    await scope.tx.insert(itemHistory).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      itemId,
+      at: now(),
+      actorId: scope.ctx.userId,
+      action,
+      changes,
+    });
   }
 
   async function list(
@@ -286,7 +361,9 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .limit(1);
     if (!row) throw new AppError('correspondence.not_found');
     const v = await viewer(scope, projectId);
-    if (!canSeeItem(row, v)) throw new AppError('correspondence.not_found');
+    const listed = row.isPrivate ? await accessIds(scope, id) : [];
+    if (!canSeeItem({ ...row, accessUserIds: listed }, v))
+      throw new AppError('correspondence.not_found');
     const project = await deps.platform.getProject(scope, projectId);
     const view = toView(row, localDateOf(now(), project.timezone), project.timezone);
     const replies = await scope.tx
@@ -294,7 +371,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .from(responses)
       .where(eq(responses.itemId, id))
       .orderBy(asc(responses.sentAt), desc(responses.id));
-    return { item: view, responses: replies, viewer: v, project };
+    return { item: view, responses: replies, viewer: v, project, accessUserIds: listed };
   }
 
   const detail = async (scope: TenantScope, projectId: string, id: string) => {
@@ -360,6 +437,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
           dueDate: r.dueDate,
           responseRequired: r.responseRequired,
           related: r.related,
+          fields: r.fields,
           sentAt: sentAt.toISOString(),
         }),
       )
@@ -388,6 +466,9 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       date: auDate(localToday),
       eventDate: input.eventDate ? auDate(input.eventDate) : '[date]',
     };
+    const merged = mergeFieldValues(type.fieldDefs, {}, input.fields ?? {});
+    if (merged.problems.length)
+      throw new AppError('validation_failed', 'Check the fields.', merged.problems);
     const id = uuidv7();
     const [row] = await scope.tx
       .insert(items)
@@ -413,10 +494,13 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         timeBarDate: timeBarDate(input.eventDate ?? null, barDays),
         fileIds: input.fileIds ?? [],
         related: input.related ?? [],
+        fieldDefs: type.fieldDefs,
+        fields: merged.values,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
       .returning();
+    await log(scope, id, 'created');
     scope.events.add({
       type: 'correspondence.item.created.v1',
       projectId,
@@ -451,6 +535,12 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     if (!v.isInternal && patch.fromCompanyId !== undefined && patch.fromCompanyId !== v.companyId)
       throw new AppError('access.denied', 'Only the builder can change the sending company.');
     const set: Partial<typeof items.$inferInsert> = {};
+    if (patch.fields) {
+      const merged = mergeFieldValues(item.fieldDefs, item.fields, patch.fields);
+      if (merged.problems.length)
+        throw new AppError('validation_failed', 'Check the fields.', merged.problems);
+      set.fields = merged.values;
+    }
     if (patch.subject !== undefined) set.subject = patch.subject.trim();
     if (patch.body !== undefined) set.body = patch.body;
     if (patch.fromCompanyId !== undefined) set.fromCompanyId = patch.fromCompanyId;
@@ -472,6 +562,10 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .where(and(eq(items.id, id), eq(items.version, expectedVersion)))
       .returning();
     if (!row) throw versionConflict();
+    await log(scope, id, 'updated', [
+      ...diffItem(item, row, TRACKED),
+      ...diffFieldValues(item.fields, row.fields),
+    ]);
     scope.events.add({
       type: 'correspondence.item.updated.v1',
       projectId,
@@ -504,6 +598,12 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     if (!item.toCompanyIds.length)
       missing.push({ path: 'toCompanyIds', message: 'Required to send' });
     if (!item.fromCompanyId) missing.push({ path: 'fromCompanyId', message: 'Required to send' });
+    missing.push(...missingRequiredFields(item.fieldDefs, item.fields));
+    if (item.isPrivate && !canBePrivate({ isEvidential: item.isEvidential, status: 'sent' }))
+      missing.push({
+        path: 'isPrivate',
+        message: 'A notice that binds the company has to reach the other side; make it not private',
+      });
     if (missing.length)
       throw new AppError(
         'correspondence.incomplete',
@@ -532,6 +632,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .where(and(eq(items.id, id), eq(items.version, expectedVersion)))
       .returning();
     if (!row) throw versionConflict();
+    await log(scope, id, 'sent');
     scope.events.add({
       type: 'correspondence.item.sent.v1',
       projectId,
@@ -585,6 +686,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       fileIds: input.fileIds,
       sentAt: now(),
     });
+    await log(scope, id, 'responded');
     const fromReceiver = v.companyId !== null && item.toCompanyIds.includes(v.companyId);
     if (fromReceiver && item.status === 'sent') {
       await scope.tx
@@ -630,6 +732,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .where(and(eq(items.id, id), eq(items.version, expectedVersion)))
       .returning();
     if (!row) throw versionConflict();
+    await log(scope, id, 'closed');
     scope.events.add({
       type: 'correspondence.item.closed.v1',
       projectId,
@@ -675,6 +778,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       .where(and(eq(items.id, id), eq(items.version, expectedVersion)))
       .returning();
     if (!row) throw versionConflict();
+    await log(scope, id, 'voided', [{ field: 'voidReason', to: reason.trim().slice(0, 200) }]);
     scope.events.add({
       type: 'correspondence.item.voided.v1',
       projectId,
@@ -684,6 +788,190 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       data: { itemId: id, number: row.numberLabel },
     });
     return detail(scope, projectId, id);
+  }
+
+  // ---- who can see it, history and emails --------------------------------------------------------------------
+
+  async function access(scope: TenantScope, projectId: string, id: string) {
+    const { item } = await getVisible(scope, projectId, id);
+    const rows = await scope.tx
+      .select()
+      .from(itemAccess)
+      .where(eq(itemAccess.itemId, id))
+      .orderBy(asc(itemAccess.addedAt), asc(itemAccess.userId));
+    const users = [];
+    for (const r of rows) {
+      const m = await deps.platform.getProjectMembership(scope, projectId, r.userId);
+      users.push({ userId: r.userId, companyId: m?.companyId ?? null, addedAt: r.addedAt });
+    }
+    return { isPrivate: item.isPrivate, users };
+  }
+
+  /**
+   * Makes an item private or public and sets who is on its permissions list. The author and the correspondence
+   * admins always see it. Only the author or an admin can change this, at any stage, but a notice that binds the
+   * company is never hidden once it is sent.
+   */
+  async function setAccess(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { isPrivate: boolean; userIds: string[] },
+  ) {
+    const { item, viewer: v, accessUserIds } = await getVisible(scope, projectId, id);
+    if (!canManageAccess(item, v))
+      throw new AppError('access.denied', "You can't change who sees this item.");
+    if (item.status === 'void')
+      throw new AppError(
+        'correspondence.invalid_transition',
+        "A void item can't be changed.",
+        undefined,
+        { status: item.status },
+      );
+    if (input.isPrivate && !canBePrivate(item))
+      throw new AppError(
+        'correspondence.cannot_be_private',
+        'A notice that has been sent has to stay visible to the other side.',
+      );
+    const userIds = [...new Set(input.userIds)];
+    for (const [i, userId] of userIds.entries()) {
+      if (!(await deps.platform.getProjectMembership(scope, projectId, userId)))
+        throw new AppError(
+          'correspondence.recipient_not_on_project',
+          'Add people on this project.',
+          [{ path: `userIds/${i}`, message: 'Not a member of this project' }],
+        );
+    }
+    const before = new Set(accessUserIds.length ? accessUserIds : await accessIds(scope, id));
+    const removed = [...before].filter((u) => !userIds.includes(u));
+    const added = userIds.filter((u) => !before.has(u));
+    if (removed.length)
+      await scope.tx
+        .delete(itemAccess)
+        .where(and(eq(itemAccess.itemId, id), inArray(itemAccess.userId, removed)));
+    if (added.length)
+      await scope.tx.insert(itemAccess).values(
+        added.map((userId) => ({
+          itemId: id,
+          orgId: scope.ctx.orgId,
+          userId,
+          addedBy: scope.ctx.userId,
+          addedAt: now(),
+        })),
+      );
+    if (input.isPrivate !== item.isPrivate)
+      await scope.tx
+        .update(items)
+        .set({ isPrivate: input.isPrivate })
+        .where(and(eq(items.id, id), eq(items.projectId, projectId)));
+    const changes: FieldChange[] = [];
+    if (input.isPrivate !== item.isPrivate)
+      changes.push({ field: 'isPrivate', from: item.isPrivate, to: input.isPrivate });
+    if (added.length || removed.length)
+      changes.push({ field: 'permissions', from: before.size, to: userIds.length });
+    if (changes.length) {
+      await log(scope, id, 'access_changed', changes);
+      scope.events.add({
+        type: 'correspondence.item.access_changed.v1',
+        projectId,
+        entityType: 'correspondence',
+        entityId: id,
+        entityVersion: item.version,
+        data: { itemId: id, number: item.numberLabel, isPrivate: input.isPrivate },
+      });
+    }
+    return access(scope, projectId, id);
+  }
+
+  /** What happened to the item, oldest first, for anyone who can see it. */
+  async function history(scope: TenantScope, projectId: string, id: string) {
+    await getVisible(scope, projectId, id);
+    return scope.tx
+      .select()
+      .from(itemHistory)
+      .where(eq(itemHistory.itemId, id))
+      .orderBy(asc(itemHistory.at), asc(itemHistory.id))
+      .limit(500);
+  }
+
+  async function emails(scope: TenantScope, projectId: string, id: string) {
+    await getVisible(scope, projectId, id);
+    return scope.tx
+      .select()
+      .from(itemEmails)
+      .where(eq(itemEmails.itemId, id))
+      .orderBy(asc(itemEmails.createdAt), asc(itemEmails.id))
+      .limit(500);
+  }
+
+  /**
+   * Queues an email about a sent item to people on the project who could open it themselves. The worker sends
+   * it: the mail names the item and carries the sender's note and a link, not the item's text.
+   */
+  async function emailItem(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { userIds: string[]; message: string },
+  ) {
+    const { item, accessUserIds } = await getVisible(scope, projectId, id);
+    if (item.status === 'draft' || item.status === 'void')
+      throw new AppError(
+        'correspondence.invalid_transition',
+        `A ${item.status} item can't be emailed.`,
+        undefined,
+        { status: item.status },
+      );
+    const userIds = [...new Set(input.userIds)];
+    if (userIds.length === 0 || userIds.length > MAX_EMAIL_RECIPIENTS)
+      throw new AppError('validation_failed', `Choose 1 to ${MAX_EMAIL_RECIPIENTS} people.`, [
+        { path: 'userIds', message: `Choose 1 to ${MAX_EMAIL_RECIPIENTS} people` },
+      ]);
+    const [{ n } = { n: 0 }] = await scope.tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(itemEmails)
+      .where(
+        and(
+          eq(itemEmails.itemId, id),
+          gte(itemEmails.createdAt, new Date(now().getTime() - 3_600_000)),
+        ),
+      );
+    if (n + userIds.length > EMAILS_PER_HOUR)
+      throw new AppError(
+        'correspondence.email_limit',
+        'Too many emails about this item. Try later.',
+      );
+    for (const [i, userId] of userIds.entries()) {
+      const m = await deps.platform.getProjectMembership(scope, projectId, userId);
+      const seen =
+        m !== null &&
+        canSeeItem(
+          { ...item, accessUserIds },
+          { userId, companyId: m.companyId, isInternal: !m.isExternal, isAdmin: false },
+        );
+      if (!seen)
+        throw new AppError(
+          'correspondence.recipient_cannot_see',
+          'Email people who can open this item.',
+          [{ path: `userIds/${i}`, message: "Can't open this item" }],
+        );
+    }
+    const rows = await scope.tx
+      .insert(itemEmails)
+      .values(
+        userIds.map((userId) => ({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          itemId: id,
+          senderId: scope.ctx.userId,
+          recipientUserId: userId,
+          message: input.message.trim(),
+          createdAt: now(),
+        })),
+      )
+      .returning();
+    await log(scope, id, 'emailed', [{ field: 'recipients', to: userIds.length }]);
+    return rows;
   }
 
   /** Global search (`search`): the correspondence the caller can see that matches the words. */
@@ -717,6 +1005,11 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     respond,
     close,
     voidItem,
+    access,
+    setAccess,
+    history,
+    emails,
+    emailItem,
   };
 }
 

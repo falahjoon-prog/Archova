@@ -4,11 +4,18 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { CorrespondenceStatus, RelatedLink } from '../domain/correspondence';
+import type {
+  CorrespondenceStatus,
+  FieldChange,
+  FieldDef,
+  FieldValues,
+  RelatedLink,
+} from '../domain/correspondence';
 
 export const correspondenceSchema = pgSchema('correspondence');
 
@@ -33,6 +40,7 @@ export const types = correspondenceSchema.table('types', {
   timeBarDays: integer('time_bar_days'),
   subjectTemplate: text('subject_template').notNull().default(''),
   bodyTemplate: text('body_template').notNull().default(''),
+  fieldDefs: jsonb('field_defs').$type<FieldDef[]>().notNull().default([]),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   ...audit,
 });
@@ -58,6 +66,9 @@ export const items = correspondenceSchema.table('items', {
   timeBarDate: date('time_bar_date'),
   fileIds: uuid('file_ids').array().notNull().default([]),
   related: jsonb('related').$type<RelatedLink[]>().notNull().default([]),
+  fieldDefs: jsonb('field_defs').$type<FieldDef[]>().notNull().default([]),
+  fields: jsonb('fields').$type<FieldValues>().notNull().default({}),
+  isPrivate: boolean('is_private').notNull().default(false),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   sentBy: uuid('sent_by'),
   contentHash: text('content_hash'),
@@ -76,4 +87,43 @@ export const responses = correspondenceSchema.table('responses', {
   body: text('body').notNull(),
   fileIds: uuid('file_ids').array().notNull().default([]),
   sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const itemAccess = correspondenceSchema.table(
+  'item_access',
+  {
+    itemId: uuid('item_id').notNull(),
+    orgId: uuid('org_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    addedBy: uuid('added_by'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.userId] })],
+);
+
+export const itemHistory = correspondenceSchema.table('item_history', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  actorId: uuid('actor_id'),
+  action: text('action').notNull(),
+  changes: jsonb('changes').$type<FieldChange[]>().notNull().default([]),
+});
+
+export const itemEmails = correspondenceSchema.table('item_emails', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  senderId: uuid('sender_id').notNull(),
+  recipientUserId: uuid('recipient_user_id').notNull(),
+  message: text('message').notNull().default(''),
+  status: text('status')
+    .$type<'queued' | 'sending' | 'sent' | 'failed'>()
+    .notNull()
+    .default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
 });

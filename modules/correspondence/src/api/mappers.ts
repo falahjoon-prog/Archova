@@ -1,12 +1,21 @@
 import { encodeId } from '@archova/domain';
 import type {
+  CorrespondenceAccess,
   CorrespondenceDetail,
+  CorrespondenceEmail,
+  CorrespondenceHistoryEntry,
   CorrespondenceItem,
   CorrespondenceResponse,
   CorrespondenceTemplate,
   CorrespondenceType,
 } from '@archova/contracts';
-import type { ItemView, ResponseRow, TypeRow } from '../application/correspondence';
+import type {
+  EmailRow,
+  HistoryRow,
+  ItemView,
+  ResponseRow,
+  TypeRow,
+} from '../application/correspondence';
 import type { TypeTemplate } from '../domain/templates';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -28,6 +37,7 @@ export const toTypeDto = (t: TypeRow): CorrespondenceType => ({
   subjectTemplate: t.subjectTemplate,
   bodyTemplate: t.bodyTemplate,
   archived: t.archivedAt !== null,
+  fieldDefs: t.fieldDefs,
   version: t.version,
 });
 
@@ -53,6 +63,9 @@ export const toItemDto = (i: ItemView): CorrespondenceItem => ({
   sentInTime: i.sentInTime,
   fileIds: i.fileIds.map((f) => encodeId('file', f)),
   related: i.related,
+  isPrivate: i.isPrivate,
+  fieldDefs: i.fieldDefs,
+  fields: i.fields,
   sentAt: isoOrNull(i.sentAt),
   sentBy: userOrNull(i.sentBy),
   contentHash: i.contentHash,
@@ -79,4 +92,38 @@ export const toDetail = (d: {
 }): CorrespondenceDetail => ({
   item: toItemDto(d.item),
   responses: d.responses.map(toResponse),
+});
+
+export const toAccess = (a: {
+  isPrivate: boolean;
+  users: Array<{ userId: string; companyId: string | null; addedAt: Date }>;
+}): CorrespondenceAccess => ({
+  isPrivate: a.isPrivate,
+  users: a.users.map((u) => ({
+    userId: encodeId('user', u.userId),
+    companyId: companyOrNull(u.companyId),
+    addedAt: u.addedAt.toISOString(),
+  })),
+});
+
+export const toHistory = (rows: HistoryRow[]): { data: CorrespondenceHistoryEntry[] } => ({
+  data: rows.map((r) => ({
+    id: encodeId('correspondenceHistory', r.id),
+    action: r.action,
+    at: r.at.toISOString(),
+    actorId: userOrNull(r.actorId),
+    changes: r.changes,
+  })),
+});
+
+export const toEmails = (rows: EmailRow[]): { data: CorrespondenceEmail[] } => ({
+  data: rows.map((r) => ({
+    id: encodeId('correspondenceEmail', r.id),
+    senderId: encodeId('user', r.senderId),
+    recipientUserId: encodeId('user', r.recipientUserId),
+    message: r.message,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+    sentAt: isoOrNull(r.sentAt),
+  })),
 });

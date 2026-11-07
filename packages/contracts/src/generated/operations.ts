@@ -1572,6 +1572,33 @@ export const VoidCorrespondenceParams = z.object({
   "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
 });
 export const VoidCorrespondenceBody = s.VoidCorrespondenceRequestSchema;
+export const GetCorrespondenceAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const SetCorrespondenceAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const SetCorrespondenceAccessBody = s.SetCorrespondenceAccessRequestSchema;
+export const GetCorrespondenceHistoryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceEmailsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const EmailCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const EmailCorrespondenceBody = s.EmailCorrespondenceRequestSchema;
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6604,6 +6631,66 @@ export const operations = {
     params: VoidCorrespondenceParams,
     query: null,
     body: VoidCorrespondenceBody,
+  },
+  getCorrespondenceAccess: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: GetCorrespondenceAccessParams,
+    query: null,
+    body: null,
+  },
+  setCorrespondenceAccess: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: "application/json",
+    params: SetCorrespondenceAccessParams,
+    query: null,
+    body: SetCorrespondenceAccessBody,
+  },
+  getCorrespondenceHistory: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: GetCorrespondenceHistoryParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondenceEmails: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceEmailsParams,
+    query: null,
+    body: null,
+  },
+  emailCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.send",
+    internal: false,
+    contentType: "application/json",
+    params: EmailCorrespondenceParams,
+    query: null,
+    body: EmailCorrespondenceBody,
   },
   listRfis: {
     method: 'GET',

@@ -11,7 +11,7 @@ import {
 } from '@archova/kernel';
 import type { CorrespondenceService, ItemFields } from '../application/correspondence';
 import type { RelatedLink } from '../domain/correspondence';
-import { toDetail, toTemplateDto, toTypeDto } from './mappers';
+import { toAccess, toDetail, toEmails, toHistory, toTemplateDto, toTypeDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -46,6 +46,7 @@ interface ItemBody {
   timeBarDays?: number | null;
   fileIds?: string[];
   related?: RelatedLink[];
+  fields?: Record<string, string | number | boolean | null>;
 }
 
 /** Request body → service fields, decoding prefixed ids and keeping "absent" distinct from "null". */
@@ -65,6 +66,7 @@ function fields(b: ItemBody): ItemFields {
   if (b.fileIds !== undefined)
     out.fileIds = b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`));
   if (b.related !== undefined) out.related = b.related;
+  if (b.fields !== undefined) out.fields = b.fields;
   return out;
 }
 
@@ -111,6 +113,7 @@ export function correspondenceRoutes(database: Database, svc: CorrespondenceServ
             ...(b.timeBarDays !== undefined ? { timeBarDays: b.timeBarDays } : {}),
             ...(b.subjectTemplate !== undefined ? { subjectTemplate: b.subjectTemplate } : {}),
             ...(b.bodyTemplate !== undefined ? { bodyTemplate: b.bodyTemplate } : {}),
+            ...(b.fieldDefs !== undefined ? { fieldDefs: b.fieldDefs } : {}),
           });
         }),
       ),
@@ -192,6 +195,46 @@ export function correspondenceRoutes(database: Database, svc: CorrespondenceServ
         await tx(input, (s) => svc.close(s, project(input.params), itemId(input.params), expected)),
       );
     },
+    getCorrespondenceAccess: async (input) => ({
+      status: 200,
+      body: toAccess(
+        await read(input, (s) => svc.access(s, project(input.params), itemId(input.params))),
+      ),
+    }),
+    setCorrespondenceAccess: async (input) => ({
+      status: 200,
+      body: toAccess(
+        await tx(input, (s) =>
+          svc.setAccess(s, project(input.params), itemId(input.params), {
+            isPrivate: input.body.isPrivate,
+            userIds: input.body.userIds.map((u, i) => ref('user', u, `userIds/${i}`)),
+          }),
+        ),
+      ),
+    }),
+    getCorrespondenceHistory: async (input) => ({
+      status: 200,
+      body: toHistory(
+        await read(input, (s) => svc.history(s, project(input.params), itemId(input.params))),
+      ),
+    }),
+    listCorrespondenceEmails: async (input) => ({
+      status: 200,
+      body: toEmails(
+        await read(input, (s) => svc.emails(s, project(input.params), itemId(input.params))),
+      ),
+    }),
+    emailCorrespondence: async (input) => ({
+      status: 201,
+      body: toEmails(
+        await tx(input, (s) =>
+          svc.emailItem(s, project(input.params), itemId(input.params), {
+            userIds: input.body.userIds.map((u, i) => ref('user', u, `userIds/${i}`)),
+            message: input.body.message ?? '',
+          }),
+        ),
+      ),
+    }),
     voidCorrespondence: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       return ok(

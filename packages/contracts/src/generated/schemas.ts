@@ -1282,6 +1282,16 @@ export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
 export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
 export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
 
+export const CorrespondenceAccessSchema = z.object({
+  "isPrivate": z.boolean(),
+  "users": z.array(z.object({
+  "userId": z.string(),
+  "companyId": z.string().nullable(),
+  "addedAt": z.string().datetime({ offset: true }),
+})),
+});
+export type CorrespondenceAccess = z.infer<typeof CorrespondenceAccessSchema>;
+
 export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
 export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
 
@@ -1291,6 +1301,18 @@ export const CorrespondenceRelatedSchema = z.object({
   "label": z.string().max(120).optional(),
 }).strict();
 export type CorrespondenceRelated = z.infer<typeof CorrespondenceRelatedSchema>;
+
+export const CorrespondenceFieldDefSchema = z.object({
+  "key": z.string().regex(new RegExp("^[a-z][a-zA-Z0-9]{0,39}$")),
+  "label": z.string().min(1).max(80),
+  "kind": z.enum(["text", "date", "number", "boolean", "select"]),
+  "required": z.boolean(),
+  "options": z.array(z.string().min(1).max(80)).max(20),
+}).strict();
+export type CorrespondenceFieldDef = z.infer<typeof CorrespondenceFieldDefSchema>;
+
+export const CorrespondenceFieldValuesSchema = z.record(z.string(), z.union([z.string().max(1000), z.number(), z.boolean()]));
+export type CorrespondenceFieldValues = z.infer<typeof CorrespondenceFieldValuesSchema>;
 
 export const CorrespondenceItemSchema = z.object({
   "id": z.string(),
@@ -1314,6 +1336,9 @@ export const CorrespondenceItemSchema = z.object({
   "sentInTime": z.boolean().nullable(),
   "fileIds": z.array(z.string()),
   "related": z.array(CorrespondenceRelatedSchema),
+  "isPrivate": z.boolean(),
+  "fieldDefs": z.array(CorrespondenceFieldDefSchema),
+  "fields": CorrespondenceFieldValuesSchema,
   "sentAt": z.string().datetime({ offset: true }).nullable(),
   "sentBy": z.string().nullable(),
   "contentHash": z.string().nullable(),
@@ -1341,6 +1366,43 @@ export const CorrespondenceDetailSchema = z.object({
   "responses": z.array(CorrespondenceResponseSchema),
 });
 export type CorrespondenceDetail = z.infer<typeof CorrespondenceDetailSchema>;
+
+export const CorrespondenceEmailSchema = z.object({
+  "id": z.string(),
+  "senderId": z.string(),
+  "recipientUserId": z.string(),
+  "message": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "failed"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type CorrespondenceEmail = z.infer<typeof CorrespondenceEmailSchema>;
+
+export const CorrespondenceEmailListSchema = z.object({
+  "data": z.array(CorrespondenceEmailSchema),
+});
+export type CorrespondenceEmailList = z.infer<typeof CorrespondenceEmailListSchema>;
+
+export const CorrespondenceHistoryChangeSchema = z.object({
+  "field": z.string(),
+  "from": z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+  "to": z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+});
+export type CorrespondenceHistoryChange = z.infer<typeof CorrespondenceHistoryChangeSchema>;
+
+export const CorrespondenceHistoryEntrySchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "at": z.string().datetime({ offset: true }),
+  "actorId": z.string().nullable(),
+  "changes": z.array(CorrespondenceHistoryChangeSchema),
+});
+export type CorrespondenceHistoryEntry = z.infer<typeof CorrespondenceHistoryEntrySchema>;
+
+export const CorrespondenceHistorySchema = z.object({
+  "data": z.array(CorrespondenceHistoryEntrySchema),
+});
+export type CorrespondenceHistory = z.infer<typeof CorrespondenceHistorySchema>;
 
 export const CorrespondencePageSchema = z.object({
   "data": z.array(CorrespondenceItemSchema),
@@ -1375,6 +1437,7 @@ export const CorrespondenceTypeSchema = z.object({
   "subjectTemplate": z.string(),
   "bodyTemplate": z.string(),
   "archived": z.boolean(),
+  "fieldDefs": z.array(CorrespondenceFieldDefSchema).max(12),
   "version": z.number().int(),
 });
 export type CorrespondenceType = z.infer<typeof CorrespondenceTypeSchema>;
@@ -1656,6 +1719,7 @@ export const CreateCorrespondenceRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "fileIds": z.array(FileRefSchema).max(50).optional(),
   "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+  "fields": z.record(z.string(), z.union([z.string().max(1000), z.number(), z.boolean(), z.null()])).optional(),
 }).strict();
 export type CreateCorrespondenceRequest = z.infer<typeof CreateCorrespondenceRequestSchema>;
 
@@ -1670,6 +1734,7 @@ export const CreateCorrespondenceTypeRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "subjectTemplate": z.string().max(300).optional(),
   "bodyTemplate": z.string().max(20000).optional(),
+  "fieldDefs": z.array(CorrespondenceFieldDefSchema).max(12).optional(),
 }).strict();
 export type CreateCorrespondenceTypeRequest = z.infer<typeof CreateCorrespondenceTypeRequestSchema>;
 
@@ -3052,6 +3117,12 @@ export const EligibilityCheckSchema = z.object({
   "checkedAt": z.string().datetime({ offset: true }),
 });
 export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
+
+export const EmailCorrespondenceRequestSchema = z.object({
+  "userIds": z.array(UserRefSchema).min(1).max(20),
+  "message": z.string().max(1000).optional(),
+}).strict();
+export type EmailCorrespondenceRequest = z.infer<typeof EmailCorrespondenceRequestSchema>;
 
 export const EntitlementsSchema = z.object({
   "orgId": z.string(),
@@ -6510,6 +6581,12 @@ export const SetAllowancesRequestSchema = z.object({
 }).strict();
 export type SetAllowancesRequest = z.infer<typeof SetAllowancesRequestSchema>;
 
+export const SetCorrespondenceAccessRequestSchema = z.object({
+  "isPrivate": z.boolean(),
+  "userIds": z.array(UserRefSchema).max(100),
+}).strict();
+export type SetCorrespondenceAccessRequest = z.infer<typeof SetCorrespondenceAccessRequestSchema>;
+
 export const SetMeetingAttendeesRequestSchema = z.object({
   "attendees": z.array(z.intersection(MeetingPersonSchema, z.object({
   "attendance": MeetingAttendanceSchema.optional(),
@@ -7285,6 +7362,7 @@ export const UpdateCorrespondenceRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "fileIds": z.array(FileRefSchema).max(50).optional(),
   "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+  "fields": z.record(z.string(), z.union([z.string().max(1000), z.number(), z.boolean(), z.null()])).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceRequest = z.infer<typeof UpdateCorrespondenceRequestSchema>;
 
@@ -7299,6 +7377,7 @@ export const UpdateCorrespondenceTypeRequestSchema = z.object({
   "subjectTemplate": z.string().max(300).optional(),
   "bodyTemplate": z.string().max(20000).optional(),
   "archived": z.boolean().optional(),
+  "fieldDefs": z.array(CorrespondenceFieldDefSchema).max(12).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceTypeRequest = z.infer<typeof UpdateCorrespondenceTypeRequestSchema>;
 
