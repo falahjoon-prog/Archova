@@ -7213,7 +7213,7 @@ export type TmTicketDetail = z.infer<typeof TmTicketDetailSchema>;
 export const TmTicketLineRequestSchema = z.object({
   "kind": TmKindSchema,
   "description": z.string().min(1).max(300),
-  "quantity": z.string().regex(new RegExp("^\\\\d{1,8}(\\\\.\\\\d{1,2})?$")),
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,8}(\\.[0-9]{1,2})?$")),
   "unit": z.string().min(1).max(20),
   "rate": FinancialsMoneySchema,
   "sourceType": TmSourceTypeSchema.optional(),

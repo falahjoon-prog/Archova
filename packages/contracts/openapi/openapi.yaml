@@ -22710,7 +22710,7 @@ components:
       properties:
         kind: { $ref: '#/components/schemas/TmKind' }
         description: { type: string, minLength: 1, maxLength: 300 }
-        quantity: { type: string, pattern: '^\\d{1,8}(\\.\\d{1,2})?$' }
+        quantity: { type: string, pattern: '^[0-9]{1,8}(\.[0-9]{1,2})?$' }
         unit: { type: string, minLength: 1, maxLength: 20 }
         rate: { $ref: '#/components/schemas/FinancialsMoney' }
         sourceType: { $ref: '#/components/schemas/TmSourceType' }
