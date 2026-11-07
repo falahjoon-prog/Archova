@@ -7,7 +7,13 @@ import {
   type AssistContext,
   type AssistTurn,
 } from '@archova/ai-prompts';
-import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  type Database,
+  type Logger,
+  type TenantContext,
+  type TenantScope,
+} from '@archova/kernel';
 import {
   MAX_PLAN_ROUNDS,
   NOTHING_FOUND_ANSWER,
@@ -22,6 +28,7 @@ import type { SemanticSearchService } from './semantic-search';
 
 export interface AssistDeps {
   database: Database;
+  logger: Logger;
   gateway: Pick<Gateway, 'runTask'>;
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
   /** Registered by the modules (compose); read-only. */
@@ -130,6 +137,15 @@ export function createAssistService(deps: AssistDeps) {
           gathered.push(`${c.key}: ${summary}`);
           lookups.push({ tool: c.tool.name, summary });
         } else {
+          // The person sees "could not look up"; the cause is for the logs. No arguments or record text.
+          deps.logger.warn(
+            {
+              tool: c.tool.name,
+              orgId: ctx.orgId,
+              code: r.reason instanceof AppError ? r.reason.code : 'unexpected',
+            },
+            'nova tool failed',
+          );
           gathered.push(`${c.key}: could not look up`);
           lookups.push({ tool: c.tool.name, summary: 'could not look up' });
         }

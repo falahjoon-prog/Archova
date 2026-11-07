@@ -362,6 +362,7 @@ export function createAiModule(
   });
   const assist = createAssistService({
     database: services.database,
+    logger: services.logger,
     gateway,
     assert: deps.assert,
     tools: deps.novaTools ?? [],
