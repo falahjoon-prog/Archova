@@ -9,6 +9,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { BudgetPanel } from '../components/BudgetPanel';
 import { CostCodesPanel } from '../components/CostCodesPanel';
+import { LaborProductivityPanel } from '../components/LaborProductivityPanel';
 import { DirectCostsPanel } from '../components/DirectCostsPanel';
 import { SnapshotsPanel } from '../components/SnapshotsPanel';
 
@@ -39,6 +40,7 @@ export function BudgetScreen() {
           { id: 'budget', label: 'Budget' },
           { id: 'snapshots', label: 'Snapshots' },
           { id: 'direct', label: 'Direct costs' },
+          { id: 'labor', label: 'Labor productivity' },
           { id: 'codes', label: 'Cost codes' },
         ]}
         value={tab}
@@ -50,6 +52,8 @@ export function BudgetScreen() {
           <SnapshotsPanel canManage={canManage} />
         ) : tab === 'direct' ? (
           <DirectCostsPanel canManage={canManage} />
+        ) : tab === 'labor' ? (
+          <LaborProductivityPanel canManage={canManage} />
         ) : (
           <CostCodesPanel canManage={canManage} />
         )}

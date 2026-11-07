@@ -1314,6 +1314,19 @@ export const CostCodeListSchema = z.object({
 });
 export type CostCodeList = z.infer<typeof CostCodeListSchema>;
 
+export const CostCodeProductionSchema = z.object({
+  "uom": z.string().min(1).max(20),
+  "budgetedHours": z.number().min(0).max(9999999999),
+  "budgetedQuantity": z.number().min(0).max(999999999999),
+  "quantityComplete": z.number().min(0).max(999999999999),
+});
+export type CostCodeProduction = z.infer<typeof CostCodeProductionSchema>;
+
+export const CostCodeProductionSavedSchema = z.intersection(CostCodeProductionSchema, z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+}));
+export type CostCodeProductionSaved = z.infer<typeof CostCodeProductionSavedSchema>;
+
 export const ForecastAdjustmentCategorySchema = z.enum(["unawarded_work", "allowance", "risk", "saving", "other"]);
 export type ForecastAdjustmentCategory = z.infer<typeof ForecastAdjustmentCategorySchema>;
 
@@ -4123,6 +4136,46 @@ export const KeyDatesSchema = z.object({
   "updatedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type KeyDates = z.infer<typeof KeyDatesSchema>;
+
+export const LaborProductivityRowSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "uom": z.string().nullable(),
+  "budgetedHours": z.number().nullable(),
+  "timesheetHours": z.number(),
+  "pctHoursUsed": z.number().nullable(),
+  "pctComplete": z.number().nullable(),
+  "earnedHours": z.number().nullable(),
+  "budgetedQuantity": z.number().nullable(),
+  "quantityComplete": z.number().nullable(),
+  "budgetedRate": z.number().nullable(),
+  "actualRate": z.number().nullable(),
+  "flagged": z.boolean(),
+});
+export type LaborProductivityRow = z.infer<typeof LaborProductivityRowSchema>;
+
+export const LaborProductivitySchema = z.object({
+  "rows": z.array(LaborProductivityRowSchema),
+  "totals": z.object({
+  "budgetedHours": z.number(),
+  "timesheetHours": z.number(),
+  "earnedHours": z.number(),
+  "pctHoursUsed": z.number().nullable(),
+  "efficiency": z.number().nullable(),
+  "flaggedRows": z.number().int(),
+}),
+  "unallocatedHours": z.number(),
+  "codes": z.array(z.object({
+  "id": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+})),
+});
+export type LaborProductivity = z.infer<typeof LaborProductivitySchema>;
 
 export const LateSopaClaimRiskClaimSchema = z.object({
   "claimId": z.string(),

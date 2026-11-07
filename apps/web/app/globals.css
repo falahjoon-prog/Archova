@@ -976,6 +976,9 @@ main:focus {
 .row--muted > * {
   color: var(--c-text-secondary);
 }
+.row--flagged > * {
+  background: color-mix(in srgb, var(--c-status-danger) 8%, var(--c-surface));
+}
 .file-input {
   font: inherit;
   padding: var(--space-2) 0;

@@ -497,3 +497,18 @@ export const retentionReleases = financialsSchema.table('retention_releases', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   recordedBy: uuid('recorded_by'),
 });
+
+export const costCodeProduction = financialsSchema.table('cost_code_production', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  uom: text('uom').notNull(),
+  budgetedHours: numeric('budgeted_hours', { precision: 12, scale: 2 }).notNull(),
+  budgetedQuantity: numeric('budgeted_quantity', { precision: 14, scale: 2 }).notNull(),
+  quantityComplete: numeric('quantity_complete', { precision: 14, scale: 2 })
+    .notNull()
+    .default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
