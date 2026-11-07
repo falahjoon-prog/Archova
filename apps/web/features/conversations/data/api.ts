@@ -11,10 +11,10 @@ const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 
 export function createConversationsApi(orgId: string) {
   return {
-    list: async (projectId: string, limit = 5): Promise<ConversationPage> =>
+    list: async (projectId: string, limit = 5, cursor?: string): Promise<ConversationPage> =>
       unwrap(
         await api.GET('/v1/orgs/{orgId}/projects/{projectId}/conversations', {
-          params: { path: { orgId, projectId }, query: { limit } },
+          params: { path: { orgId, projectId }, query: { limit, ...(cursor ? { cursor } : {}) } },
         }),
       ),
     get: async (projectId: string, conversationId: string): Promise<ConversationDetail> =>
