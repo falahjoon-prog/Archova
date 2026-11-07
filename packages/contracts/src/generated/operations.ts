@@ -108,6 +108,69 @@ export const RecordRecentViewParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const RecordRecentViewBody = s.RecentViewInputSchema;
+export const ListPlantAssetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantAssetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantAssetBody = s.CreatePlantAssetRequestSchema;
+export const UpdatePlantAssetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePlantAssetBody = s.UpdatePlantAssetRequestSchema;
+export const ListPlantAllocationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantAllocationsQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")).optional(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+});
+export const CreatePlantAllocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantAllocationBody = s.CreatePlantAllocationRequestSchema;
+export const CancelPlantAllocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "allocationId": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantMaintenancePlansParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantMaintenancePlansQuery = z.object({
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")).optional(),
+});
+export const CreatePlantMaintenancePlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantMaintenancePlanBody = s.CreatePlantMaintenancePlanRequestSchema;
+export const CompletePlantMaintenancePlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+});
+export const CompletePlantMaintenancePlanBody = s.CompletePlantMaintenanceRequestSchema;
+export const ListPlantMaintenanceRecordsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const GetPlantUtilisationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPlantUtilisationQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
+export const ListPlantFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantFlagsQuery = z.object({
+  "idleDays": z.coerce.number().int().min(1).max(365).optional(),
+});
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3625,6 +3688,150 @@ export const operations = {
     params: RecordRecentViewParams,
     query: null,
     body: RecordRecentViewBody,
+  },
+  listPlantAssets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/assets',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantAssetsParams,
+    query: null,
+    body: null,
+  },
+  createPlantAsset: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantAssetParams,
+    query: null,
+    body: CreatePlantAssetBody,
+  },
+  updatePlantAsset: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePlantAssetParams,
+    query: null,
+    body: UpdatePlantAssetBody,
+  },
+  listPlantAllocations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/allocations',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantAllocationsParams,
+    query: ListPlantAllocationsQuery,
+    body: null,
+  },
+  createPlantAllocation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/allocations',
+    module: "plant",
+    auth: "required",
+    permission: "plant.allocations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantAllocationParams,
+    query: null,
+    body: CreatePlantAllocationBody,
+  },
+  cancelPlantAllocation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/allocations/{allocationId}/cancel',
+    module: "plant",
+    auth: "required",
+    permission: "plant.allocations.manage",
+    internal: false,
+    contentType: null,
+    params: CancelPlantAllocationParams,
+    query: null,
+    body: null,
+  },
+  listPlantMaintenancePlans: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/maintenance-plans',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantMaintenancePlansParams,
+    query: ListPlantMaintenancePlansQuery,
+    body: null,
+  },
+  createPlantMaintenancePlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-plans',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantMaintenancePlanParams,
+    query: null,
+    body: CreatePlantMaintenancePlanBody,
+  },
+  completePlantMaintenancePlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CompletePlantMaintenancePlanParams,
+    query: null,
+    body: CompletePlantMaintenancePlanBody,
+  },
+  listPlantMaintenanceRecords: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-records',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantMaintenanceRecordsParams,
+    query: null,
+    body: null,
+  },
+  getPlantUtilisation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/utilisation',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: GetPlantUtilisationParams,
+    query: GetPlantUtilisationQuery,
+    body: null,
+  },
+  listPlantFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/flags',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantFlagsParams,
+    query: ListPlantFlagsQuery,
+    body: null,
   },
   listProjects: {
     method: 'GET',

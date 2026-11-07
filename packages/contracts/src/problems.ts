@@ -410,6 +410,13 @@ export const PROBLEM_CODES = {
   'workforce_equipment.asset_taken': 409,
   'workforce_equipment.booking_conflict': 409,
   'workforce_equipment.bad_state': 409,
+  // plant
+  'plant.asset_not_found': 404,
+  'plant.allocation_not_found': 404,
+  'plant.plan_not_found': 404,
+  'plant.asset_number_taken': 409,
+  'plant.allocation_conflict': 409,
+  'plant.bad_state': 409,
   'workforce_site.name_taken': 409,
   'workforce_site.inactive': 409,
   'gate.not_found': 404,

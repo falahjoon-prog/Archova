@@ -21,6 +21,7 @@ export const webRoutes = {
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
+  plant: (orgSlug: string) => `/${enc(orgSlug)}/plant`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,

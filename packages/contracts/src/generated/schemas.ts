@@ -927,6 +927,14 @@ export const ComparedContractSchema = z.object({
 });
 export type ComparedContract = z.infer<typeof ComparedContractSchema>;
 
+export const CompletePlantMaintenanceRequestSchema = z.object({
+  "doneOn": z.string().date(),
+  "performedBy": z.string().min(1).max(200).optional(),
+  "note": z.string().min(1).max(2000).optional(),
+  "costCents": z.number().int().min(0).optional(),
+}).strict();
+export type CompletePlantMaintenanceRequest = z.infer<typeof CompletePlantMaintenanceRequestSchema>;
+
 export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "white_card", "hrw_licence", "other"]);
 export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
 
@@ -2166,6 +2174,45 @@ export const CreateOwnerProgressUpdateRequestSchema = z.object({
   "milestones": z.array(OwnerMilestoneSchema).max(50).optional(),
 }).strict();
 export type CreateOwnerProgressUpdateRequest = z.infer<typeof CreateOwnerProgressUpdateRequestSchema>;
+
+export const CreatePlantAllocationRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "note": z.string().min(1).max(2000).optional(),
+}).strict();
+export type CreatePlantAllocationRequest = z.infer<typeof CreatePlantAllocationRequestSchema>;
+
+export const PlantAssetCategorySchema = z.enum(["crane", "excavator", "loader", "truck", "generator", "access_platform", "compaction", "lighting", "other"]);
+export type PlantAssetCategory = z.infer<typeof PlantAssetCategorySchema>;
+
+export const CreatePlantAssetRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "assetNumber": z.string().min(1).max(60),
+  "category": PlantAssetCategorySchema,
+  "ownership": z.enum(["owned", "hired"]),
+  "supplier": z.string().min(1).max(200).optional(),
+  "make": z.string().min(1).max(100).optional(),
+  "model": z.string().min(1).max(100).optional(),
+  "serialNumber": z.string().min(1).max(100).optional(),
+  "dailyRateCents": z.number().int().min(0).optional(),
+  "notes": z.string().min(1).max(2000).optional(),
+}).strict();
+export type CreatePlantAssetRequest = z.infer<typeof CreatePlantAssetRequestSchema>;
+
+export const PlantPlanKindSchema = z.enum(["service", "inspection", "certification"]);
+export type PlantPlanKind = z.infer<typeof PlantPlanKindSchema>;
+
+export const CreatePlantMaintenancePlanRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "kind": PlantPlanKindSchema,
+  "intervalDays": z.number().int().min(1).max(3660).optional(),
+  "nextDueOn": z.string().date(),
+  "lastDoneOn": z.string().date().optional(),
+  "responsible": z.string().min(1).max(200).optional(),
+}).strict();
+export type CreatePlantMaintenancePlanRequest = z.infer<typeof CreatePlantMaintenancePlanRequestSchema>;
 
 export const PrequalQuestionSchema = z.object({
   "id": z.string().regex(new RegExp("^[a-z0-9][a-z0-9_-]{0,39}$")),
@@ -5519,6 +5566,120 @@ export const PermissionTemplateSchema = z.object({
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
 
+export const PlantAllocationSchema = z.object({
+  "id": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "note": z.string().nullable(),
+  "status": z.enum(["active", "cancelled"]),
+  "estimatedCostCents": z.number().int().nullable(),
+});
+export type PlantAllocation = z.infer<typeof PlantAllocationSchema>;
+
+export const PlantAllocationListSchema = z.object({
+  "data": z.array(PlantAllocationSchema),
+});
+export type PlantAllocationList = z.infer<typeof PlantAllocationListSchema>;
+
+export const PlantAssetStatusSchema = z.enum(["active", "maintenance", "retired"]);
+export type PlantAssetStatus = z.infer<typeof PlantAssetStatusSchema>;
+
+export const PlantAssetSchema = z.object({
+  "id": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "assetNumber": z.string(),
+  "category": PlantAssetCategorySchema,
+  "ownership": z.enum(["owned", "hired"]),
+  "supplier": z.string().nullable(),
+  "make": z.string().nullable(),
+  "model": z.string().nullable(),
+  "serialNumber": z.string().nullable(),
+  "dailyRateCents": z.number().int().nullable(),
+  "status": PlantAssetStatusSchema,
+  "notes": z.string().nullable(),
+  "version": z.number().int(),
+});
+export type PlantAsset = z.infer<typeof PlantAssetSchema>;
+
+export const PlantAssetListSchema = z.object({
+  "data": z.array(PlantAssetSchema),
+});
+export type PlantAssetList = z.infer<typeof PlantAssetListSchema>;
+
+export const PlantFlagSchema = z.object({
+  "code": z.enum(["maintenance_overdue", "maintenance_due_soon", "certification_expired", "certification_expiring", "double_booking", "booked_while_unavailable", "service_during_booking", "idle"]),
+  "severity": z.enum(["critical", "warning", "info"]),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "subjectId": z.string().nullable(),
+  "message": z.string(),
+  "date": z.string().date().nullable(),
+});
+export type PlantFlag = z.infer<typeof PlantFlagSchema>;
+
+export const PlantFlagListSchema = z.object({
+  "data": z.array(PlantFlagSchema),
+});
+export type PlantFlagList = z.infer<typeof PlantFlagListSchema>;
+
+export const PlantMaintenancePlanSchema = z.object({
+  "id": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "kind": PlantPlanKindSchema,
+  "intervalDays": z.number().int().nullable(),
+  "nextDueOn": z.string().date().nullable(),
+  "lastDoneOn": z.string().date().nullable(),
+  "responsible": z.string().nullable(),
+  "active": z.boolean(),
+  "state": z.enum(["ok", "due_soon", "overdue"]).nullable(),
+});
+export type PlantMaintenancePlan = z.infer<typeof PlantMaintenancePlanSchema>;
+
+export const PlantMaintenancePlanListSchema = z.object({
+  "data": z.array(PlantMaintenancePlanSchema),
+});
+export type PlantMaintenancePlanList = z.infer<typeof PlantMaintenancePlanListSchema>;
+
+export const PlantMaintenanceRecordSchema = z.object({
+  "id": z.string().regex(new RegExp("^prc_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "doneOn": z.string().date(),
+  "performedBy": z.string().nullable(),
+  "note": z.string().nullable(),
+  "costCents": z.number().int().nullable(),
+});
+export type PlantMaintenanceRecord = z.infer<typeof PlantMaintenanceRecordSchema>;
+
+export const PlantMaintenanceRecordListSchema = z.object({
+  "data": z.array(PlantMaintenanceRecordSchema),
+});
+export type PlantMaintenanceRecordList = z.infer<typeof PlantMaintenanceRecordListSchema>;
+
+export const PlantUtilisationSchema = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+  "days": z.number().int(),
+  "fleetPct": z.number().int().min(0).max(100),
+  "assets": z.array(z.object({
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "bookedDays": z.number().int(),
+  "idleDays": z.number().int(),
+  "pct": z.number().int().min(0).max(100),
+  "costCents": z.number().int().nullable(),
+  "idleCostCents": z.number().int().nullable(),
+})),
+  "projects": z.array(z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "bookedDays": z.number().int(),
+  "costCents": z.number().int().nullable(),
+})),
+});
+export type PlantUtilisation = z.infer<typeof PlantUtilisationSchema>;
+
 export const PortfolioTotalsSchema = z.object({
   "projects": z.number().int(),
   "rfisOpen": z.number().int(),
@@ -7709,6 +7870,20 @@ export const UpdateOwnerProgressUpdateRequestSchema = z.object({
   "milestones": z.array(OwnerMilestoneSchema).max(50).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateOwnerProgressUpdateRequest = z.infer<typeof UpdateOwnerProgressUpdateRequestSchema>;
+
+export const UpdatePlantAssetRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "category": PlantAssetCategorySchema.optional(),
+  "ownership": z.enum(["owned", "hired"]).optional(),
+  "supplier": z.string().max(200).optional(),
+  "make": z.string().max(100).optional(),
+  "model": z.string().max(100).optional(),
+  "serialNumber": z.string().max(100).optional(),
+  "dailyRateCents": z.number().int().min(0).optional(),
+  "notes": z.string().max(2000).optional(),
+  "status": PlantAssetStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdatePlantAssetRequest = z.infer<typeof UpdatePlantAssetRequestSchema>;
 
 export const UpdatePrequalTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

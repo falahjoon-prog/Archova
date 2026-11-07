@@ -52,6 +52,7 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createRecentsModule } from '@archova/mod-recents';
+import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -95,6 +96,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -429,6 +431,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
+  const plant = createPlantModule(services, { access: access.api });
+
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -529,6 +533,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     recents,
+    plant,
     financials,
     quality,
     precon,
@@ -570,6 +575,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     recents,
+    plant,
     financials,
     quality,
     precon,

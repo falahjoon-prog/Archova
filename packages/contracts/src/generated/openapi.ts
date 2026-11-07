@@ -617,6 +617,250 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/plant/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's fleet of plant and equipment.
+         * @description Daily rates are returned only to those who may manage the register; for everyone else `dailyRateCents` is null.
+         */
+        get: operations["listPlantAssets"];
+        put?: never;
+        /** Add a machine to the fleet register. */
+        post: operations["createPlantAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a machine's details, rate or status (active, in the workshop, retired).
+         * @description A machine with allocations still to come can't be retired.
+         */
+        patch: operations["updatePlantAsset"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where machines are allocated, in date order.
+         * @description Filter to allocations that touch `[from, to]`, one machine or one project. Up to 1000 are returned.
+         */
+        get: operations["listPlantAllocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allocate a machine to a project for a date range.
+         * @description Refused with `plant.allocation_conflict` when the machine is already allocated on any day in the range, and with `plant.bad_state` when it is in the workshop or retired.
+         */
+        post: operations["createPlantAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/allocations/{allocationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                allocationId: components["parameters"]["PlantAllocationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an allocation, freeing the machine for those days. */
+        post: operations["cancelPlantAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Service, inspection and certification schedules, soonest due first. */
+        get: operations["listPlantMaintenancePlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule a service, inspection or certificate for a machine.
+         * @description With `intervalDays` the plan recurs, and finishing it sets the next due date; without it the plan is a one-off (for example a crane certificate).
+         */
+        post: operations["createPlantMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                planId: components["parameters"]["PlantPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a service, inspection or certificate was done.
+         * @description A recurring plan's next due date becomes the done date plus its interval. A one-off plan is finished.
+         */
+        post: operations["completePlantMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        /** What has been done to a machine, newest first. */
+        get: operations["listPlantMaintenanceRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/utilisation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * How much of a date range each machine, and the fleet, is allocated.
+         * @description Counts days covered by at least one active allocation. Retired machines are left out. Cost figures
+         *     (`costCents`, `idleCostCents`) are each machine's daily rate times booked or idle days, and are null without a
+         *     rate or without permission to see rates. `projects` shows allocated days and cost per project.
+         */
+        get: operations["getPlantUtilisation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What Nova flags about the fleet (rule-based, no model).
+         * @description Overdue or soon-due maintenance, expired or expiring certificates, a machine booked twice, a machine allocated
+         *     while in the workshop, a service that falls inside a booking, and machines idle for `idleDays` (default 14).
+         *     Most urgent first.
+         */
+        get: operations["listPlantFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -11612,6 +11856,173 @@ export interface components {
         RecentViewList: {
             data: components["schemas"]["RecentView"][];
         };
+        /** @enum {string} */
+        PlantAssetCategory: "crane" | "excavator" | "loader" | "truck" | "generator" | "access_platform" | "compaction" | "lighting" | "other";
+        /** @enum {string} */
+        PlantAssetStatus: "active" | "maintenance" | "retired";
+        PlantAsset: {
+            id: string;
+            name: string;
+            assetNumber: string;
+            category: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership: "owned" | "hired";
+            /** @description The hire company */
+            supplier: string | null;
+            make: string | null;
+            model: string | null;
+            serialNumber: string | null;
+            /** @description Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller. */
+            dailyRateCents: number | null;
+            status: components["schemas"]["PlantAssetStatus"];
+            notes: string | null;
+            version: number;
+        };
+        PlantAssetList: {
+            data: components["schemas"]["PlantAsset"][];
+        };
+        CreatePlantAssetRequest: {
+            name: string;
+            assetNumber: string;
+            category: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership: "owned" | "hired";
+            supplier?: string;
+            make?: string;
+            model?: string;
+            serialNumber?: string;
+            dailyRateCents?: number;
+            notes?: string;
+        };
+        UpdatePlantAssetRequest: {
+            name?: string;
+            category?: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership?: "owned" | "hired";
+            supplier?: string;
+            make?: string;
+            model?: string;
+            serialNumber?: string;
+            dailyRateCents?: number;
+            notes?: string;
+            status?: components["schemas"]["PlantAssetStatus"];
+        };
+        PlantAllocation: {
+            id: string;
+            assetId: string;
+            projectId: string;
+            costCodeId: string | null;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            note: string | null;
+            /** @enum {string} */
+            status: "active" | "cancelled";
+            /** @description Days in the allocation times the machine's daily rate. Null without a rate the caller may see. */
+            estimatedCostCents: number | null;
+        };
+        PlantAllocationList: {
+            data: components["schemas"]["PlantAllocation"][];
+        };
+        CreatePlantAllocationRequest: {
+            projectId: string;
+            costCodeId?: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            note?: string;
+        };
+        /** @enum {string} */
+        PlantPlanKind: "service" | "inspection" | "certification";
+        PlantMaintenancePlan: {
+            id: string;
+            assetId: string;
+            title: string;
+            kind: components["schemas"]["PlantPlanKind"];
+            intervalDays: number | null;
+            /** Format: date */
+            nextDueOn: string | null;
+            /** Format: date */
+            lastDoneOn: string | null;
+            responsible: string | null;
+            active: boolean;
+            /**
+             * @description Null for a finished plan. Due soon is 14 days ahead, or 30 for a certification.
+             * @enum {string|null}
+             */
+            state: "ok" | "due_soon" | "overdue" | null;
+        };
+        PlantMaintenancePlanList: {
+            data: components["schemas"]["PlantMaintenancePlan"][];
+        };
+        CreatePlantMaintenancePlanRequest: {
+            title: string;
+            kind: components["schemas"]["PlantPlanKind"];
+            intervalDays?: number;
+            /** Format: date */
+            nextDueOn: string;
+            /** Format: date */
+            lastDoneOn?: string;
+            responsible?: string;
+        };
+        CompletePlantMaintenanceRequest: {
+            /** Format: date */
+            doneOn: string;
+            performedBy?: string;
+            note?: string;
+            costCents?: number;
+        };
+        PlantMaintenanceRecord: {
+            id: string;
+            planId: string;
+            assetId: string;
+            /** Format: date */
+            doneOn: string;
+            performedBy: string | null;
+            note: string | null;
+            costCents: number | null;
+        };
+        PlantMaintenanceRecordList: {
+            data: components["schemas"]["PlantMaintenanceRecord"][];
+        };
+        PlantUtilisation: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            days: number;
+            fleetPct: number;
+            assets: {
+                assetId: string;
+                bookedDays: number;
+                idleDays: number;
+                pct: number;
+                costCents: number | null;
+                idleCostCents: number | null;
+            }[];
+            projects: {
+                projectId: string;
+                bookedDays: number;
+                costCents: number | null;
+            }[];
+        };
+        PlantFlag: {
+            /** @enum {string} */
+            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "idle";
+            /** @enum {string} */
+            severity: "critical" | "warning" | "info";
+            assetId: string;
+            /** @description The maintenance plan or allocation the flag is about, when there is one. */
+            subjectId: string | null;
+            message: string;
+            /** Format: date */
+            date: string | null;
+        };
+        PlantFlagList: {
+            data: components["schemas"]["PlantFlag"][];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -18052,6 +18463,9 @@ export interface components {
         };
     };
     parameters: {
+        PlantAssetId: string;
+        PlantAllocationId: string;
+        PlantPlanId: string;
         TimesheetId: string;
         EquipmentId: string;
         EquipmentBookingId: string;
@@ -18988,6 +19402,328 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAssetList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAsset"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePlantAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlantAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAsset"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantAllocations: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                assetId?: string;
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantAllocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantAllocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelPlantAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                allocationId: components["parameters"]["PlantAllocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantMaintenancePlans: {
+        parameters: {
+            query?: {
+                assetId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlanList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantMaintenancePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completePlantMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                planId: components["parameters"]["PlantPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompletePlantMaintenanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantMaintenanceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenanceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPlantUtilisation: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantUtilisation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantFlags: {
+        parameters: {
+            query?: {
+                idleDays?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantFlagList"];
+                };
             };
             default: components["responses"]["Problem"];
         };
