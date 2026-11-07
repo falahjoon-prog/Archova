@@ -17,6 +17,7 @@ export {
   Circle,
   CircleDot,
   Copy,
+  Clock,
   Download,
   Eye,
   FileText,

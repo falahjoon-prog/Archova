@@ -47,6 +47,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: recents
   - name: reporting
   - name: search
   - name: data-export
@@ -665,6 +666,48 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Notification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/recents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listRecentViews
+      tags: [recents]
+      x-module: platform
+      summary: The records the caller opened lately, newest first.
+      description: |
+        Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+      parameters:
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        - name: limit
+          in: query
+          description: At most this many rows (default 10, at most 50).
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: The recent views
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecentViewList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordRecentView
+      tags: [recents]
+      x-module: platform
+      summary: Note that the caller opened a record (idempotent; it moves the record to the top).
+      description: |
+        `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+        record's own module. The caller keeps their newest 50 views.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecentViewInput' }
+      responses:
+        '204':
+          description: Recorded
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -4219,6 +4262,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/audit-log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAuditLog
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.audit.read
+      summary: Who did what, when, across the company, newest first. Org owners and admins only.
+      description: |
+        The audit log, read from the events every change writes in the same transaction. Each line is the action
+        (`rfis.rfi.created`), the kind of record it touched, the project, the person (or `link` for someone on an
+        access link, `system` for the platform) and the time. Event details are never returned. Filter by project,
+        module, person and date range; `to` is exclusive.
+      parameters:
+        - { name: projectId, in: query, schema: { type: string } }
+        - { name: module, in: query, schema: { type: string, maxLength: 40 } }
+        - { name: actorId, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditLogPage' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
@@ -8584,6 +8656,72 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SignInResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getMySafetyBadge
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'My digital Safety ID badge for this project.'
+      description: |
+        The caller's own badge: name, company, photo (a short-lived link), emergency contact, QR code value, the
+        white card and licences they have recorded (last four characters only, never "verified"), and the site
+        inductions they have completed on this project. Nobody else's record is reachable from this call.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      operationId: setMyEmergencyContact
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Set or clear my emergency contact.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetEmergencyContactRequest' }
+      responses:
+        '200':
+          description: The updated badge
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      operationId: setMyBadgePhoto
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Set or clear my badge photo.'
+      description: 'The file must be one you uploaded and that has passed scanning. `fileId: null` removes the photo.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetBadgePhotoRequest' }
+      responses:
+        '200':
+          description: The updated badge
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyBadge' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out:
     parameters:
@@ -14304,6 +14442,33 @@ components:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
         filename: { type: string }
+    AuditLogPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AuditEvent' }
+        nextCursor: { type: [string, 'null'] }
+    AuditEvent:
+      type: object
+      required: [id, at, action, module, summary, entityType, projectId, projectName, actor]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        action: { type: string }
+        module: { type: string }
+        summary: { type: string }
+        entityType: { type: string }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        actor:
+          type: object
+          required: [kind, id, name]
+          properties:
+            kind: { type: string, enum: [user, link, system] }
+            id: { type: [string, 'null'] }
+            name: { type: [string, 'null'] }
     ReportList:
       type: object
       required: [data]
@@ -16100,6 +16265,36 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Notification' }
         unreadCount: { type: integer, minimum: 0 }
+    RecentViewEntityType:
+      type: string
+      enum: [rfi, submittal, defect, drawing_sheet, meeting]
+    RecentViewInput:
+      type: object
+      required: [entityType, entityId, projectId, title]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId:
+          { type: string, description: Public id of the record, of the kind `entityType` names. }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        subtitle: { type: string, maxLength: 200 }
+    RecentView:
+      type: object
+      required: [entityType, entityId, projectId, title, subtitle, viewedAt]
+      properties:
+        entityType: { $ref: '#/components/schemas/RecentViewEntityType' }
+        entityId: { type: string }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        subtitle: { type: string }
+        viewedAt: { type: string, format: date-time }
+    RecentViewList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RecentView' }
     FeatureFlags:
       type: object
       required: [orgId, flags]
@@ -23720,6 +23915,82 @@ components:
         kind: { type: string, enum: [worker, visitor, delivery] }
         status: { type: string, enum: [active, inactive] }
         version: { type: integer }
+    EmergencyContact:
+      type: object
+      required: [name, relationship, phone]
+      properties:
+        name: { type: string }
+        relationship: { type: [string, 'null'] }
+        phone: { type: string }
+    SetEmergencyContactRequest:
+      type: object
+      required: [contact]
+      properties:
+        contact:
+          description: The person to call in an emergency, or null to clear it.
+          oneOf:
+            - type: object
+              required: [name, phone]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                relationship: { type: [string, 'null'], maxLength: 100 }
+                phone: { type: string, minLength: 8, maxLength: 30 }
+            - type: 'null'
+    SetBadgePhotoRequest:
+      type: object
+      required: [fileId]
+      properties:
+        fileId: { type: [string, 'null'], format: uuid }
+    SafetyBadge:
+      type: object
+      required:
+        [
+          workerId,
+          fullName,
+          companyName,
+          status,
+          qrValue,
+          photoUrl,
+          emergencyContact,
+          credentials,
+          inductions,
+        ]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        fullName: { type: string }
+        companyName: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        qrValue:
+          type: string
+          description: The text the badge QR encodes. It identifies the badge only; reading anything behind it needs a sign-in.
+        photoUrl:
+          {
+            type: [string, 'null'],
+            description: 'Short-lived link; fetch a new badge when it expires.',
+          }
+        emergencyContact:
+          oneOf:
+            - $ref: '#/components/schemas/EmergencyContact'
+            - type: 'null'
+        credentials:
+          type: array
+          items:
+            type: object
+            required: [kind, numberLast4, expiresOn, status]
+            properties:
+              kind: { type: string }
+              numberLast4: { type: string }
+              expiresOn: { type: [string, 'null'], format: date }
+              status: { type: string, enum: [recorded, sighted] }
+        inductions:
+          type: array
+          items:
+            type: object
+            required: [title, completedAt, expiresOn]
+            properties:
+              title: { type: string }
+              completedAt: { type: string, format: date-time }
+              expiresOn: { type: [string, 'null'], format: date }
     WorkerList:
       type: object
       required: [data]

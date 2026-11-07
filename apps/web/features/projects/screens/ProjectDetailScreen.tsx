@@ -6,6 +6,7 @@ import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ConversationsCard } from '@/features/conversations';
+import { RecentsCard } from '@/features/recents';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
@@ -108,6 +109,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
         <div className="project-overview__col">
           <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
           <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <RecentsCard projectId={projectId} />
           <PhotosCard projectId={projectId} timeZone={p.timezone} />
         </div>
       </div>

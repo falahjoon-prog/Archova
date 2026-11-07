@@ -5,6 +5,7 @@ import { createInductionLinkService, type InductionLinkDeps } from './applicatio
 import { createTimesheetService } from './application/timesheet';
 import { createEquipmentService } from './application/equipment';
 import { createRosterService } from './application/roster';
+import { createBadgeService } from './application/badge';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -28,6 +29,11 @@ export function createWorkforceModule(
   const wallet = createWalletService({ files: deps.files, vault: deps.vault });
   const grants = createWalletGrantService({
     access: deps.access,
+    platform: deps.platform,
+    files: deps.files,
+  });
+  const badge = createBadgeService({
+    attendance,
     platform: deps.platform,
     files: deps.files,
   });
@@ -77,6 +83,7 @@ export function createWorkforceModule(
       roster,
       equipment,
       sheets,
+      badge,
       {
         logger: services.logger,
         ...deps.hooks,
