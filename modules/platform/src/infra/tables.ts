@@ -152,3 +152,20 @@ export const keyDateChanges = platform.table('key_date_changes', {
   changedBy: uuid('changed_by'),
   changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type LocationKind =
+  'site' | 'building' | 'wing' | 'level' | 'zone' | 'room' | 'area' | 'external';
+
+/** The project's location tree; a record's place is one row here (archived rows keep old records readable). */
+export const projectLocations = platform.table('project_locations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  parentId: uuid('parent_id'),
+  kind: text('kind').$type<LocationKind>().notNull().default('area'),
+  name: text('name').notNull(),
+  code: text('code'),
+  sort: integer('sort').notNull().default(0),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  ...audit,
+});

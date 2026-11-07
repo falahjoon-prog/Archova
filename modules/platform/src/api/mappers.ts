@@ -6,8 +6,10 @@ import type {
   MembershipSummary,
   Org,
   Project,
+  ProjectLocation,
   ProjectMember,
 } from '@archova/contracts';
+import type { LocationView } from '../application/locations';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
 import type { companies, orgs, projectMembers, projects } from '../infra/tables';
 
@@ -110,4 +112,18 @@ export const toKeyDateChangeDto = (
       ? { id: encodeId('user', c.changedBy), name: names.get(c.changedBy)! }
       : null,
   changedAt: c.changedAt.toISOString(),
+});
+
+export const toLocationDto = (l: LocationView): ProjectLocation => ({
+  id: encodeId('location', l.id),
+  projectId: encodeId('project', l.projectId),
+  parentId: l.parentId ? encodeId('location', l.parentId) : null,
+  kind: l.kind,
+  name: l.name,
+  code: l.code,
+  path: l.path,
+  depth: l.depth,
+  sort: l.sort,
+  archived: l.archivedAt !== null,
+  version: l.version,
 });

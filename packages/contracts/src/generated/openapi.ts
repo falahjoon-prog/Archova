@@ -669,6 +669,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's location tree as a flat list (building, level, zone, room...), ordered for display. Each row carries its full path. */
+        get: operations["listProjectLocations"];
+        put?: never;
+        /** Add a location under a parent (or at the top level). */
+        post: operations["createProjectLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggests where a new record is, from the words in its title or description. Rule-based; the person confirms. */
+        get: operations["suggestProjectLocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename, re-code, move, reorder, archive or restore a location. Send `If-Match`. */
+        patch: operations["updateProjectLocation"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/delay-register": {
         parameters: {
             query?: never;
@@ -11174,6 +11236,50 @@ export interface components {
             /** Format: date */
             actualDate: string | null;
         };
+        /** @enum {string} */
+        LocationKind: "site" | "building" | "wing" | "level" | "zone" | "room" | "area" | "external";
+        /** @description A row of the project's location tree. */
+        LocationRef: string;
+        ProjectLocation: {
+            id: components["schemas"]["LocationRef"];
+            projectId: string;
+            parentId: components["schemas"]["LocationRef"] | null;
+            kind: components["schemas"]["LocationKind"];
+            name: string;
+            code: string | null;
+            /** @description "Building A › Level 2 › Unit 201" */
+            path: string;
+            depth: number;
+            sort: number;
+            archived: boolean;
+            version: number;
+        };
+        LocationList: {
+            data: components["schemas"]["ProjectLocation"][];
+        };
+        CreateLocationRequest: {
+            parentId?: components["schemas"]["LocationRef"] | null;
+            kind?: components["schemas"]["LocationKind"];
+            name: string;
+            code?: string | null;
+        };
+        UpdateLocationRequest: {
+            parentId?: components["schemas"]["LocationRef"] | null;
+            kind?: components["schemas"]["LocationKind"];
+            name?: string;
+            code?: string | null;
+            sort?: number;
+            archived?: boolean;
+        };
+        LocationSuggestion: {
+            locationId: components["schemas"]["LocationRef"];
+            path: string;
+            /** @description What in the text matched. */
+            reason: string;
+        };
+        LocationSuggestionList: {
+            data: components["schemas"]["LocationSuggestion"][];
+        };
         KeyDates: {
             projectId: string;
             /** Format: date */
@@ -13515,6 +13621,9 @@ export interface components {
             delayDays: number | null;
             /** @description As written on the form. */
             specSection: string | null;
+            locationId: components["schemas"]["LocationRef"] | null;
+            /** @description Full path of `locationId`. */
+            locationPath: string | null;
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
@@ -13551,6 +13660,7 @@ export interface components {
         CreateRfiRequest: {
             subject: string;
             question?: string;
+            locationId?: components["schemas"]["LocationRef"];
             isPrivate?: boolean;
             managerId?: components["schemas"]["UserRef"];
             receivedFromCompanyId?: components["schemas"]["CompanyRef"];
@@ -13590,6 +13700,7 @@ export interface components {
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
             specSection?: string | null;
+            locationId?: components["schemas"]["LocationRef"] | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
             /** @description The files attached to the question; replaces the list. */
@@ -14687,6 +14798,9 @@ export interface components {
             category: string | null;
             trade: string | null;
             stage: components["schemas"]["DefectStage"];
+            locationId: components["schemas"]["LocationRef"] | null;
+            /** @description "Building A › Level 2 › Unit 201" */
+            locationPath: string | null;
             pin: components["schemas"]["DrawingPin"] | null;
             assigneeCompanyId: string | null;
             assigneeUserId: string | null;
@@ -15540,10 +15654,12 @@ export interface components {
             data: components["schemas"]["Defect"][];
             nextCursor: string | null;
         };
+        /** @description A defect needs a `locationId`, a drawing `pin`, or both (DEF-AC3). */
         CreateDefectRequest: {
             title: string;
             description?: string;
             priority?: components["schemas"]["DefectPriority"];
+            locationId?: components["schemas"]["LocationRef"];
             category?: string;
             trade?: string;
             stage?: components["schemas"]["DefectStage"];
@@ -15551,7 +15667,7 @@ export interface components {
             assigneeUserId?: components["schemas"]["UserRef"];
             /** Format: date */
             dueDate?: string;
-            pin: components["schemas"]["DrawingPin"];
+            pin?: components["schemas"]["DrawingPin"];
             /** @description The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`. */
             aiSuggestionId?: string;
         };
@@ -15566,6 +15682,7 @@ export interface components {
             assigneeUserId?: components["schemas"]["UserRef"] | null;
             /** Format: date */
             dueDate?: string | null;
+            locationId?: components["schemas"]["LocationRef"] | null;
             pin?: components["schemas"]["DrawingPin"];
         };
         DefectTransitionRequest: {
@@ -17347,6 +17464,7 @@ export interface components {
             templateId: string;
             templateVersion: number;
             title: string;
+            locationId: components["schemas"]["LocationRef"] | null;
             location: string | null;
             status: components["schemas"]["InspectionStatus"];
             inspectorId: string | null;
@@ -17387,6 +17505,7 @@ export interface components {
             templateId: string;
             /** @description Defaults to the checklist name. */
             title?: string;
+            locationId?: components["schemas"]["LocationRef"];
             location?: string;
             /** Format: date */
             scheduledFor?: string;
@@ -17421,6 +17540,7 @@ export interface components {
             type: components["schemas"]["ObservationType"];
             hazard: string | null;
             description: string;
+            locationId: components["schemas"]["LocationRef"] | null;
             location: string | null;
             priority: components["schemas"]["DefectPriority"];
             assigneeCompanyId: string | null;
@@ -17454,6 +17574,7 @@ export interface components {
             type: components["schemas"]["ObservationType"];
             hazard?: string;
             description: string;
+            locationId?: components["schemas"]["LocationRef"];
             location?: string;
             priority?: components["schemas"]["DefectPriority"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
@@ -17466,6 +17587,7 @@ export interface components {
             type?: components["schemas"]["ObservationType"];
             hazard?: string | null;
             description?: string;
+            locationId?: components["schemas"]["LocationRef"] | null;
             location?: string | null;
             priority?: components["schemas"]["DefectPriority"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
@@ -18922,6 +19044,120 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeyDateChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectLocations: {
+        parameters: {
+            query?: {
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestProjectLocations: {
+        parameters: {
+            query: {
+                text: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to three suggestions, best first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationSuggestionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectLocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
                 };
             };
             default: components["responses"]["Problem"];

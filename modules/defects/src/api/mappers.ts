@@ -28,6 +28,8 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
           y: r.pinY,
         }
       : null,
+  locationId: r.locationId ? encodeId('location', r.locationId) : null,
+  locationPath: r.locationPath,
   assigneeCompanyId: companyOrNull(r.assigneeCompanyId),
   assigneeUserId: userOrNull(r.assigneeUserId),
   dueDate: r.dueDate,

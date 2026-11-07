@@ -30,7 +30,11 @@ const defectId = (p: { defectId: string }) => {
   return id;
 };
 
-type FieldsBody = Omit<DefectFields, 'assigneeCompanyId' | 'assigneeUserId' | 'pin'> & {
+type FieldsBody = Omit<
+  DefectFields,
+  'assigneeCompanyId' | 'assigneeUserId' | 'pin' | 'locationId'
+> & {
+  locationId?: string | null;
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
@@ -54,6 +58,8 @@ function fields(b: FieldsBody): DefectFields {
   if (b.assigneeUserId !== undefined)
     out.assigneeUserId =
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.pin)
     out.pin = {
       ...b.pin,

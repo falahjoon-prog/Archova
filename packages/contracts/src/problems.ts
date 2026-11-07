@@ -79,6 +79,11 @@ export const PROBLEM_CODES = {
   'project_member.not_found': 404,
   'project_member.cannot_remove_self': 422,
   'company.not_found': 422,
+  'location.not_found': 404,
+  'location.invalid': 422,
+  'location.name_taken': 409,
+  'location.too_deep': 422,
+  'location.has_active_children': 409,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
   'backoffice.permission_denied': 403,

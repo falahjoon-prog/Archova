@@ -5,6 +5,7 @@ import type { IdentityApi } from '@archova/mod-identity';
 import { createAccountDeletionService } from './application/account-deletion';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
+import { createLocationService } from './application/locations';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
@@ -38,6 +39,7 @@ export function createPlatformModule(
   });
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
+  const locations = createLocationService({ projects });
   const companies = createCompanyService();
   const accountDeletion = createAccountDeletionService({
     database: services.database,
@@ -54,6 +56,7 @@ export function createPlatformModule(
       orgs,
       projects,
       keyDates,
+      locations,
       companies,
       members,
       accountDeletion,
@@ -66,6 +69,10 @@ export function createPlatformModule(
       getProjectAccessState: members.getProjectAccessState,
       contactsOfCompany: members.contactsOfCompany,
       getProject: projects.get,
+      /** Checks that location ids are on the project (and live) and returns their full paths; throws 422 otherwise. */
+      resolveLocations: locations.resolve,
+      /** Display paths for location ids; unknown ids are skipped. */
+      locationPaths: locations.paths,
       /** A page of the projects the caller can see (org admins: all). Used by `reporting` for the portfolio. */
       listProjects: projects.list,
       getOrg: orgs.getOrg,

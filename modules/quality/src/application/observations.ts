@@ -18,7 +18,7 @@ import {
   type ObservationViewer,
 } from '../domain/observation';
 import { observations, type Priority } from '../infra/tables';
-import { checkFiles, liveObservation, viewerOf, type QualityDeps } from './shared';
+import { checkFiles, liveObservation, locationLabel, viewerOf, type QualityDeps } from './shared';
 
 export type ObservationRow = typeof observations.$inferSelect;
 export type ObservationView = ObservationRow & { isOverdue: boolean };
@@ -28,6 +28,8 @@ export interface ObservationFields {
   hazard?: string | null;
   description?: string;
   location?: string | null;
+  /** A row of the project's location tree; sets `location` to its path. */
+  locationId?: string | null;
   priority?: Priority;
   assigneeCompanyId?: string | null;
   dueDate?: string | null;
@@ -177,7 +179,10 @@ export function createObservationService(deps: QualityDeps) {
         type: input.type,
         hazard: input.hazard ?? null,
         description: input.description.trim(),
-        location: input.location ?? null,
+        location: input.locationId
+          ? await locationLabel(deps, scope, projectId, input.locationId)
+          : (input.location ?? null),
+        locationId: input.locationId ?? null,
         priority: input.priority ?? 'medium',
         assigneeCompanyId: input.assigneeCompanyId ?? null,
         raisedByCompanyId: v.companyId,
@@ -235,6 +240,14 @@ export function createObservationService(deps: QualityDeps) {
         ...(patch.hazard !== undefined ? { hazard: patch.hazard } : {}),
         ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
         ...(patch.location !== undefined ? { location: patch.location } : {}),
+        ...(patch.locationId !== undefined
+          ? {
+              locationId: patch.locationId,
+              ...(patch.locationId
+                ? { location: await locationLabel(deps, scope, projectId, patch.locationId) }
+                : {}),
+            }
+          : {}),
         ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
         ...(patch.assigneeCompanyId !== undefined
           ? { assigneeCompanyId: patch.assigneeCompanyId }

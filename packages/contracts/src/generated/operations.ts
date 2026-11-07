@@ -130,6 +130,31 @@ export const ListKeyDateChangesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListProjectLocationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectLocationsQuery = z.object({
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectLocationBody = s.CreateLocationRequestSchema;
+export const SuggestProjectLocationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestProjectLocationsQuery = z.object({
+  "text": z.string().min(1).max(2000),
+});
+export const UpdateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^loc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectLocationBody = s.UpdateLocationRequestSchema;
 export const GetDelayRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3648,6 +3673,54 @@ export const operations = {
     params: ListKeyDateChangesParams,
     query: null,
     body: null,
+  },
+  listProjectLocations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectLocationsParams,
+    query: ListProjectLocationsQuery,
+    body: null,
+  },
+  createProjectLocation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectLocationParams,
+    query: null,
+    body: CreateProjectLocationBody,
+  },
+  suggestProjectLocations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/suggest',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: SuggestProjectLocationsParams,
+    query: SuggestProjectLocationsQuery,
+    body: null,
+  },
+  updateProjectLocation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectLocationParams,
+    query: null,
+    body: UpdateProjectLocationBody,
   },
   getDelayRegister: {
     method: 'GET',

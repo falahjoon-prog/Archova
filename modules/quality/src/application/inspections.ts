@@ -21,7 +21,7 @@ import {
 } from '../domain/inspection';
 import { inspections, responses, templateItems, templates } from '../infra/tables';
 import { uniqueViolation } from './errors';
-import { checkFiles, requireInternal, type QualityDeps } from './shared';
+import { checkFiles, locationLabel, requireInternal, type QualityDeps } from './shared';
 
 export type TemplateRow = typeof templates.$inferSelect;
 export type ItemRow = typeof templateItems.$inferSelect;
@@ -339,6 +339,7 @@ export function createInspectionService(deps: QualityDeps) {
       templateId: string;
       title?: string;
       location?: string;
+      locationId?: string;
       scheduledFor?: string;
       inspectorId?: string;
     },
@@ -371,7 +372,10 @@ export function createInspectionService(deps: QualityDeps) {
         templateVersion: template.version,
         number,
         title: input.title?.trim() || template.name,
-        location: input.location ?? null,
+        location: input.locationId
+          ? await locationLabel(deps, scope, projectId, input.locationId)
+          : (input.location ?? null),
+        locationId: input.locationId ?? null,
         scheduledFor: input.scheduledFor ?? null,
         inspectorId: input.inspectorId ?? scope.ctx.userId,
         createdBy: scope.ctx.userId,

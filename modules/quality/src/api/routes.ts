@@ -33,7 +33,11 @@ const notFound = (kind: IdKind, value: string, code: string) => {
 
 const project = (p: { projectId: string }) => notFound('project', p.projectId, 'project.not_found');
 
-type ObservationBody = Omit<ObservationFields, 'assigneeCompanyId' | 'swmsId' | 'fileIds'> & {
+type ObservationBody = Omit<
+  ObservationFields,
+  'assigneeCompanyId' | 'swmsId' | 'fileIds' | 'locationId'
+> & {
+  locationId?: string | null;
   assigneeCompanyId?: string | null;
   swmsId?: string | null;
   fileIds?: string[];
@@ -45,6 +49,8 @@ function observationFields(b: ObservationBody): ObservationFields {
   if (b.hazard !== undefined) out.hazard = b.hazard;
   if (b.description !== undefined) out.description = b.description;
   if (b.location !== undefined) out.location = b.location;
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.priority !== undefined) out.priority = b.priority;
   if (b.dueDate !== undefined) out.dueDate = b.dueDate;
   if (b.assigneeCompanyId !== undefined)
@@ -165,6 +171,9 @@ export function qualityRoutes(
             templateId: ref('inspectionTemplate', input.body.templateId, 'templateId'),
             ...(input.body.title ? { title: input.body.title } : {}),
             ...(input.body.location ? { location: input.body.location } : {}),
+            ...(input.body.locationId
+              ? { locationId: ref('location', input.body.locationId, 'locationId') }
+              : {}),
             ...(input.body.scheduledFor ? { scheduledFor: input.body.scheduledFor } : {}),
             ...(input.body.inspectorId
               ? { inspectorId: ref('user', input.body.inspectorId, 'inspectorId') }

@@ -12,6 +12,7 @@ import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-iden
 import type { AccountDeletionService } from '../application/account-deletion';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
+import type { LocationService } from '../application/locations';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
@@ -19,6 +20,7 @@ import {
   toCompanyDto,
   toKeyDateChangeDto,
   toKeyDatesDto,
+  toLocationDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
@@ -48,6 +50,7 @@ export interface PlatformRouteDeps {
   orgs: OrgService;
   projects: ProjectService;
   keyDates: KeyDateService;
+  locations: LocationService;
   companies: CompanyService;
   members: MemberService;
   accountDeletion: AccountDeletionService;
@@ -65,6 +68,13 @@ const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) =>
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
   if (!uuid) throw new AppError('project.not_found');
+  return uuid;
+};
+
+const locationUuid = (id: string | null | undefined) => {
+  if (id == null) return null;
+  const uuid = decodeId('location', id);
+  if (!uuid) throw new AppError('location.not_found');
   return uuid;
 };
 
@@ -225,6 +235,56 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.keyDates.update(s, id, expected, { ...rest, ...(sections ? { sections } : {}) }),
       );
       return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    listProjectLocations: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) =>
+          d.locations.list(s, id, { includeArchived: input.query?.includeArchived === 'true' }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toLocationDto) } };
+    },
+    createProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const { parentId, ...rest } = input.body;
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.create(s, id, { ...rest, parentId: locationUuid(parentId) }),
+      );
+      return { status: 201, body: toLocationDto(row), headers: { etag: etag(row.version) } };
+    },
+    suggestProjectLocations: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.locations.suggest(s, id, input.query.text),
+        ro,
+      );
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({
+            locationId: encodeId('location', r.locationId),
+            path: r.path,
+            reason: r.reason,
+          })),
+        },
+      };
+    },
+    updateProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locId = locationUuid(input.params.locationId)!;
+      const expected = parseIfMatch(input.headers['if-match']);
+      const { parentId, archived, ...rest } = input.body;
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.update(s, id, locId, expected, {
+          ...rest,
+          ...(parentId !== undefined ? { parentId: locationUuid(parentId) } : {}),
+          ...(archived !== undefined ? { archived } : {}),
+        }),
+      );
+      return { status: 200, body: toLocationDto(row), headers: { etag: etag(row.version) } };
     },
     listKeyDateChanges: async (input) => {
       const id = projectUuid(input.params.projectId);

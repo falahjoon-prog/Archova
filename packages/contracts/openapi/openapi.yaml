@@ -802,6 +802,106 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/KeyDateChangeList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectLocations
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: The project's location tree as a flat list (building, level, zone, room...), ordered for display. Each row carries its full path.
+      parameters:
+        - {
+            name: includeArchived,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: Locations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LocationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Add a location under a parent (or at the top level).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLocationRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations/suggest:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestProjectLocations
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: Nova suggests where a new record is, from the words in its title or description. Rule-based; the person confirms.
+      parameters:
+        - {
+            name: text,
+            in: query,
+            required: true,
+            schema: { type: string, minLength: 1, maxLength: 2000 },
+          }
+      responses:
+        '200':
+          description: Up to three suggestions, best first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LocationSuggestionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: locationId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^loc_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Rename, re-code, move, reorder, archive or restore a location. Send `If-Match`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateLocationRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/delay-register:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15697,6 +15797,70 @@ components:
         name: { type: string, minLength: 1, maxLength: 120 }
         targetDate: { type: [string, 'null'], format: date }
         actualDate: { type: [string, 'null'], format: date }
+    LocationKind:
+      type: string
+      enum: [site, building, wing, level, zone, room, area, external]
+    LocationRef:
+      type: string
+      pattern: '^loc_[0-9A-Za-z]{26}$'
+      description: A row of the project's location tree.
+    ProjectLocation:
+      type: object
+      required: [id, projectId, parentId, kind, name, code, path, depth, sort, archived, version]
+      properties:
+        id: { $ref: '#/components/schemas/LocationRef' }
+        projectId: { type: string }
+        parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        name: { type: string }
+        code: { type: [string, 'null'] }
+        path: { type: string, description: '"Building A › Level 2 › Unit 201"' }
+        depth: { type: integer, minimum: 1, maximum: 8 }
+        sort: { type: integer }
+        archived: { type: boolean }
+        version: { type: integer }
+    LocationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectLocation' }
+    CreateLocationRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        code: { type: [string, 'null'], minLength: 1, maxLength: 30 }
+    UpdateLocationRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        code: { type: [string, 'null'], minLength: 1, maxLength: 30 }
+        sort: { type: integer, minimum: 0, maximum: 1000000 }
+        archived: { type: boolean }
+    LocationSuggestion:
+      type: object
+      required: [locationId, path, reason]
+      properties:
+        locationId: { $ref: '#/components/schemas/LocationRef' }
+        path: { type: string }
+        reason: { type: string, description: What in the text matched. }
+    LocationSuggestionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/LocationSuggestion' }
     KeyDates:
       type: object
       required:
@@ -19377,6 +19541,8 @@ components:
           delayDays,
           specSection,
           location,
+          locationId,
+          locationPath,
           pin,
           officialResponseId,
           createdBy,
@@ -19419,6 +19585,8 @@ components:
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
         specSection: { type: [string, 'null'], description: 'As written on the form.' }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
+        locationPath: { type: [string, 'null'], description: 'Full path of `locationId`.' }
         location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         fileIds:
@@ -19471,6 +19639,7 @@ components:
       properties:
         subject: { type: string, minLength: 1, maxLength: 300 }
         question: { type: string, maxLength: 20000 }
+        locationId: { $ref: '#/components/schemas/LocationRef' }
         isPrivate: { type: boolean }
         managerId: { $ref: '#/components/schemas/UserRef' }
         receivedFromCompanyId: { $ref: '#/components/schemas/CompanyRef' }
@@ -19543,6 +19712,7 @@ components:
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         specSection: { type: [string, 'null'], maxLength: 200 }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
         location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
         fileIds:
@@ -21241,6 +21411,8 @@ components:
           trade,
           stage,
           pin,
+          locationId,
+          locationPath,
           assigneeCompanyId,
           assigneeUserId,
           dueDate,
@@ -21269,6 +21441,8 @@ components:
         category: { type: [string, 'null'] }
         trade: { type: [string, 'null'] }
         stage: { $ref: '#/components/schemas/DefectStage' }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
+        locationPath: { type: [string, 'null'], description: '"Building A › Level 2 › Unit 201"' }
         pin:
           oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
         assigneeCompanyId: { type: [string, 'null'] }
@@ -22685,11 +22859,13 @@ components:
     CreateDefectRequest:
       type: object
       additionalProperties: false
-      required: [title, pin]
+      required: [title]
+      description: A defect needs a `locationId`, a drawing `pin`, or both (DEF-AC3).
       properties:
         title: { type: string, minLength: 1, maxLength: 300 }
         description: { type: string, maxLength: 20000 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        locationId: { $ref: '#/components/schemas/LocationRef' }
         category: { type: string, minLength: 1, maxLength: 100 }
         trade: { type: string, minLength: 1, maxLength: 100 }
         stage: { $ref: '#/components/schemas/DefectStage' }
@@ -22716,6 +22892,7 @@ components:
           { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
         assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
         dueDate: { type: [string, 'null'], format: date }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
         pin: { $ref: '#/components/schemas/DrawingPin' }
     DefectTransitionRequest:
       type: object
@@ -25545,6 +25722,7 @@ components:
           templateId,
           templateVersion,
           title,
+          locationId,
           location,
           status,
           inspectorId,
@@ -25563,6 +25741,7 @@ components:
         templateId: { type: string }
         templateVersion: { type: integer }
         title: { type: string }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
         location: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/InspectionStatus' }
         inspectorId: { type: [string, 'null'] }
@@ -25625,6 +25804,7 @@ components:
             maxLength: 300,
             description: 'Defaults to the checklist name.',
           }
+        locationId: { $ref: '#/components/schemas/LocationRef' }
         location: { type: string, minLength: 1, maxLength: 300 }
         scheduledFor: { type: string, format: date }
         inspectorId: { $ref: '#/components/schemas/UserRef' }
@@ -25679,6 +25859,7 @@ components:
           type,
           hazard,
           description,
+          locationId,
           location,
           priority,
           assigneeCompanyId,
@@ -25705,6 +25886,7 @@ components:
         type: { $ref: '#/components/schemas/ObservationType' }
         hazard: { type: [string, 'null'] }
         description: { type: string }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
         location: { type: [string, 'null'] }
         priority: { $ref: '#/components/schemas/DefectPriority' }
         assigneeCompanyId: { type: [string, 'null'] }
@@ -25745,6 +25927,7 @@ components:
         type: { $ref: '#/components/schemas/ObservationType' }
         hazard: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 20000 }
+        locationId: { $ref: '#/components/schemas/LocationRef' }
         location: { type: string, minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
         assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
@@ -25762,6 +25945,7 @@ components:
         type: { $ref: '#/components/schemas/ObservationType' }
         hazard: { type: [string, 'null'], minLength: 1, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 20000 }
+        locationId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
         location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
         assigneeCompanyId:
