@@ -18,6 +18,7 @@ import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { laborProductivitySuite } from './suites/labor-productivity';
+import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
@@ -54,6 +55,7 @@ export const SUITES: readonly AnySuite[] = [
   quoteReadSuite,
   quoteNegotiateSuite,
   laborProductivitySuite,
+  announcementDraftSuite,
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,

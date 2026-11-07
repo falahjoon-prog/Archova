@@ -22,6 +22,7 @@ import type {
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { BudgetReviewService } from '../application/budget-review';
+import type { AnnouncementDraftService } from '../application/announcement-draft';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { LaborProductivityService } from '../application/labor-productivity';
 import type { SemanticSearchService } from '../application/semantic-search';
@@ -294,6 +295,7 @@ export function aiRoutes(
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
   laborProductivity: LaborProductivityService,
+  announcementDrafts: AnnouncementDraftService,
   budgetReviews: BudgetReviewService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
@@ -656,6 +658,26 @@ export function aiRoutes(
           notes: r.notes,
           history: r.history,
           disclaimer: r.disclaimer,
+        },
+      };
+    },
+    draftAnnouncementWithNova: async (input) => {
+      const r = await announcementDrafts.draft(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          notes: input.body.notes,
+          ...(input.body.audience ? { audience: input.body.audience } : {}),
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          title: r.title,
+          body: r.body,
+          priority: r.priority,
+          notes: r.notes,
         },
       };
     },

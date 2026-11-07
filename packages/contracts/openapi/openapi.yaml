@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: announcements
   - name: bim
   - name: defects
   - name: financials
@@ -6574,6 +6575,173 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+      description: |
+        Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+        (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+        returned to the sender and managers.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - {
+            name: unread,
+            in: query,
+            description: 'Only announcements the caller has not read',
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Post an announcement to everyone on the project or a chosen group.
+      description: |
+        The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+        subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+        recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+        read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAnnouncementRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    get:
+      operationId: getAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: One announcement. The sender and managers also get the read receipts and Nova's overdue flags.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: markAnnouncementRead
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Mark the caller's copy as read. The first read time is kept.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: nudgeAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+      description: |
+        Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+        four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+        (`announcements.announcements.manage`) may send reminders.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userIds]
+              properties:
+                userIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementNudgeResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftAnnouncementWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: announcements.announcements.create
+      summary: Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+      description: |
+        Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+        Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+        and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+        themselves. Costs half a Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [notes]
+              properties:
+                notes: { type: string, minLength: 1, maxLength: 4000 }
+                audience:
+                  description: Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits.
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDraft' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -13418,6 +13586,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    AnnouncementId:
+      name: announcementId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ann_[0-9A-Za-z]{26}$' }
     ConversationId:
       name: conversationId
       in: path
@@ -16086,7 +16259,16 @@ components:
         entityType:
           {
             type: string,
-            enum: [meeting, tender_package, contract, incident, compliance_document, conversation],
+            enum:
+              [
+                meeting,
+                tender_package,
+                contract,
+                incident,
+                compliance_document,
+                conversation,
+                announcement,
+              ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
@@ -19223,6 +19405,164 @@ components:
           maxItems: 20
           description: Project team members to notify. Each must be an active, non-external member of the project.
           items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    AnnouncementAudienceInput:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [all, group] }
+        companyIds:
+          type: array
+          maxItems: 50
+          description: For `group`, everyone on the project from these companies.
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        userIds:
+          type: array
+          maxItems: 200
+          description: For `group`, these individual people.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    CreateAnnouncementRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body, audience]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        priority: { type: string, enum: [normal, important] }
+        audience: { $ref: '#/components/schemas/AnnouncementAudienceInput' }
+        keyUserIds:
+          type: array
+          maxItems: 100
+          description: People who must read it; each must be among the recipients.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        readByHours:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 720
+          description: Hours after posting by which key people should have read it. Nova flags the ones who haven't.
+    AnnouncementReceipts:
+      type: object
+      required: [recipientCount, readCount]
+      properties:
+        recipientCount: { type: integer }
+        readCount: { type: integer }
+    AnnouncementSummary:
+      type: object
+      required:
+        - id
+        - projectId
+        - title
+        - preview
+        - priority
+        - audienceKind
+        - createdById
+        - createdByName
+        - createdAt
+        - readByHours
+        - isMine
+        - unread
+        - readAt
+        - receipts
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        preview: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        audienceKind: { type: string, enum: [all, group] }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        readByHours: { type: [integer, 'null'] }
+        isMine: { type: boolean }
+        unread: { type: boolean, description: The caller was sent it and hasn't read it. }
+        readAt: { type: [string, 'null'], format: date-time }
+        receipts:
+          description: How many have read it; only for the sender and managers.
+          oneOf:
+            - $ref: '#/components/schemas/AnnouncementReceipts'
+            - type: 'null'
+    AnnouncementPage:
+      type: object
+      required: [data, nextCursor, unreadCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AnnouncementSummary' }
+        nextCursor: { type: [string, 'null'] }
+        unreadCount:
+          { type: integer, description: Announcements on this project the caller hasn't read. }
+    AnnouncementRecipient:
+      type: object
+      required: [userId, name, isKey, readAt, nudgedAt]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        readAt: { type: [string, 'null'], format: date-time }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+    AnnouncementUnreadFlag:
+      type: object
+      required: [userId, name, isKey, hoursOverdue, nudgedAt, canNudge]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        hoursOverdue: { type: integer }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+        canNudge: { type: boolean, description: False inside four hours of the last reminder. }
+    AnnouncementDetail:
+      allOf:
+        - $ref: '#/components/schemas/AnnouncementSummary'
+        - type: object
+          required: [body, audience, dueAt, recipients, flags]
+          properties:
+            body: { type: string }
+            audience:
+              type: object
+              required: [kind, companyIds, userIds]
+              properties:
+                kind: { type: string, enum: [all, group] }
+                companyIds:
+                  type: array
+                  items: { type: string }
+                userIds:
+                  type: array
+                  items: { type: string }
+            dueAt:
+              {
+                type: [string, 'null'],
+                format: date-time,
+                description: When key people should have read it by.,
+              }
+            recipients:
+              description: Who has read it; only for the sender and managers.
+              oneOf:
+                - type: array
+                  items: { $ref: '#/components/schemas/AnnouncementRecipient' }
+                - type: 'null'
+            flags:
+              type: array
+              description: "Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others."
+              items: { $ref: '#/components/schemas/AnnouncementUnreadFlag' }
+    AnnouncementNudgeResult:
+      type: object
+      required: [nudged, skipped]
+      properties:
+        nudged: { type: integer }
+        skipped: { type: integer, description: Already read, or reminded in the last four hours. }
+    AnnouncementDraft:
+      type: object
+      required: [runId, title, body, priority, notes]
+      properties:
+        runId: { type: string }
+        title: { type: string }
+        body: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        notes:
+          type: array
+          description: What code removed or changed because the notes didn't support it.
+          items: { type: string }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]

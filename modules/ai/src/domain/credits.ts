@@ -54,6 +54,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.negotiate': 0.5,
   // Nova: one turn of discussion on a slow cost code's labor productivity; same size as a quote negotiation turn. Priya to confirm.
   'labor.productivity': 0.5,
+  // Nova: a short announcement drafted from rough notes at the fast tier; half a credit like other short drafts. Priya to confirm.
+  'announcement.draft': 0.5,
   // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
   'contract.review': 40,
   // F34 Ask the contract: the pages and one question at the standard tier, a short cited answer out. Priya to confirm.
