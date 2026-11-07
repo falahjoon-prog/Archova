@@ -4115,6 +4115,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/time:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getTimeDashboard
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Hours worked in one week by employee, project, class and cost code.
+      description: |
+        The company time dashboard (FP Dashboard). One Monday to Sunday week of paid timesheet time (time worked less
+        unpaid breaks) across the projects the caller can see, or the projects named in `projectIds`. `weekStart` is any
+        date in the week wanted and defaults to this week. Each project's lines are read as the caller: a project where
+        the caller may not read timesheets is counted in `restrictedProjects` and left out; where the caller may not
+        read cost codes, its hours are grouped as "Cost codes not visible". A class is the top-level cost code above the
+        one a line is booked to. Employees and cost codes are the top 50 by hours. Staff only.
+      parameters:
+        - { name: weekStart, in: query, required: false, schema: { type: string, format: date } }
+        - {
+            name: projectIds,
+            in: query,
+            required: false,
+            description: Comma-separated project ids; empty means every project the caller can see.,
+            schema: { type: string },
+          }
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The week
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimeDashboard' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/search:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13838,6 +13876,90 @@ components:
                 type: integer,
                 description: 'Days late summed over the late activities; divide by `overdue` for the average.',
               }
+    TimeDashboard:
+      type: object
+      required:
+        [
+          weekStart,
+          weekEnd,
+          previousWeek,
+          nextWeek,
+          totalHours,
+          byEmployee,
+          byClass,
+          byProject,
+          byCostCode,
+          restrictedProjects,
+          truncated,
+        ]
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        previousWeek: { type: string, format: date, description: 'Monday of the week before.' }
+        nextWeek: { type: string, format: date, description: 'Monday of the week after.' }
+        totalHours: { type: number }
+        byEmployee:
+          type: array
+          items:
+            type: object
+            required: [workerId, name, hours, projects]
+            properties:
+              workerId: { type: string }
+              name: { type: string }
+              hours: { type: number }
+              projects:
+                type: array
+                items:
+                  type: object
+                  required: [projectId, name, hours]
+                  properties:
+                    projectId: { type: string }
+                    name: { type: string }
+                    hours: { type: number }
+        byClass:
+          type: array
+          items:
+            type: object
+            required: [key, label, hours, percent]
+            properties:
+              key:
+                {
+                  type: string,
+                  description: 'Top-level cost code; "none" for time with no cost code, "hidden" where cost codes cannot be read.',
+                }
+              label: { type: string }
+              hours: { type: number }
+              percent: { type: number, description: 'Share of the week total, one decimal.' }
+        byProject:
+          type: array
+          items:
+            type: object
+            required: [projectId, name, hours, draft, submitted, approved]
+            properties:
+              projectId: { type: string }
+              name: { type: string }
+              hours: { type: number }
+              draft:
+                {
+                  type: number,
+                  description: 'Hours on timesheets not yet submitted, or sent back.',
+                }
+              submitted: { type: number }
+              approved: { type: number, description: 'Approved or exported.' }
+        byCostCode:
+          type: array
+          items:
+            type: object
+            required: [projectId, projectName, costCodeId, code, description, hours]
+            properties:
+              projectId: { type: string }
+              projectName: { type: string }
+              costCodeId: { type: [string, 'null'] }
+              code: { type: string }
+              description: { type: string }
+              hours: { type: number }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
     PortfolioBudget:
       type: object
       required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]

@@ -7100,6 +7100,49 @@ export const TenderPackagePageSchema = z.object({
 });
 export type TenderPackagePage = z.infer<typeof TenderPackagePageSchema>;
 
+export const TimeDashboardSchema = z.object({
+  "weekStart": z.string().date(),
+  "weekEnd": z.string().date(),
+  "previousWeek": z.string().date(),
+  "nextWeek": z.string().date(),
+  "totalHours": z.number(),
+  "byEmployee": z.array(z.object({
+  "workerId": z.string(),
+  "name": z.string(),
+  "hours": z.number(),
+  "projects": z.array(z.object({
+  "projectId": z.string(),
+  "name": z.string(),
+  "hours": z.number(),
+})),
+})),
+  "byClass": z.array(z.object({
+  "key": z.string(),
+  "label": z.string(),
+  "hours": z.number(),
+  "percent": z.number(),
+})),
+  "byProject": z.array(z.object({
+  "projectId": z.string(),
+  "name": z.string(),
+  "hours": z.number(),
+  "draft": z.number(),
+  "submitted": z.number(),
+  "approved": z.number(),
+})),
+  "byCostCode": z.array(z.object({
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "costCodeId": z.string().nullable(),
+  "code": z.string(),
+  "description": z.string(),
+  "hours": z.number(),
+})),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+});
+export type TimeDashboard = z.infer<typeof TimeDashboardSchema>;
+
 export const TimesheetStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "exported"]);
 export type TimesheetStatus = z.infer<typeof TimesheetStatusSchema>;
 

@@ -110,6 +110,10 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         overBudgetCodes: 0,
       }),
     },
+    time: {
+      timeForReporting: async () => ({ restricted: true, truncated: false, lines: [] }),
+      costCodes: async () => null,
+    },
     access: { can: async () => true },
     precon: {
       readinessSummary: async () => ({

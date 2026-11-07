@@ -95,6 +95,8 @@ export function createWorkforceModule(
       credentialSummary: wallet.readinessSummary,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `reporting` (time dashboard): paid time per timesheet line, by project and date range. */
+      timeForReporting: sheets.timeForReporting,
     },
   };
 }

@@ -3,6 +3,7 @@ import { reportingRoutes } from './api/routes';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createReadinessService } from './application/readiness';
+import { createTimeService } from './application/time';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
 import { REPORTING_PERMISSIONS } from './permissions';
@@ -18,9 +19,10 @@ export function createReportingModule(deps: ReportingDeps & RiskDeps & { databas
   const reports = createReportsService(deps);
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
+  const time = createTimeService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
-    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness),
+    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness, time),
     api: {},
   };
 }

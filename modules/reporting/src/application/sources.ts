@@ -8,6 +8,7 @@ import {
   type SourceRow,
   type ToolCounts,
 } from '../domain/report';
+import type { CostCodeRef, TimeLine } from '../domain/time';
 
 interface SourceRows {
   rows: readonly SourceRow[];
@@ -28,6 +29,15 @@ export interface ReportingDeps {
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
+  };
+  /** For the time dashboard: paid timesheet time per project (`workforce`) and the cost codes it is booked to (`financials`). */
+  time: {
+    timeForReporting(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string; limit: number },
+    ): Promise<{ restricted: boolean; truncated: boolean; lines: TimeLine[] }>;
+    costCodes(scope: TenantScope, projectId: string): Promise<CostCodeRef[] | null>;
   };
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {

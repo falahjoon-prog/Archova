@@ -8,6 +8,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { PortfolioService } from '../application/portfolio';
+import type { TimeService } from '../application/time';
 import type { RiskService } from '../application/risk';
 import type { ReadinessService } from '../application/readiness';
 import type { ReportsService } from '../application/reports';
@@ -18,6 +19,7 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  time: TimeService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -36,6 +38,30 @@ export function reportingRoutes(
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
+    getTimeDashboard: async (input) => {
+      const ids = (input.query?.projectIds ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const v = decodeId('project', s);
+          if (!v)
+            throw new AppError('validation_failed', 'Invalid project', [
+              { path: 'projectIds', message: 'Unknown project' },
+            ]);
+          return v;
+        });
+      return {
+        status: 200,
+        body: await read(input, (s) =>
+          time.get(s, {
+            weekStart: input.query?.weekStart,
+            projectIds: ids,
+            includeClosed: input.query?.includeClosed === 'true',
+          }),
+        ),
+      };
+    },
     getLateSopaClaimRisk: async (input) => ({
       status: 200,
       // A write transaction: reading a subbie's wallet is recorded in the subbie's access log.
