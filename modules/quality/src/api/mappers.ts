@@ -7,7 +7,18 @@ import type {
   InspectionTemplateDetail,
   InspectionTemplateItem,
   Observation,
+  ActionPlan,
+  ActionPlanDetail,
+  ActionPlanItem,
+  ActionPlanTemplate,
 } from '@archova/contracts';
+import { actionPlanLabel } from '../domain/action-plan';
+import type {
+  ItemView,
+  PlanDetail,
+  PlanView,
+  TemplateRow as PlanTemplateRow,
+} from '../application/action-plans';
 import { inspectionLabel } from '../domain/inspection';
 import {
   availableObservationActions,
@@ -129,4 +140,59 @@ export const toObservationDto = (
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),
   version: r.version,
+});
+
+export const toActionPlanDto = (r: PlanView): ActionPlan => ({
+  id: encodeId('actionPlan', r.id),
+  projectId: encodeId('project', r.projectId),
+  number: r.number,
+  numberLabel: actionPlanLabel(r.number),
+  title: r.title,
+  description: r.description,
+  status: r.status,
+  dueDate: r.dueDate,
+  isOverdue: r.isOverdue,
+  templateId: r.templateId ? encodeId('actionPlanTemplate', r.templateId) : null,
+  sourceType: r.sourceType,
+  sourceId:
+    r.sourceId && r.sourceType
+      ? encodeId(r.sourceType === 'observation' ? 'observation' : 'inspection', r.sourceId)
+      : null,
+  itemCount: r.itemCount,
+  doneCount: r.doneCount,
+  completedAt: isoOrNull(r.completedAt),
+  createdBy: userOrNull(r.createdBy),
+  createdAt: r.createdAt.toISOString(),
+  updatedAt: r.updatedAt.toISOString(),
+  version: r.version,
+});
+
+const toActionPlanItemDto = (i: ItemView): ActionPlanItem => ({
+  id: encodeId('actionPlanItem', i.id),
+  planId: encodeId('actionPlan', i.planId),
+  sort: i.sort,
+  title: i.title,
+  description: i.description,
+  assigneeCompanyId: companyOrNull(i.assigneeCompanyId),
+  dueDate: i.dueDate,
+  isOverdue: i.isOverdue,
+  status: i.status,
+  note: i.note,
+  completedAt: isoOrNull(i.completedAt),
+  canUpdate: i.canUpdate,
+});
+
+export const toActionPlanDetail = (d: PlanDetail): ActionPlanDetail => ({
+  plan: toActionPlanDto(d.plan),
+  items: d.items.map(toActionPlanItemDto),
+  canManage: d.canManage,
+});
+
+export const toActionPlanTemplateDto = (t: PlanTemplateRow): ActionPlanTemplate => ({
+  id: encodeId('actionPlanTemplate', t.id),
+  projectId: encodeId('project', t.projectId),
+  name: t.name,
+  description: t.description,
+  items: t.items,
+  createdAt: t.createdAt.toISOString(),
 });

@@ -296,6 +296,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    documents: documents.api,
     rfis: rfis.api,
   });
 

@@ -60,6 +60,7 @@ export type ProjectTool =
   | 'equipment'
   | 'timesheets'
   | 'observations'
+  | 'action-plans'
   | 'swms'
   | 'incidents'
   | 'inspections'

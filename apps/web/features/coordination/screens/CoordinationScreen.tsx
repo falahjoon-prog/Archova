@@ -7,15 +7,14 @@ import {
   Button,
   Card,
   DataTable,
-  DescriptionList,
   Dialog,
   EmptyState,
+  FilterBar,
   PageHeader,
   Select,
   SkeletonRows,
   StatusPill,
   TextField,
-  Textarea,
   buttonClassName,
   type DataTableColumn,
 } from '@archova/ui';
@@ -24,7 +23,10 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { CoordinationDashboard } from '../components/CoordinationDashboard';
+import { CreateIssueDialog } from '../components/CreateIssueDialog';
 import type {
   BimDiscipline,
   BimModel,
@@ -34,48 +36,53 @@ import type {
 } from '../data/api';
 import {
   useBimModels,
-  useCoordinationIssue,
   useCoordinationIssues,
   useCoordinationMutations,
 } from '../hooks/useCoordination';
 import {
   DISCIPLINE_LABEL,
   PRIORITY_LABEL,
+  PRIORITY_ORDER,
   STATUS_LABEL,
-  nextStatuses,
-  parseGuids,
+  isActive,
+  issueLabel,
   priorityTone,
   statusTone,
 } from '../lib/issues';
+import { CoordinationIssueDetailView } from './CoordinationIssueDetailView';
 
 const STATUSES = Object.keys(STATUS_LABEL) as CoordinationIssueStatus[];
 const PRIORITIES = Object.keys(PRIORITY_LABEL) as CoordinationIssuePriority[];
 const DISCIPLINES = Object.keys(DISCIPLINE_LABEL) as BimDiscipline[];
+const GROUPS = { status: 'Status', priority: 'Priority', assignee: 'Assigned to' } as const;
+type GroupBy = keyof typeof GROUPS;
 
-/** Design coordination: the clashes and gaps found in the models, and the models they were found in. */
+/** Design coordination: the clashes and gaps found in the models and drawings, and the models they were found in. */
 export function CoordinationScreen() {
+  const [params] = useUrlState(['issue'] as const);
+  return params.issue ? (
+    <CoordinationIssueDetailView id={params.issue} />
+  ) : (
+    <CoordinationRegister />
+  );
+}
+
+function CoordinationRegister() {
   const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
-  const [params, setParams] = useUrlState(['status', 'issue'] as const);
-  const status = (STATUSES as string[]).includes(params.status)
-    ? (params.status as CoordinationIssueStatus)
-    : undefined;
-  const issues = useCoordinationIssues({ ...(status ? { status } : {}) });
+  const [params, setParams] = useUrlState([
+    'issue',
+    'status',
+    'priority',
+    'assignee',
+    'group',
+    'q',
+  ] as const);
+  const issues = useCoordinationIssues({});
   const models = useBimModels();
-  const selected = params.issue || null;
-  const detail = useCoordinationIssue(selected);
   const m = useCoordinationMutations();
-
   const [raising, setRaising] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<CoordinationIssuePriority>('medium');
-  const [assignee, setAssignee] = useState('');
-  const [modelId, setModelId] = useState('');
-  const [location, setLocation] = useState('');
-  const [guids, setGuids] = useState('');
-  const [comment, setComment] = useState('');
 
   const [registering, setRegistering] = useState(false);
   const [modelName, setModelName] = useState('');
@@ -83,6 +90,29 @@ export function CoordinationScreen() {
   const [versionLabel, setVersionLabel] = useState('');
   const [replaces, setReplaces] = useState('');
   const [modelFile, setModelFile] = useState<File | null>(null);
+
+  const status = (STATUSES as string[]).includes(params.status)
+    ? (params.status as CoordinationIssueStatus)
+    : undefined;
+  const priority = (PRIORITIES as string[]).includes(params.priority)
+    ? (params.priority as CoordinationIssuePriority)
+    : undefined;
+  const group = (Object.keys(GROUPS) as string[]).includes(params.group)
+    ? (params.group as GroupBy)
+    : undefined;
+  const search = params.q.trim().toLowerCase();
+  const all = issues.data ?? [];
+  const today = todayIn(project.timezone);
+  const shown = all.filter(
+    (i) =>
+      (!status || i.status === status) &&
+      (!priority || i.priority === priority) &&
+      (!params.assignee ||
+        (params.assignee === 'none' ? i.assigneeId === null : i.assigneeId === params.assignee)) &&
+      (!search ||
+        `${issueLabel(i.number)} ${i.title} ${i.location}`.toLowerCase().includes(search)),
+  );
+  const filtered = Boolean(status || priority || params.assignee || search);
 
   const modelName_ = (id: string | null) =>
     id ? ((models.data ?? []).find((x) => x.id === id)?.name ?? '—') : '—';
@@ -93,33 +123,57 @@ export function CoordinationScreen() {
       id: 'number',
       header: 'No.',
       rowHeader: true,
-      cell: (i) => `CI-${String(i.number).padStart(3, '0')}`,
+      sortValue: (i) => i.number,
+      cell: (i) => issueLabel(i.number),
     },
     {
       id: 'title',
       header: 'Issue',
+      sortValue: (i) => i.title,
       cell: (i) => (
-        <Button variant="tertiary" onClick={() => setParams({ issue: i.id })}>
+        <Link
+          className="link"
+          href={`${webRoutes.coordination(org.orgSlug, project.projectId)}?issue=${encodeURIComponent(i.id)}`}
+          aria-label={`Open ${issueLabel(i.number)} ${i.title}`}
+        >
           {i.title}
-        </Button>
+        </Link>
       ),
     },
     {
       id: 'status',
       header: 'Status',
+      sortValue: (i) => STATUSES.indexOf(i.status),
       cell: (i) => <StatusPill tone={statusTone(i.status)}>{STATUS_LABEL[i.status]}</StatusPill>,
     },
     {
       id: 'priority',
       header: 'Priority',
+      sortValue: (i) => PRIORITY_ORDER.indexOf(i.priority),
       cell: (i) => (
         <StatusPill tone={priorityTone(i.priority)}>{PRIORITY_LABEL[i.priority]}</StatusPill>
       ),
     },
     {
       id: 'assignee',
-      header: 'Assigned to',
+      header: 'Ball in court',
+      sortValue: (i) => (i.assigneeId ? dir.personName(i.assigneeId) : null),
       cell: (i) => (i.assigneeId ? dir.personName(i.assigneeId) : '—'),
+    },
+    {
+      id: 'due',
+      header: 'Due',
+      sortValue: (i) => i.dueDate ?? '9999',
+      cell: (i) =>
+        i.dueDate ? (
+          isActive(i.status) && i.dueDate < today ? (
+            <StatusPill tone="danger">Overdue · {formatLocalDate(i.dueDate)}</StatusPill>
+          ) : (
+            formatLocalDate(i.dueDate)
+          )
+        ) : (
+          '—'
+        ),
     },
     { id: 'model', header: 'Model', cell: (i) => modelName_(i.modelId) },
   ];
@@ -142,13 +196,35 @@ export function CoordinationScreen() {
     },
   ];
 
-  const d = detail.data;
+  const groupBy =
+    group === undefined
+      ? undefined
+      : {
+          key: (i: CoordinationIssue) =>
+            group === 'status'
+              ? i.status
+              : group === 'priority'
+                ? i.priority
+                : (i.assigneeId ?? ''),
+          label: (key: string, rows: readonly CoordinationIssue[]) =>
+            `${
+              group === 'status'
+                ? STATUS_LABEL[key as CoordinationIssueStatus]
+                : group === 'priority'
+                  ? PRIORITY_LABEL[key as CoordinationIssuePriority]
+                  : key
+                    ? dir.personName(key)
+                    : 'Not assigned'
+            } · ${rows.length}`,
+          order: group === 'status' ? STATUSES : group === 'priority' ? PRIORITY_ORDER : undefined,
+        };
+
   return (
     <>
       <PageHeader
         eyebrow="Coordination"
         title="Coordination issues"
-        description="Clashes and gaps found in the models. Pin each to the elements involved, assign it, and link the RFI that resolves it."
+        description="Clashes and gaps found in the models and on the drawings. Assign each one, track who it is waiting on, and link the RFI that resolves it."
         actions={
           <>
             <Link
@@ -157,139 +233,85 @@ export function CoordinationScreen() {
             >
               <CoordinationIcon size={16} aria-hidden="true" /> Open 3D viewer
             </Link>
-            <Button
-              onClick={() => {
-                m.raise.reset();
-                setTitle('');
-                setDescription('');
-                setPriority('medium');
-                setAssignee('');
-                setModelId('');
-                setLocation('');
-                setGuids('');
-                setRaising(true);
-              }}
-            >
+            <Button onClick={() => setRaising(true)}>
               <Plus size={16} aria-hidden="true" /> Raise an issue
             </Button>
           </>
         }
       />
       <div className="stack-lg">
-        <div className="stack-lg">
-          <Card
-            title="Issues"
-            actions={
+        <ErrorAlert error={issues.error} title="We couldn't load the coordination issues" />
+        {issues.isPending ? (
+          <SkeletonRows label="Loading coordination issues…" />
+        ) : all.length === 0 ? (
+          <EmptyState
+            icon={CoordinationIcon}
+            title="No coordination issues"
+            description="Raise one when you find a clash or a gap in a model or on a drawing."
+          />
+        ) : (
+          <>
+            <CoordinationDashboard issues={all} />
+            <FilterBar label="Filter coordination issues">
+              <TextField
+                label="Search"
+                type="search"
+                value={params.q}
+                placeholder="Number, title or location"
+                onChange={(e) => setParams({ q: e.target.value })}
+              />
               <Select
                 label="Status"
-                value={status ?? ''}
-                options={[
-                  { value: '', label: 'All' },
-                  ...STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
-                ]}
+                value={params.status}
+                placeholder="Any status"
+                options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
                 onChange={(e) => setParams({ status: e.target.value })}
               />
-            }
-          >
-            <ErrorAlert error={issues.error} title="We couldn't load the coordination issues" />
-            {issues.isPending ? (
-              <SkeletonRows label="Loading coordination issues…" />
-            ) : (issues.data ?? []).length === 0 ? (
+              <Select
+                label="Priority"
+                value={params.priority}
+                placeholder="Any priority"
+                options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_LABEL[p] }))}
+                onChange={(e) => setParams({ priority: e.target.value })}
+              />
+              <Select
+                label="Ball in court"
+                value={params.assignee}
+                placeholder="Anyone"
+                options={[
+                  { value: 'none', label: 'Not assigned' },
+                  ...dir.people.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+                onChange={(e) => setParams({ assignee: e.target.value })}
+              />
+              <Select
+                label="Group by"
+                value={params.group}
+                placeholder="No grouping"
+                options={(Object.keys(GROUPS) as GroupBy[]).map((g) => ({
+                  value: g,
+                  label: GROUPS[g],
+                }))}
+                onChange={(e) => setParams({ group: e.target.value })}
+              />
+            </FilterBar>
+            {shown.length === 0 ? (
               <EmptyState
                 icon={CoordinationIcon}
-                title="No coordination issues"
-                description="Raise one when you find a clash or a gap in a model."
+                title="No issues match"
+                description={filtered ? 'Try a different filter.' : 'Nothing here yet.'}
               />
             ) : (
               <DataTable
                 caption="Coordination issues"
                 columns={issueColumns}
-                rows={issues.data ?? []}
+                rows={shown}
                 getRowId={(i) => i.id}
+                {...(groupBy ? { groupBy } : {})}
               />
             )}
-          </Card>
-          {selected ? (
-            <Card title="Issue">
-              <div className="stack">
-                <ErrorAlert error={detail.error} title="We couldn't load this issue" />
-                {detail.isPending ? (
-                  <SkeletonRows label="Loading the issue…" />
-                ) : d ? (
-                  <>
-                    <h3 id="issue-title" className="u-m-0">
-                      {`CI-${String(d.issue.number).padStart(3, '0')} ${d.issue.title}`}
-                    </h3>
-                    {d.issue.description ? <p className="u-m-0">{d.issue.description}</p> : null}
-                    <DescriptionList
-                      items={[
-                        { label: 'Model', value: modelName_(d.issue.modelId) },
-                        { label: 'Location', value: d.issue.location || '—' },
-                        {
-                          label: 'Elements',
-                          value: d.issue.elementGuids.length
-                            ? d.issue.elementGuids.join(', ')
-                            : '—',
-                        },
-                      ]}
-                    />
-                    <div className="u-row">
-                      <StatusPill tone={statusTone(d.issue.status)}>
-                        {STATUS_LABEL[d.issue.status]}
-                      </StatusPill>
-                      {nextStatuses(d.issue.status).map((s) => (
-                        <Button
-                          key={s}
-                          variant="secondary"
-                          disabled={m.change.isPending}
-                          onClick={() =>
-                            m.change.mutate({
-                              issueId: d.issue.id,
-                              version: d.issue.version,
-                              changes: { status: s },
-                            })
-                          }
-                        >
-                          {s === 'open' ? 'Reopen' : `Mark ${STATUS_LABEL[s].toLowerCase()}`}
-                        </Button>
-                      ))}
-                    </div>
-                    <ErrorAlert error={m.change.error} title="We couldn't change this issue" />
-                    <h3 className="u-m-0">Comments</h3>
-                    {d.comments.length === 0 ? <p className="u-m-0">No comments yet.</p> : null}
-                    <ul aria-label="Comments" className="u-m-0">
-                      {d.comments.map((c) => (
-                        <li key={c.id}>
-                          <strong>{dir.personName(c.authorId)}</strong>: {c.body}
-                        </li>
-                      ))}
-                    </ul>
-                    <Textarea
-                      label="Add a comment"
-                      rows={3}
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                    />
-                    <div className="u-row">
-                      <Button
-                        disabled={!comment.trim() || m.comment.isPending}
-                        onClick={() =>
-                          m.comment.mutate(
-                            { issueId: d.issue.id, body: comment.trim() },
-                            { onSuccess: () => setComment('') },
-                          )
-                        }
-                      >
-                        {m.comment.isPending ? 'Adding…' : 'Add comment'}
-                      </Button>
-                    </div>
-                    <ErrorAlert error={m.comment.error} title="We couldn't add the comment" />
-                  </>
-                ) : null}
-              </div>
-            </Card>
-          ) : null}
-        </div>
+          </>
+        )}
         <Card
           title="Models"
           actions={
@@ -327,90 +349,11 @@ export function CoordinationScreen() {
         </Card>
       </div>
 
-      <Dialog
+      <CreateIssueDialog
         open={raising}
         onClose={() => setRaising(false)}
-        title="Raise a coordination issue"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setRaising(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!title.trim() || m.raise.isPending}
-              onClick={() =>
-                m.raise.mutate(
-                  {
-                    title: title.trim(),
-                    ...(description.trim() ? { description: description.trim() } : {}),
-                    priority,
-                    ...(assignee ? { assigneeId: assignee } : {}),
-                    ...(modelId ? { modelId } : {}),
-                    ...(location.trim() ? { location: location.trim() } : {}),
-                    ...(parseGuids(guids).length ? { elementGuids: parseGuids(guids) } : {}),
-                  },
-                  {
-                    onSuccess: (x) => {
-                      setRaising(false);
-                      setParams({ issue: x.issue.id });
-                    },
-                  },
-                )
-              }
-            >
-              {m.raise.isPending ? 'Raising…' : 'Raise issue'}
-            </Button>
-          </>
-        }
-      >
-        <div className="stack">
-          <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Textarea
-            label="What is the clash"
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <Select
-            label="Priority"
-            value={priority}
-            options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_LABEL[p] }))}
-            onChange={(e) => setPriority(e.target.value as CoordinationIssuePriority)}
-          />
-          <Select
-            label="Assign to"
-            value={assignee}
-            options={[
-              { value: '', label: 'Not assigned' },
-              ...dir.people.map((p) => ({ value: p.id, label: p.name })),
-            ]}
-            onChange={(e) => setAssignee(e.target.value)}
-          />
-          <Select
-            label="Model"
-            value={modelId}
-            options={[
-              { value: '', label: 'Not set' },
-              ...currentModels.map((x) => ({ value: x.id, label: x.name })),
-            ]}
-            onChange={(e) => setModelId(e.target.value)}
-          />
-          <TextField
-            label="Location"
-            placeholder="Level 2, grid C4"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-          <Textarea
-            label="Element ids"
-            hint="IFC GlobalIds, separated by spaces, commas or new lines"
-            rows={2}
-            value={guids}
-            onChange={(e) => setGuids(e.target.value)}
-          />
-          <ErrorAlert error={m.raise.error} title="We couldn't raise the issue" />
-        </div>
-      </Dialog>
+        onCreated={(x) => setParams({ issue: x.issue.id })}
+      />
 
       <Dialog
         open={registering}

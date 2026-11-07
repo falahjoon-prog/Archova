@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   ObservationsIcon,
+  ActionPlansIcon,
   InspectionsIcon,
   SwmsIcon,
   IncidentsIcon,
@@ -217,6 +218,11 @@ export function projectToolGroups(
       icon: ObservationsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.actionPlans(orgSlug, projectId),
+      label: 'Action plans',
+      icon: ActionPlansIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
@@ -335,6 +341,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Defects',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
       'Incidents',
       'Safety signals',

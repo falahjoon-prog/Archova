@@ -24,6 +24,7 @@ describe('projectToolGroups', () => {
       'Defects',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
       'Incidents',
       'Safety signals',

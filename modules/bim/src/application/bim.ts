@@ -13,6 +13,7 @@ import type {
 import { AppError, nextNumber, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
+import type { DocumentsApi } from '@archova/mod-documents';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { RfisApi } from '@archova/mod-rfis';
 import { canMove, cleanGuids } from '../domain/issues';
@@ -22,6 +23,7 @@ export interface BimDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   rfis: Pick<RfisApi, 'summariesByIds'>;
   now?: () => Date;
 }
@@ -68,6 +70,16 @@ export const issueDto = (i: IssueRow, commentCount: number): CoordinationIssue =
   elementGuids: i.elementGuids,
   location: i.location,
   rfiId: orNull('rfi', i.rfiId),
+  pin:
+    i.drawingRevisionId && i.pinX !== null && i.pinY !== null
+      ? {
+          drawingRevisionId: encodeId('drawingRevision', i.drawingRevisionId),
+          x: i.pinX,
+          y: i.pinY,
+        }
+      : null,
+  sheetId: orNull('drawingSheet', i.sheetId),
+  snapshotFileId: orNull('file', i.snapshotFileId),
   resolvedAt: i.resolvedAt ? iso(i.resolvedAt) : null,
   commentCount,
   version: i.version,
@@ -102,6 +114,24 @@ export function createBimService(deps: BimDeps) {
   async function requireRfi(scope: TenantScope, projectId: string, rfiId: string) {
     const found = await deps.rfis.summariesByIds(scope, projectId, [rfiId]);
     if (found.length === 0) throw invalid('rfiId', 'That RFI is not on this project.');
+  }
+
+  /** Resolves a drawing pin to its revision and sheet; a draft revision is not a place yet. */
+  async function resolvePin(
+    scope: TenantScope,
+    projectId: string,
+    pin: { drawingRevisionId: string; x: number; y: number },
+  ) {
+    const revisionId = ref('drawingRevision', pin.drawingRevisionId, 'pin/drawingRevisionId');
+    const rev = await deps.documents.getDrawingRevision(scope, projectId, revisionId);
+    if (rev.status === 'draft') throw new AppError('drawing_revision.not_found');
+    return { drawingRevisionId: rev.id, sheetId: rev.sheetId, pinX: pin.x, pinY: pin.y };
+  }
+
+  async function checkSnapshot(scope: TenantScope, projectId: string, fileId: string) {
+    const f = await deps.files.getFile(scope, ref('file', fileId, 'snapshotFileId'));
+    if (f.projectId !== projectId)
+      throw invalid('snapshotFileId', 'That file belongs to another project.');
   }
 
   // ---- models ------------------------------------------------------------------------------------------
@@ -202,12 +232,19 @@ export function createBimService(deps: BimDeps) {
   async function listIssues(
     scope: TenantScope,
     projectId: string,
-    q: { status?: IssueStatus; modelId?: string; q?: string },
+    q: { status?: IssueStatus; modelId?: string; drawingRevisionId?: string; q?: string },
   ) {
     await requireProject(scope, projectId);
     const where: SQL[] = [eq(issues.projectId, projectId), isNull(issues.deletedAt)];
     if (q.status) where.push(eq(issues.status, q.status));
     if (q.modelId) where.push(eq(issues.modelId, ref('bimModel', q.modelId, 'modelId')));
+    if (q.drawingRevisionId)
+      where.push(
+        eq(
+          issues.drawingRevisionId,
+          ref('drawingRevision', q.drawingRevisionId, 'drawingRevisionId'),
+        ),
+      );
     if (q.q) {
       const text = `%${escapeLike(q.q.trim())}%`;
       const match = or(ilike(issues.title, text), ilike(issues.location, text));
@@ -252,6 +289,8 @@ export function createBimService(deps: BimDeps) {
     if (modelId) await modelInProject(scope, projectId, modelId);
     const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
     if (rfiId) await requireRfi(scope, projectId, rfiId);
+    const pin = input.pin ? await resolvePin(scope, projectId, input.pin) : null;
+    if (input.snapshotFileId) await checkSnapshot(scope, projectId, input.snapshotFileId);
     const number = await nextNumber(scope, projectId, 'bim:issue');
     const id = uuidv7();
     const [row] = await scope.tx
@@ -270,6 +309,10 @@ export function createBimService(deps: BimDeps) {
         elementGuids: cleanGuids(input.elementGuids ?? []),
         location: input.location?.trim() ?? '',
         rfiId,
+        ...(pin ?? {}),
+        snapshotFileId: input.snapshotFileId
+          ? ref('file', input.snapshotFileId, 'snapshotFileId')
+          : null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -317,6 +360,20 @@ export function createBimService(deps: BimDeps) {
       const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
       if (rfiId) await requireRfi(scope, projectId, rfiId);
       set.rfiId = rfiId;
+    }
+    if (input.pin !== undefined) {
+      if (input.pin === null) {
+        set.drawingRevisionId = null;
+        set.sheetId = null;
+        set.pinX = null;
+        set.pinY = null;
+      } else Object.assign(set, await resolvePin(scope, projectId, input.pin));
+    }
+    if (input.snapshotFileId !== undefined) {
+      if (input.snapshotFileId) await checkSnapshot(scope, projectId, input.snapshotFileId);
+      set.snapshotFileId = input.snapshotFileId
+        ? ref('file', input.snapshotFileId, 'snapshotFileId')
+        : null;
     }
     if (input.status !== undefined && input.status !== row.status) {
       if (!canMove(row.status, input.status))

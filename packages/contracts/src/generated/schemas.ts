@@ -96,6 +96,89 @@ export const AcknowledgeTransmittalRequestSchema = z.object({
 }).strict();
 export type AcknowledgeTransmittalRequest = z.infer<typeof AcknowledgeTransmittalRequestSchema>;
 
+export const ActionPlanStatusSchema = z.enum(["active", "completed", "cancelled"]);
+export type ActionPlanStatus = z.infer<typeof ActionPlanStatusSchema>;
+
+export const ActionPlanSourceTypeSchema = z.enum(["observation", "inspection"]);
+export type ActionPlanSourceType = z.infer<typeof ActionPlanSourceTypeSchema>;
+
+export const ActionPlanSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "status": ActionPlanStatusSchema,
+  "dueDate": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "templateId": z.string().nullable(),
+  "sourceType": z.union([ActionPlanSourceTypeSchema, z.null()]),
+  "sourceId": z.string().nullable(),
+  "itemCount": z.number().int(),
+  "doneCount": z.number().int(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type ActionPlan = z.infer<typeof ActionPlanSchema>;
+
+export const ActionPlanItemStatusSchema = z.enum(["open", "done", "skipped"]);
+export type ActionPlanItemStatus = z.infer<typeof ActionPlanItemStatusSchema>;
+
+export const ActionPlanItemSchema = z.object({
+  "id": z.string(),
+  "planId": z.string(),
+  "sort": z.number().int(),
+  "title": z.string(),
+  "description": z.string(),
+  "assigneeCompanyId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "status": ActionPlanItemStatusSchema,
+  "note": z.string().nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "canUpdate": z.boolean(),
+});
+export type ActionPlanItem = z.infer<typeof ActionPlanItemSchema>;
+
+export const ActionPlanDetailSchema = z.object({
+  "plan": ActionPlanSchema,
+  "items": z.array(ActionPlanItemSchema),
+  "canManage": z.boolean(),
+});
+export type ActionPlanDetail = z.infer<typeof ActionPlanDetailSchema>;
+
+export const ActionPlanPageSchema = z.object({
+  "data": z.array(ActionPlanSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ActionPlanPage = z.infer<typeof ActionPlanPageSchema>;
+
+export const ActionPlanTemplateItemSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(5000),
+  "dueOffsetDays": z.number().int().min(0).max(3650).nullable(),
+}).strict();
+export type ActionPlanTemplateItem = z.infer<typeof ActionPlanTemplateItemSchema>;
+
+export const ActionPlanTemplateSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "description": z.string(),
+  "items": z.array(ActionPlanTemplateItemSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ActionPlanTemplate = z.infer<typeof ActionPlanTemplateSchema>;
+
+export const ActionPlanTemplateListSchema = z.object({
+  "data": z.array(ActionPlanTemplateSchema),
+});
+export type ActionPlanTemplateList = z.infer<typeof ActionPlanTemplateListSchema>;
+
 export const FinancialsMoneySchema = z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"));
 export type FinancialsMoney = z.infer<typeof FinancialsMoneySchema>;
 
@@ -1246,6 +1329,13 @@ export type CoordinationIssueStatus = z.infer<typeof CoordinationIssueStatusSche
 export const CoordinationIssuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export type CoordinationIssuePriority = z.infer<typeof CoordinationIssuePrioritySchema>;
 
+export const DrawingPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+
 export const CoordinationIssueSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -1260,6 +1350,9 @@ export const CoordinationIssueSchema = z.object({
   "elementGuids": z.array(z.string()),
   "location": z.string(),
   "rfiId": z.string().nullable(),
+  "pin": z.union([DrawingPinSchema, z.null()]),
+  "sheetId": z.string().nullable(),
+  "snapshotFileId": z.string().nullable(),
   "resolvedAt": z.string().datetime({ offset: true }).nullable(),
   "commentCount": z.number().int(),
   "version": z.number().int(),
@@ -1507,6 +1600,35 @@ export const CostRateListSchema = z.object({
 });
 export type CostRateList = z.infer<typeof CostRateListSchema>;
 
+export const NewActionPlanItemSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(5000).optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+}).strict();
+export type NewActionPlanItem = z.infer<typeof NewActionPlanItemSchema>;
+
+export const CreateActionPlanItemRequestSchema = NewActionPlanItemSchema;
+export type CreateActionPlanItemRequest = z.infer<typeof CreateActionPlanItemRequestSchema>;
+
+export const CreateActionPlanRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(5000).optional(),
+  "dueDate": z.string().date().optional(),
+  "templateId": z.string().regex(new RegExp("^apt_[0-9A-Za-z]{26}$")).optional(),
+  "sourceType": ActionPlanSourceTypeSchema.optional(),
+  "sourceId": z.string().regex(new RegExp("^(obs|ins)_[0-9A-Za-z]{26}$")).optional(),
+  "items": z.array(NewActionPlanItemSchema).max(200).optional(),
+}).strict();
+export type CreateActionPlanRequest = z.infer<typeof CreateActionPlanRequestSchema>;
+
+export const CreateActionPlanTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "description": z.string().max(5000).optional(),
+  "items": z.array(ActionPlanTemplateItemSchema).min(1).max(200),
+}).strict();
+export type CreateActionPlanTemplateRequest = z.infer<typeof CreateActionPlanTemplateRequestSchema>;
+
 export const CreateApiTokenRequestSchema = z.object({
   "name": z.string().min(1).max(80),
   "scopes": z.array(z.string().max(40)).min(1).max(30),
@@ -1641,6 +1763,8 @@ export const CreateCoordinationIssueRequestSchema = z.object({
   "elementGuids": z.array(z.string().max(64)).max(50).optional(),
   "location": z.string().max(200).optional(),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).optional(),
+  "pin": DrawingPinSchema.optional(),
+  "snapshotFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateCoordinationIssueRequest = z.infer<typeof CreateCoordinationIssueRequestSchema>;
 
@@ -1695,13 +1819,6 @@ export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
 
 export const DefectStageSchema = z.enum(["pre_pc", "pc", "dlp"]);
 export type DefectStage = z.infer<typeof DefectStageSchema>;
-
-export const DrawingPinSchema = z.object({
-  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
-  "x": z.number().min(0).max(1),
-  "y": z.number().min(0).max(1),
-}).strict();
-export type DrawingPin = z.infer<typeof DrawingPinSchema>;
 
 export const CreateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300),
@@ -6370,6 +6487,11 @@ export const RollCallListSchema = z.object({
 });
 export type RollCallList = z.infer<typeof RollCallListSchema>;
 
+export const SaveActionPlanTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+}).strict();
+export type SaveActionPlanTemplateRequest = z.infer<typeof SaveActionPlanTemplateRequestSchema>;
+
 export const SaveContractTrustRequestSchema = z.object({
   "governmentClient": z.boolean().optional(),
   "institution": z.string().min(1).max(200).nullable().optional(),
@@ -7213,6 +7335,24 @@ export const TransmittalPageSchema = z.object({
 });
 export type TransmittalPage = z.infer<typeof TransmittalPageSchema>;
 
+export const UpdateActionPlanItemRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(5000).optional(),
+  "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "status": ActionPlanItemStatusSchema.optional(),
+  "note": z.string().max(2000).nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateActionPlanItemRequest = z.infer<typeof UpdateActionPlanItemRequestSchema>;
+
+export const UpdateActionPlanRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "description": z.string().max(5000).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "status": z.enum(["active", "cancelled"]).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateActionPlanRequest = z.infer<typeof UpdateActionPlanRequestSchema>;
+
 export const UpdateAiSettingsRequestSchema = z.object({
   "aiEnabled": z.boolean().optional(),
   "featuresEnabled": z.array(AiFeatureSchema).max(50).nullable().optional(),
@@ -7271,6 +7411,8 @@ export const UpdateCoordinationIssueRequestSchema = z.object({
   "elementGuids": z.array(z.string().max(64)).max(50).optional(),
   "location": z.string().max(200).optional(),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "pin": z.union([DrawingPinSchema, z.null()]).optional(),
+  "snapshotFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable().optional(),
 }).strict();
 export type UpdateCoordinationIssueRequest = z.infer<typeof UpdateCoordinationIssueRequestSchema>;
 

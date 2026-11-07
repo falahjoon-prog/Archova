@@ -7925,6 +7925,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's action plans, newest first. People outside the builder's team see only plans with a step assigned to their company. */
+        get: operations["listActionPlans"];
+        put?: never;
+        /** Start an action plan, from a template or with its steps, optionally raised from an observation or inspection. It is numbered AP-0001 per project. */
+        post: operations["createActionPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        /** One action plan with its steps. */
+        get: operations["getActionPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit the plan, cancel it, or reopen a cancelled one. A plan completes by itself when every step is done or skipped. */
+        patch: operations["updateActionPlan"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a step to the end of the plan. */
+        post: operations["addActionPlanItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+                itemId: components["parameters"]["ActionPlanItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Builder staff edit a step; the company it is assigned to marks it done, skipped or open again and leaves a note. */
+        patch: operations["updateActionPlanItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/save-as-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep the plan's steps as a template to start the same plan again. */
+        post: operations["saveActionPlanAsTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/action-plan-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's action plan templates. */
+        get: operations["listActionPlanTemplates"];
+        put?: never;
+        /** Write a template of steps with due dates as days after the plan starts. */
+        post: operations["createActionPlanTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incidents": {
         parameters: {
             query?: never;
@@ -12403,6 +12531,12 @@ export interface components {
             elementGuids: string[];
             location: string;
             rfiId: string | null;
+            /** @description Where on a drawing revision the issue was raised. */
+            pin: components["schemas"]["DrawingPin"] | null;
+            /** @description The drawing sheet the pinned revision belongs to. */
+            sheetId: string | null;
+            /** @description Snapshot of the sheet area, taken when raised. */
+            snapshotFileId: string | null;
             /** Format: date-time */
             resolvedAt: string | null;
             commentCount: number;
@@ -12437,6 +12571,8 @@ export interface components {
             elementGuids?: string[];
             location?: string;
             rfiId?: string;
+            pin?: components["schemas"]["DrawingPin"];
+            snapshotFileId?: string;
         };
         UpdateCoordinationIssueRequest: {
             title?: string;
@@ -12450,6 +12586,8 @@ export interface components {
             elementGuids?: string[];
             location?: string;
             rfiId?: string | null;
+            pin?: components["schemas"]["DrawingPin"] | null;
+            snapshotFileId?: string | null;
         };
         AddCoordinationCommentRequest: {
             body: string;
@@ -17377,6 +17515,131 @@ export interface components {
             /** @description For stopWork when the observation is not already linked to a SWMS. */
             swmsId?: string;
         };
+        /** @enum {string} */
+        ActionPlanStatus: "active" | "completed" | "cancelled";
+        /** @enum {string} */
+        ActionPlanItemStatus: "open" | "done" | "skipped";
+        /** @enum {string} */
+        ActionPlanSourceType: "observation" | "inspection";
+        ActionPlan: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description AP-0007 */
+            numberLabel: string;
+            title: string;
+            description: string;
+            status: components["schemas"]["ActionPlanStatus"];
+            /** Format: date */
+            dueDate: string | null;
+            isOverdue: boolean;
+            templateId: string | null;
+            sourceType: components["schemas"]["ActionPlanSourceType"] | null;
+            sourceId: string | null;
+            itemCount: number;
+            /** @description Steps that are done or skipped. */
+            doneCount: number;
+            /** Format: date-time */
+            completedAt: string | null;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        ActionPlanItem: {
+            id: string;
+            planId: string;
+            sort: number;
+            title: string;
+            description: string;
+            assigneeCompanyId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            isOverdue: boolean;
+            status: components["schemas"]["ActionPlanItemStatus"];
+            note: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** @description Whether the caller can change this step. */
+            canUpdate: boolean;
+        };
+        ActionPlanDetail: {
+            plan: components["schemas"]["ActionPlan"];
+            items: components["schemas"]["ActionPlanItem"][];
+            /** @description Whether the caller can edit the plan and its steps. */
+            canManage: boolean;
+        };
+        ActionPlanPage: {
+            data: components["schemas"]["ActionPlan"][];
+            nextCursor: string | null;
+        };
+        NewActionPlanItem: {
+            title: string;
+            description?: string;
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            /** Format: date */
+            dueDate?: string;
+        };
+        CreateActionPlanRequest: {
+            title: string;
+            description?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** @description Start from this template; its steps replace `items`. */
+            templateId?: string;
+            sourceType?: components["schemas"]["ActionPlanSourceType"];
+            sourceId?: string;
+            items?: components["schemas"]["NewActionPlanItem"][];
+        };
+        UpdateActionPlanRequest: {
+            title?: string;
+            description?: string;
+            /** Format: date */
+            dueDate?: string | null;
+            /**
+             * @description cancelled stops the plan; active reopens a cancelled one.
+             * @enum {string}
+             */
+            status?: "active" | "cancelled";
+        };
+        CreateActionPlanItemRequest: components["schemas"]["NewActionPlanItem"];
+        UpdateActionPlanItemRequest: {
+            title?: string;
+            description?: string;
+            assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
+            /** Format: date */
+            dueDate?: string | null;
+            status?: components["schemas"]["ActionPlanItemStatus"];
+            note?: string | null;
+        };
+        ActionPlanTemplateItem: {
+            title: string;
+            description: string;
+            /** @description Days after the plan starts. */
+            dueOffsetDays: number | null;
+        };
+        ActionPlanTemplate: {
+            id: string;
+            projectId: string;
+            name: string;
+            description: string;
+            items: components["schemas"]["ActionPlanTemplateItem"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ActionPlanTemplateList: {
+            data: components["schemas"]["ActionPlanTemplate"][];
+        };
+        CreateActionPlanTemplateRequest: {
+            name: string;
+            description?: string;
+            items: components["schemas"]["ActionPlanTemplateItem"][];
+        };
+        SaveActionPlanTemplateRequest: {
+            name: string;
+        };
         /**
          * @description The 19 high-risk construction work categories (compliance 03 §2), the same in every state.
          * @enum {string}
@@ -17747,6 +18010,8 @@ export interface components {
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
+        ActionPlanId: string;
+        ActionPlanItemId: string;
         IncidentId: string;
         IncidentActionId: string;
         SwmsId: string;
@@ -19920,6 +20185,8 @@ export interface operations {
             query?: {
                 status?: components["schemas"]["CoordinationIssueStatus"];
                 modelId?: string;
+                /** @description Only the issues pinned on this drawing revision. */
+                drawingRevisionId?: string;
                 q?: string;
             };
             header?: never;
@@ -30636,6 +30903,266 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listActionPlans: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ActionPlanStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createActionPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateActionPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getActionPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateActionPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActionPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addActionPlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateActionPlanItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateActionPlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+                itemId: components["parameters"]["ActionPlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActionPlanItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveActionPlanAsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["ActionPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveActionPlanTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listActionPlanTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createActionPlanTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateActionPlanTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPlanTemplate"];
                 };
             };
             default: components["responses"]["Problem"];

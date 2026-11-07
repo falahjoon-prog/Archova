@@ -893,6 +893,9 @@ importers:
       '@archova/mod-access':
         specifier: workspace:*
         version: link:../access
+      '@archova/mod-documents':
+        specifier: workspace:*
+        version: link:../documents
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files

@@ -116,6 +116,8 @@ export const webRoutes = {
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
+  actionPlans: (orgSlug: string, projectId: string, planId?: string) =>
+    `${p(orgSlug, projectId)}/action-plans${planId ? `?id=${enc(planId)}` : ''}`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/workers`,
