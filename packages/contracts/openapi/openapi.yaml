@@ -7154,6 +7154,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DiaryEntryList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/gaps:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDiaryGaps
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.read
+      summary: Days with site activity (a sign-in or an equipment log) but no submitted daily log, newest first.
+      description: |
+        A rule, not a model: Nova shows it as "no daily log for a day with site activity". Today is never listed.
+        `missing` is no entry at all, `draft` is an entry nobody has submitted. Readers limited to their own
+        company get an empty list. At most 93 days.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Gap days
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryGapList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -23297,6 +23321,19 @@ components:
       required: [data]
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/DiaryEntry' } }
+    DiaryGapList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [date, state, sources]
+            properties:
+              date: { type: string, format: date }
+              state: { type: string, enum: [missing, draft] }
+              sources: { type: array, items: { type: string, enum: [attendance, equipment] } }
     DiaryAmendment:
       type: object
       required: [id, targetType, targetId, action, changes, reason, amendedBy, amendedAt]
