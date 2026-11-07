@@ -11,7 +11,14 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectPeople } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
-import type { DocumentRevision, Folder, NewRevisionInput, ProjectDocument } from '../lib/types';
+import {
+  NEW_DOCUMENTS_DAYS,
+  type DocumentRevision,
+  type DocumentsView,
+  type Folder,
+  type NewRevisionInput,
+  type ProjectDocument,
+} from '../lib/types';
 import type { DocumentsSource } from './source';
 
 export function toFolder(f: ApiFolder): Folder {
@@ -28,7 +35,11 @@ export function toDocument(d: ApiDocument): ProjectDocument {
     status: d.status,
     currentRev: d.currentRevision?.rev ?? '—',
     currentRevisionId: d.currentRevision?.id ?? '',
+    createdAt: d.createdAt,
     updatedAt: d.updatedAt,
+    tracked: d.tracked ?? false,
+    deletedAt: d.deletedAt ?? null,
+    version: d.version,
     // The API gives user ids, not names; the screen leaves the name out rather than show an id.
     updatedBy: null,
   };
@@ -72,7 +83,8 @@ export function createDocumentsApi(orgId: string): DocumentsSource {
       return res.data.map(toFolder);
     },
 
-    async listDocuments(projectId, folderId) {
+    async listDocuments(projectId, folderId, view: DocumentsView = 'all') {
+      const since = new Date(Date.now() - NEW_DOCUMENTS_DAYS * 86_400_000).toISOString();
       const docs = await allPages(async (cursor) =>
         unwrap(
           await api.GET('/v1/orgs/{orgId}/projects/{projectId}/documents', {
@@ -81,6 +93,8 @@ export function createDocumentsApi(orgId: string): DocumentsSource {
               query: {
                 limit: 200,
                 ...(folderId ? { folderId } : {}),
+                ...(view === 'week' ? { createdSince: since } : {}),
+                ...(view === 'tracked' ? { tracked: 'true' as const } : {}),
                 ...(cursor ? { cursor } : {}),
               },
             },
@@ -88,6 +102,59 @@ export function createDocumentsApi(orgId: string): DocumentsSource {
         ),
       );
       return docs.map(toDocument).sort((a, b) => a.title.localeCompare(b.title));
+    },
+
+    async listBin(projectId) {
+      const docs = await allPages(async (cursor) =>
+        unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/documents/bin', {
+            params: {
+              path: { orgId, projectId },
+              query: { limit: 200, ...(cursor ? { cursor } : {}) },
+            },
+          }),
+        ),
+      );
+      return docs
+        .map(toDocument)
+        .sort((a, b) => (b.deletedAt ?? '').localeCompare(a.deletedAt ?? ''));
+    },
+
+    async setTracked(projectId, documentId, tracked) {
+      await ensureCsrfToken();
+      const params = { path: { orgId, projectId, documentId } };
+      unwrap(
+        tracked
+          ? await api.PUT('/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking', {
+              params,
+            })
+          : await api.DELETE(
+              '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking',
+              { params },
+            ),
+      );
+    },
+
+    async deleteDocument(projectId, doc) {
+      await ensureCsrfToken();
+      unwrap(
+        await api.DELETE('/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}', {
+          params: {
+            path: { orgId, projectId, documentId: doc.id },
+            header: { 'If-Match': `"${doc.version}"` },
+          },
+        }),
+      );
+    },
+
+    async restoreDocument(projectId, documentId) {
+      await ensureCsrfToken();
+      const detail = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore', {
+          params: { path: { orgId, projectId, documentId } },
+        }),
+      );
+      return toDocument(detail.document);
     },
 
     async listRevisions(projectId, documentId) {

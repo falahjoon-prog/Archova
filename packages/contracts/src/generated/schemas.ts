@@ -2854,6 +2854,8 @@ export const DocumentSchema = z.object({
   "currentRevision": z.union([DocumentRevisionSchema, z.null()]),
   "createdAt": z.string().datetime({ offset: true }),
   "updatedAt": z.string().datetime({ offset: true }),
+  "deletedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "tracked": z.boolean().optional(),
   "version": z.number().int(),
 });
 export type Document = z.infer<typeof DocumentSchema>;
@@ -3237,6 +3239,7 @@ export const FolderSchema = z.object({
   "projectId": z.string(),
   "parentId": z.string().nullable(),
   "name": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
   "isPrivate": z.boolean(),
   "allowedUserIds": z.array(z.string()),
   "allowedCompanyIds": z.array(z.string()),

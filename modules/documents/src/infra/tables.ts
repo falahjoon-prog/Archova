@@ -84,6 +84,15 @@ export const documentsTable = documents.table('documents', {
   custom: jsonb('custom').notNull().default({}),
   ...audit,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: uuid('deleted_by'),
+});
+
+export const documentTracking = documents.table('document_tracking', {
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const documentRevisions = documents.table('document_revisions', {

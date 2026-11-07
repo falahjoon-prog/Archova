@@ -38,6 +38,7 @@ export const toFolderDto = (f: typeof folders.$inferSelect): Folder => ({
   projectId: encodeId('project', f.projectId),
   parentId: f.parentId ? encodeId('folder', f.parentId) : null,
   name: f.name,
+  createdAt: iso(f.createdAt),
   isPrivate: f.isPrivate,
   allowedUserIds: f.allowedUserIds.map((x) => encodeId('user', x)),
   allowedCompanyIds: f.allowedCompanyIds.map((x) => encodeId('company', x)),
@@ -71,6 +72,8 @@ export const toDocumentDto = (d: DocumentWithCurrent): Document => ({
   currentRevision: d.current ? toDocumentRevisionDto(d.current) : null,
   createdAt: iso(d.createdAt),
   updatedAt: iso(d.updatedAt),
+  ...(d.deletedAt ? { deletedAt: iso(d.deletedAt) } : {}),
+  ...(d.tracked !== undefined ? { tracked: d.tracked } : {}),
   version: d.version,
 });
 

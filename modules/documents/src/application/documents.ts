@@ -1,4 +1,17 @@
-import { and, asc, desc, eq, gt, inArray, isNull, notInArray, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  notInArray,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import {
   AppError,
@@ -8,7 +21,12 @@ import {
   type TenantScope,
   type SearchHit,
 } from '@archova/kernel';
-import { documentRevisions, documentsTable, type DocumentStatus } from '../infra/tables';
+import {
+  documentRevisions,
+  documentsTable,
+  documentTracking,
+  type DocumentStatus,
+} from '../infra/tables';
 import type { DocumentsContext } from './context';
 import { uniqueViolation } from './errors';
 import type { FolderService } from './folders';
@@ -43,7 +61,8 @@ export interface UpdateDocumentInput {
   status?: DocumentStatus;
 }
 
-export type DocumentWithCurrent = DocumentRow & { current: RevisionRow | null };
+/** `tracked`: on the caller's own watch list; set by `list` and `detail`, not by the mobile pull. */
+export type DocumentWithCurrent = DocumentRow & { current: RevisionRow | null; tracked?: boolean };
 
 export function createDocumentService(c: DocumentsContext, folders: FolderService) {
   async function attachCurrent(scope: TenantScope, rows: DocumentRow[]) {
@@ -58,10 +77,37 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     }));
   }
 
+  /** Marks which of these the caller is tracking. */
+  async function attachTracked<T extends DocumentRow>(scope: TenantScope, rows: T[]) {
+    const ids = rows.map((r) => r.id);
+    const mine = ids.length
+      ? await scope.tx
+          .select({ id: documentTracking.documentId })
+          .from(documentTracking)
+          .where(
+            and(
+              eq(documentTracking.userId, scope.ctx.userId),
+              inArray(documentTracking.documentId, ids),
+            ),
+          )
+      : [];
+    const set = new Set(mine.map((m) => m.id));
+    return rows.map((r) => ({ ...r, tracked: set.has(r.id) }));
+  }
+
   async function list(
     scope: TenantScope,
     projectId: string,
-    opts: { folderId?: string; q?: string; limit: number; cursor?: string },
+    opts: {
+      folderId?: string;
+      q?: string;
+      /** "New documents this week": registered at or after this instant. */
+      createdSince?: Date;
+      /** Only what the caller tracks. */
+      trackedOnly?: boolean;
+      limit: number;
+      cursor?: string;
+    },
   ): Promise<{ data: DocumentWithCurrent[]; nextCursor: string | null }> {
     await c.requireProject(scope, projectId);
     const after = decodeCursor<{ id: string }>(opts.cursor);
@@ -69,6 +115,12 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
       eq(documentsTable.projectId, projectId),
       isNull(documentsTable.deletedAt),
     ];
+    if (opts.createdSince) conditions.push(gte(documentsTable.createdAt, opts.createdSince));
+    if (opts.trackedOnly)
+      conditions.push(
+        sql`exists (select 1 from documents.document_tracking t
+          where t.document_id = ${documentsTable.id} and t.user_id = ${scope.ctx.userId})`,
+      );
     if (opts.folderId) {
       await folders.getVisible(scope, projectId, opts.folderId);
       conditions.push(eq(documentsTable.folderId, opts.folderId));
@@ -88,7 +140,8 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
       .orderBy(asc(documentsTable.id))
       .limit(opts.limit + 1);
     const page = toPage(rows, opts.limit, (r) => ({ id: r.id }));
-    return { data: await attachCurrent(scope, page.data), nextCursor: page.nextCursor };
+    const withCurrent = await attachCurrent(scope, page.data);
+    return { data: await attachTracked(scope, withCurrent), nextCursor: page.nextCursor };
   }
 
   async function getRow(scope: TenantScope, projectId: string, documentId: string) {
@@ -117,8 +170,145 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
       .from(documentRevisions)
       .where(eq(documentRevisions.documentId, documentId))
       .orderBy(desc(documentRevisions.createdAt), desc(documentRevisions.id));
-    const [withCurrent] = await attachCurrent(scope, [row]);
+    const [withCurrent] = await attachTracked(scope, await attachCurrent(scope, [row]));
     return { document: withCurrent!, revisions };
+  }
+
+  /** Recycle bin (soft delete): the document leaves every list and the mobile pull; revisions and files stay. */
+  async function remove(
+    scope: TenantScope,
+    projectId: string,
+    documentId: string,
+    expectedVersion: number,
+  ) {
+    const current = await getRow(scope, projectId, documentId);
+    if (current.version !== expectedVersion) throw versionConflict();
+    const [row] = await scope.tx
+      .update(documentsTable)
+      .set({
+        deletedAt: new Date(),
+        deletedBy: scope.ctx.userId,
+        updatedBy: scope.ctx.userId,
+        version: current.version + 1,
+      })
+      .where(and(eq(documentsTable.id, documentId), eq(documentsTable.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await scope.recordChange({
+      module: 'documents',
+      entityType: 'document',
+      entityId: documentId,
+      op: 'delete',
+      version: row.version,
+      projectId,
+    });
+    scope.events.add({
+      type: 'documents.document.deleted.v1',
+      projectId,
+      entityType: 'document',
+      entityId: documentId,
+      entityVersion: row.version,
+      data: { documentId },
+    });
+  }
+
+  /** The recycle bin: deleted documents the caller could open, most recently deleted first. */
+  async function listDeleted(
+    scope: TenantScope,
+    projectId: string,
+    opts: { limit: number; cursor?: string },
+  ): Promise<{ data: DocumentWithCurrent[]; nextCursor: string | null }> {
+    await c.requireProject(scope, projectId);
+    const after = decodeCursor<{ id: string }>(opts.cursor);
+    const conditions: SQL[] = [
+      eq(documentsTable.projectId, projectId),
+      isNotNull(documentsTable.deletedAt),
+    ];
+    const hidden = await folders.hiddenIds(scope, projectId);
+    if (hidden.size) conditions.push(notInArray(documentsTable.folderId, [...hidden]));
+    if (after) conditions.push(gt(documentsTable.id, after.id));
+    const rows = await scope.tx
+      .select()
+      .from(documentsTable)
+      .where(and(...conditions))
+      .orderBy(asc(documentsTable.id))
+      .limit(opts.limit + 1);
+    const page = toPage(rows, opts.limit, (r) => ({ id: r.id }));
+    return { data: await attachCurrent(scope, page.data), nextCursor: page.nextCursor };
+  }
+
+  /** Takes a document out of the bin. Its number may have been reused meanwhile: that is a conflict. */
+  async function restore(scope: TenantScope, projectId: string, documentId: string) {
+    await c.requireProject(scope, projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(documentsTable)
+      .where(
+        and(
+          eq(documentsTable.id, documentId),
+          eq(documentsTable.projectId, projectId),
+          isNotNull(documentsTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new AppError('document.not_found');
+    if ((await folders.hiddenIds(scope, projectId)).has(row.folderId))
+      throw new AppError('document.not_found');
+    let updated: DocumentRow | undefined;
+    try {
+      [updated] = await scope.tx
+        .update(documentsTable)
+        .set({
+          deletedAt: null,
+          deletedBy: null,
+          updatedBy: scope.ctx.userId,
+          version: row.version + 1,
+        })
+        .where(eq(documentsTable.id, documentId))
+        .returning();
+    } catch (e) {
+      if (uniqueViolation(e) === 'documents_number') throw numberTaken();
+      throw e;
+    }
+    await changed(scope, projectId, documentId, updated!.version);
+    scope.events.add({
+      type: 'documents.document.restored.v1',
+      projectId,
+      entityType: 'document',
+      entityId: documentId,
+      entityVersion: updated!.version,
+      data: { documentId },
+    });
+    return detail(scope, projectId, documentId);
+  }
+
+  /** Adds or removes a document on the caller's own watch list. Repeating either is a no-op. */
+  async function setTracking(
+    scope: TenantScope,
+    projectId: string,
+    documentId: string,
+    tracked: boolean,
+  ) {
+    await getRow(scope, projectId, documentId);
+    if (tracked)
+      await scope.tx
+        .insert(documentTracking)
+        .values({
+          orgId: scope.ctx.orgId,
+          projectId,
+          documentId,
+          userId: scope.ctx.userId,
+        })
+        .onConflictDoNothing();
+    else
+      await scope.tx
+        .delete(documentTracking)
+        .where(
+          and(
+            eq(documentTracking.documentId, documentId),
+            eq(documentTracking.userId, scope.ctx.userId),
+          ),
+        );
   }
 
   /** Inserts a revision as current and supersedes the previous current one (backend 04 documents). */
@@ -379,6 +569,10 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     create,
     addRevision,
     update,
+    remove,
+    listDeleted,
+    restore,
+    setTracking,
     revisionsByIds,
     ref,
     currentFileAuthorised,
