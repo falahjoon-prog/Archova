@@ -108,6 +108,8 @@ export function createDocumentsModule(
     api: {
       /** For folder links (integrations/03 M2): each sheet's current revision, to publish what is already issued. */
       currentDrawingRevisions: drawings.currentRevisions,
+      /** Global search (`search`): documents the caller can open that match some words. */
+      searchHits: documents.searchHits,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
       /** The drawing register and revisions the mobile pull reads (modules/sync). */

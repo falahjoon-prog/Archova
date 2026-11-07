@@ -13,6 +13,9 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  /** Global search; `q` pre-fills the box. */
+  search: (orgSlug: string, q?: string) =>
+    `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
@@ -147,6 +150,7 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   offline: () => '/offline',
+  deleteAccount: () => '/delete-account',
   bidBoard: () => '/bid-board',
   tenders: (projectId: string) => `/project/${enc(projectId)}/tenders`,
   tender: (projectId: string, packageId: string) =>

@@ -8,7 +8,10 @@ export function createCorrespondenceModule(services: KernelServices, deps: Corre
   return {
     definition: defineModule({ name: 'correspondence', permissions: CORRESPONDENCE_PERMISSIONS }),
     routes: correspondenceRoutes(services.database, service),
-    api: {},
+    api: {
+      /** Global search (`search`): correspondence the caller can see that matches some words. */
+      searchHits: service.searchHits,
+    },
   };
 }
 

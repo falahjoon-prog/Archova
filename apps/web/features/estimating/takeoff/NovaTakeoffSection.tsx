@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { formatQuantity } from '@archova/markup';
-import { Alert, Button, Select, StatusPill, TextField } from '@archova/ui';
+import { Card, Alert, Button, Select, StatusPill, TextField } from '@archova/ui';
 import { Check, X } from '@archova/ui/icons';
 import { captureSheetImage } from '../lib/sheet-image';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -85,103 +85,104 @@ export function NovaTakeoffSection({
   };
 
   return (
-    <section aria-labelledby="nova-takeoff" className="stack nova-takeoff">
-      <h3 id="nova-takeoff" className="panel-subheading">
-        Nova count
-      </h3>
-      <p className="u-caption u-m-0">
-        Say what to find, for any trade. Nova&apos;s marks stay dashed and out of the totals until
-        you accept them.
-      </p>
-      <div className="form-row">
-        <TextField
-          label="What should Nova find?"
-          value={what}
-          onChange={(e) => setWhat(e.target.value)}
-          placeholder="e.g. power points, strip footings"
-          maxLength={120}
-        />
-        <Select
-          label="Nova should"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as NovaKind)}
-          options={KINDS}
-        />
-      </div>
-      <div>
-        <Button
-          loading={capturing || mutations.findWithNova.isPending}
-          disabled={!canFind || !what.trim()}
-          onClick={() => void find()}
-        >
-          Find with Nova
-        </Button>
-      </div>
-      {!canFind ? <p className="u-caption u-m-0">Confirm the scale to use Nova.</p> : null}
-      <ErrorAlert error={mutations.findWithNova.error} title="Nova couldn't read this sheet" />
-      {result && !result.marks.length ? (
-        <Alert tone="info" title="Nova didn't find any">
-          {result.caveat ?? 'Try describing it differently, or use the Count tool by hand.'}
-        </Alert>
-      ) : null}
-      {result?.scanned && result.marks.length ? (
-        <StatusPill tone="warning">Scanned sheet: check every mark</StatusPill>
-      ) : null}
-      {result?.caveat && result.marks.length ? (
-        <p className="u-caption u-m-0">{result.caveat}</p>
-      ) : null}
-
-      {marks.length ? (
-        <>
-          <dl className="nova-tally" aria-label="Nova's marks on this sheet">
-            <div>
-              <dt>Accepted</dt>
-              <dd>{counts.accepted}</dd>
-            </div>
-            <div>
-              <dt>Waiting</dt>
-              <dd>{counts.pending}</dd>
-            </div>
-            <div>
-              <dt>Rejected</dt>
-              <dd>{counts.rejected}</dd>
-            </div>
-          </dl>
-          <ul className="plain-list">
-            {marks.map((m) => (
-              <MarkRow
-                key={m.id}
-                m={m}
-                selected={m.id === selectedId}
-                onSelect={() => onSelect(m.id === selectedId ? null : m.id)}
-                onAccept={() => mutations.accept.mutate(m.id)}
-                onReject={() => mutations.reject.mutate(m.id)}
-                busy={mutations.accept.isPending || mutations.reject.isPending}
-              />
-            ))}
-          </ul>
-          <ErrorAlert
-            error={mutations.accept.error ?? mutations.reject.error ?? mutations.acceptAbove.error}
-            title="We couldn't update that mark"
+    <Card title="Nova count">
+      <div className="stack">
+        <p className="u-caption u-m-0">
+          Say what to find, for any trade. Nova&apos;s marks stay dashed and out of the totals until
+          you accept them.
+        </p>
+        <div className="form-row">
+          <TextField
+            label="What should Nova find?"
+            value={what}
+            onChange={(e) => setWhat(e.target.value)}
+            placeholder="e.g. power points, strip footings"
+            maxLength={120}
           />
-          <div>
-            <Button
-              variant="secondary"
-              disabled={!sure || mutations.acceptAbove.isPending}
-              loading={mutations.acceptAbove.isPending}
-              onClick={() =>
-                mutations.acceptAbove.mutate({
-                  revisionId: context.revisionId,
-                  minConfidence: NOVA_BULK_ACCEPT,
-                })
+          <Select
+            label="Nova should"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as NovaKind)}
+            options={KINDS}
+          />
+        </div>
+        <div>
+          <Button
+            loading={capturing || mutations.findWithNova.isPending}
+            disabled={!canFind || !what.trim()}
+            onClick={() => void find()}
+          >
+            Find with Nova
+          </Button>
+        </div>
+        {!canFind ? <p className="u-caption u-m-0">Confirm the scale to use Nova.</p> : null}
+        <ErrorAlert error={mutations.findWithNova.error} title="Nova couldn't read this sheet" />
+        {result && !result.marks.length ? (
+          <Alert tone="info" title="Nova didn't find any">
+            {result.caveat ?? 'Try describing it differently, or use the Count tool by hand.'}
+          </Alert>
+        ) : null}
+        {result?.scanned && result.marks.length ? (
+          <StatusPill tone="warning">Scanned sheet: check every mark</StatusPill>
+        ) : null}
+        {result?.caveat && result.marks.length ? (
+          <p className="u-caption u-m-0">{result.caveat}</p>
+        ) : null}
+
+        {marks.length ? (
+          <>
+            <dl className="nova-tally" aria-label="Nova's marks on this sheet">
+              <div>
+                <dt>Accepted</dt>
+                <dd>{counts.accepted}</dd>
+              </div>
+              <div>
+                <dt>Waiting</dt>
+                <dd>{counts.pending}</dd>
+              </div>
+              <div>
+                <dt>Rejected</dt>
+                <dd>{counts.rejected}</dd>
+              </div>
+            </dl>
+            <ul className="plain-list">
+              {marks.map((m) => (
+                <MarkRow
+                  key={m.id}
+                  m={m}
+                  selected={m.id === selectedId}
+                  onSelect={() => onSelect(m.id === selectedId ? null : m.id)}
+                  onAccept={() => mutations.accept.mutate(m.id)}
+                  onReject={() => mutations.reject.mutate(m.id)}
+                  busy={mutations.accept.isPending || mutations.reject.isPending}
+                />
+              ))}
+            </ul>
+            <ErrorAlert
+              error={
+                mutations.accept.error ?? mutations.reject.error ?? mutations.acceptAbove.error
               }
-            >
-              Accept {Math.round(NOVA_BULK_ACCEPT * 100)}% and over ({sure})
-            </Button>
-          </div>
-        </>
-      ) : null}
-    </section>
+              title="We couldn't update that mark"
+            />
+            <div>
+              <Button
+                variant="secondary"
+                disabled={!sure || mutations.acceptAbove.isPending}
+                loading={mutations.acceptAbove.isPending}
+                onClick={() =>
+                  mutations.acceptAbove.mutate({
+                    revisionId: context.revisionId,
+                    minConfidence: NOVA_BULK_ACCEPT,
+                  })
+                }
+              >
+                Accept {Math.round(NOVA_BULK_ACCEPT * 100)}% and over ({sure})
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 

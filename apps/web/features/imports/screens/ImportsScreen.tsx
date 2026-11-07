@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
+  Card,
+  StatGrid,
   DataTable,
   Dialog,
-  DescriptionList,
   EmptyState,
   PageHeader,
   Select,
@@ -287,7 +288,7 @@ function ImportDetail({ id }: { id: string }) {
         ) : null
       ) : (
         <div className="stack">
-          <DescriptionList
+          <StatGrid
             items={[
               {
                 label: 'Status',
@@ -296,8 +297,12 @@ function ImportDetail({ id }: { id: string }) {
                 ),
               },
               { label: 'Rows in the file', value: j.totalRows },
-              { label: 'Ready', value: j.validRows },
-              { label: 'With problems', value: j.invalidRows },
+              { label: 'Ready', value: j.validRows, tone: j.validRows ? 'success' : undefined },
+              {
+                label: 'With problems',
+                value: j.invalidRows,
+                tone: j.invalidRows ? 'danger' : undefined,
+              },
             ]}
           />
           {j.status === 'uploaded' ? (
@@ -384,109 +389,110 @@ function MappingStep({ job }: { job: ImportJob }) {
   };
 
   return (
-    <section aria-labelledby="map-h" className="stack">
-      <h2 id="map-h">Match columns to fields</h2>
-      {!suggestion ? (
-        <Alert
-          tone="info"
-          title={
-            Object.keys(job.mapping.columns).length > 0
-              ? `${Object.keys(job.mapping.columns).length} columns are matched. Change them?`
-              : 'Let Nova suggest the matches'
-          }
-        >
-          Nova looks at each column&apos;s heading and a few of its values and suggests what it
-          fills. You confirm or change every one. It costs a quarter of a Nova credit.
-          <div>
-            <Button disabled={m.suggest.isPending || sample.isPending} onClick={suggest}>
-              {m.suggest.isPending ? 'Asking Nova…' : 'Suggest matches'}
-            </Button>
-          </div>
-          <ErrorAlert error={m.suggest.error} title="Nova couldn't suggest matches" />
-        </Alert>
-      ) : (
-        <>
-          <DataTable
-            caption="Columns in the file"
-            columns={
-              [
-                {
-                  id: 'col',
-                  header: 'Column',
-                  rowHeader: true,
-                  cell: (c) => c.header || `Column ${c.index + 1}`,
-                },
-                {
-                  id: 'ex',
-                  header: 'Examples',
-                  cell: (c) => c.examples.slice(0, 3).join(' · ') || '—',
-                },
-                {
-                  id: 'field',
-                  header: 'Fills',
-                  cell: (c) => (
-                    <select
-                      className="ac-input ac-select"
-                      aria-label={`Field for ${c.header || `column ${c.index + 1}`}`}
-                      value={fieldByColumn[c.index] ?? NONE}
-                      onChange={(e) => {
-                        const next = { ...fieldByColumn };
-                        // One column per field.
-                        if (e.target.value)
-                          for (const k of Object.keys(next))
-                            if (next[Number(k)] === e.target.value) delete next[Number(k)];
-                        if (e.target.value) next[c.index] = e.target.value;
-                        else delete next[c.index];
-                        setFieldByColumn(next);
-                      }}
-                    >
-                      {fieldOptions.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  ),
-                },
-                {
-                  id: 'warn',
-                  header: 'Check',
-                  cell: (c) =>
-                    c.warning === 'unlike_values'
-                      ? 'The values don’t look like this field'
-                      : c.warning === 'duplicate_field'
-                        ? 'Another column fits better'
-                        : c.confidence === 'low' && fieldByColumn[c.index]
-                          ? 'Low confidence'
-                          : '',
-                },
-              ] satisfies DataTableColumn<MappingSuggestion['columns'][number]>[]
+    <Card title="Match columns to fields">
+      <div className="stack">
+        {!suggestion ? (
+          <Alert
+            tone="info"
+            title={
+              Object.keys(job.mapping.columns).length > 0
+                ? `${Object.keys(job.mapping.columns).length} columns are matched. Change them?`
+                : 'Let Nova suggest the matches'
             }
-            rows={suggestion.columns}
-            getRowId={(c) => String(c.index)}
-          />
-          {suggestion.values.length > 0 ? (
-            <ValueMeanings
-              suggestion={suggestion}
-              fieldByColumn={fieldByColumn}
-              meaning={meaning}
-              setMeaning={setMeaning}
+          >
+            Nova looks at each column&apos;s heading and a few of its values and suggests what it
+            fills. You confirm or change every one. It costs a quarter of a Nova credit.
+            <div>
+              <Button disabled={m.suggest.isPending || sample.isPending} onClick={suggest}>
+                {m.suggest.isPending ? 'Asking Nova…' : 'Suggest matches'}
+              </Button>
+            </div>
+            <ErrorAlert error={m.suggest.error} title="Nova couldn't suggest matches" />
+          </Alert>
+        ) : (
+          <>
+            <DataTable
+              caption="Columns in the file"
+              columns={
+                [
+                  {
+                    id: 'col',
+                    header: 'Column',
+                    rowHeader: true,
+                    cell: (c) => c.header || `Column ${c.index + 1}`,
+                  },
+                  {
+                    id: 'ex',
+                    header: 'Examples',
+                    cell: (c) => c.examples.slice(0, 3).join(' · ') || '—',
+                  },
+                  {
+                    id: 'field',
+                    header: 'Fills',
+                    cell: (c) => (
+                      <select
+                        className="ac-input ac-select"
+                        aria-label={`Field for ${c.header || `column ${c.index + 1}`}`}
+                        value={fieldByColumn[c.index] ?? NONE}
+                        onChange={(e) => {
+                          const next = { ...fieldByColumn };
+                          // One column per field.
+                          if (e.target.value)
+                            for (const k of Object.keys(next))
+                              if (next[Number(k)] === e.target.value) delete next[Number(k)];
+                          if (e.target.value) next[c.index] = e.target.value;
+                          else delete next[c.index];
+                          setFieldByColumn(next);
+                        }}
+                      >
+                        {fieldOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ),
+                  },
+                  {
+                    id: 'warn',
+                    header: 'Check',
+                    cell: (c) =>
+                      c.warning === 'unlike_values'
+                        ? 'The values don’t look like this field'
+                        : c.warning === 'duplicate_field'
+                          ? 'Another column fits better'
+                          : c.confidence === 'low' && fieldByColumn[c.index]
+                            ? 'Low confidence'
+                            : '',
+                  },
+                ] satisfies DataTableColumn<MappingSuggestion['columns'][number]>[]
+              }
+              rows={suggestion.columns}
+              getRowId={(c) => String(c.index)}
             />
-          ) : null}
-          {missing.length > 0 ? (
-            <Alert tone="warning" title="Some required fields have no column">
-              {missing.map((f) => f.label).join(', ')}
-            </Alert>
-          ) : null}
-          <div>
-            <Button disabled={missing.length > 0 || m.setMapping.isPending} onClick={save}>
-              {m.setMapping.isPending ? 'Checking every row…' : 'Save and check rows'}
-            </Button>
-          </div>
-          <ErrorAlert error={m.setMapping.error} title="We couldn't save this mapping" />
-        </>
-      )}
-    </section>
+            {suggestion.values.length > 0 ? (
+              <ValueMeanings
+                suggestion={suggestion}
+                fieldByColumn={fieldByColumn}
+                meaning={meaning}
+                setMeaning={setMeaning}
+              />
+            ) : null}
+            {missing.length > 0 ? (
+              <Alert tone="warning" title="Some required fields have no column">
+                {missing.map((f) => f.label).join(', ')}
+              </Alert>
+            ) : null}
+            <div>
+              <Button disabled={missing.length > 0 || m.setMapping.isPending} onClick={save}>
+                {m.setMapping.isPending ? 'Checking every row…' : 'Save and check rows'}
+              </Button>
+            </div>
+            <ErrorAlert error={m.setMapping.error} title="We couldn't save this mapping" />
+          </>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -504,35 +510,36 @@ function ValueMeanings({
   const active = suggestion.values.filter((v) => fieldByColumn[v.index] === v.field);
   if (active.length === 0) return null;
   return (
-    <section aria-labelledby="vals-h" className="stack">
-      <h3 id="vals-h">What the values mean</h3>
-      {active.map((v) => {
-        const field = suggestion.fields.find((f) => f.key === v.field);
-        const options = [
-          { value: NONE, label: 'Choose…' },
-          ...(field?.values ?? []).map((o) => ({ value: o.value, label: o.label })),
-        ];
-        return (
-          <div key={`${v.index}-${v.field}`} className="stack">
-            <p className="u-caption">{field?.label ?? v.field}</p>
-            {v.pairs.map((p) => (
-              <Select
-                key={p.source}
-                label={`"${p.source}" in the file means`}
-                value={meaning[v.field]?.[p.source] ?? NONE}
-                options={options}
-                onChange={(e) => {
-                  const pairs = { ...(meaning[v.field] ?? {}) };
-                  if (e.target.value) pairs[p.source] = e.target.value;
-                  else delete pairs[p.source];
-                  setMeaning({ ...meaning, [v.field]: pairs });
-                }}
-              />
-            ))}
-          </div>
-        );
-      })}
-    </section>
+    <Card title="What the values mean">
+      <div className="stack">
+        {active.map((v) => {
+          const field = suggestion.fields.find((f) => f.key === v.field);
+          const options = [
+            { value: NONE, label: 'Choose…' },
+            ...(field?.values ?? []).map((o) => ({ value: o.value, label: o.label })),
+          ];
+          return (
+            <div key={`${v.index}-${v.field}`} className="stack">
+              <p className="u-caption">{field?.label ?? v.field}</p>
+              {v.pairs.map((p) => (
+                <Select
+                  key={p.source}
+                  label={`"${p.source}" in the file means`}
+                  value={meaning[v.field]?.[p.source] ?? NONE}
+                  options={options}
+                  onChange={(e) => {
+                    const pairs = { ...(meaning[v.field] ?? {}) };
+                    if (e.target.value) pairs[p.source] = e.target.value;
+                    else delete pairs[p.source];
+                    setMeaning({ ...meaning, [v.field]: pairs });
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -579,33 +586,34 @@ function RowsStep({ job }: { job: ImportJob }) {
     },
   ];
   return (
-    <section aria-labelledby="rows-h" className="stack">
-      <h2 id="rows-h">Rows</h2>
-      <Select
-        label="Show"
-        value={status}
-        options={(['invalid', 'valid', 'skipped'] as ImportRowStatus[]).map((v) => ({
-          value: v,
-          label: ROW_STATUS_LABEL[v],
-        }))}
-        onChange={(e) => setStatus(e.target.value as ImportRowStatus)}
-      />
-      <ErrorAlert error={rows.error} title="We couldn't load the rows" />
-      {rows.isPending ? (
-        <SkeletonRows label="Loading rows…" />
-      ) : (rows.data ?? []).length === 0 ? (
-        <EmptyState icon={ImportsIcon} title="No rows here" description="Try another filter." />
-      ) : (
-        <DataTable
-          caption="Staged rows"
-          columns={columns}
-          rows={rows.data ?? []}
-          getRowId={(r) => r.id}
+    <Card title="Rows">
+      <div className="stack">
+        <Select
+          label="Show"
+          value={status}
+          options={(['invalid', 'valid', 'skipped'] as ImportRowStatus[]).map((v) => ({
+            value: v,
+            label: ROW_STATUS_LABEL[v],
+          }))}
+          onChange={(e) => setStatus(e.target.value as ImportRowStatus)}
         />
-      )}
-      {(rows.data ?? []).length >= 100 ? (
-        <p className="u-caption">Showing the first 100 rows.</p>
-      ) : null}
-    </section>
+        <ErrorAlert error={rows.error} title="We couldn't load the rows" />
+        {rows.isPending ? (
+          <SkeletonRows label="Loading rows…" />
+        ) : (rows.data ?? []).length === 0 ? (
+          <EmptyState icon={ImportsIcon} title="No rows here" description="Try another filter." />
+        ) : (
+          <DataTable
+            caption="Staged rows"
+            columns={columns}
+            rows={rows.data ?? []}
+            getRowId={(r) => r.id}
+          />
+        )}
+        {(rows.data ?? []).length >= 100 ? (
+          <p className="u-caption">Showing the first 100 rows.</p>
+        ) : null}
+      </div>
+    </Card>
   );
 }

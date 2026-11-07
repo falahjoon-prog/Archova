@@ -6,10 +6,10 @@ import {
   Alert,
   Checkbox,
   DataTable,
-  DescriptionList,
   EmptyState,
   PageHeader,
   SkeletonRows,
+  StatGrid,
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
@@ -18,6 +18,7 @@ import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { formatMoney } from '@/shared/lib/format';
+import { PortfolioCharts } from '../components/PortfolioCharts';
 import { usePortfolio } from '../hooks/useReporting';
 import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
@@ -35,6 +36,16 @@ function ToolCell({ tool }: { tool: PortfolioTool }) {
       ) : null}
     </>
   );
+}
+
+/** One tile: the open count, with the overdue count underneath and the tile turning red only when something is overdue. */
+function stat(label: string, open: number, overdue: number, word: string) {
+  return {
+    label,
+    value: open,
+    hint: `${overdue} ${word}`,
+    tone: overdue > 0 ? ('danger' as const) : undefined,
+  };
 }
 
 const aud = (amount: string) => formatMoney({ amount, currency: 'AUD' });
@@ -136,54 +147,49 @@ export function PortfolioScreen() {
       <PageHeader
         eyebrow="Company"
         title="Portfolio"
-        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project, and the totals above spell out each one."
+        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
       {data ? (
-        <DescriptionList
+        <StatGrid
           items={[
             { label: 'Projects', value: data.totals.projects },
-            {
-              label: 'RFIs open',
-              value: `${data.totals.rfisOpen} (${data.totals.rfisOverdue} overdue)`,
-            },
-            {
-              label: 'Defects open',
-              value: `${data.totals.defectsOpen} (${data.totals.defectsOverdue} overdue)`,
-            },
-            {
-              label: 'Submittals with reviewers',
-              value: `${data.totals.submittalsOpen} (${data.totals.submittalsOverdue} overdue)`,
-            },
-            {
-              label: 'Claims unpaid',
-              value: `${data.totals.claimsOpen} (${data.totals.claimsOverdue} overdue)`,
-            },
-            {
-              label: 'Variations to decide',
-              value: String(data.totals.variationsOpen),
-            },
-            {
-              label: 'Incidents open',
-              value: `${data.totals.incidentsOpen} (${data.totals.incidentsOverdue} to notify)`,
-            },
-            {
-              label: 'Programme activities open',
-              value: `${data.totals.programmeOpen} (${data.totals.programmeOverdue} late)`,
-            },
+            stat('RFIs open', data.totals.rfisOpen, data.totals.rfisOverdue, 'overdue'),
+            stat('Defects open', data.totals.defectsOpen, data.totals.defectsOverdue, 'overdue'),
+            stat(
+              'Submittals with reviewers',
+              data.totals.submittalsOpen,
+              data.totals.submittalsOverdue,
+              'overdue',
+            ),
+            stat('Claims unpaid', data.totals.claimsOpen, data.totals.claimsOverdue, 'overdue'),
+            { label: 'Variations to decide', value: data.totals.variationsOpen },
+            stat(
+              'Incidents open',
+              data.totals.incidentsOpen,
+              data.totals.incidentsOverdue,
+              'to notify',
+            ),
+            stat(
+              'Programme activities open',
+              data.totals.programmeOpen,
+              data.totals.programmeOverdue,
+              'late',
+            ),
             ...(data.totals.budgetProjects > 0
               ? [
                   {
                     label: 'Forecast vs budget',
-                    value: `${aud(data.totals.budgetVariance.replace('-', ''))} ${
-                      data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'
-                    } across ${data.totals.budgetProjects} projects (${data.totals.projectsOverBudget} over budget)`,
+                    value: aud(data.totals.budgetVariance.replace('-', '')),
+                    tone: data.totals.projectsOverBudget > 0 ? ('danger' as const) : undefined,
+                    hint: `${data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'} across ${data.totals.budgetProjects} ${data.totals.budgetProjects === 1 ? 'project' : 'projects'} (${data.totals.projectsOverBudget} over budget)`,
                   },
                 ]
               : []),
           ]}
         />
       ) : null}
+      {data ? <PortfolioCharts portfolio={data} orgSlug={org.orgSlug} /> : null}
       {data?.truncated ? (
         <Alert tone="info" title="Showing the first 200 projects">
           Close out finished projects to bring the rest into view.

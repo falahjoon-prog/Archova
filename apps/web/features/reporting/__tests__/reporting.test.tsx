@@ -25,6 +25,8 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   name,
   number: null,
   status: 'active',
+  phase: null,
+  siteLocation: null,
   rfis: tool(0, 0),
   defects: tool(0, 0),
   submittals: tool(0, 0),
@@ -37,6 +39,7 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
     hasBudget: false,
     revised: '0.00',
     forecastFinal: '0.00',
+    spent: '0.00',
     variance: '0.00',
     overBudgetCodes: 0,
   },
@@ -78,6 +81,8 @@ describe('PortfolioScreen', () => {
       },
       projects: [
         project('prj_a', 'Alpha Tower', {
+          phase: 'construction',
+          siteLocation: { lat: -33.87, lng: 151.21 },
           rfis: tool(5, 2),
           attention: 2,
           budget: {
@@ -85,6 +90,7 @@ describe('PortfolioScreen', () => {
             hasBudget: true,
             revised: '100000.00',
             forecastFinal: '112500.00',
+            spent: '40000.00',
             variance: '-12500.00',
             overBudgetCodes: 2,
           },
@@ -97,7 +103,7 @@ describe('PortfolioScreen', () => {
     const table = await screen.findByRole('table', { name: /Projects with open/ });
     expect(within(table).getByRole('link', { name: 'Alpha Tower' })).toBeTruthy();
     expect(within(table).getByText('2 overdue')).toBeTruthy();
-    expect(screen.getByText('5 (2 overdue)')).toBeTruthy();
+    expect(screen.getByText('RFIs open').parentElement?.textContent).toBe('RFIs open52 overdue');
     // Over budget shows the shortfall; Bravo has no budget the caller can see.
     expect(within(table).getByText(/12,500\.00/)).toBeTruthy();
     expect(within(table).getByText('over budget')).toBeTruthy();
@@ -137,6 +143,59 @@ describe('PortfolioScreen', () => {
     await screen.findByText('No projects yet');
     const last = fake.callsTo('GET', PORTFOLIO).at(-1)!;
     expect(last.init.params?.query).toMatchObject({ includeClosed: 'true' });
+  });
+});
+
+describe('PortfolioScreen charts', () => {
+  it('draws the phase ring, a site pin and budget bars from the portfolio', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        projects: 2,
+        rfisOpen: 0,
+        rfisOverdue: 0,
+        defectsOpen: 0,
+        defectsOverdue: 0,
+        submittalsOpen: 0,
+        submittalsOverdue: 0,
+        claimsOpen: 0,
+        claimsOverdue: 0,
+        variationsOpen: 0,
+        variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 1,
+        projectsOverBudget: 0,
+        budgetRevised: '100000.00',
+        budgetForecastFinal: '90000.00',
+        budgetVariance: '10000.00',
+      },
+      projects: [
+        project('prj_a', 'Alpha Tower', {
+          phase: 'construction',
+          siteLocation: { lat: -33.87, lng: 151.21 },
+          budget: {
+            restricted: false,
+            hasBudget: true,
+            revised: '100000.00',
+            forecastFinal: '90000.00',
+            spent: '40000.00',
+            variance: '10000.00',
+            overBudgetCodes: 0,
+          },
+        }),
+        project('prj_b', 'Bravo Lofts'),
+      ],
+      truncated: false,
+    }));
+    renderInProject(<PortfolioScreen />);
+    expect(await screen.findByText('Projects by phase')).toBeTruthy();
+    expect(screen.getByText('Construction')).toBeTruthy();
+    expect(screen.getByText('Phase not set')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Map of project site locations' })).toBeTruthy();
+    expect(screen.getByText('1 project has no site location set.')).toBeTruthy();
+    expect(screen.getByText('Spent so far')).toBeTruthy();
   });
 });
 

@@ -97,6 +97,7 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         hasBudget: false,
         revisedCents: 0,
         forecastFinalCents: 0,
+        spentCents: 0,
         varianceCents: 0,
         overBudgetCodes: 0,
       }),

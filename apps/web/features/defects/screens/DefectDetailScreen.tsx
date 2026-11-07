@@ -5,6 +5,7 @@ import { useState } from 'react';
 import {
   ActivityTimeline,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -231,64 +232,65 @@ function DefectView({ d }: { d: Defect }) {
       />
       {live ? null : <PreviewDataNotice tool="Defects" />}
       <div className="detail-grid">
-        <section className="stack" aria-labelledby="defect-details">
-          <h2 id="defect-details" className="panel-heading">
-            Details
-          </h2>
-          {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
-          <DescriptionList
-            items={[
-              ...(live ? [] : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
-              {
-                label: 'Drawing',
-                value: drawing ? (
-                  drawing.sheetId ? (
-                    <Link
-                      className="link"
-                      href={webRoutes.drawing(
-                        org.orgSlug,
-                        project.projectId,
-                        drawing.sheetId,
-                        drawing.revisionId,
-                      )}
-                    >
-                      {drawing.label}
-                    </Link>
-                  ) : (
-                    drawing.label
-                  )
-                ) : (
-                  'No pin yet'
-                ),
-              },
-              { label: 'Trade', value: d.trade || '—' },
-              { label: 'Priority', value: PRIORITY_LABELS[d.priority] },
-              {
-                label: 'Raised by',
-                value: `${d.raisedBy}, ${formatInstant(d.createdAt, project.timezone)}`,
-              },
-            ]}
-          />
-          <h3 className="panel-subheading">Photos</h3>
-          {d.photos.length ? (
-            <ul className="photo-list plain-list" aria-label="Photos">
-              {d.photos.map((p) => (
-                <li key={p.id} className="photo-chip">
-                  <StatusPill tone={p.kind === 'before' ? 'neutral' : 'success'}>
-                    {p.kind === 'before' ? 'Before' : p.kind === 'after' ? 'After' : 'Close-out'}
-                  </StatusPill>
-                  {p.name}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="u-muted u-m-0">No photos.</p>
-          )}
-        </section>
-        <section className="stack" aria-labelledby="defect-history">
-          <h2 id="defect-history" className="panel-heading">
-            History
-          </h2>
+        <div className="stack-lg">
+          <Card title="Details">
+            <div className="stack">
+              {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
+              <DescriptionList
+                items={[
+                  ...(live
+                    ? []
+                    : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
+                  {
+                    label: 'Drawing',
+                    value: drawing ? (
+                      drawing.sheetId ? (
+                        <Link
+                          className="link"
+                          href={webRoutes.drawing(
+                            org.orgSlug,
+                            project.projectId,
+                            drawing.sheetId,
+                            drawing.revisionId,
+                          )}
+                        >
+                          {drawing.label}
+                        </Link>
+                      ) : (
+                        drawing.label
+                      )
+                    ) : (
+                      'No pin yet'
+                    ),
+                  },
+                  { label: 'Trade', value: d.trade || '—' },
+                  { label: 'Priority', value: PRIORITY_LABELS[d.priority] },
+                  {
+                    label: 'Raised by',
+                    value: `${d.raisedBy}, ${formatInstant(d.createdAt, project.timezone)}`,
+                  },
+                ]}
+              />
+            </div>
+          </Card>
+          <Card title="Photos">
+            {d.photos.length ? (
+              <ul className="photo-list plain-list" aria-label="Photos">
+                {d.photos.map((p) => (
+                  <li key={p.id} className="photo-chip">
+                    <StatusPill tone={p.kind === 'before' ? 'neutral' : 'success'}>
+                      {p.kind === 'before' ? 'Before' : p.kind === 'after' ? 'After' : 'Close-out'}
+                    </StatusPill>
+                    {p.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="u-muted u-m-0">No photos.</p>
+            )}
+          </Card>
+        </div>
+        <Card title="History">
           <ActivityTimeline
             label="Defect history"
             entries={d.events.map((e) => ({
@@ -320,7 +322,7 @@ function DefectView({ d }: { d: Defect }) {
               atIso: e.at,
             }))}
           />
-        </section>
+        </Card>
       </div>
 
       <Dialog

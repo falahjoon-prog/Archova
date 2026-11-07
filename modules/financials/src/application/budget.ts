@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
@@ -10,12 +10,19 @@ import {
   type BvfSub,
 } from '../domain/budget-vs-forecast';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
-import { budgetAdjustments, budgetLines, budgets, costCodes } from '../infra/tables';
+import {
+  budgetAdjustments,
+  budgetLines,
+  budgetSnapshots,
+  budgets,
+  costCodes,
+} from '../infra/tables';
 
 export type CostCodeRow = typeof costCodes.$inferSelect;
 export type BudgetRow = typeof budgets.$inferSelect;
 export type BudgetLineRow = typeof budgetLines.$inferSelect;
 export type BudgetAdjustmentRow = typeof budgetAdjustments.$inferSelect;
+export type BudgetSnapshotRow = typeof budgetSnapshots.$inferSelect;
 
 export interface ForecastInputs {
   subs: BvfSub[];
@@ -39,6 +46,7 @@ const NO_BUDGET = {
   hasBudget: false,
   revisedCents: 0,
   forecastFinalCents: 0,
+  spentCents: 0,
   varianceCents: 0,
   overBudgetCodes: 0,
 };
@@ -357,6 +365,79 @@ export function createBudgetService(
       .orderBy(asc(budgetAdjustments.createdAt), asc(budgetAdjustments.id));
   }
 
+  // ---- Snapshots ----------------------------------------------------------------------------------------------
+
+  /** Margin lines are hidden from readers without the margin permission, in snapshots as in the live budget. */
+  async function visibleSnapshot(scope: TenantScope, projectId: string, row: BudgetSnapshotRow) {
+    const margin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    return { ...row, lines: row.lines.filter((l) => margin || !l.isMargin) };
+  }
+
+  async function createSnapshot(
+    scope: TenantScope,
+    projectId: string,
+    input: { name: string; note?: string },
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    const name = input.name.trim();
+    if (!name)
+      throw new AppError('validation_failed', 'Give the snapshot a name.', [
+        { path: 'name', message: 'Required' },
+      ]);
+    const budget = await budgetFor(scope, projectId, true);
+    if (!budget) throw new AppError('financials.budget.not_found', 'Start the budget first.');
+    // Take every line, margin included, so a reader with the margin permission sees it all later.
+    const lines = (await viewLines(scope, budget.id, true)).map((v) => ({
+      costCodeId: v.line.costCodeId,
+      code: v.code,
+      codeDescription: v.codeDescription,
+      description: v.line.description,
+      original: v.line.original,
+      approvedChanges: v.line.approvedChanges,
+      revised: revisedOf(v.line),
+      isMargin: v.line.isMargin,
+    }));
+    const [row] = await scope.tx
+      .insert(budgetSnapshots)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        budgetId: budget.id,
+        name,
+        note: input.note?.trim() || null,
+        lines,
+        takenAt: now(),
+        takenBy: scope.ctx.userId,
+      })
+      .returning();
+    return visibleSnapshot(scope, projectId, row!);
+  }
+
+  async function listSnapshots(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(budgetSnapshots)
+      .where(eq(budgetSnapshots.projectId, projectId))
+      .orderBy(desc(budgetSnapshots.takenAt), desc(budgetSnapshots.id));
+    return Promise.all(rows.map((r) => visibleSnapshot(scope, projectId, r)));
+  }
+
+  async function getSnapshot(scope: TenantScope, projectId: string, snapshotId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(budgetSnapshots)
+      .where(and(eq(budgetSnapshots.id, snapshotId), eq(budgetSnapshots.projectId, projectId)))
+      .limit(1);
+    if (!row) throw new AppError('financials.budget.snapshot_not_found');
+    return visibleSnapshot(scope, projectId, row);
+  }
+
   async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.forecast.read', projectId);
     const { budget, lines } = await getBudget(scope, projectId);
@@ -406,6 +487,7 @@ export function createBudgetService(
       hasBudget: true,
       revisedCents: r.totals.revisedCents,
       forecastFinalCents: r.totals.forecastFinalCents,
+      spentCents: r.totals.claimedCents + r.totals.directCents,
       varianceCents: r.totals.varianceCents,
       overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
     };
@@ -425,6 +507,9 @@ export function createBudgetService(
     lockBudget,
     adjustLine,
     listAdjustments,
+    createSnapshot,
+    listSnapshots,
+    getSnapshot,
   };
 }
 

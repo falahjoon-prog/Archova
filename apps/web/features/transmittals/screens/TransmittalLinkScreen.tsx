@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Alert, Button, DescriptionList, SkeletonRows, StatusPill } from '@archova/ui';
+import { Card, Alert, Button, DescriptionList, SkeletonRows, StatusPill } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate } from '@/shared/lib/format';
 import { transmittalLinkApi } from '../data/api';
@@ -122,27 +122,26 @@ export function TransmittalLinkScreen({ token }: { token: string }) {
             <ErrorAlert error={download.error} title="We couldn't download that file" />
           </section>
           {access.actions.includes('acknowledge') ? (
-            <section className="ac-card stack" aria-labelledby="link-ack">
-              <h2 id="link-ack" className="panel-heading">
-                Confirm you received it
-              </h2>
-              {access.recipient.acknowledgedAt ? (
-                <StatusPill tone="success">Receipt confirmed</StatusPill>
-              ) : (
-                <>
-                  <p className="u-m-0">
-                    This tells {access.transmittal.fromOrg} that {access.recipient.email} has the
-                    files.
-                  </p>
-                  <div>
-                    <Button loading={acknowledge.isPending} onClick={() => acknowledge.mutate()}>
-                      Confirm receipt
-                    </Button>
-                  </div>
-                  <ErrorAlert error={acknowledge.error} title="We couldn't record that" />
-                </>
-              )}
-            </section>
+            <Card title="Confirm you received it">
+              <div className="stack">
+                {access.recipient.acknowledgedAt ? (
+                  <StatusPill tone="success">Receipt confirmed</StatusPill>
+                ) : (
+                  <>
+                    <p className="u-m-0">
+                      This tells {access.transmittal.fromOrg} that {access.recipient.email} has the
+                      files.
+                    </p>
+                    <div>
+                      <Button loading={acknowledge.isPending} onClick={() => acknowledge.mutate()}>
+                        Confirm receipt
+                      </Button>
+                    </div>
+                    <ErrorAlert error={acknowledge.error} title="We couldn't record that" />
+                  </>
+                )}
+              </div>
+            </Card>
           ) : null}
         </>
       ) : null}

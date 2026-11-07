@@ -901,6 +901,13 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const SearchOrgParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SearchOrgQuery = z.object({
+  "q": z.string().min(1).max(200),
+  "perType": z.coerce.number().int().min(1).max(25).default(8),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2671,9 +2678,37 @@ export const GetBudgetVsForecastParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetLaborProductivityQuery = z.object({
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+});
+export const SetCostCodeProductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const SetCostCodeProductionBody = s.CostCodeProductionSchema;
 export const LockBudgetParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListBudgetSnapshotsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetSnapshotBody = s.CreateBudgetSnapshotRequestSchema;
+export const GetBudgetSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "snapshotId": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
 });
 export const ListBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -5006,6 +5041,18 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  searchOrg: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/search',
+    module: "search",
+    auth: "required",
+    permission: "search.global.read",
+    internal: false,
+    contentType: null,
+    params: SearchOrgParams,
+    query: SearchOrgQuery,
     body: null,
   },
   getLateSopaClaimRisk: {
@@ -8951,6 +8998,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  getLaborProductivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetLaborProductivityParams,
+    query: GetLaborProductivityQuery,
+    body: null,
+  },
+  setCostCodeProduction: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetCostCodeProductionParams,
+    query: null,
+    body: SetCostCodeProductionBody,
+  },
   lockBudget: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lock',
@@ -8960,6 +9031,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: LockBudgetParams,
+    query: null,
+    body: null,
+  },
+  listBudgetSnapshots: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListBudgetSnapshotsParams,
+    query: null,
+    body: null,
+  },
+  createBudgetSnapshot: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBudgetSnapshotParams,
+    query: null,
+    body: CreateBudgetSnapshotBody,
+  },
+  getBudgetSnapshot: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetSnapshotParams,
     query: null,
     body: null,
   },

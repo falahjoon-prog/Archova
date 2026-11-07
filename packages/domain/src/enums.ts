@@ -6,6 +6,18 @@ export type AuState = (typeof AU_STATES)[number];
 export const PROJECT_STATUSES = ['tender', 'active', 'on_hold', 'closed', 'archived'] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
+/** Where a project is in its life, in order. Separate from `status`, which says whether it is live. */
+export const PROJECT_PHASES = [
+  'planning',
+  'design',
+  'tender',
+  'pre_construction',
+  'construction',
+  'handover',
+  'defects_liability',
+] as const;
+export type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
 export const COMPANY_TYPES = [
   'builder',
   'subcontractor',
