@@ -29,7 +29,7 @@ import {
   resolveTransition,
   type DefectViewer,
 } from '../domain/defect';
-import { defects, events } from '../infra/tables';
+import { defects, events, warrantyItems } from '../infra/tables';
 
 export type DefectRow = typeof defects.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
@@ -54,6 +54,8 @@ export interface DefectFields {
   assigneeUserId?: string | null;
   dueDate?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
+  /** The warranty item a liability-period claim is against; null clears it. */
+  warrantyItemId?: string | null;
 }
 
 export interface TransitionInput {
@@ -114,6 +116,7 @@ export function createDefectService(deps: DefectsDeps) {
       trade?: string;
       overdue?: boolean;
       drawingRevisionId?: string;
+      warrantyItemId?: string;
       q?: string;
       limit: number;
       cursor?: string;
@@ -133,6 +136,7 @@ export function createDefectService(deps: DefectsDeps) {
     if (opts.trade) conditions.push(eq(defects.trade, opts.trade));
     if (opts.drawingRevisionId)
       conditions.push(eq(defects.drawingRevisionId, opts.drawingRevisionId));
+    if (opts.warrantyItemId) conditions.push(eq(defects.warrantyItemId, opts.warrantyItemId));
     const late = sql`${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date`;
     if (opts.overdue === true) conditions.push(late);
     if (opts.overdue === false) conditions.push(sql`not coalesce(${late}, false)`);
@@ -304,6 +308,28 @@ export function createDefectService(deps: DefectsDeps) {
     }
     if (f.assigneeUserId !== undefined) v.assigneeUserId = f.assigneeUserId;
     if (f.pin) Object.assign(v, await resolvePin(scope, projectId, f.pin));
+    if (f.warrantyItemId !== undefined) {
+      if (f.warrantyItemId) {
+        const [item] = await scope.tx
+          .select({ id: warrantyItems.id })
+          .from(warrantyItems)
+          .where(
+            and(
+              eq(warrantyItems.id, f.warrantyItemId),
+              eq(warrantyItems.projectId, projectId),
+              isNull(warrantyItems.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (!item)
+          throw new AppError(
+            'warranty.item_not_on_project',
+            'Pick a warranty item on this project.',
+            [{ path: 'warrantyItemId', message: 'Not a warranty item on the project' }],
+          );
+      }
+      v.warrantyItemId = f.warrantyItemId;
+    }
     return v;
   }
 

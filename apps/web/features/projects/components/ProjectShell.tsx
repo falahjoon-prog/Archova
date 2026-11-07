@@ -15,6 +15,7 @@ import {
   FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
+  WarrantyIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
@@ -170,6 +171,11 @@ export function projectToolGroups(
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
       icon: DefectsIcon,
+    },
+    canRead('defects') && {
+      href: webRoutes.warranty(orgSlug, projectId),
+      label: 'Warranty',
+      icon: WarrantyIcon,
     },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
@@ -333,6 +339,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     icon: InductionsIcon,
     tools: [
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
       'SWMS',

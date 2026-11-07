@@ -253,6 +253,7 @@ export function createDefectsApi(orgId: string): DefectsSource {
             ...(input.assigneeCompanyId ? { assigneeCompanyId: input.assigneeCompanyId } : {}),
             ...(input.assigneeUserId ? { assigneeUserId: input.assigneeUserId } : {}),
             ...(input.dueDate ? { dueDate: input.dueDate } : {}),
+            ...(input.warrantyItemId ? { warrantyItemId: input.warrantyItemId } : {}),
             ...(aiSuggestionId ? { aiSuggestionId } : {}),
           },
         }),

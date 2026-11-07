@@ -20,6 +20,7 @@ export const ID_PREFIXES = {
   rfi: 'rfi',
   defect: 'dfx',
   defectEvent: 'dfe',
+  warrantyItem: 'wri',
   tenderPackage: 'tpk',
   quote: 'quo',
   quoteLine: 'qln',

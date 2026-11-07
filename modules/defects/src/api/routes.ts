@@ -30,10 +30,14 @@ const defectId = (p: { defectId: string }) => {
   return id;
 };
 
-type FieldsBody = Omit<DefectFields, 'assigneeCompanyId' | 'assigneeUserId' | 'pin'> & {
+type FieldsBody = Omit<
+  DefectFields,
+  'assigneeCompanyId' | 'assigneeUserId' | 'pin' | 'warrantyItemId'
+> & {
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
+  warrantyItemId?: string | null;
 };
 
 /** Request body → service fields, decoding prefixed ids and keeping "absent" distinct from "null". */
@@ -54,6 +58,9 @@ function fields(b: FieldsBody): DefectFields {
   if (b.assigneeUserId !== undefined)
     out.assigneeUserId =
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.warrantyItemId !== undefined)
+    out.warrantyItemId =
+      b.warrantyItemId === null ? null : ref('warrantyItem', b.warrantyItemId, 'warrantyItemId');
   if (b.pin)
     out.pin = {
       ...b.pin,
@@ -90,6 +97,9 @@ export function defectsRoutes(database: Database, defects: DefectService) {
             ? {
                 drawingRevisionId: ref('drawingRevision', q.drawingRevisionId, 'drawingRevisionId'),
               }
+            : {}),
+          ...(q.warrantyItemId
+            ? { warrantyItemId: ref('warrantyItem', q.warrantyItemId, 'warrantyItemId') }
             : {}),
           ...(q.q ? { q: q.q } : {}),
           limit: q.limit,

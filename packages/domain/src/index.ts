@@ -3,6 +3,7 @@ export * from './enums';
 export * from './slug';
 export * from './geo';
 export * from './defects';
+export * from './warranty';
 export * from './diary';
 export * from './sopa';
 export * from './inspection';
