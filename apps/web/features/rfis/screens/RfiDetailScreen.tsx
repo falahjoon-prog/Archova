@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useRef, useState } from 'react';
 import {
   ActivityTimeline,
@@ -173,6 +174,12 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="rfi"
+        entityId={rfi.id}
+        projectId={project.projectId}
+        title={`${formatRfiNumber(rfi.number)} ${rfi.subject}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.rfis(org.orgSlug, project.projectId)}>
           RFIs

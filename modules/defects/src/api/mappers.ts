@@ -1,4 +1,4 @@
-import { availableDefectActions, defectLabel, encodeId } from '@archova/domain';
+import { availableDefectActions, defectApproverRule, defectLabel, encodeId } from '@archova/domain';
 import type { Defect, DefectDetail, DefectEvent } from '@archova/contracts';
 import type { DefectViewer } from '../domain/defect';
 import { actorsFor } from '../domain/defect';
@@ -32,6 +32,10 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   locationPath: r.locationPath,
   assigneeCompanyId: companyOrNull(r.assigneeCompanyId),
   assigneeUserId: userOrNull(r.assigneeUserId),
+  assigneeUserIds: r.assigneeUserIds.map((u) => encodeId('user', u)),
+  managerUserId: userOrNull(r.managerUserId),
+  finalApproverUserId: userOrNull(r.finalApproverUserId),
+  distributionUserIds: r.distributionUserIds.map((u) => encodeId('user', u)),
   dueDate: r.dueDate,
   isOverdue: r.isOverdue,
   raisedByCompanyId: companyOrNull(r.raisedByCompanyId),
@@ -42,7 +46,7 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   source: r.source,
   availableActions: [
     ...new Set(actorsFor(r, viewer).flatMap((a) => availableDefectActions(r.status, a))),
-  ],
+  ].filter((a) => defectApproverRule(r, a, viewer.userId)),
   createdBy: userOrNull(r.createdBy),
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),

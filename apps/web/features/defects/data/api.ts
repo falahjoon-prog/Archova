@@ -92,6 +92,10 @@ export function toDefect(
       : null,
     assigneeCompanyId: d.assigneeCompanyId,
     assigneeUserId: d.assigneeUserId,
+    assigneeUserIds: d.assigneeUserIds,
+    managerUserId: d.managerUserId,
+    finalApproverUserId: d.finalApproverUserId,
+    distributionUserIds: d.distributionUserIds,
     dueDate: d.dueDate,
     raisedBy: personName(members, d.createdBy),
     raisedByCompanyId: d.raisedByCompanyId,
@@ -254,7 +258,18 @@ export function createDefectsApi(orgId: string): DefectsSource {
             ...(input.trade ? { trade: input.trade } : {}),
             ...(input.category ? { category: input.category } : {}),
             ...(input.assigneeCompanyId ? { assigneeCompanyId: input.assigneeCompanyId } : {}),
-            ...(input.assigneeUserId ? { assigneeUserId: input.assigneeUserId } : {}),
+            ...(input.assigneeUserIds.length
+              ? { assigneeUserIds: input.assigneeUserIds }
+              : input.assigneeUserId
+                ? { assigneeUserId: input.assigneeUserId }
+                : {}),
+            ...(input.managerUserId ? { managerUserId: input.managerUserId } : {}),
+            ...(input.finalApproverUserId
+              ? { finalApproverUserId: input.finalApproverUserId }
+              : {}),
+            ...(input.distributionUserIds.length
+              ? { distributionUserIds: input.distributionUserIds }
+              : {}),
             ...(input.dueDate ? { dueDate: input.dueDate } : {}),
             ...(aiSuggestionId ? { aiSuggestionId } : {}),
           },

@@ -32,11 +32,22 @@ const defectId = (p: { defectId: string }) => {
 
 type FieldsBody = Omit<
   DefectFields,
-  'assigneeCompanyId' | 'assigneeUserId' | 'pin' | 'locationId'
+  | 'assigneeCompanyId'
+  | 'assigneeUserId'
+  | 'assigneeUserIds'
+  | 'managerUserId'
+  | 'finalApproverUserId'
+  | 'distributionUserIds'
+  | 'pin'
+  | 'locationId'
 > & {
   locationId?: string | null;
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
+  assigneeUserIds?: string[];
+  managerUserId?: string | null;
+  finalApproverUserId?: string | null;
+  distributionUserIds?: string[];
   pin?: { drawingRevisionId: string; x: number; y: number };
 };
 
@@ -60,6 +71,20 @@ function fields(b: FieldsBody): DefectFields {
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
   if (b.locationId !== undefined)
     out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
+  if (b.assigneeUserIds !== undefined)
+    out.assigneeUserIds = b.assigneeUserIds.map((u, i) => ref('user', u, `assigneeUserIds/${i}`));
+  if (b.managerUserId !== undefined)
+    out.managerUserId =
+      b.managerUserId === null ? null : ref('user', b.managerUserId, 'managerUserId');
+  if (b.finalApproverUserId !== undefined)
+    out.finalApproverUserId =
+      b.finalApproverUserId === null
+        ? null
+        : ref('user', b.finalApproverUserId, 'finalApproverUserId');
+  if (b.distributionUserIds !== undefined)
+    out.distributionUserIds = b.distributionUserIds.map((u, i) =>
+      ref('user', u, `distributionUserIds/${i}`),
+    );
   if (b.pin)
     out.pin = {
       ...b.pin,

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import { MARKUP_VISIBILITIES, type MarkupVisibility, type Point } from '@archova/markup';
@@ -256,6 +257,12 @@ export function DrawingViewerScreen({
 
   return (
     <div className="drawing-viewer">
+      <RecordRecent
+        entityType="drawing_sheet"
+        entityId={s.id}
+        projectId={project.projectId}
+        title={`${s.sheetNumber} ${s.title}`}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link className="link" href={webRoutes.drawings(org.orgSlug, project.projectId)}>
           <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" /> Drawings

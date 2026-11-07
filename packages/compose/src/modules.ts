@@ -51,6 +51,7 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createRecentsModule } from '@archova/mod-recents';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -305,6 +306,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
     access: access.api,
@@ -455,6 +457,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
+    identity: identity.api,
     platform: platform.api,
     access: access.api,
     rfis: rfis.api,
@@ -525,6 +528,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    recents,
     financials,
     quality,
     precon,
@@ -565,6 +569,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    recents,
     financials,
     quality,
     precon,
