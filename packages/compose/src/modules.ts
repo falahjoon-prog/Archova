@@ -397,6 +397,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),

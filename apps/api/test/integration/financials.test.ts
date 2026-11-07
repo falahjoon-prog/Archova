@@ -1045,6 +1045,43 @@ describe('Budget and cost codes', () => {
     );
   });
 
+  it('checks the budget in code and has Nova explain it, without margin ever reaching her', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/ai/budget-reviews', {})).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Secret margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '777777.00', isMargin: true });
+    await post('/budget/lock');
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '10000.00', reason: 'Extra slab' });
+
+    const checks = (await s.pm.browser.get(`${s.base}/budget/review-checks`)).json();
+    expect(checks).toMatchObject({
+      hasBudget: true,
+      status: 'locked',
+      lineCount: 1,
+      totals: { revised: '60000.00' },
+    });
+    expect(checks.findings.map((f: { id: string }) => f.id)).toEqual(['large_change:03-100']);
+    expect(checks.findings[0].lineId).toBe(l1.id);
+
+    const before = t.ai.calls.length;
+    const res = await post('/ai/budget-reviews', { question: 'What should I do?' });
+    expect(res.statusCode, res.body).toBe(200);
+    const d = res.json();
+    expect(d.runId).toMatch(/^air_/);
+    expect(d.disclaimer).toMatch(/not an accountant/);
+    expect(d.history.at(-1).role).toBe('nova');
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'budget.review')!;
+    expect(call.text).toContain('03-100');
+    expect(call.text).not.toMatch(/777777|Secret margin|99-000/);
+
+    expect((await s.sub.browser.get(`${s.base}/budget/review-checks`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
+  });
+
   it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
     const s = await setup('NSW');
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);

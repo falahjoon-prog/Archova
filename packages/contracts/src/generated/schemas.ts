@@ -541,6 +541,59 @@ export const BudgetAdjustmentListSchema = z.object({
 });
 export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
 
+export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
+
+export const BudgetFindingSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["over_committed", "over_spent", "unbudgeted", "near_limit", "large_change"]),
+  "severity": z.enum(["high", "medium"]),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "summary": z.string(),
+  "figures": z.record(z.string(), FinancialsSignedMoneySchema),
+});
+export type BudgetFinding = z.infer<typeof BudgetFindingSchema>;
+
+export const BudgetReviewTurnSchema = z.object({
+  "role": z.enum(["user", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict();
+export type BudgetReviewTurn = z.infer<typeof BudgetReviewTurnSchema>;
+
+export const BudgetReviewAdviceSchema = z.object({
+  "runId": z.string(),
+  "reply": z.string(),
+  "points": z.array(z.object({
+  "findingId": z.string().nullable(),
+  "text": z.string(),
+})),
+  "options": z.array(z.object({
+  "findingId": z.string().nullable(),
+  "kind": z.enum(["adjust_budget", "reallocate", "review_commitment", "check_costs", "raise_variation", "get_forecast", "no_action"]),
+  "text": z.string(),
+})),
+  "draftReason": z.string().nullable(),
+  "notes": z.array(z.string()),
+  "history": z.array(BudgetReviewTurnSchema),
+  "disclaimer": z.string(),
+});
+export type BudgetReviewAdvice = z.infer<typeof BudgetReviewAdviceSchema>;
+
+export const BudgetReviewChecksSchema = z.object({
+  "hasBudget": z.boolean(),
+  "status": z.enum(["draft", "locked"]),
+  "lineCount": z.number().int(),
+  "totals": z.object({
+  "revised": FinancialsSignedMoneySchema,
+  "committed": FinancialsSignedMoneySchema,
+  "actual": FinancialsSignedMoneySchema,
+}),
+  "findings": z.array(BudgetFindingSchema),
+});
+export type BudgetReviewChecks = z.infer<typeof BudgetReviewChecksSchema>;
+
 export const BudgetSnapshotLineSchema = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
   "code": z.string(),
@@ -571,9 +624,6 @@ export const BudgetSnapshotListSchema = z.object({
   "data": z.array(BudgetSnapshotSchema),
 });
 export type BudgetSnapshotList = z.infer<typeof BudgetSnapshotListSchema>;
-
-export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
-export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
 
 export const BudgetVsForecastRowSchema = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),

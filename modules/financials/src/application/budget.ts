@@ -9,6 +9,7 @@ import {
   type BvfDirect,
   type BvfSub,
 } from '../domain/budget-vs-forecast';
+import { budgetFindings } from '../domain/budget-review';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
 import {
   budgetAdjustments,
@@ -541,6 +542,39 @@ export function createBudgetService(
     return visibleSnapshot(scope, projectId, row);
   }
 
+  /**
+   * What Nova and the checks panel work from: the code-found findings and the totals they sit in. Margin never
+   * appears, even for a caller who may see it elsewhere, because it would otherwise reach a prompt and an answer.
+   */
+  async function reviewFacts(scope: TenantScope, projectId: string) {
+    const { budget, lines } = await getBudget(scope, projectId);
+    const shown = lines.filter((l) => !l.line.isMargin);
+    const sum = (pick: (l: BudgetLineRow) => string) =>
+      fromCents(shown.reduce((n, l) => n + signedCents(pick(l.line)), 0));
+    return {
+      hasBudget: budget !== null,
+      status: budget?.status ?? ('draft' as const),
+      lineCount: shown.length,
+      totals: {
+        revised: fromCents(shown.reduce((n, l) => n + signedCents(revisedOf(l.line)), 0)),
+        committed: sum((l) => l.committed),
+        actual: sum((l) => l.actual),
+      },
+      findings: budgetFindings(
+        shown.map((l) => ({
+          id: l.line.id,
+          code: l.code,
+          codeDescription: l.codeDescription,
+          original: l.line.original,
+          approvedChanges: l.line.approvedChanges,
+          committed: l.line.committed,
+          actual: l.line.actual,
+          isMargin: false,
+        })),
+      ),
+    };
+  }
+
   async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.forecast.read', projectId);
     const { budget, lines } = await getBudget(scope, projectId);
@@ -598,6 +632,7 @@ export function createBudgetService(
 
   return {
     budgetVsForecastFor,
+    reviewFacts,
     portfolioSummary,
     listCostCodes,
     createCostCode,
