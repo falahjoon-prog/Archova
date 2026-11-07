@@ -40,6 +40,10 @@ function RootNavigator() {
         />
         <Stack.Screen name="offline" options={{ headerShown: true, title: 'Offline data' }} />
         <Stack.Screen
+          name="delete-account"
+          options={{ headerShown: true, title: 'Delete account' }}
+        />
+        <Stack.Screen
           name="project/[projectId]/diary"
           options={{ headerShown: true, title: 'Site diary' }}
         />

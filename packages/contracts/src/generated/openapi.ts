@@ -1146,6 +1146,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+         * @description Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+         */
+        get: operations["listProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -8485,6 +8508,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Timesheet hours against the production plan for each cost code, with rows flagged where the crew is slower than planned.
+         * @description One row per cost code that has a production plan or booked hours. Timesheet hours come from submitted, approved
+         *     or exported timesheets (break taken off); hours with no cost code are reported as `unallocatedHours`. Earned
+         *     hours are percent complete times budgeted hours. A row is flagged when the actual production rate is below the
+         *     budgeted rate. `divisionId` keeps one top-level code and everything under it; `subJobId` keeps a code and its
+         *     children. Staff only.
+         */
+        get: operations["getLaborProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the production plan for a cost code, or update the quantity in place to date. */
+        put: operations["setCostCodeProduction"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lock": {
         parameters: {
             query?: never;
@@ -8499,6 +8570,48 @@ export interface paths {
         put?: never;
         /** Freeze the original budget. Changes after this are adjustments with a reason. */
         post: operations["lockBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Budget snapshots, newest first. Margin lines are left out without the margin permission. */
+        get: operations["listBudgetSnapshots"];
+        put?: never;
+        /** Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted. */
+        post: operations["createBudgetSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        /** One budget snapshot with its frozen lines. */
+        get: operations["getBudgetSnapshot"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11997,6 +12110,12 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ProjectPhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         DownloadLink: {
             url: string;
             /** Format: date-time */
@@ -14492,6 +14611,59 @@ export interface components {
             unallocated: components["schemas"]["BudgetVsForecastRow"];
             totals: components["schemas"]["BudgetVsForecastRow"];
         };
+        CostCodeProduction: {
+            /** @description Unit of measure, e.g. m2, lm, each. */
+            uom: string;
+            budgetedHours: number;
+            budgetedQuantity: number;
+            quantityComplete: number;
+        };
+        CostCodeProductionSaved: components["schemas"]["CostCodeProduction"] & {
+            costCodeId: string;
+        };
+        LaborProductivityRow: {
+            costCodeId: string;
+            code: string;
+            description: string;
+            divisionId: string;
+            parentId: string | null;
+            uom: string | null;
+            budgetedHours: number | null;
+            timesheetHours: number;
+            /** @description Fraction, 1 = 100%. */
+            pctHoursUsed: number | null;
+            /** @description Fraction, 1 = 100%. */
+            pctComplete: number | null;
+            earnedHours: number | null;
+            budgetedQuantity: number | null;
+            quantityComplete: number | null;
+            /** @description Units per hour the plan allows. */
+            budgetedRate: number | null;
+            /** @description Units per hour achieved; null until hours are booked. */
+            actualRate: number | null;
+            flagged: boolean;
+        };
+        LaborProductivity: {
+            rows: components["schemas"]["LaborProductivityRow"][];
+            totals: {
+                budgetedHours: number;
+                timesheetHours: number;
+                earnedHours: number;
+                pctHoursUsed: number | null;
+                /** @description Earned over booked hours. */
+                efficiency: number | null;
+                flaggedRows: number;
+            };
+            /** @description Timesheet hours with no cost code. */
+            unallocatedHours: number;
+            /** @description Every cost code on the project, for the division and sub-job filters. */
+            codes: {
+                id: string;
+                code: string;
+                description: string;
+                parentId: string | null;
+            }[];
+        };
         BudgetAdjustment: {
             id: string;
             /** @description Signed decimal AUD ex GST. */
@@ -14499,6 +14671,40 @@ export interface components {
             reason: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        BudgetSnapshotLine: {
+            costCodeId: string;
+            code: string;
+            codeDescription: string;
+            description: string;
+            original: components["schemas"]["FinancialsMoney"];
+            /** @description Signed decimal AUD ex GST. */
+            approvedChanges: string;
+            /** @description Signed decimal AUD ex GST. */
+            revised: string;
+            isMargin: boolean;
+        };
+        BudgetSnapshot: {
+            id: string;
+            name: string;
+            note: string | null;
+            /** Format: date-time */
+            takenAt: string;
+            lines: components["schemas"]["BudgetSnapshotLine"][];
+            totals: {
+                original: components["schemas"]["FinancialsMoney"];
+                /** @description Signed decimal AUD ex GST. */
+                approvedChanges: string;
+                /** @description Signed decimal AUD ex GST. */
+                revised: string;
+            };
+        };
+        BudgetSnapshotList: {
+            data: components["schemas"]["BudgetSnapshot"][];
+        };
+        CreateBudgetSnapshotRequest: {
+            name: string;
+            note?: string;
         };
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
@@ -17271,6 +17477,7 @@ export interface components {
         RfiId: string;
         ContractId: string;
         CostCodeId: string;
+        BudgetSnapshotId: string;
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
@@ -19099,6 +19306,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectPhotos: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProjectPhoto"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];
@@ -31221,6 +31456,64 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getLaborProductivity: {
+        parameters: {
+            query?: {
+                divisionId?: string;
+                subJobId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborProductivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setCostCodeProduction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostCodeProduction"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCodeProductionSaved"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     lockBudget: {
         parameters: {
             query?: never;
@@ -31242,6 +31535,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Budget"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBudgetSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshotList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -1009,6 +1009,37 @@ describe('Budget and cost codes', () => {
     });
   });
 
+  it('freezes the budget as a named snapshot that later adjustments do not change', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/budget/snapshots', { name: 'Early' })).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lock');
+    expect((await post('/budget/snapshots', { name: '   ' })).statusCode).toBe(422);
+    const snap = await post('/budget/snapshots', { name: 'Tender', note: 'As approved' });
+    expect(snap.statusCode).toBe(201);
+    const made = snap.json();
+    expect(made).toMatchObject({
+      name: 'Tender',
+      note: 'As approved',
+      totals: { original: '50000.00', approvedChanges: '0.00', revised: '50000.00' },
+    });
+
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '2500.00', reason: 'Extra slab' });
+    const again = (await s.pm.browser.get(`${s.base}/budget/snapshots/${made.id}`)).json();
+    expect(again.totals).toMatchObject({ approvedChanges: '0.00', revised: '50000.00' });
+    expect(again.lines).toHaveLength(1);
+
+    const list = (await s.pm.browser.get(`${s.base}/budget/snapshots`)).json();
+    expect(list.data.map((x: { name: string }) => x.name)).toEqual(['Tender']);
+    expect((await s.sub.browser.get(`${s.base}/budget/snapshots/${made.id}`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/budget/snapshots`, { name: 'x' })).statusCode).toBe(
+      403,
+    );
+  });
+
   it('keeps the budget away from a subcontractor', async () => {
     const s = await setup('QLD');
     await s.pm.browser.post(`${s.base}/budget`);

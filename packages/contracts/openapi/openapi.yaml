@@ -1390,6 +1390,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DownloadLink' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectPhotos
+      tags: [files]
+      x-module: files
+      summary: The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+      description: Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+      parameters:
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 30, default: 12 },
+          }
+      responses:
+        '200':
+          description: Recent photos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProjectPhoto' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/folders:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11590,6 +11619,67 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetVsForecast' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getLaborProductivity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Timesheet hours against the production plan for each cost code, with rows flagged where the crew is slower than planned.
+      description: |
+        One row per cost code that has a production plan or booked hours. Timesheet hours come from submitted, approved
+        or exported timesheets (break taken off); hours with no cost code are reported as `unallocatedHours`. Earned
+        hours are percent complete times budgeted hours. A row is flagged when the actual production rate is below the
+        budgeted rate. `divisionId` keeps one top-level code and everything under it; `subJobId` keeps a code and its
+        children. Staff only.
+      parameters:
+        - {
+            name: divisionId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: subJobId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaborProductivity' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    put:
+      operationId: setCostCodeProduction
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Set the production plan for a cost code, or update the quantity in place to date.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostCodeProduction' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCodeProductionSaved' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11608,6 +11698,61 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBudgetSnapshots
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Budget snapshots, newest first. Margin lines are left out without the margin permission.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshotList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBudgetSnapshotRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetSnapshotId'
+    get:
+      operationId: getBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: One budget snapshot with its frozen lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
     parameters:
@@ -13004,6 +13149,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    BudgetSnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
     BudgetLineId:
       name: lineId
       in: path
@@ -17116,6 +17266,13 @@ components:
         status: { type: string, enum: [scanning, ready, infected, failed] }
         capture: { oneOf: [{ $ref: '#/components/schemas/Capture' }, { type: 'null' }] }
         createdAt: { type: string, format: date-time }
+    ProjectPhoto:
+      type: object
+      required: [file, url, expiresAt]
+      properties:
+        file: { $ref: '#/components/schemas/FileObject' }
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
     DownloadLink:
       type: object
       required: [url, expiresAt]
@@ -21073,6 +21230,97 @@ components:
           items: { $ref: '#/components/schemas/BudgetVsForecastRow' }
         unallocated: { $ref: '#/components/schemas/BudgetVsForecastRow' }
         totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+    CostCodeProduction:
+      type: object
+      required: [uom, budgetedHours, budgetedQuantity, quantityComplete]
+      properties:
+        uom:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 20,
+            description: 'Unit of measure, e.g. m2, lm, each.',
+          }
+        budgetedHours: { type: number, minimum: 0, maximum: 9999999999 }
+        budgetedQuantity: { type: number, minimum: 0, maximum: 999999999999 }
+        quantityComplete: { type: number, minimum: 0, maximum: 999999999999 }
+    CostCodeProductionSaved:
+      allOf:
+        - $ref: '#/components/schemas/CostCodeProduction'
+        - type: object
+          required: [costCodeId]
+          properties:
+            costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    LaborProductivityRow:
+      type: object
+      required:
+        - costCodeId
+        - code
+        - description
+        - divisionId
+        - parentId
+        - uom
+        - budgetedHours
+        - timesheetHours
+        - pctHoursUsed
+        - pctComplete
+        - earnedHours
+        - budgetedQuantity
+        - quantityComplete
+        - budgetedRate
+        - actualRate
+        - flagged
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        divisionId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        uom: { type: [string, 'null'] }
+        budgetedHours: { type: [number, 'null'] }
+        timesheetHours: { type: number }
+        pctHoursUsed: { type: [number, 'null'], description: 'Fraction, 1 = 100%.' }
+        pctComplete: { type: [number, 'null'], description: 'Fraction, 1 = 100%.' }
+        earnedHours: { type: [number, 'null'] }
+        budgetedQuantity: { type: [number, 'null'] }
+        quantityComplete: { type: [number, 'null'] }
+        budgetedRate: { type: [number, 'null'], description: Units per hour the plan allows. }
+        actualRate:
+          {
+            type: [number, 'null'],
+            description: Units per hour achieved; null until hours are booked.,
+          }
+        flagged: { type: boolean }
+    LaborProductivity:
+      type: object
+      required: [rows, totals, unallocatedHours, codes]
+      properties:
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/LaborProductivityRow' }
+        totals:
+          type: object
+          required:
+            [budgetedHours, timesheetHours, earnedHours, pctHoursUsed, efficiency, flaggedRows]
+          properties:
+            budgetedHours: { type: number }
+            timesheetHours: { type: number }
+            earnedHours: { type: number }
+            pctHoursUsed: { type: [number, 'null'] }
+            efficiency: { type: [number, 'null'], description: Earned over booked hours. }
+            flaggedRows: { type: integer }
+        unallocatedHours: { type: number, description: Timesheet hours with no cost code. }
+        codes:
+          type: array
+          description: Every cost code on the project, for the division and sub-job filters.
+          items:
+            type: object
+            required: [id, code, description, parentId]
+            properties:
+              id: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              description: { type: string }
+              parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     BudgetAdjustment:
       type: object
       required: [id, amount, reason, createdAt]
@@ -21086,6 +21334,80 @@ components:
           }
         reason: { type: string }
         createdAt: { type: string, format: date-time }
+    BudgetSnapshotLine:
+      type: object
+      required:
+        [
+          costCodeId,
+          code,
+          codeDescription,
+          description,
+          original,
+          approvedChanges,
+          revised,
+          isMargin,
+        ]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        description: { type: string }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        isMargin: { type: boolean }
+    BudgetSnapshot:
+      type: object
+      required: [id, name, note, takenAt, lines, totals]
+      properties:
+        id: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        note: { type: [string, 'null'] }
+        takenAt: { type: string, format: date-time }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshotLine' }
+        totals:
+          type: object
+          required: [original, approvedChanges, revised]
+          properties:
+            original: { $ref: '#/components/schemas/FinancialsMoney' }
+            approvedChanges:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+            revised:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+    BudgetSnapshotList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshot' }
+    CreateBudgetSnapshotRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        note: { type: string, maxLength: 1000 }
     BudgetAdjustmentList:
       type: object
       required: [data]
