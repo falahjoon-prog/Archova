@@ -37,6 +37,17 @@ export {
   type DrawingCanvasProps,
 } from './patterns/DrawingCanvas';
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
+export {
+  DonutChart,
+  GroupedBars,
+  SiteMap,
+  ToneBars,
+  type BarGroup,
+  type BarSeries,
+  type DonutSlice,
+  type MapPoint,
+  type TonedBar,
+} from './patterns/Charts';
 export { StatGrid, type StatItem, type StatTone } from './patterns/StatGrid';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState';
 export { FilterBar } from './patterns/FilterBar';

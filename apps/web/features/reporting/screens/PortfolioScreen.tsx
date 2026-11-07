@@ -11,6 +11,7 @@ import {
   SkeletonRows,
   StatGrid,
   StatusPill,
+  Tabs,
   type DataTableColumn,
 } from '@archova/ui';
 import { HomeIcon } from '@archova/ui/icons';
@@ -18,6 +19,8 @@ import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { formatMoney } from '@/shared/lib/format';
+import { StatusReport } from '../components/StatusReport';
+import { PortfolioCharts } from '../components/PortfolioCharts';
 import { usePortfolio } from '../hooks/useReporting';
 import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
@@ -68,6 +71,7 @@ function BudgetCell({ budget }: { budget: PortfolioBudget }) {
 export function PortfolioScreen() {
   const org = useCurrentOrg();
   const [includeClosed, setIncludeClosed] = useState(false);
+  const [view, setView] = useState('overview');
   const portfolio = usePortfolio(includeClosed);
   const data = portfolio.data;
 
@@ -149,73 +153,105 @@ export function PortfolioScreen() {
         description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
-      {data ? (
-        <StatGrid
-          items={[
-            { label: 'Projects', value: data.totals.projects },
-            stat('RFIs open', data.totals.rfisOpen, data.totals.rfisOverdue, 'overdue'),
-            stat('Defects open', data.totals.defectsOpen, data.totals.defectsOverdue, 'overdue'),
-            stat(
-              'Submittals with reviewers',
-              data.totals.submittalsOpen,
-              data.totals.submittalsOverdue,
-              'overdue',
-            ),
-            stat('Claims unpaid', data.totals.claimsOpen, data.totals.claimsOverdue, 'overdue'),
-            { label: 'Variations to decide', value: data.totals.variationsOpen },
-            stat(
-              'Incidents open',
-              data.totals.incidentsOpen,
-              data.totals.incidentsOverdue,
-              'to notify',
-            ),
-            stat(
-              'Programme activities open',
-              data.totals.programmeOpen,
-              data.totals.programmeOverdue,
-              'late',
-            ),
-            ...(data.totals.budgetProjects > 0
-              ? [
-                  {
-                    label: 'Forecast vs budget',
-                    value: aud(data.totals.budgetVariance.replace('-', '')),
-                    tone: data.totals.projectsOverBudget > 0 ? ('danger' as const) : undefined,
-                    hint: `${data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'} across ${data.totals.budgetProjects} ${data.totals.budgetProjects === 1 ? 'project' : 'projects'} (${data.totals.projectsOverBudget} over budget)`,
-                  },
-                ]
-              : []),
-          ]}
-        />
-      ) : null}
-      {data?.truncated ? (
-        <Alert tone="info" title="Showing the first 200 projects">
-          Close out finished projects to bring the rest into view.
-        </Alert>
-      ) : null}
-      <Checkbox
-        label="Include closed and archived projects"
-        checked={includeClosed}
-        onChange={(e) => setIncludeClosed(e.target.checked)}
-      />
-      {portfolio.isPending ? (
-        <SkeletonRows label="Loading the portfolio…" />
-      ) : (
-        <DataTable
-          caption="Projects with open and overdue items"
-          columns={columns}
-          rows={data?.projects ?? []}
-          getRowId={(r) => r.id}
-          defaultSort={{ columnId: 'attention', direction: 'desc' }}
-          empty={
-            <EmptyState
-              icon={HomeIcon}
-              title="No projects yet"
-              description="Projects you can see appear here with their open and overdue items."
+      <Tabs
+        label="Portfolio views"
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'status', label: 'Status report' },
+        ]}
+        value={view}
+        onValueChange={setView}
+      >
+        {view === 'status' ? (
+          data ? (
+            <StatusReport portfolio={data} />
+          ) : (
+            <SkeletonRows label="Loading the status report…" />
+          )
+        ) : (
+          <div className="stack-lg">
+            {data ? (
+              <StatGrid
+                items={[
+                  { label: 'Projects', value: data.totals.projects },
+                  stat('RFIs open', data.totals.rfisOpen, data.totals.rfisOverdue, 'overdue'),
+                  stat(
+                    'Defects open',
+                    data.totals.defectsOpen,
+                    data.totals.defectsOverdue,
+                    'overdue',
+                  ),
+                  stat(
+                    'Submittals with reviewers',
+                    data.totals.submittalsOpen,
+                    data.totals.submittalsOverdue,
+                    'overdue',
+                  ),
+                  stat(
+                    'Claims unpaid',
+                    data.totals.claimsOpen,
+                    data.totals.claimsOverdue,
+                    'overdue',
+                  ),
+                  { label: 'Variations to decide', value: data.totals.variationsOpen },
+                  stat(
+                    'Incidents open',
+                    data.totals.incidentsOpen,
+                    data.totals.incidentsOverdue,
+                    'to notify',
+                  ),
+                  stat(
+                    'Programme activities open',
+                    data.totals.programmeOpen,
+                    data.totals.programmeOverdue,
+                    'late',
+                  ),
+                  ...(data.totals.budgetProjects > 0
+                    ? [
+                        {
+                          label: 'Forecast vs budget',
+                          value: aud(data.totals.budgetVariance.replace('-', '')),
+                          tone:
+                            data.totals.projectsOverBudget > 0 ? ('danger' as const) : undefined,
+                          hint: `${data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'} across ${data.totals.budgetProjects} ${data.totals.budgetProjects === 1 ? 'project' : 'projects'} (${data.totals.projectsOverBudget} over budget)`,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            ) : null}
+            {data ? <PortfolioCharts portfolio={data} orgSlug={org.orgSlug} /> : null}
+            {data?.truncated ? (
+              <Alert tone="info" title="Showing the first 200 projects">
+                Close out finished projects to bring the rest into view.
+              </Alert>
+            ) : null}
+            <Checkbox
+              label="Include closed and archived projects"
+              checked={includeClosed}
+              onChange={(e) => setIncludeClosed(e.target.checked)}
             />
-          }
-        />
-      )}
+            {portfolio.isPending ? (
+              <SkeletonRows label="Loading the portfolio…" />
+            ) : (
+              <DataTable
+                caption="Projects with open and overdue items"
+                columns={columns}
+                rows={data?.projects ?? []}
+                getRowId={(r) => r.id}
+                defaultSort={{ columnId: 'attention', direction: 'desc' }}
+                empty={
+                  <EmptyState
+                    icon={HomeIcon}
+                    title="No projects yet"
+                    description="Projects you can see appear here with their open and overdue items."
+                  />
+                }
+              />
+            )}
+          </div>
+        )}
+      </Tabs>
     </div>
   );
 }

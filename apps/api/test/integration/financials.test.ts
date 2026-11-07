@@ -1001,12 +1001,129 @@ describe('Budget and cost codes', () => {
     const history = (await s.pm.browser.get(`${s.base}/budget/lines/${l1.id}/adjustments`)).json();
     expect(history.data.map((a: { amount: string }) => a.amount)).toEqual(['2500.75', '-500.00']);
 
+    // The project-wide list carries the cost code, newest first.
+    const all = (await s.pm.browser.get(`${s.base}/budget/adjustments`)).json();
+    expect(all.data.map((a: { amount: string }) => a.amount)).toEqual(['-500.00', '2500.75']);
+    expect(all.data[0]).toMatchObject({ lineId: l1.id, code: expect.any(String) });
+
     const after = (await s.pm.browser.get(`${s.base}/budget`)).json();
     expect(after.totals).toMatchObject({
       original: '59000.00',
       approvedChanges: '2000.75',
       revised: '61000.75',
     });
+  });
+
+  it('freezes the budget as a named snapshot that later adjustments do not change', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/budget/snapshots', { name: 'Early' })).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lock');
+    expect((await post('/budget/snapshots', { name: '   ' })).statusCode).toBe(422);
+    const snap = await post('/budget/snapshots', { name: 'Tender', note: 'As approved' });
+    expect(snap.statusCode).toBe(201);
+    const made = snap.json();
+    expect(made).toMatchObject({
+      name: 'Tender',
+      note: 'As approved',
+      totals: { original: '50000.00', approvedChanges: '0.00', revised: '50000.00' },
+    });
+
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '2500.00', reason: 'Extra slab' });
+    const again = (await s.pm.browser.get(`${s.base}/budget/snapshots/${made.id}`)).json();
+    expect(again.totals).toMatchObject({ approvedChanges: '0.00', revised: '50000.00' });
+    expect(again.lines).toHaveLength(1);
+
+    const list = (await s.pm.browser.get(`${s.base}/budget/snapshots`)).json();
+    expect(list.data.map((x: { name: string }) => x.name)).toEqual(['Tender']);
+    expect((await s.sub.browser.get(`${s.base}/budget/snapshots/${made.id}`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/budget/snapshots`, { name: 'x' })).statusCode).toBe(
+      403,
+    );
+  });
+
+  it('checks the budget in code and has Nova explain it, without margin ever reaching her', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/ai/budget-reviews', {})).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Secret margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '777777.00', isMargin: true });
+    await post('/budget/lock');
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '10000.00', reason: 'Extra slab' });
+
+    const checks = (await s.pm.browser.get(`${s.base}/budget/review-checks`)).json();
+    expect(checks).toMatchObject({
+      hasBudget: true,
+      status: 'locked',
+      lineCount: 1,
+      totals: { revised: '60000.00' },
+    });
+    expect(checks.findings.map((f: { id: string }) => f.id)).toEqual(['large_change:03-100']);
+    expect(checks.findings[0].lineId).toBe(l1.id);
+
+    const before = t.ai.calls.length;
+    const res = await post('/ai/budget-reviews', { question: 'What should I do?' });
+    expect(res.statusCode, res.body).toBe(200);
+    const d = res.json();
+    expect(d.runId).toMatch(/^air_/);
+    expect(d.disclaimer).toMatch(/not an accountant/);
+    expect(d.history.at(-1).role).toBe('nova');
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'budget.review')!;
+    expect(call.text).toContain('03-100');
+    expect(call.text).not.toMatch(/777777|Secret margin|99-000/);
+
+    expect((await s.sub.browser.get(`${s.base}/budget/review-checks`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
+  });
+
+  it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const rows = [
+      { code: '03-100', codeDescription: 'Concrete', original: '50000.00' },
+      { code: '09-200', codeDescription: 'Painting', original: '8000.50', description: 'Internal' },
+    ];
+    expect((await post('/budget/lines/import', { rows })).statusCode).toBe(404);
+    await post('/budget');
+    await post('/cost-codes', { code: '05-000', description: 'Steel' });
+
+    // One bad row stops the lot, and every problem is listed.
+    const bad = await post('/budget/lines/import', {
+      rows: [
+        rows[0],
+        { code: '11-000', original: '10.00' },
+        { code: '03-100', codeDescription: 'Again', original: '1.00' },
+        { code: '12-000', codeDescription: 'Doors', original: 'abc' },
+      ],
+    });
+    expect(bad.statusCode).toBe(422);
+    expect(bad.json().errors.map((e: { path: string }) => e.path)).toEqual([
+      'rows[1].codeDescription',
+      'rows[2].code',
+      'rows[3].original',
+    ]);
+    expect((await s.pm.browser.get(`${s.base}/budget`)).json().lines).toHaveLength(0);
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(1);
+
+    const ok = await post('/budget/lines/import', {
+      rows: [...rows, { code: '05-000', original: '1000.00', isMargin: true }],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ imported: 3, totals: { original: '59000.50' } });
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(3);
+    // Importing the same codes again is refused: each already has a line.
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(422);
+    await post('/budget/lock');
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(409);
+    expect((await s.sub.browser.post(`${s.base}/budget/lines/import`, { rows })).statusCode).toBe(
+      403,
+    );
   });
 
   it('keeps the budget away from a subcontractor', async () => {

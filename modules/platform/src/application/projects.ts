@@ -121,6 +121,7 @@ export function createProjectService(access: AccessService) {
           name: input.name.trim(),
           number: input.number ?? null,
           status: input.status ?? 'active',
+          phase: input.phase ?? null,
           state: input.state ?? null,
           timezone: await projectTimeZone(scope, input, org.timezone),
           address: input.address ?? null,
@@ -194,6 +195,7 @@ export function createProjectService(access: AccessService) {
     if (patch.name !== undefined) values.name = patch.name.trim();
     if (patch.number !== undefined) values.number = patch.number;
     if (patch.status !== undefined) values.status = patch.status;
+    if (patch.phase !== undefined) values.phase = patch.phase;
     if (patch.state !== undefined) values.state = patch.state;
     if (patch.timezone !== undefined)
       values.timezone = await projectTimeZone(

@@ -40,6 +40,7 @@ export {
   RefreshCw,
   RotateCcw,
   Ruler,
+  Star,
   Save,
   Search,
   Building2,

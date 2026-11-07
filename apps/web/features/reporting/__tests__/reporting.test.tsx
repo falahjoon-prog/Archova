@@ -25,18 +25,21 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   name,
   number: null,
   status: 'active',
+  phase: null,
+  siteLocation: null,
   rfis: tool(0, 0),
   defects: tool(0, 0),
   submittals: tool(0, 0),
   claims: tool(0, 0),
   variations: tool(0, 0),
   incidents: tool(0, 0),
-  programme: tool(0, 0),
+  programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
   budget: {
     restricted: true,
     hasBudget: false,
     revised: '0.00',
     forecastFinal: '0.00',
+    spent: '0.00',
     variance: '0.00',
     overBudgetCodes: 0,
   },
@@ -78,6 +81,8 @@ describe('PortfolioScreen', () => {
       },
       projects: [
         project('prj_a', 'Alpha Tower', {
+          phase: 'construction',
+          siteLocation: { lat: -33.87, lng: 151.21 },
           rfis: tool(5, 2),
           attention: 2,
           budget: {
@@ -85,6 +90,7 @@ describe('PortfolioScreen', () => {
             hasBudget: true,
             revised: '100000.00',
             forecastFinal: '112500.00',
+            spent: '40000.00',
             variance: '-12500.00',
             overBudgetCodes: 2,
           },
@@ -137,6 +143,131 @@ describe('PortfolioScreen', () => {
     await screen.findByText('No projects yet');
     const last = fake.callsTo('GET', PORTFOLIO).at(-1)!;
     expect(last.init.params?.query).toMatchObject({ includeClosed: 'true' });
+  });
+});
+
+describe('PortfolioScreen charts', () => {
+  it('draws the phase ring, a site pin and budget bars from the portfolio', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        projects: 2,
+        rfisOpen: 0,
+        rfisOverdue: 0,
+        defectsOpen: 0,
+        defectsOverdue: 0,
+        submittalsOpen: 0,
+        submittalsOverdue: 0,
+        claimsOpen: 0,
+        claimsOverdue: 0,
+        variationsOpen: 0,
+        variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 1,
+        projectsOverBudget: 0,
+        budgetRevised: '100000.00',
+        budgetForecastFinal: '90000.00',
+        budgetVariance: '10000.00',
+      },
+      projects: [
+        project('prj_a', 'Alpha Tower', {
+          phase: 'construction',
+          siteLocation: { lat: -33.87, lng: 151.21 },
+          budget: {
+            restricted: false,
+            hasBudget: true,
+            revised: '100000.00',
+            forecastFinal: '90000.00',
+            spent: '40000.00',
+            variance: '10000.00',
+            overBudgetCodes: 0,
+          },
+        }),
+        project('prj_b', 'Bravo Lofts'),
+      ],
+      truncated: false,
+    }));
+    renderInProject(<PortfolioScreen />);
+    expect(await screen.findByText('Projects by phase')).toBeTruthy();
+    expect(screen.getByText('Construction')).toBeTruthy();
+    expect(screen.getByText('Phase not set')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Map of project site locations' })).toBeTruthy();
+    expect(screen.getByText('1 project has no site location set.')).toBeTruthy();
+    expect(screen.getByText('Spent so far')).toBeTruthy();
+  });
+});
+
+describe('Status report', () => {
+  const budget = (revised: string, forecast: string, variance: string) => ({
+    restricted: false,
+    hasBudget: true,
+    revised,
+    forecastFinal: forecast,
+    spent: '1000.00',
+    variance,
+    overBudgetCodes: 0,
+  });
+  const programme = (late: number, lateDays: number) => ({
+    restricted: false,
+    open: 10,
+    overdue: late,
+    notStarted: 4,
+    completed: 5,
+    lateDays,
+  });
+  it('rolls up cost, places projects by budget and schedule, and filters to one project', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        projects: 3,
+        rfisOpen: 0,
+        rfisOverdue: 0,
+        defectsOpen: 0,
+        defectsOverdue: 0,
+        submittalsOpen: 0,
+        submittalsOverdue: 0,
+        claimsOpen: 0,
+        claimsOverdue: 0,
+        variationsOpen: 0,
+        variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 2,
+        projectsOverBudget: 1,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [
+        project('prj_a', 'Alpha Tower', {
+          budget: budget('100000.00', '90000.00', '10000.00'),
+          programme: programme(0, 0),
+        }),
+        project('prj_b', 'Bravo Lofts', {
+          budget: budget('100000.00', '120000.00', '-20000.00'),
+          programme: programme(2, 9),
+        }),
+        project('prj_c', 'Cedar Court'),
+      ],
+      truncated: false,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PortfolioScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Status report' }));
+    expect(await screen.findByText('Projected over/under')).toBeTruthy();
+    expect(screen.getByText('over budget')).toBeTruthy(); // 200,000 budget vs 210,000 forecast
+    expect(screen.getByText('Forecast as % of budget')).toBeTruthy();
+    expect(screen.getByText('105%')).toBeTruthy();
+    const bars = screen.getByRole('list', { name: 'Projects by budget and schedule status' });
+    expect(within(bars).getByText('Over budget, off schedule').nextSibling).toBeTruthy();
+    expect(within(bars).getByText('Not enough data')).toBeTruthy();
+    expect(screen.getByText('4.5')).toBeTruthy(); // 9 days over 2 late tasks
+    await user.selectOptions(screen.getByLabelText('Project'), 'prj_a');
+    expect(screen.getByText('under budget')).toBeTruthy();
+    expect(screen.getByText('90%')).toBeTruthy();
   });
 });
 

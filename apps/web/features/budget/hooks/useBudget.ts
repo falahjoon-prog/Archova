@@ -8,7 +8,10 @@ import {
   createBudgetApi,
   type AddBudgetLine,
   type AdjustBudgetLine,
+  type BudgetReviewTurn,
+  type CostCodeProduction,
   type CreateCostCode,
+  type ImportBudgetLinesRequest,
   type RecordDirectCost,
   type UpdateBudgetLine,
   type UpdateCostCode,
@@ -34,6 +37,52 @@ export function useCostCodes(projectId: string) {
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costCodes: true }),
     queryFn: () => source.costCodes(projectId),
+  });
+}
+
+export function useSnapshots(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { snapshots: true }),
+    queryFn: () => source.snapshots(projectId),
+  });
+}
+
+export function useCreateSnapshot(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useReviewChecks(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { reviewChecks: true }),
+    queryFn: () => source.reviewChecks(projectId),
+  });
+}
+
+/** Ask Nova about the budget. Nothing is saved, so there is nothing to refresh afterwards. */
+export function useAskNovaBudget(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (body: { question: string; history: BudgetReviewTurn[] }) =>
+      source.askNova(projectId, body),
+  });
+}
+
+export function useProjectAdjustments(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { projectAdjustments: true }),
+    queryFn: () => source.projectAdjustments(projectId),
   });
 }
 
@@ -90,6 +139,10 @@ export function useBudgetMutations(projectId: string) {
       mutationFn: () => source.createBudget(projectId),
       onSuccess: refresh,
     }),
+    importLines: useMutation({
+      mutationFn: (body: ImportBudgetLinesRequest) => source.importLines(projectId, body),
+      onSuccess: refresh,
+    }),
     lock: useMutation({ mutationFn: () => source.lock(projectId), onSuccess: refresh }),
     addLine: useMutation({
       mutationFn: (body: AddBudgetLine) => source.addLine(projectId, body),
@@ -119,4 +172,28 @@ export function useBudgetMutations(projectId: string) {
       onSuccess: refresh,
     }),
   };
+}
+
+export function useLaborProductivity(
+  projectId: string,
+  filter: { divisionId?: string; subJobId?: string },
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { productivity: filter }),
+    queryFn: () => source.laborProductivity(projectId, filter),
+  });
+}
+
+/** Saving a plan or the quantity in place refreshes the report. */
+export function useSetProduction(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; body: CostCodeProduction }) =>
+      source.setProduction(projectId, v.costCodeId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
 }

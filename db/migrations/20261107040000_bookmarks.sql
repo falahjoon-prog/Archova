@@ -1,4 +1,4 @@
--- Composed from modules/bookmarks/db/migrations/20261106230000_bookmarks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/bookmarks/db/migrations/20261107040000_bookmarks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- bookmarks: a person's saved shortcuts to records (RFIs, drawings, submittals, ...). Private to the person who
 -- saved them. The target is a polymorphic reference (`entity_type` + `entity_id`) with no foreign key, because the
 -- record lives in another module; `title` and `subtitle` are what the person saw when they saved it.

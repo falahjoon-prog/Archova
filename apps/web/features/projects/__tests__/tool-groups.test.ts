@@ -74,4 +74,15 @@ describe('projectToolGroups', () => {
       ['Estimating', ['Tender packages', 'Estimates', 'Cost library']],
     ]);
   });
+
+  it('adds a quick-add link only where the caller can create', () => {
+    const items = projectToolGroups('acme', 'prj_1', {
+      orgRole: null,
+      toolLevels: { documents: 'read', defects: 'standard', rfis: 'read' },
+    }).flatMap((g) => g.items);
+    const href = (label: string) => items.find((i) => i.label === label)?.createHref;
+    expect(href('Defects')).toBe('/acme/projects/prj_1/defects/new');
+    expect(href('RFIs')).toBeUndefined();
+    expect(href('Transmittals')).toBeUndefined();
+  });
 });
