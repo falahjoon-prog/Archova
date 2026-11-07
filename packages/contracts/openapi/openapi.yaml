@@ -11889,6 +11889,129 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CostCodeProductionSaved' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/production/report:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProductionReport
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Production items with progress, the planned-against-installed curve per unit, trade and location rollups, and Nova's rate-drop flags.
+      description: |
+        Each item is a custom production unit the project defined (such as panels installed or LF of conduit) with a
+        planned quantity over a planned window. The curve is cumulative by week, one per unit of measure. Nova's flags
+        are rule-based, with no model call: a trade or named crew is flagged when its units per working day over the
+        last 7 days fall more than 20% below its average over the 28 days before, once that baseline has at least 5
+        days of quantity.
+      parameters:
+        - { name: trade, in: query, required: false, schema: { type: string, maxLength: 60 } }
+        - { name: location, in: query, required: false, schema: { type: string, maxLength: 80 } }
+        - { name: includeArchived, in: query, required: false, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductionReport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/production/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createProductionItem
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: 'Define a production item, a custom unit with a planned quantity over a planned window, optionally by trade and location.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProductionItemRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductionItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ProductionItemId'
+    patch:
+      operationId: updateProductionItem
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Change a production item's name, unit, trade, location, plan or archive it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProductionItemRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductionItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ProductionItemId'
+    get:
+      operationId: listProductionEntries
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The latest 100 quantity entries for a production item, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductionEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logProductionEntry
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.production.log
+      summary: Log quantity installed for a day, optionally for a named crew. A negative entry corrects and needs a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogProductionEntryRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entry, quantityInstalled]
+                properties:
+                  entry: { $ref: '#/components/schemas/ProductionEntry' }
+                  quantityInstalled: { type: number }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13443,6 +13566,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    ProductionItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pit_[0-9A-Za-z]{26}$' }
     BudgetSnapshotId:
       name: snapshotId
       in: path
@@ -21662,6 +21790,133 @@ components:
         quantity: { type: number }
         note: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    ProductionItem:
+      type: object
+      required:
+        [id, name, uom, trade, location, plannedQuantity, plannedStart, plannedFinish, archived]
+      properties:
+        id: { type: string, pattern: '^pit_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        uom: { type: string }
+        trade: { type: [string, 'null'] }
+        location: { type: [string, 'null'] }
+        plannedQuantity: { type: number }
+        plannedStart: { type: string, format: date }
+        plannedFinish: { type: string, format: date }
+        archived: { type: boolean }
+    CreateProductionItemRequest:
+      type: object
+      required: [name, uom, plannedQuantity, plannedStart, plannedFinish]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        uom: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: [string, 'null'], maxLength: 60 }
+        location: { type: [string, 'null'], maxLength: 80 }
+        plannedQuantity: { type: number, exclusiveMinimum: 0, maximum: 999999999999 }
+        plannedStart: { type: string, format: date }
+        plannedFinish: { type: string, format: date }
+    UpdateProductionItemRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        uom: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: [string, 'null'], maxLength: 60 }
+        location: { type: [string, 'null'], maxLength: 80 }
+        plannedQuantity: { type: number, exclusiveMinimum: 0, maximum: 999999999999 }
+        plannedStart: { type: string, format: date }
+        plannedFinish: { type: string, format: date }
+        archived: { type: boolean }
+    ProductionEntry:
+      type: object
+      required: [id, loggedOn, quantity, crew, note, createdAt]
+      properties:
+        id: { type: string, pattern: '^pen_[0-9A-Za-z]{26}$' }
+        loggedOn: { type: string, format: date }
+        quantity: { type: number }
+        crew: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    LogProductionEntryRequest:
+      type: object
+      required: [loggedOn, quantity]
+      properties:
+        loggedOn: { type: string, format: date }
+        quantity: { type: number, minimum: -999999999999, maximum: 999999999999 }
+        crew: { type: [string, 'null'], maxLength: 60 }
+        note: { type: [string, 'null'], maxLength: 300 }
+    ProductionItemRow:
+      type: object
+      required: [item, actual, pctComplete, plannedToDate, variance, status]
+      properties:
+        item: { $ref: '#/components/schemas/ProductionItem' }
+        actual: { type: number }
+        pctComplete: { type: number, description: 'Installed over planned, 0..n.' }
+        plannedToDate:
+          { type: number, description: 'Planned quantity that should be in place today.' }
+        variance:
+          { type: number, description: 'Installed minus planned to date; negative is behind.' }
+        status: { type: string, enum: [not_started, on_track, behind, complete] }
+    ProductionCurvePoint:
+      type: object
+      required: [date, planned, actual]
+      properties:
+        date:
+          {
+            type: string,
+            format: date,
+            description: 'End of the week; the last point is the end date or today.',
+          }
+        planned: { type: number }
+        actual: { type: [number, 'null'], description: 'Cumulative installed; null after today.' }
+    ProductionCurve:
+      type: object
+      required: [uom, points]
+      properties:
+        uom: { type: string }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionCurvePoint' }
+    ProductionRollup:
+      type: object
+      required: [name, uom, planned, actual]
+      properties:
+        name:
+          { type: [string, 'null'], description: 'Null for items with no trade or location set.' }
+        uom: { type: string }
+        planned: { type: number }
+        actual: { type: number }
+    ProductionRateFlag:
+      type: object
+      required: [kind, name, uom, recentRate, baselineRate, dropPct]
+      properties:
+        kind: { type: string, enum: [trade, crew] }
+        name: { type: string }
+        uom: { type: string }
+        recentRate: { type: number, description: 'Units per working day over the last 7 days.' }
+        baselineRate:
+          { type: number, description: 'Units per working day over the 28 days before that.' }
+        dropPct: { type: number, description: 'Fall from the baseline, 0..1.' }
+    ProductionReport:
+      type: object
+      required: [asOf, items, curves, byTrade, byLocation, flags]
+      properties:
+        asOf: { type: string, format: date, description: "Today in the project's time zone." }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionItemRow' }
+        curves:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionCurve' }
+        byTrade:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionRollup' }
+        byLocation:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionRollup' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/ProductionRateFlag' }
     LogQuantityRequest:
       type: object
       required: [loggedOn, quantity]

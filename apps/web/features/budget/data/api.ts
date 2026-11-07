@@ -34,6 +34,14 @@ export type LogQuantity = S['LogQuantityRequest'];
 export type LaborTurn = S['LaborTurn'];
 export type LaborExplanation = S['LaborProductivityExplanation'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
+export type ProductionReport = S['ProductionReport'];
+export type ProductionItem = S['ProductionItem'];
+export type ProductionItemRow = S['ProductionItemRow'];
+export type ProductionCurve = S['ProductionCurve'];
+export type ProductionRateFlag = S['ProductionRateFlag'];
+export type CreateProductionItem = S['CreateProductionItemRequest'];
+export type LogProductionEntry = S['LogProductionEntryRequest'];
+export type ProductionEntry = S['ProductionEntry'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -185,6 +193,39 @@ export function createBudgetApi(orgId: string) {
       return unwrap(
         await api.POST(`${P}/ai/labor-productivity`, {
           params: { path: { orgId, projectId } },
+          body,
+        }),
+      );
+    },
+    async productionReport(
+      projectId: string,
+      filter: { trade?: string; location?: string },
+    ): Promise<ProductionReport> {
+      return unwrap(
+        await api.GET(`${P}/production/report`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async createProductionItem(projectId: string, body: CreateProductionItem) {
+      return unwrap(
+        await api.POST(`${P}/production/items`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async productionEntries(projectId: string, itemId: string): Promise<ProductionEntry[]> {
+      return unwrap(
+        await api.GET(`${P}/production/items/{itemId}/entries`, {
+          params: { path: { orgId, projectId, itemId } },
+        }),
+      ).data;
+    },
+    async logProductionEntry(projectId: string, itemId: string, body: LogProductionEntry) {
+      return unwrap(
+        await api.POST(`${P}/production/items/{itemId}/entries`, {
+          params: { path: { orgId, projectId, itemId }, header: idempotencyKey() },
           body,
         }),
       );

@@ -4,7 +4,9 @@ import { financialsRoutes } from './api/routes';
 import { directCostRoutes } from './api/directCostRoutes';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
+import { createProductionService } from './application/production';
 import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
@@ -30,6 +32,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const productivity = createProductivityService({
     access: deps.access,
     timesheetMinutes: deps.timesheetMinutes,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const production = createProductionService({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
@@ -59,6 +66,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
       ...productivityRoutes(services.database, productivity),
+      ...productionRoutes(services.database, production),
     },
     api: {
       ledgerSource: service.ledgerSource,

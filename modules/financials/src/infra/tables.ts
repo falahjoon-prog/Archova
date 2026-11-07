@@ -524,3 +524,34 @@ export const productionLog = financialsSchema.table('production_log', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
+
+export const productionItems = financialsSchema.table('production_items', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  uom: text('uom').notNull(),
+  trade: text('trade'),
+  location: text('location'),
+  plannedQuantity: numeric('planned_quantity', { precision: 14, scale: 2 }).notNull(),
+  plannedStart: date('planned_start').notNull(),
+  plannedFinish: date('planned_finish').notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const productionEntries = financialsSchema.table('production_entries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  loggedOn: date('logged_on').notNull(),
+  quantity: numeric('quantity', { precision: 14, scale: 2 }).notNull(),
+  crew: text('crew'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

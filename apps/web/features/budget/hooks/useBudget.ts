@@ -12,6 +12,8 @@ import {
   type CostCodeProduction,
   type CreateCostCode,
   type CostReportColumn,
+  type CreateProductionItem,
+  type LogProductionEntry,
   type ImportBudgetLinesRequest,
   type LaborTurn,
   type LogQuantity,
@@ -240,6 +242,49 @@ export function useLogQuantity(projectId: string) {
   return useMutation({
     mutationFn: (v: { costCodeId: string; body: LogQuantity }) =>
       source.logQuantity(projectId, v.costCodeId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useProductionReport(
+  projectId: string,
+  filter: { trade?: string; location?: string },
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { production: filter }),
+    queryFn: () => source.productionReport(projectId, filter),
+  });
+}
+
+export function useCreateProductionItem(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateProductionItem) => source.createProductionItem(projectId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useProductionEntries(projectId: string, itemId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { productionEntries: itemId }),
+    queryFn: () => source.productionEntries(projectId, itemId),
+  });
+}
+
+/** Logging quantity moves the item's total, the curve and the rate flags, so the whole report refreshes. */
+export function useLogProductionEntry(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { itemId: string; body: LogProductionEntry }) =>
+      source.logProductionEntry(projectId, v.itemId, v.body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
   });
 }

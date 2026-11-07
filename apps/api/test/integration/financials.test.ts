@@ -1803,3 +1803,87 @@ describe('Labor productivity', () => {
     ).toBe(403);
   });
 });
+
+describe('Production tracking', () => {
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+
+  it('defines custom production items, logs quantity by crew, reports the curve and flags a rate drop', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const created = await post('production/items', {
+      name: 'Panels installed',
+      uom: 'panels',
+      trade: 'Solar',
+      location: 'Block A',
+      plannedQuantity: 1000,
+      plannedStart: day(-40),
+      plannedFinish: day(20),
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const item = created.json();
+    expect(item).toMatchObject({ uom: 'panels', trade: 'Solar', archived: false });
+
+    // Bad plans are refused.
+    expect(
+      (await post('production/items', { ...item, id: undefined, plannedFinish: day(-50) }))
+        .statusCode,
+    ).toBe(422);
+
+    // 20 weekdays of steady work in the baseline window, then a slow last week.
+    const entries = `production/items/${item.id}/entries`;
+    for (let o = -34; o <= -7; o++) {
+      const dow = new Date(day(o)).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      const r = await post(entries, { loggedOn: day(o), quantity: 10, crew: 'Crew 1' });
+      expect(r.statusCode, r.body).toBe(201);
+    }
+    for (let o = -6; o <= 0; o++) {
+      const dow = new Date(day(o)).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      await post(entries, { loggedOn: day(o), quantity: 3, crew: 'Crew 1' });
+    }
+
+    // Corrections need a note, the total cannot go below zero, and the future is closed.
+    expect((await post(entries, { loggedOn: day(0), quantity: -1 })).statusCode).toBe(422);
+    expect(
+      (await post(entries, { loggedOn: day(0), quantity: -99999, note: 'x' })).statusCode,
+    ).toBe(422);
+    expect((await post(entries, { loggedOn: day(5), quantity: 1 })).statusCode).toBe(422);
+    const fix = await post(entries, { loggedOn: day(0), quantity: -1, note: 'Double counted' });
+    expect(fix.statusCode, fix.body).toBe(201);
+    expect((await get(entries)).json().data[0]).toMatchObject({ quantity: -1, crew: null });
+
+    const rep = (await get('production/report')).json();
+    expect(rep.items).toHaveLength(1);
+    expect(rep.items[0]).toMatchObject({ status: 'behind' });
+    expect(rep.curves).toHaveLength(1);
+    expect(rep.curves[0].uom).toBe('panels');
+    expect(rep.byTrade).toEqual([
+      { name: 'Solar', uom: 'panels', planned: 1000, actual: rep.items[0].actual },
+    ]);
+    expect(rep.byLocation[0].name).toBe('Block A');
+    expect(
+      rep.flags.map((f: { kind: string; name: string }) => `${f.kind}:${f.name}`).sort(),
+    ).toEqual(['crew:Crew 1', 'trade:Solar']);
+    expect((await get('production/report?trade=Plumbing')).json().items).toEqual([]);
+
+    // Archiving hides the item and stops further logging.
+    const arch = await s.pm.browser.patch(`${s.base}/production/items/${item.id}`, {
+      archived: true,
+    });
+    expect(arch.json().archived).toBe(true);
+    expect((await get('production/report')).json().items).toEqual([]);
+    expect((await post(entries, { loggedOn: day(0), quantity: 1 })).json().code).toBe(
+      'financials.production.item_archived',
+    );
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/production/report`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/${entries}`, { loggedOn: day(0), quantity: 1 }))
+        .statusCode,
+    ).toBe(403);
+  });
+});
