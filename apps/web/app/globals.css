@@ -3463,6 +3463,8 @@ fieldset.worker-card > legend {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
 /* Drawing register: discipline groups share column widths so the tables line up */
 .drw-summary {
   display: flex;
