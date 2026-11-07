@@ -132,6 +132,7 @@ export const ID_PREFIXES = {
   commitment: 'cmt',
   directCost: 'dcs',
   budgetAdjustment: 'bad',
+  budgetSnapshot: 'bsn',
   prequalTemplate: 'pqt',
   prequalification: 'pqf',
   forecastAdjustment: 'fca',
