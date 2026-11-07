@@ -66,6 +66,7 @@ export function toSheet(s: ApiSheet): DrawingSheet {
     currentRev: cr?.rev ?? '—',
     currentIssuedFor: cr?.issuedFor ?? null,
     currentDrawingDate: cr?.drawingDate ?? null,
+    currentSetId: cr?.setId ?? null,
     revisionCount: null,
   };
 }
@@ -373,6 +374,28 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
         .sort((a, b) => a.sheetNumber.localeCompare(b.sheetNumber, 'en-AU', { numeric: true }));
     },
 
+    async listSets(projectId) {
+      const sets = await allPages(async (cursor) =>
+        unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawing-sets', {
+            params: {
+              path: { orgId, projectId },
+              query: { limit: 200, ...(cursor ? { cursor } : {}) },
+            },
+          }),
+        ),
+      );
+      return sets
+        .filter((s) => s.status === 'published')
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          status: s.status,
+          issuedDate: s.issuedDate,
+          receivedDate: s.receivedDate,
+        }));
+    },
+
     async listAllRevisions(projectId) {
       const sheets = await source.listSheets(projectId);
       const perSheet = await mapLimit(sheets, 6, async (sheet) =>
@@ -400,6 +423,7 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
           currentRev: current.rev,
           currentIssuedFor: current.issuedFor,
           currentDrawingDate: current.drawingDate,
+          currentSetId: current.setId,
           revisionCount: revs.length,
         },
         revisions: revs.map(toRevision).sort((a, b) => compareRevs(b.rev, a.rev)),

@@ -5,12 +5,14 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { PhotosCard } from '../components/PhotosCard';
 import { MemberList } from '../components/MemberList';
 import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
 import { AddMemberForm } from '../forms/AddMemberForm';
@@ -101,10 +103,12 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             timeZone={p.timezone}
             permissions={permissions.data as EffectivePermissions | undefined}
           />
+          <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         </div>
         <div className="project-overview__col">
           <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
           <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <PhotosCard projectId={projectId} timeZone={p.timezone} />
         </div>
       </div>
       <div className="stack-lg project-overview__below">

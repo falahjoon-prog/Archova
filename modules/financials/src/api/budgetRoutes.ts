@@ -184,6 +184,22 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
       await tx(input, (s) => budget.deleteLine(s, project(input.params), line(input.params)));
       return { status: 204 };
     },
+    importBudgetLines: async (input) => {
+      const r = await tx(input, (s) =>
+        budget.importLines(
+          s,
+          project(input.params),
+          input.body.rows.map((x) => ({
+            code: x.code,
+            ...(x.codeDescription ? { codeDescription: x.codeDescription } : {}),
+            ...(x.description ? { description: x.description } : {}),
+            original: x.original,
+            ...(x.isMargin ? { isMargin: true } : {}),
+          })),
+        ),
+      );
+      return { status: 201, body: { imported: r.imported, ...toBudgetDto(r) } };
+    },
     lockBudget: async (input) => ({
       status: 200,
       body: toBudgetDto(await tx(input, (s) => budget.lockBudget(s, project(input.params)))),
@@ -263,6 +279,62 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
           ),
         ),
       ),
+    }),
+    getBudgetCostReport: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReport(s, project(input.params));
+        return {
+          hasBudget: r.hasBudget,
+          status: r.status,
+          lines: r.lines.map(({ line: l, ...x }) => ({
+            ...x,
+            lineId: encodeId('budgetLine', l.id),
+            description: l.description,
+          })),
+        };
+      }),
+    }),
+    getBudgetCostReportItems: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReportItems(
+          s,
+          project(input.params),
+          line(input.params),
+          input.query.column,
+        );
+        return {
+          ...r,
+          groups: r.groups.map((g) => ({
+            ...g,
+            sourceId: g.sourceId ? encodeId('commitment', g.sourceId) : null,
+          })),
+        };
+      }),
+    }),
+    getBudgetReviewChecks: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.reviewFacts(s, project(input.params));
+        return {
+          ...r,
+          findings: r.findings.map((f) => ({ ...f, lineId: encodeId('budgetLine', f.lineId) })),
+        };
+      }),
+    }),
+    listProjectBudgetAdjustments: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) => budget.listProjectAdjustments(s, project(input.params)))
+        ).map((r) => ({
+          ...toAdjustmentDto(r.adjustment),
+          lineId: encodeId('budgetLine', r.adjustment.budgetLineId),
+          code: r.code,
+          codeDescription: r.codeDescription,
+        })),
+      },
     }),
     listBudgetAdjustments: async (input) => ({
       status: 200,

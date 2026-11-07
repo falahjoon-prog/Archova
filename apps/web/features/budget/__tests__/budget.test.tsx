@@ -46,8 +46,17 @@ const budget = (over: Partial<Budget> = {}): Budget => ({
   ...over,
 });
 
+const noChecks = {
+  hasBudget: true,
+  status: 'draft',
+  lineCount: 1,
+  totals: { revised: '50000.00', committed: '0.00', actual: '0.00' },
+  findings: [],
+};
+
 beforeEach(() => {
   fake.reset();
+  fake.on('GET', `${P}/budget/review-checks`, () => noChecks);
   fake.on('GET', `${P}/cost-codes`, () => ({
     data: [
       { id: 'ccd_1', code: '03-100', description: 'Concrete', parentId: null, archived: false },
@@ -114,6 +123,111 @@ describe('BudgetScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Record adjustment' }));
     expect(await screen.findByText('This would take the line below zero.')).toBeTruthy();
     expect(fake.callsTo('POST', `${P}/budget/lines/{lineId}/adjustments`)).toHaveLength(0);
+  });
+
+  it('shows the buyout summary and the budget modifications from the Reports tab', async () => {
+    fake.on('GET', `${P}/budget`, () =>
+      budget({ lines: [line({ revised: '50000.00', committed: '20000.00' })] }),
+    );
+    fake.on('GET', `${P}/budget/adjustments`, () => ({
+      data: [
+        {
+          id: 'bad_1',
+          amount: '-500.00',
+          reason: 'Scope removed',
+          createdAt: '2026-11-02T00:00:00Z',
+          lineId: 'bln_1',
+          code: '03-100',
+          codeDescription: 'Concrete',
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Reports' }));
+    expect(await screen.findByText('Part bought out')).toBeTruthy();
+    expect(screen.getByText('40%')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Budget modifications' }));
+    expect(await screen.findByText('Scope removed')).toBeTruthy();
+  });
+
+  it('shows the budget checks and lets Nova explain them, keeping the conversation', async () => {
+    fake.on('GET', `${P}/budget`, () =>
+      budget({ status: 'locked', lockedAt: '2026-11-01T00:00:00Z' }),
+    );
+    fake.on('GET', `${P}/budget/review-checks`, () => ({
+      ...noChecks,
+      findings: [
+        {
+          id: 'over_committed:03-100',
+          kind: 'over_committed',
+          severity: 'high',
+          lineId: 'bln_1',
+          code: '03-100',
+          codeDescription: 'Concrete',
+          summary:
+            '03-100 is committed to $130,000 against a revised budget of $120,000, $10,000 over.',
+          figures: { revised: '120000.00', committed: '130000.00', over: '10000.00' },
+        },
+      ],
+    }));
+    const answer = (reply: string) => ({
+      runId: 'air_1',
+      reply,
+      points: [],
+      options: [
+        {
+          findingId: 'over_committed:03-100',
+          kind: 'review_commitment',
+          text: 'Check the scope of the subcontract.',
+        },
+      ],
+      draftReason: null,
+      notes: [],
+      history: [{ role: 'nova', text: reply }],
+      disclaimer: 'Nova is an AI assistant, not an accountant.',
+    });
+    fake.on('POST', `${P}/ai/budget-reviews`, () => answer('One line needs attention.'));
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    expect(await screen.findByText(/is committed to \$130,000/)).toBeTruthy();
+    expect(screen.getByText('Over committed')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Review with Nova' }));
+    expect(await screen.findByText('One line needs attention.')).toBeTruthy();
+    expect(screen.getByText(/Check the scope of the subcontract/)).toBeTruthy();
+    expect(fake.callsTo('POST', `${P}/ai/budget-reviews`)[0]?.init.body).toMatchObject({
+      question: '',
+      history: [],
+    });
+
+    await enterText(user, screen.getByLabelText('Ask a follow-up'), 'What first?');
+    await user.click(screen.getByRole('button', { name: 'Ask Nova' }));
+    await waitFor(() => expect(fake.callsTo('POST', `${P}/ai/budget-reviews`)).toHaveLength(2));
+    expect(fake.callsTo('POST', `${P}/ai/budget-reviews`)[1]?.init.body).toMatchObject({
+      question: 'What first?',
+      history: [{ role: 'nova', text: 'One line needs attention.' }],
+    });
+  });
+
+  it('filters the budget lines and exports what is shown', async () => {
+    fake.on('GET', `${P}/budget`, () =>
+      budget({
+        lines: [
+          line(),
+          line({ id: 'bln_2', costCodeId: 'ccd_2', code: '09-200', codeDescription: 'Painting' }),
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    expect(await screen.findByText('Painting')).toBeTruthy();
+    await enterText(user, screen.getByLabelText('Filter lines'), 'paint');
+    expect(screen.queryByText('Concrete')).toBeNull();
+    expect(screen.getByText('Painting')).toBeTruthy();
+    await user.clear(screen.getByLabelText('Filter lines'));
+    await enterText(user, screen.getByLabelText('Filter lines'), 'zzz');
+    expect(await screen.findByText('No lines match')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Export CSV' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('adds a cost code from the Cost codes tab', async () => {

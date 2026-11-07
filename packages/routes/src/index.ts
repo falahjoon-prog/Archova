@@ -62,6 +62,7 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/correspondence/new`,
@@ -85,6 +86,7 @@ export const webRoutes = {
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   budget: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/budget`,
+  commitments: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/commitments`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
