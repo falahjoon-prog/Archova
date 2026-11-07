@@ -524,3 +524,32 @@ export const productionLog = financialsSchema.table('production_log', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
+
+export const ownerInvoices = financialsSchema.table('owner_invoices', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  number: integer('number').notNull(),
+  periodEnd: date('period_end').notNull(),
+  markupPct: numeric('markup_pct', { precision: 6, scale: 2 }).notNull(),
+  subTotal: money('sub_total').notNull(),
+  markupAmount: money('markup_amount').notNull(),
+  total: money('total').notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const ownerInvoiceSources = financialsSchema.table('owner_invoice_sources', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ownerInvoiceId: uuid('owner_invoice_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  amount: money('amount').notNull(),
+  flags: jsonb('flags').$type<{ code: string; message: string }[]>().notNull(),
+  flagsConfirmedBy: uuid('flags_confirmed_by'),
+  flagsConfirmedAt: timestamp('flags_confirmed_at', { withTimezone: true }),
+});

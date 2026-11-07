@@ -2894,6 +2894,35 @@ export const SetVariationCostCodeParams = z.object({
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
+export const GetOwnerInvoicePrefillParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const GetOwnerInvoicePrefillQuery = z.object({
+  "periodEnd": z.string().date(),
+});
+export const ListOwnerInvoicesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceBody = s.CreateOwnerInvoiceRequestSchema;
+export const GetOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
+export const DiscardOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9548,6 +9577,66 @@ export const operations = {
     params: SetVariationCostCodeParams,
     query: null,
     body: SetVariationCostCodeBody,
+  },
+  getOwnerInvoicePrefill: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoicePrefillParams,
+    query: GetOwnerInvoicePrefillQuery,
+    body: null,
+  },
+  listOwnerInvoices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerInvoicesParams,
+    query: null,
+    body: null,
+  },
+  createOwnerInvoice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerInvoiceParams,
+    query: null,
+    body: CreateOwnerInvoiceBody,
+  },
+  getOwnerInvoice: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoiceParams,
+    query: null,
+    body: null,
+  },
+  discardOwnerInvoice: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: null,
+    params: DiscardOwnerInvoiceParams,
+    query: null,
+    body: null,
   },
   listPaymentClaims: {
     method: 'GET',
