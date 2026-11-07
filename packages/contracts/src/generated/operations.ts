@@ -912,6 +912,13 @@ export const DeleteBookmarkParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "bookmarkId": z.string().regex(new RegExp("^bkm_[0-9A-Za-z]{26}$")),
 });
+export const SearchOrgParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SearchOrgQuery = z.object({
+  "q": z.string().min(1).max(200),
+  "perType": z.coerce.number().int().min(1).max(25).default(8),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5053,6 +5060,18 @@ export const operations = {
     contentType: null,
     params: DeleteBookmarkParams,
     query: null,
+    body: null,
+  },
+  searchOrg: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/search',
+    module: "search",
+    auth: "required",
+    permission: "search.global.read",
+    internal: false,
+    contentType: null,
+    params: SearchOrgParams,
+    query: SearchOrgQuery,
     body: null,
   },
   getLateSopaClaimRisk: {

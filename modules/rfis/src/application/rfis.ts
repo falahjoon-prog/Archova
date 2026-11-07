@@ -9,6 +9,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -1226,7 +1227,24 @@ export function createRfiService(deps: RfisDeps) {
     };
   }
 
+  /** Global search (`search`): the RFIs the caller can see that match the words, newest first. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: r.number === null ? 'RFI' : formatRfiNumber(r.number),
+        title: r.subject,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     overdueForMeeting,
     portfolioCounts,
     reportRows,

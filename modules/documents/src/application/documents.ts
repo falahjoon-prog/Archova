@@ -1,6 +1,13 @@
 import { and, asc, desc, eq, gt, inArray, isNull, notInArray, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  decodeCursor,
+  toPage,
+  versionConflict,
+  type TenantScope,
+  type SearchHit,
+} from '@archova/kernel';
 import { documentRevisions, documentsTable, type DocumentStatus } from '../infra/tables';
 import type { DocumentsContext } from './context';
 import { uniqueViolation } from './errors';
@@ -349,7 +356,24 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return attachCurrent(scope, rows);
   }
 
+  /** Global search (`search`): the documents the caller can open that match the words. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await c.access.can(scope, 'documents.documents.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((d) => ({
+        id: d.id,
+        ref: d.docNumber ?? 'Document',
+        title: d.title,
+        status: d.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     list,
     detail,
     create,

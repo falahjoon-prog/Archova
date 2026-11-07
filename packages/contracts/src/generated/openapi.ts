@@ -3134,6 +3134,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Search RFIs, documents, defects, submittals and correspondence across the projects the caller can see.
+         * @description Global search from the header. Looks for the words in every project the caller can see (archived projects are
+         *     left out, at most 100 projects), in each tool the caller may read on that project, and returns at most
+         *     `perType` rows of each type. Each tool applies its own permission and visibility rules, so a row only appears
+         *     if the caller could open it from that tool's own list. `truncated` is true when more rows or projects matched
+         *     than were returned. A query under two characters returns nothing. Staff only.
+         */
+        get: operations["searchOrg"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/risk/late-sopa-claims": {
         parameters: {
             query?: never;
@@ -9594,6 +9620,8 @@ export interface components {
             hasBudget: boolean;
             revised: components["schemas"]["FinancialsSignedMoney"];
             forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures. */
+            spent: components["schemas"]["FinancialsSignedMoney"];
             variance: components["schemas"]["FinancialsSignedMoney"];
             /** @description Cost codes whose forecast is over their revised budget. */
             overBudgetCodes: number;
@@ -9603,6 +9631,8 @@ export interface components {
             name: string;
             number: string | null;
             status: string;
+            phase: components["schemas"]["ProjectPhase"] | null;
+            siteLocation: components["schemas"]["GeoPoint"] | null;
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
@@ -9687,6 +9717,23 @@ export interface components {
             /** @enum {string} */
             insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
             summary: string;
+        };
+        SearchResults: {
+            /** @description The words searched for, trimmed. */
+            query: string;
+            results: components["schemas"]["SearchResult"][];
+            truncated: boolean;
+        };
+        SearchResult: {
+            /** @enum {string} */
+            type: "rfi" | "document" | "defect" | "submittal" | "correspondence";
+            id: string;
+            projectId: string;
+            projectName: string;
+            /** @description Human reference such as RFI-012. */
+            ref: string;
+            title: string;
+            status: string;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -10748,6 +10795,11 @@ export interface components {
         AuState: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT";
         /** @enum {string} */
         ProjectStatus: "tender" | "active" | "on_hold" | "closed" | "archived";
+        /**
+         * @description Where the project is in its life. Separate from `status`, which says whether it is live.
+         * @enum {string}
+         */
+        ProjectPhase: "planning" | "design" | "tender" | "pre_construction" | "construction" | "handover" | "defects_liability";
         Address: {
             line1?: string;
             line2?: string;
@@ -10784,6 +10836,7 @@ export interface components {
             name: string;
             number: string | null;
             status: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             /** @enum {string|null} */
             state: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
             /** @description IANA time zone; local dates and deadlines use it (X32) */
@@ -10918,6 +10971,7 @@ export interface components {
             name: string;
             number?: string;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"];
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -10932,6 +10986,7 @@ export interface components {
             name?: string;
             number?: string | null;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -21902,6 +21957,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchOrg: {
+        parameters: {
+            query: {
+                q: string;
+                perType?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
             };
             default: components["responses"]["Problem"];
         };

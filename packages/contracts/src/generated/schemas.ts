@@ -2002,6 +2002,9 @@ export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificatio
 export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
+export const ProjectPhaseSchema = z.enum(["planning", "design", "tender", "pre_construction", "construction", "handover", "defects_liability"]);
+export type ProjectPhase = z.infer<typeof ProjectPhaseSchema>;
+
 export const GeoPointSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -2012,6 +2015,7 @@ export const CreateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "number": z.string().max(50).optional(),
   "status": ProjectStatusSchema.optional(),
+  "phase": ProjectPhaseSchema.optional(),
   "state": AuStateSchema.optional(),
   "timezone": z.string().max(64).optional(),
   "address": AddressSchema.optional(),
@@ -5285,6 +5289,7 @@ export const PortfolioBudgetSchema = z.object({
   "hasBudget": z.boolean(),
   "revised": FinancialsSignedMoneySchema,
   "forecastFinal": FinancialsSignedMoneySchema,
+  "spent": FinancialsSignedMoneySchema,
   "variance": FinancialsSignedMoneySchema,
   "overBudgetCodes": z.number().int(),
 });
@@ -5295,6 +5300,8 @@ export const PortfolioProjectSchema = z.object({
   "name": z.string(),
   "number": z.string().nullable(),
   "status": z.string(),
+  "phase": z.union([ProjectPhaseSchema, z.null()]),
+  "siteLocation": z.union([GeoPointSchema, z.null()]),
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
@@ -5419,6 +5426,7 @@ export const ProjectSchema = z.object({
   "name": z.string(),
   "number": z.string().nullable(),
   "status": ProjectStatusSchema,
+  "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
   "state": z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]).nullable(),
   "timezone": z.string(),
   "address": z.union([AddressSchema, z.null()]),
@@ -6207,6 +6215,24 @@ export const ScheduleLookaheadSchema = z.object({
   "items": z.array(ScheduleLookaheadItemSchema),
 });
 export type ScheduleLookahead = z.infer<typeof ScheduleLookaheadSchema>;
+
+export const SearchResultSchema = z.object({
+  "type": z.enum(["rfi", "document", "defect", "submittal", "correspondence"]),
+  "id": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+});
+export type SearchResult = z.infer<typeof SearchResultSchema>;
+
+export const SearchResultsSchema = z.object({
+  "query": z.string(),
+  "results": z.array(SearchResultSchema),
+  "truncated": z.boolean(),
+});
+export type SearchResults = z.infer<typeof SearchResultsSchema>;
 
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
@@ -7327,6 +7353,7 @@ export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "number": z.string().max(50).nullable().optional(),
   "status": ProjectStatusSchema.optional(),
+  "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
   "state": AuStateSchema.optional(),
   "timezone": z.string().max(64).optional(),
   "address": AddressSchema.optional(),

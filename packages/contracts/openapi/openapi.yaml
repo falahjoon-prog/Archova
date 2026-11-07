@@ -47,6 +47,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: reporting
+  - name: search
   - name: data-export
 paths:
   /v1/auth/signup:
@@ -4067,6 +4068,41 @@ paths:
       summary: Remove one of the caller's own bookmarks.
       responses:
         '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/search:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: searchOrg
+      tags: [search]
+      x-module: search
+      x-permission: search.global.read
+      summary: Search RFIs, documents, defects, submittals and correspondence across the projects the caller can see.
+      description: |
+        Global search from the header. Looks for the words in every project the caller can see (archived projects are
+        left out, at most 100 projects), in each tool the caller may read on that project, and returns at most
+        `perType` rows of each type. Each tool applies its own permission and visibility rules, so a row only appears
+        if the caller could open it from that tool's own list. `truncated` is true when more rows or projects matched
+        than were returned. A query under two characters returns nothing. Staff only.
+      parameters:
+        - {
+            name: q,
+            in: query,
+            required: true,
+            schema: { type: string, minLength: 1, maxLength: 200 },
+          }
+        - {
+            name: perType,
+            in: query,
+            required: false,
+            schema: { type: integer, minimum: 1, maximum: 25, default: 8 },
+          }
+      responses:
+        '200':
+          description: The matches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResults' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
@@ -13320,7 +13356,7 @@ components:
         overdue: { type: integer }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, variance, overBudgetCodes]
+      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -13334,6 +13370,11 @@ components:
         hasBudget: { type: boolean }
         revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        spent:
+          {
+            allOf: [{ $ref: '#/components/schemas/FinancialsSignedMoney' }],
+            description: 'Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures.',
+          }
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
@@ -13345,6 +13386,8 @@ components:
           name,
           number,
           status,
+          phase,
+          siteLocation,
           rfis,
           defects,
           submittals,
@@ -13360,6 +13403,8 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { type: string }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
@@ -13522,6 +13567,26 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    SearchResults:
+      type: object
+      required: [query, results, truncated]
+      properties:
+        query: { type: string, description: 'The words searched for, trimmed.' }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/SearchResult' }
+        truncated: { type: boolean }
+    SearchResult:
+      type: object
+      required: [type, id, projectId, projectName, ref, title, status]
+      properties:
+        type: { type: string, enum: [rfi, document, defect, submittal, correspondence] }
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        ref: { type: string, description: 'Human reference such as RFI-012.' }
+        title: { type: string }
+        status: { type: string }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -15114,6 +15179,10 @@ components:
     ProjectStatus:
       type: string
       enum: [tender, active, on_hold, closed, archived]
+    ProjectPhase:
+      type: string
+      enum: [planning, design, tender, pre_construction, construction, handover, defects_liability]
+      description: Where the project is in its life. Separate from `status`, which says whether it is live.
     Address:
       type: object
       additionalProperties: false
@@ -15177,6 +15246,7 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { type: [string, 'null'], enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null] }
         timezone:
           { type: string, description: 'IANA time zone; local dates and deadlines use it (X32)' }
@@ -15362,6 +15432,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: string, maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { $ref: '#/components/schemas/ProjectPhase' }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }
@@ -15377,6 +15448,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: [string, 'null'], maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }
