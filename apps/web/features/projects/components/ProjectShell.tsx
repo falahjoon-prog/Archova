@@ -21,6 +21,7 @@ import {
   BudgetIcon,
   DelaysIcon,
   DiaryIcon,
+  PhotosIcon,
   DocumentsIcon,
   TransmittalsIcon,
   DrawingsIcon,
@@ -205,6 +206,11 @@ export function projectToolGroups(
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.photos(orgSlug, projectId),
+      label: 'Photos',
+      icon: PhotosIcon,
     },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),

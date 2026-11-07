@@ -1,14 +1,14 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import { observations } from '../infra/tables';
 
 export interface QualityDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   /** The safety module's "stop work: SWMS not followed" (compliance 03 §4, r300). */
   safety: {
     reopenForReview(
@@ -28,6 +28,7 @@ export async function checkFiles(
   projectId: string,
   fileIds: readonly string[],
   path = 'fileIds',
+  ref?: { kind: PhotoRefKind; id: string },
 ) {
   for (const [i, fileId] of fileIds.entries()) {
     const f = await deps.files.getFile(scope, fileId);
@@ -35,6 +36,15 @@ export async function checkFiles(
       throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
         { path: `${path}/${i}`, message: 'Not a ready file in this project' },
       ]);
+    // A standalone site photo attached here is filed under the inspections album.
+    if (f.module === 'photos')
+      await deps.files.filePhoto(
+        scope,
+        projectId,
+        fileId,
+        { category: 'inspections', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+        'attach',
+      );
   }
 }
 

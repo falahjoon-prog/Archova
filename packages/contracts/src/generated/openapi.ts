@@ -1169,6 +1169,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Page through the project's site photos, newest first, for the Photos tool (feed, timeline and album views).
+         * @description Filter by `album` (an auto album key such as `punch_list`, or a project album id), by filename (`q`) and by a
+         *     capture-date range. Photos nobody has filed carry `needsReview` once they have sat unfiled for 24 hours, and a
+         *     rule-based `suggestion` taken from already-filed photos taken nearby or by the same person at the same time.
+         *     Incident and induction photos are never listed. Links work for 5 minutes.
+         */
+        get: operations["browseProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** File a photo under an album, optionally on the record it belongs to. Accepts a Nova suggestion. */
+        put: operations["filePhoto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The auto albums (by where each photo was taken or filed) with counts, and the project's own albums. */
+        get: operations["listPhotoAlbums"];
+        put?: never;
+        /** Create an album of your own. */
+        post: operations["createPhotoAlbum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an album. The photos stay on the project. */
+        delete: operations["deletePhotoAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Add a photo to an album. Adding it twice is fine. */
+        put: operations["addPhotoToAlbum"];
+        post?: never;
+        /** Take a photo out of an album. */
+        delete: operations["removePhotoFromAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -12379,6 +12491,66 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        /** @enum {string} */
+        PhotoCategory: "safety_risk" | "daily_log" | "punch_list" | "drawings" | "inspections" | "rfis" | "unclassified";
+        /** @enum {string} */
+        PhotoRefKind: "rfi" | "defect" | "observation" | "inspection" | "diary_entry" | "drawing_revision";
+        PhotoFilingRequest: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind?: components["schemas"]["PhotoRefKind"] | null;
+            /** @description The record's id; sent with `refKind`. */
+            refId?: string | null;
+            /** @description True when the person accepted Nova's suggestion. */
+            fromSuggestion?: boolean;
+        };
+        PhotoFiling: {
+            fileId: components["schemas"]["FileRef"];
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            /** @enum {string} */
+            source: "attach" | "annotation" | "manual" | "nova";
+        };
+        PhotoFilingSuggestion: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            basedOnFileId: components["schemas"]["FileRef"];
+            /** @enum {string} */
+            reason: "same_place" | "same_session";
+        };
+        SitePhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            category: components["schemas"]["PhotoCategory"];
+            filing: components["schemas"]["PhotoFiling"] | null;
+            /** @description Unfiled for 24 hours or more. */
+            needsReview: boolean;
+            suggestion: components["schemas"]["PhotoFilingSuggestion"] | null;
+        };
+        PhotoAlbum: {
+            id: string;
+            name: string;
+            count: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PhotoAlbums: {
+            auto: {
+                category: components["schemas"]["PhotoCategory"];
+                count: number;
+                /** @description Photos unfiled for 24 hours or more (Unclassified only). */
+                needsReview: number;
+                cover: {
+                    url: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                } | null;
+            }[];
+            own: components["schemas"]["PhotoAlbum"][];
+        };
         DownloadLink: {
             url: string;
             /** Format: date-time */
@@ -17858,6 +18030,7 @@ export interface components {
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
+        PhotoAlbumId: string;
         FileId: string;
         SpecBookId: string;
         FolderId: string;
@@ -19734,6 +19907,195 @@ export interface operations {
                         data: components["schemas"]["ProjectPhoto"][];
                     };
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    browseProjectPhotos: {
+        parameters: {
+            query?: {
+                album?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SitePhoto"][];
+                        /** @description Pass as `cursor` for the next page. */
+                        next: string | null;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    filePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoFilingRequest"];
+            };
+        };
+        responses: {
+            /** @description Filed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoFiling"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPhotoAlbums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Albums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbums"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The album */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbum"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPhotoToAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Added */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removePhotoFromAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

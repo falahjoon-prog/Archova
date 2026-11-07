@@ -62,6 +62,7 @@ export {
 
 export {
   BookOpen as DiaryIcon,
+  Camera as PhotosIcon,
   HardHat as AttendanceIcon,
   Eye as ObservationsIcon,
   ClipboardList as InspectionsIcon,

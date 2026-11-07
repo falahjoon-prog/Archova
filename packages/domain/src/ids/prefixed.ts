@@ -117,6 +117,7 @@ export const ID_PREFIXES = {
   inspectionItem: 'iti',
   inspection: 'ins',
   observation: 'obs',
+  photoAlbum: 'alb',
   swms: 'sws',
   swmsEvent: 'swe',
   incident: 'inx',
