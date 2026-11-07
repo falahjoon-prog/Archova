@@ -29,6 +29,7 @@ import {
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
+import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
@@ -89,6 +90,7 @@ export const MODULE_PERMISSIONS = [
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
@@ -338,6 +340,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   qualityApi = quality.api;
 
+  const environment = createEnvironmentModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
+
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
   const precon = createPreconModule(services, { platform: platform.api });
@@ -531,6 +539,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     recents,
     financials,
     quality,
+    environment,
     precon,
     safety,
     estimating,
@@ -572,6 +581,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     recents,
     financials,
     quality,
+    environment,
     precon,
     safety,
     estimating,

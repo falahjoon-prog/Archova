@@ -363,6 +363,14 @@ export const PROBLEM_CODES = {
   'observation.not_allowed': 403,
   'observation.reason_required': 422,
   'observation.assignee_not_on_project': 422,
+  // environment: EMP, compliance conditions and documents
+  'environment.plan_not_found': 404,
+  'environment.plan_exists': 409,
+  'environment.condition_not_found': 404,
+  'environment.invalid_transition': 409,
+  'environment.reason_required': 422,
+  'environment.company_not_on_project': 422,
+  'environment.document_not_found': 404,
   // safety: SWMS register
   'swms.not_found': 404,
   'swms.invalid_transition': 409,

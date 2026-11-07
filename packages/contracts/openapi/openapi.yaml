@@ -36,6 +36,7 @@ tags:
   - name: defects
   - name: financials
   - name: quality
+  - name: environment
   - name: precon
   - name: safety
   - name: estimating
@@ -10981,6 +10982,332 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Observation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEnvironmentSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'The environmental register at a glance: condition counts by status and category, document expiry, plan state, and the rule-based flags Nova raises (no model, no credit cost).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/plan:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.read
+      summary: "The project's Environmental Management Plan, or null before one is set up."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlanResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.manage
+      summary: "Set up the project's EMP (one per project). It starts as a draft."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentPlanRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.manage
+      summary: 'Edit the EMP header.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/plan/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: approveEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.approve
+      summary: 'Approve the EMP: it becomes active and the next review is set one review interval out.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentConditions
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'The compliance-condition register in number order.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionStatus' },
+          }
+        - {
+            name: category,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionCategory' },
+          }
+        - {
+            name: source,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionSource' },
+          }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Add a compliance condition. It is numbered EMC-0001 per project.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentConditionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/starter-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: applyEnvironmentStarterPack
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Load the standard Australian construction conditions (dust, noise, sediment, discharge, waste, heritage and more). Conditions already in the register are skipped, so applying it twice adds nothing.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentStarterPackResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentConditionId'
+    get:
+      operationId: getEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'One condition with its sign-off trail.'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Edit a condition.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentConditionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentConditionId'
+    post:
+      operationId: transitionEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: "start and flagNonCompliant (site team), signOff, markNotApplicable and reopen (the person accountable for compliance). Sign-off needs evidence or a note; flagging, exemption and reopening need a note. The server checks the caller's level for the action."
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnvironmentConditionTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/documents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentDocuments
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.read
+      summary: 'Permits, licences, plans and audit reports with their expiry state.'
+      parameters:
+        - {
+            name: docType,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentDocumentType' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocumentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Register an environmental document against an uploaded file.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentDocumentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentDocumentId'
+    patch:
+      operationId: updateEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Edit a document, for example a renewed expiry date or a new file.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentDocumentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Remove a document from the register.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incidents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13466,6 +13793,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    EnvironmentConditionId:
+      name: conditionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ecn_[0-9A-Za-z]{26}$' }
+    EnvironmentDocumentId:
+      name: environmentDocumentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^edc_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -26000,6 +26337,368 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    EnvironmentConditionCategory:
+      type: string
+      enum:
+        [
+          air_quality,
+          noise_vibration,
+          water_quality,
+          waste,
+          soil_erosion,
+          biodiversity,
+          heritage,
+          hazardous_materials,
+          traffic_amenity,
+          energy_carbon,
+          other,
+        ]
+    EnvironmentConditionSource:
+      type: string
+      enum: [planning_permit, epa_licence, cemp, council, client, other]
+    EnvironmentConditionFrequency:
+      type: string
+      enum: [once, daily, weekly, fortnightly, monthly, quarterly, per_event]
+    EnvironmentConditionStatus:
+      type: string
+      enum: [not_started, in_progress, compliant, non_compliant, not_applicable]
+    EnvironmentConditionAction:
+      type: string
+      enum: [start, signOff, flagNonCompliant, markNotApplicable, reopen]
+    EnvironmentDocumentType:
+      type: string
+      enum:
+        [
+          emp,
+          permit,
+          epa_licence,
+          approval_letter,
+          monitoring_plan,
+          waste_plan,
+          audit_report,
+          other,
+        ]
+    EnvironmentExpiryState:
+      type: string
+      enum: [none, valid, expiring, expired]
+    EnvironmentPlan:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          permitReference,
+          summary,
+          status,
+          reviewIntervalMonths,
+          nextReviewDate,
+          approvedAt,
+          approvedBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        permitReference:
+          {
+            type: [string, 'null'],
+            description: 'The planning permit or licence this plan answers to.',
+          }
+        summary: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, active] }
+        reviewIntervalMonths: { type: integer }
+        nextReviewDate: { type: [string, 'null'], format: date }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        approvedBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentPlanResponse:
+      type: object
+      required: [plan]
+      properties:
+        plan:
+          oneOf:
+            - $ref: '#/components/schemas/EnvironmentPlan'
+            - type: 'null'
+    CreateEnvironmentPlanRequest:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        permitReference: { type: [string, 'null'], maxLength: 200 }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        reviewIntervalMonths: { type: integer, minimum: 1, maximum: 60 }
+        nextReviewDate: { type: [string, 'null'], format: date }
+    UpdateEnvironmentPlanRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        permitReference: { type: [string, 'null'], maxLength: 200 }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        reviewIntervalMonths: { type: integer, minimum: 1, maximum: 60 }
+        nextReviewDate: { type: [string, 'null'], format: date }
+    EnvironmentCondition:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          requirement,
+          category,
+          source,
+          sourceReference,
+          frequency,
+          responsibleCompanyId,
+          responsibleUserId,
+          status,
+          dueDate,
+          lastReviewedOn,
+          isOverdue,
+          fileIds,
+          availableActions,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'EMC-0042' }
+        title: { type: string }
+        requirement: { type: [string, 'null'] }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference:
+          { type: [string, 'null'], description: 'For example "Permit condition 14".' }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        dueDate: { type: [string, 'null'], format: date }
+        lastReviewedOn: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        fileIds: { type: array, items: { type: string }, description: 'Evidence files.' }
+        availableActions:
+          type: array
+          description: What the caller can do now, from status and permission level.
+          items: { $ref: '#/components/schemas/EnvironmentConditionAction' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentConditionEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, fileIds, actorId, at]
+      properties:
+        id: { type: string }
+        action:
+          { type: string, enum: [start, sign_off, flag_non_compliant, not_applicable, reopen] }
+        fromStatus: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        toStatus: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    EnvironmentConditionDetail:
+      type: object
+      required: [condition, events]
+      properties:
+        condition: { $ref: '#/components/schemas/EnvironmentCondition' }
+        events: { type: array, items: { $ref: '#/components/schemas/EnvironmentConditionEvent' } }
+    EnvironmentConditionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EnvironmentCondition' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateEnvironmentConditionRequest:
+      type: object
+      required: [title, category]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        requirement: { type: [string, 'null'], maxLength: 4000 }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference: { type: [string, 'null'], maxLength: 200 }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    UpdateEnvironmentConditionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        requirement: { type: [string, 'null'], maxLength: 4000 }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference: { type: [string, 'null'], maxLength: 200 }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    EnvironmentConditionTransitionRequest:
+      type: object
+      required: [action]
+      additionalProperties: false
+      properties:
+        action: { $ref: '#/components/schemas/EnvironmentConditionAction' }
+        note: { type: string, maxLength: 4000 }
+        fileIds:
+          { type: array, maxItems: 20, items: { type: string }, description: 'Evidence to attach.' }
+    EnvironmentStarterPackResult:
+      type: object
+      required: [created, skipped]
+      properties:
+        created: { type: array, items: { $ref: '#/components/schemas/EnvironmentCondition' } }
+        skipped: { type: integer, description: 'Starter conditions already in the register.' }
+    EnvironmentDocument:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          docType,
+          reference,
+          fileId,
+          issuedOn,
+          expiresOn,
+          expiry,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'] }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        expiry: { $ref: '#/components/schemas/EnvironmentExpiryState' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentDocumentList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EnvironmentDocument' } }
+    CreateEnvironmentDocumentRequest:
+      type: object
+      required: [title, docType, fileId]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'], maxLength: 200 }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+    UpdateEnvironmentDocumentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'], maxLength: 200 }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+    EnvironmentFlag:
+      type: object
+      required: [code, severity, message, conditionIds, documentIds]
+      properties:
+        code:
+          {
+            type: string,
+            enum:
+              [
+                conditions_non_compliant,
+                conditions_overdue,
+                documents_expired,
+                documents_expiring,
+                plan_missing,
+                plan_unapproved,
+                plan_review_due,
+              ],
+          }
+        severity: { type: string, enum: [info, warning, critical] }
+        message: { type: string }
+        conditionIds: { type: array, items: { type: string } }
+        documentIds: { type: array, items: { type: string } }
+    EnvironmentCategoryTally:
+      type: object
+      required: [category, total, compliant, nonCompliant, overdue]
+      properties:
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        total: { type: integer }
+        compliant: { type: integer }
+        nonCompliant: { type: integer }
+        overdue: { type: integer }
+    EnvironmentSummary:
+      type: object
+      required: [today, plan, conditions, documents, flags]
+      properties:
+        today:
+          {
+            type: string,
+            format: date,
+            description: 'Today at the project, which "overdue" is measured against.',
+          }
+        plan:
+          oneOf:
+            - $ref: '#/components/schemas/EnvironmentPlan'
+            - type: 'null'
+        conditions:
+          type: object
+          required: [total, byStatus, overdue, compliancePercent, byCategory]
+          properties:
+            total: { type: integer }
+            byStatus:
+              type: object
+              required: [not_started, in_progress, compliant, non_compliant, not_applicable]
+              properties:
+                not_started: { type: integer }
+                in_progress: { type: integer }
+                compliant: { type: integer }
+                non_compliant: { type: integer }
+                not_applicable: { type: integer }
+            overdue: { type: integer }
+            compliancePercent:
+              {
+                type: [integer, 'null'],
+                description: 'Signed-off share of applicable conditions; null when there are none.',
+              }
+            byCategory:
+              { type: array, items: { $ref: '#/components/schemas/EnvironmentCategoryTally' } }
+        documents:
+          type: object
+          required: [total, expired, expiring]
+          properties:
+            total: { type: integer }
+            expired: { type: integer }
+            expiring: { type: integer }
+        flags: { type: array, items: { $ref: '#/components/schemas/EnvironmentFlag' } }
     ObservationPage:
       type: object
       required: [data, nextCursor]

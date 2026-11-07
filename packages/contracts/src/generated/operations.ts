@@ -2535,6 +2535,89 @@ export const TransitionObservationParams = z.object({
   "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
 });
 export const TransitionObservationBody = s.ObservationTransitionRequestSchema;
+export const GetEnvironmentSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetEnvironmentPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEnvironmentPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEnvironmentPlanBody = s.CreateEnvironmentPlanRequestSchema;
+export const UpdateEnvironmentPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEnvironmentPlanBody = s.UpdateEnvironmentPlanRequestSchema;
+export const ApproveEnvironmentPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEnvironmentConditionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEnvironmentConditionsQuery = z.object({
+  "status": s.EnvironmentConditionStatusSchema.optional(),
+  "category": s.EnvironmentConditionCategorySchema.optional(),
+  "source": s.EnvironmentConditionSourceSchema.optional(),
+  "overdue": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateEnvironmentConditionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEnvironmentConditionBody = s.CreateEnvironmentConditionRequestSchema;
+export const ApplyEnvironmentStarterPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetEnvironmentConditionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conditionId": z.string().regex(new RegExp("^ecn_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEnvironmentConditionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conditionId": z.string().regex(new RegExp("^ecn_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEnvironmentConditionBody = s.UpdateEnvironmentConditionRequestSchema;
+export const TransitionEnvironmentConditionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conditionId": z.string().regex(new RegExp("^ecn_[0-9A-Za-z]{26}$")),
+});
+export const TransitionEnvironmentConditionBody = s.EnvironmentConditionTransitionRequestSchema;
+export const ListEnvironmentDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEnvironmentDocumentsQuery = z.object({
+  "docType": s.EnvironmentDocumentTypeSchema.optional(),
+});
+export const CreateEnvironmentDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEnvironmentDocumentBody = s.CreateEnvironmentDocumentRequestSchema;
+export const UpdateEnvironmentDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "environmentDocumentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEnvironmentDocumentBody = s.UpdateEnvironmentDocumentRequestSchema;
+export const DeleteEnvironmentDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "environmentDocumentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
+});
 export const ListIncidentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8805,6 +8888,186 @@ export const operations = {
     params: TransitionObservationParams,
     query: null,
     body: TransitionObservationBody,
+  },
+  getEnvironmentSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/summary',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.read",
+    internal: false,
+    contentType: null,
+    params: GetEnvironmentSummaryParams,
+    query: null,
+    body: null,
+  },
+  getEnvironmentPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/plan',
+    module: "environment",
+    auth: "required",
+    permission: "environment.plan.read",
+    internal: false,
+    contentType: null,
+    params: GetEnvironmentPlanParams,
+    query: null,
+    body: null,
+  },
+  createEnvironmentPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/plan',
+    module: "environment",
+    auth: "required",
+    permission: "environment.plan.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEnvironmentPlanParams,
+    query: null,
+    body: CreateEnvironmentPlanBody,
+  },
+  updateEnvironmentPlan: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/plan',
+    module: "environment",
+    auth: "required",
+    permission: "environment.plan.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEnvironmentPlanParams,
+    query: null,
+    body: UpdateEnvironmentPlanBody,
+  },
+  approveEnvironmentPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/plan/approve',
+    module: "environment",
+    auth: "required",
+    permission: "environment.plan.approve",
+    internal: false,
+    contentType: null,
+    params: ApproveEnvironmentPlanParams,
+    query: null,
+    body: null,
+  },
+  listEnvironmentConditions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.read",
+    internal: false,
+    contentType: null,
+    params: ListEnvironmentConditionsParams,
+    query: ListEnvironmentConditionsQuery,
+    body: null,
+  },
+  createEnvironmentCondition: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEnvironmentConditionParams,
+    query: null,
+    body: CreateEnvironmentConditionBody,
+  },
+  applyEnvironmentStarterPack: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/starter-pack',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.manage",
+    internal: false,
+    contentType: null,
+    params: ApplyEnvironmentStarterPackParams,
+    query: null,
+    body: null,
+  },
+  getEnvironmentCondition: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.read",
+    internal: false,
+    contentType: null,
+    params: GetEnvironmentConditionParams,
+    query: null,
+    body: null,
+  },
+  updateEnvironmentCondition: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEnvironmentConditionParams,
+    query: null,
+    body: UpdateEnvironmentConditionBody,
+  },
+  transitionEnvironmentCondition: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition',
+    module: "environment",
+    auth: "required",
+    permission: "environment.conditions.read",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionEnvironmentConditionParams,
+    query: null,
+    body: TransitionEnvironmentConditionBody,
+  },
+  listEnvironmentDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/documents',
+    module: "environment",
+    auth: "required",
+    permission: "environment.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListEnvironmentDocumentsParams,
+    query: ListEnvironmentDocumentsQuery,
+    body: null,
+  },
+  createEnvironmentDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/documents',
+    module: "environment",
+    auth: "required",
+    permission: "environment.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEnvironmentDocumentParams,
+    query: null,
+    body: CreateEnvironmentDocumentBody,
+  },
+  updateEnvironmentDocument: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEnvironmentDocumentParams,
+    query: null,
+    body: UpdateEnvironmentDocumentBody,
+  },
+  deleteEnvironmentDocument: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.documents.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteEnvironmentDocumentParams,
+    query: null,
+    body: null,
   },
   listIncidents: {
     method: 'GET',

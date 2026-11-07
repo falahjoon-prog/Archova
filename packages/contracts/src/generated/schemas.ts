@@ -1879,6 +1879,51 @@ export const CreateDrawingSetRequestSchema = z.object({
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
 
+export const EnvironmentConditionCategorySchema = z.enum(["air_quality", "noise_vibration", "water_quality", "waste", "soil_erosion", "biodiversity", "heritage", "hazardous_materials", "traffic_amenity", "energy_carbon", "other"]);
+export type EnvironmentConditionCategory = z.infer<typeof EnvironmentConditionCategorySchema>;
+
+export const EnvironmentConditionSourceSchema = z.enum(["planning_permit", "epa_licence", "cemp", "council", "client", "other"]);
+export type EnvironmentConditionSource = z.infer<typeof EnvironmentConditionSourceSchema>;
+
+export const EnvironmentConditionFrequencySchema = z.enum(["once", "daily", "weekly", "fortnightly", "monthly", "quarterly", "per_event"]);
+export type EnvironmentConditionFrequency = z.infer<typeof EnvironmentConditionFrequencySchema>;
+
+export const CreateEnvironmentConditionRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "requirement": z.string().max(4000).nullable().optional(),
+  "category": EnvironmentConditionCategorySchema,
+  "source": EnvironmentConditionSourceSchema.optional(),
+  "sourceReference": z.string().max(200).nullable().optional(),
+  "frequency": EnvironmentConditionFrequencySchema.optional(),
+  "responsibleCompanyId": z.string().nullable().optional(),
+  "responsibleUserId": z.string().nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict();
+export type CreateEnvironmentConditionRequest = z.infer<typeof CreateEnvironmentConditionRequestSchema>;
+
+export const EnvironmentDocumentTypeSchema = z.enum(["emp", "permit", "epa_licence", "approval_letter", "monitoring_plan", "waste_plan", "audit_report", "other"]);
+export type EnvironmentDocumentType = z.infer<typeof EnvironmentDocumentTypeSchema>;
+
+export const CreateEnvironmentDocumentRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "docType": EnvironmentDocumentTypeSchema,
+  "reference": z.string().max(200).nullable().optional(),
+  "fileId": z.string(),
+  "issuedOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+}).strict();
+export type CreateEnvironmentDocumentRequest = z.infer<typeof CreateEnvironmentDocumentRequestSchema>;
+
+export const CreateEnvironmentPlanRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "permitReference": z.string().max(200).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "reviewIntervalMonths": z.number().int().min(1).max(60).optional(),
+  "nextReviewDate": z.string().date().nullable().optional(),
+}).strict();
+export type CreateEnvironmentPlanRequest = z.infer<typeof CreateEnvironmentPlanRequestSchema>;
+
 export const CreateEquipmentBookingRequestSchema = z.object({
   "startsOn": z.string().date(),
   "endsOn": z.string().date(),
@@ -3128,6 +3173,163 @@ export const EntitlementsSchema = z.object({
   "limits": z.record(z.string(), z.number().int().nullable()),
 });
 export type Entitlements = z.infer<typeof EntitlementsSchema>;
+
+export const EnvironmentCategoryTallySchema = z.object({
+  "category": EnvironmentConditionCategorySchema,
+  "total": z.number().int(),
+  "compliant": z.number().int(),
+  "nonCompliant": z.number().int(),
+  "overdue": z.number().int(),
+});
+export type EnvironmentCategoryTally = z.infer<typeof EnvironmentCategoryTallySchema>;
+
+export const EnvironmentConditionStatusSchema = z.enum(["not_started", "in_progress", "compliant", "non_compliant", "not_applicable"]);
+export type EnvironmentConditionStatus = z.infer<typeof EnvironmentConditionStatusSchema>;
+
+export const EnvironmentConditionActionSchema = z.enum(["start", "signOff", "flagNonCompliant", "markNotApplicable", "reopen"]);
+export type EnvironmentConditionAction = z.infer<typeof EnvironmentConditionActionSchema>;
+
+export const EnvironmentConditionSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "requirement": z.string().nullable(),
+  "category": EnvironmentConditionCategorySchema,
+  "source": EnvironmentConditionSourceSchema,
+  "sourceReference": z.string().nullable(),
+  "frequency": EnvironmentConditionFrequencySchema,
+  "responsibleCompanyId": z.string().nullable(),
+  "responsibleUserId": z.string().nullable(),
+  "status": EnvironmentConditionStatusSchema,
+  "dueDate": z.string().date().nullable(),
+  "lastReviewedOn": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "fileIds": z.array(z.string()),
+  "availableActions": z.array(EnvironmentConditionActionSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type EnvironmentCondition = z.infer<typeof EnvironmentConditionSchema>;
+
+export const EnvironmentConditionEventSchema = z.object({
+  "id": z.string(),
+  "action": z.enum(["start", "sign_off", "flag_non_compliant", "not_applicable", "reopen"]),
+  "fromStatus": EnvironmentConditionStatusSchema,
+  "toStatus": EnvironmentConditionStatusSchema,
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type EnvironmentConditionEvent = z.infer<typeof EnvironmentConditionEventSchema>;
+
+export const EnvironmentConditionDetailSchema = z.object({
+  "condition": EnvironmentConditionSchema,
+  "events": z.array(EnvironmentConditionEventSchema),
+});
+export type EnvironmentConditionDetail = z.infer<typeof EnvironmentConditionDetailSchema>;
+
+export const EnvironmentConditionPageSchema = z.object({
+  "data": z.array(EnvironmentConditionSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type EnvironmentConditionPage = z.infer<typeof EnvironmentConditionPageSchema>;
+
+export const EnvironmentConditionTransitionRequestSchema = z.object({
+  "action": EnvironmentConditionActionSchema,
+  "note": z.string().max(4000).optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict();
+export type EnvironmentConditionTransitionRequest = z.infer<typeof EnvironmentConditionTransitionRequestSchema>;
+
+export const EnvironmentExpiryStateSchema = z.enum(["none", "valid", "expiring", "expired"]);
+export type EnvironmentExpiryState = z.infer<typeof EnvironmentExpiryStateSchema>;
+
+export const EnvironmentDocumentSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "docType": EnvironmentDocumentTypeSchema,
+  "reference": z.string().nullable(),
+  "fileId": z.string(),
+  "issuedOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "expiry": EnvironmentExpiryStateSchema,
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type EnvironmentDocument = z.infer<typeof EnvironmentDocumentSchema>;
+
+export const EnvironmentDocumentListSchema = z.object({
+  "data": z.array(EnvironmentDocumentSchema),
+});
+export type EnvironmentDocumentList = z.infer<typeof EnvironmentDocumentListSchema>;
+
+export const EnvironmentFlagSchema = z.object({
+  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due"]),
+  "severity": z.enum(["info", "warning", "critical"]),
+  "message": z.string(),
+  "conditionIds": z.array(z.string()),
+  "documentIds": z.array(z.string()),
+});
+export type EnvironmentFlag = z.infer<typeof EnvironmentFlagSchema>;
+
+export const EnvironmentPlanSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "permitReference": z.string().nullable(),
+  "summary": z.string().nullable(),
+  "status": z.enum(["draft", "active"]),
+  "reviewIntervalMonths": z.number().int(),
+  "nextReviewDate": z.string().date().nullable(),
+  "approvedAt": z.string().datetime({ offset: true }).nullable(),
+  "approvedBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type EnvironmentPlan = z.infer<typeof EnvironmentPlanSchema>;
+
+export const EnvironmentPlanResponseSchema = z.object({
+  "plan": z.union([EnvironmentPlanSchema, z.null()]),
+});
+export type EnvironmentPlanResponse = z.infer<typeof EnvironmentPlanResponseSchema>;
+
+export const EnvironmentStarterPackResultSchema = z.object({
+  "created": z.array(EnvironmentConditionSchema),
+  "skipped": z.number().int(),
+});
+export type EnvironmentStarterPackResult = z.infer<typeof EnvironmentStarterPackResultSchema>;
+
+export const EnvironmentSummarySchema = z.object({
+  "today": z.string().date(),
+  "plan": z.union([EnvironmentPlanSchema, z.null()]),
+  "conditions": z.object({
+  "total": z.number().int(),
+  "byStatus": z.object({
+  "not_started": z.number().int(),
+  "in_progress": z.number().int(),
+  "compliant": z.number().int(),
+  "non_compliant": z.number().int(),
+  "not_applicable": z.number().int(),
+}),
+  "overdue": z.number().int(),
+  "compliancePercent": z.number().int().nullable(),
+  "byCategory": z.array(EnvironmentCategoryTallySchema),
+}),
+  "documents": z.object({
+  "total": z.number().int(),
+  "expired": z.number().int(),
+  "expiring": z.number().int(),
+}),
+  "flags": z.array(EnvironmentFlagSchema),
+});
+export type EnvironmentSummary = z.infer<typeof EnvironmentSummarySchema>;
 
 export const EquipmentStatusSchema = z.enum(["available", "in_use", "maintenance", "retired"]);
 export type EquipmentStatus = z.infer<typeof EquipmentStatusSchema>;
@@ -7549,6 +7751,39 @@ export const UpdateDraftDrawingRevisionRequestSchema = z.object({
   "drawingDate": z.string().date().nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
+
+export const UpdateEnvironmentConditionRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "requirement": z.string().max(4000).nullable().optional(),
+  "category": EnvironmentConditionCategorySchema.optional(),
+  "source": EnvironmentConditionSourceSchema.optional(),
+  "sourceReference": z.string().max(200).nullable().optional(),
+  "frequency": EnvironmentConditionFrequencySchema.optional(),
+  "responsibleCompanyId": z.string().nullable().optional(),
+  "responsibleUserId": z.string().nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEnvironmentConditionRequest = z.infer<typeof UpdateEnvironmentConditionRequestSchema>;
+
+export const UpdateEnvironmentDocumentRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "docType": EnvironmentDocumentTypeSchema.optional(),
+  "reference": z.string().max(200).nullable().optional(),
+  "fileId": z.string().optional(),
+  "issuedOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEnvironmentDocumentRequest = z.infer<typeof UpdateEnvironmentDocumentRequestSchema>;
+
+export const UpdateEnvironmentPlanRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "permitReference": z.string().max(200).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "reviewIntervalMonths": z.number().int().min(1).max(60).optional(),
+  "nextReviewDate": z.string().date().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEnvironmentPlanRequest = z.infer<typeof UpdateEnvironmentPlanRequestSchema>;
 
 export const UpdateEquipmentRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
