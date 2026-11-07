@@ -8783,6 +8783,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/cost-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Per budget line, what is approved, pending and spent outside a commitment, and the projected cost.
+         * @description Approved is the lines of approved commitments; pending is the lines of submitted ones (waiting for a
+         *     decision); non-committed is the direct costs recorded against the line. Projected is the three added up and
+         *     variance is revised budget less projected, so a negative variance is over budget. Margin lines follow the
+         *     same rule as the budget. Builder staff only.
+         */
+        get: operations["getBudgetCostReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        /** The commitment lines or direct costs behind one figure on the cost report. */
+        get: operations["getBudgetCostReportItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments": {
         parameters: {
             query?: never;
@@ -15000,6 +15047,41 @@ export interface components {
             figures: {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
+        };
+        BudgetCostReport: {
+            hasBudget: boolean;
+            /** @enum {string} */
+            status: "draft" | "locked";
+            lines: {
+                lineId: string;
+                code: string;
+                codeDescription: string;
+                description: string;
+                original: components["schemas"]["FinancialsSignedMoney"];
+                approvedChanges: components["schemas"]["FinancialsSignedMoney"];
+                revised: components["schemas"]["FinancialsSignedMoney"];
+                approved: components["schemas"]["FinancialsSignedMoney"];
+                pending: components["schemas"]["FinancialsSignedMoney"];
+                nonCommitted: components["schemas"]["FinancialsSignedMoney"];
+                projected: components["schemas"]["FinancialsSignedMoney"];
+                variance: components["schemas"]["FinancialsSignedMoney"];
+            }[];
+        };
+        BudgetCostReportItems: {
+            code: string;
+            total: components["schemas"]["FinancialsSignedMoney"];
+            groups: {
+                /** @enum {string} */
+                kind: "subcontract" | "purchase_order" | "direct_costs";
+                sourceId: string | null;
+                label: string;
+                total: components["schemas"]["FinancialsSignedMoney"];
+                items: {
+                    number: number;
+                    description: string;
+                    amount: components["schemas"]["FinancialsSignedMoney"];
+                }[];
+            }[];
         };
         BudgetReviewChecks: {
             hasBudget: boolean;
@@ -32168,6 +32250,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetReviewChecks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetCostReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetCostReport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetCostReportItems: {
+        parameters: {
+            query: {
+                column: "approved" | "pending" | "direct";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetCostReportItems"];
                 };
             };
             default: components["responses"]["Problem"];

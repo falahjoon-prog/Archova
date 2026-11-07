@@ -2789,6 +2789,18 @@ export const GetBudgetReviewChecksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetBudgetCostReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetCostReportItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetCostReportItemsQuery = z.object({
+  "column": z.enum(["approved", "pending", "direct"]),
+});
 export const ListProjectBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9307,6 +9319,30 @@ export const operations = {
     contentType: null,
     params: GetBudgetReviewChecksParams,
     query: null,
+    body: null,
+  },
+  getBudgetCostReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/cost-report',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetCostReportParams,
+    query: null,
+    body: null,
+  },
+  getBudgetCostReportItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetCostReportItemsParams,
+    query: GetBudgetCostReportItemsQuery,
     body: null,
   },
   listProjectBudgetAdjustments: {
