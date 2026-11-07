@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { availableDefectActions, defectLabel, defectTransition, hasDefectLocation } from '../src';
+import {
+  availableDefectActions,
+  defectApproverRule,
+  defectLabel,
+  defectTransition,
+  hasDefectLocation,
+} from '../src';
 
 describe('defect lifecycle', () => {
   it('walks the happy path', () => {
@@ -65,7 +71,7 @@ describe('defect lifecycle', () => {
       'reject',
       'void',
     ]);
-    expect(availableDefectActions('closed', 'builder')).toEqual([]);
+    expect(availableDefectActions('closed', 'builder')).toEqual(['reopen']);
   });
 
   it('requires a pin or a location', () => {
@@ -78,5 +84,26 @@ describe('defect lifecycle', () => {
   it('labels numbered and local defects', () => {
     expect(defectLabel(42)).toBe('DEF-0042');
     expect(defectLabel(null)).toBe('D-local');
+  });
+});
+
+describe('reopen and the final approver', () => {
+  it('reopens only a closed defect, on the builder side, with a reason', () => {
+    expect(
+      defectTransition({ status: 'closed', action: 'reopen', actor: 'builder', reason: 'again' }),
+    ).toEqual({ ok: true, to: 'open' });
+    expect(
+      defectTransition({ status: 'open', action: 'reopen', actor: 'builder', reason: 'x' }),
+    ).toEqual({ ok: false, code: 'defect.invalid_transition' });
+    expect(
+      defectTransition({ status: 'closed', action: 'reopen', actor: 'assignee', reason: 'x' }),
+    ).toEqual({ ok: false, code: 'defect.not_allowed' });
+  });
+
+  it('restricts close, reject and reopen to the named approver', () => {
+    expect(defectApproverRule({ finalApproverUserId: 'a' }, 'close', 'b')).toBe(false);
+    expect(defectApproverRule({ finalApproverUserId: 'a' }, 'close', 'a')).toBe(true);
+    expect(defectApproverRule({ finalApproverUserId: 'a' }, 'issue', 'b')).toBe(true);
+    expect(defectApproverRule({}, 'close', 'b')).toBe(true);
   });
 });
