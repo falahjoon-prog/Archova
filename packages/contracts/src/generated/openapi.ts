@@ -4930,6 +4930,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The templates a form can start from, the built-in library and the organisation's own, by name.
+         * @description Archived templates are left out. A built-in template has an id starting `library:` and cannot be edited; copy it into the organisation's own to change it.
+         */
+        get: operations["listFormTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/form-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Every template for the organisation's template builder, archived ones included. */
+        get: operations["listOrgFormTemplates"];
+        put?: never;
+        /** Build a template, or copy a built-in one into the organisation's own with `copyFromLibraryKey`. */
+        post: operations["createFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/form-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a template's fields or settings, or archive and restore it. Forms already started keep the fields they were started with. */
+        patch: operations["updateFormTemplate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's forms, newest first. The screen groups them by template. */
+        get: operations["listForms"];
+        put?: never;
+        /** Start a form from a template. The template's fields are copied onto the form, so later template edits never change it. */
+        post: operations["startForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/forms/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Nova flags from the last fortnight, such as someone signing a form who wasn't signed in to site that day, or a form that is overdue while the crew is on site.
+         * @description Rule-based from the attendance records. Nothing is changed or blocked; a person decides.
+         */
+        get: operations["listFormAttention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        /** One form with its fields, answers and signatures. */
+        get: operations["getForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save the answers (and title) of a form that is not yet submitted. */
+        patch: operations["saveForm"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a signature to a signature field. The time is set by the server, and a name can sign a field once. */
+        post: operations["signForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a form. Required fields must be filled and each required signature field needs at least one signature first; a submitted form can no longer be changed. */
+        post: operations["submitForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -13403,6 +13574,149 @@ export interface components {
             /** @description Project team members to notify. Each must be an active, non-external member of the project. */
             mentions?: string[];
         };
+        /** @enum {string} */
+        FormCategory: "safety" | "quality" | "site" | "admin" | "general";
+        /** @enum {string} */
+        FormStatus: "draft" | "submitted";
+        /** @enum {string} */
+        FormFieldType: "heading" | "text" | "longtext" | "number" | "date" | "checkbox" | "select" | "checklist" | "table" | "photo" | "signature";
+        FormTableColumn: {
+            key: string;
+            label: string;
+        };
+        FormField: {
+            key: string;
+            type: components["schemas"]["FormFieldType"];
+            label: string;
+            help?: string;
+            required?: boolean;
+            /** @description Choices of a `select`, items of a `checklist`. */
+            options?: string[];
+            /** @description Columns of a `table`. */
+            columns?: components["schemas"]["FormTableColumn"][];
+            /** @description Rows a `table` starts with. */
+            rows?: number;
+            /** @description The most people who can sign a `signature` field. A required one needs at least one. */
+            slots?: number;
+        };
+        FormTemplate: {
+            /** @description frt_… for the organisation's own, `library:<key>` for a built-in */
+            id: string;
+            /** @enum {string} */
+            source: "library" | "custom";
+            name: string;
+            description: string;
+            category: components["schemas"]["FormCategory"];
+            fields: components["schemas"]["FormField"][];
+            /** @enum {string|null} */
+            linkModule: "diary" | "incidents" | "inspections" | "attendance" | null;
+            /** @description How often a submitted form is expected while the crew is on site. Nova flags it when it is overdue. */
+            cadenceDays: number | null;
+            /** @enum {string} */
+            status: "active" | "archived";
+            version: number;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        FormTemplateList: {
+            data: components["schemas"]["FormTemplate"][];
+        };
+        CreateFormTemplateRequest: {
+            copyFromLibraryKey?: string;
+            name?: string;
+            description?: string;
+            category?: components["schemas"]["FormCategory"];
+            fields?: components["schemas"]["FormField"][];
+            /** @enum {string|null} */
+            linkModule?: "diary" | "incidents" | "inspections" | "attendance" | null;
+            cadenceDays?: number | null;
+        };
+        UpdateFormTemplateRequest: {
+            name?: string;
+            description?: string;
+            category?: components["schemas"]["FormCategory"];
+            fields?: components["schemas"]["FormField"][];
+            /** @enum {string|null} */
+            linkModule?: "diary" | "incidents" | "inspections" | "attendance" | null;
+            cadenceDays?: number | null;
+            /** @enum {string} */
+            status?: "active" | "archived";
+        };
+        FormSignature: {
+            id: string;
+            fieldKey: string;
+            signerName: string;
+            /** Format: date-time */
+            signedAt: string;
+        };
+        FormSummary: {
+            id: string;
+            projectId: string;
+            numberLabel: string;
+            templateId: string;
+            templateName: string;
+            category: components["schemas"]["FormCategory"];
+            title: string;
+            status: components["schemas"]["FormStatus"];
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            submittedAt: string | null;
+            signatureCount: number;
+        };
+        FormPage: {
+            data: components["schemas"]["FormSummary"][];
+            nextCursor: string | null;
+        };
+        FormFlag: {
+            /** @enum {string} */
+            kind: "signer_not_on_site" | "overdue";
+            message: string;
+            signerNames?: string[];
+        };
+        FormAttention: {
+            /** @enum {string} */
+            kind: "signer_not_on_site" | "overdue";
+            message: string;
+            templateId: string;
+            templateName: string;
+            formId: string | null;
+            signerNames: string[];
+        };
+        FormAttentionList: {
+            data: components["schemas"]["FormAttention"][];
+        };
+        FormDetail: {
+            form: components["schemas"]["FormSummary"];
+            templateName: string;
+            /** @enum {string|null} */
+            linkModule: "diary" | "incidents" | "inspections" | "attendance" | null;
+            fields: components["schemas"]["FormField"][];
+            /** @description By field key: text, number, date as text, true/false, a choice, the ticked items, table rows as objects by column key, or photo file ids. */
+            answers: {
+                [key: string]: unknown;
+            };
+            signatures: components["schemas"]["FormSignature"][];
+            flags: components["schemas"]["FormFlag"][];
+            canEdit: boolean;
+            version: number;
+        };
+        StartFormRequest: {
+            templateId: string;
+            title?: string;
+        };
+        SaveFormRequest: {
+            title?: string;
+            answers?: {
+                [key: string]: unknown;
+            };
+        };
+        SignFormRequest: {
+            fieldKey: string;
+            signerName: string;
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -17872,6 +18186,8 @@ export interface components {
         CorrespondenceTypeId: string;
         CoordinationIssueId: string;
         ConversationId: string;
+        FormTemplateId: string;
+        FormId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -25672,6 +25988,319 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFormTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOrgFormTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFormTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateFormTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFormTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listForms: {
+        parameters: {
+            query?: {
+                templateId?: string;
+                status?: components["schemas"]["FormStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartFormRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFormAttention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormAttentionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveFormRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignFormRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                formId: components["parameters"]["FormId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormDetail"];
                 };
             };
             default: components["responses"]["Problem"];

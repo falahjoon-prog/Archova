@@ -167,6 +167,9 @@ importers:
       '@archova/mod-financials':
         specifier: workspace:*
         version: link:../../modules/financials
+      '@archova/mod-forms':
+        specifier: workspace:*
+        version: link:../../modules/forms
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../../modules/identity
@@ -1345,6 +1348,49 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
+  modules/forms:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
   modules/identity:
     dependencies:
       '@archova/contracts':
@@ -2185,6 +2231,9 @@ importers:
       '@archova/mod-financials':
         specifier: workspace:*
         version: link:../../modules/financials
+      '@archova/mod-forms':
+        specifier: workspace:*
+        version: link:../../modules/forms
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../../modules/identity

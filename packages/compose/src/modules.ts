@@ -68,6 +68,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { FORMS_PERMISSIONS, createFormsModule } from '@archova/mod-forms';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -78,6 +79,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  FORMS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -228,6 +230,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       submittals: 'submittals.submittals.submit',
       // A subcontractor attaches supporting records to a notice or reply.
       correspondence: 'correspondence.items.respond',
+      // Photos on a form, from anyone who can fill it in.
+      forms: 'forms.forms.fill',
     },
   });
 
@@ -452,6 +456,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  const forms = createFormsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    attendance: (scope, projectId, range) => workforce.api.namesOnSite(scope, projectId, range),
+  });
+
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
@@ -519,6 +529,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     defects,
     meetings,
     ownerportal,
@@ -559,6 +570,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     defects,
     meetings,
     ownerportal,
