@@ -891,6 +891,13 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const EndDrainGrantsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const EndDrainGrantsBody = z.object({
+  "userId": s.UserRefSchema,
+}).strict();
 export const ListBidderListsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5109,6 +5116,18 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  endDrainGrants: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants',
+    module: "sync",
+    auth: "required",
+    permission: "sync.late.review",
+    internal: false,
+    contentType: "application/json",
+    params: EndDrainGrantsParams,
+    query: null,
+    body: EndDrainGrantsBody,
   },
   listBidderLists: {
     method: 'GET',

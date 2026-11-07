@@ -3513,3 +3513,62 @@ fieldset.worker-card > legend {
   outline: 2px solid var(--c-focus-ring);
   outline-offset: 2px;
 }
+
+/* Drawing register: discipline groups share column widths so the tables line up */
+.drw-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.drw-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.drw-group__title {
+  margin: 0;
+  font-size: var(--font-md);
+}
+.drw-group__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--c-text);
+  cursor: pointer;
+}
+.drw-group__chevron--closed {
+  transform: rotate(-90deg);
+}
+.drw-group .ac-table {
+  table-layout: fixed;
+  min-width: 56rem;
+}
+.drw-group .drw-col-no {
+  width: 8rem;
+}
+.drw-group .drw-col-rev {
+  width: 6rem;
+}
+.drw-group .drw-col-status {
+  width: 9rem;
+}
+.drw-group .drw-col-date {
+  width: 8.5rem;
+}
+.drw-group .drw-col-set {
+  width: 12rem;
+}
+.drw-group .drw-col-open {
+  width: 6rem;
+}
+.drw-group .ac-table td,
+.drw-group .ac-table th {
+  overflow-wrap: anywhere;
+}

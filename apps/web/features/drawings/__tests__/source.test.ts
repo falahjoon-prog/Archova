@@ -107,3 +107,16 @@ describe('drawings preview source', () => {
     });
   });
 });
+
+describe('drawing sets list', () => {
+  it('lists published issues with received dates, and sheets point at their set', async () => {
+    const [sets, sheets] = await Promise.all([
+      drawingsSource.listSets(P),
+      drawingsSource.listSheets(P),
+    ]);
+    expect(sets.length).toBeGreaterThan(0);
+    expect(sets.every((s) => s.receivedDate && s.status === 'published')).toBe(true);
+    const ids = new Set(sets.map((s) => s.id));
+    expect(sheets.every((s) => s.currentSetId && ids.has(s.currentSetId))).toBe(true);
+  });
+});
