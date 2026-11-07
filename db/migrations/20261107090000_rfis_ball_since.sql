@@ -4,9 +4,13 @@
 
 alter table rfis.rfis add column ball_since timestamptz;
 
+-- The backfill spans every org, so it runs with FORCE lifted: the tenant policy reads app.org_id, which a
+-- migration never sets. Restored straight after.
+alter table rfis.rfis no force row level security;
 update rfis.rfis
    set ball_since = case status
          when 'open' then coalesce(opened_at, updated_at)
          when 'answered' then coalesce(answered_at, updated_at)
        end
  where status in ('open', 'answered');
+alter table rfis.rfis force row level security;
