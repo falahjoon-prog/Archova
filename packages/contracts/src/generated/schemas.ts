@@ -1834,6 +1834,61 @@ export const CreateEquipmentRequestSchema = z.object({
 }).strict();
 export type CreateEquipmentRequest = z.infer<typeof CreateEquipmentRequestSchema>;
 
+export const EsignSourceTypeSchema = z.enum(["correspondence", "rfi", "submittal", "contract", "other"]);
+export type EsignSourceType = z.infer<typeof EsignSourceTypeSchema>;
+
+export const EsignOptionsSchema = z.object({
+  "signingOrder": z.boolean().optional(),
+  "allowPaper": z.boolean().optional(),
+  "allowDelegate": z.boolean().optional(),
+  "expiresDays": z.number().int().min(1).max(365).optional(),
+  "reminderDays": z.number().int().min(1).max(365).nullable().optional(),
+});
+export type EsignOptions = z.infer<typeof EsignOptionsSchema>;
+
+export const EsignRecipientRoleSchema = z.enum(["needs_to_sign", "needs_to_view", "receives_copy"]);
+export type EsignRecipientRole = z.infer<typeof EsignRecipientRoleSchema>;
+
+export const EsignRecipientInputSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "email": z.string().min(3).max(254),
+  "role": EsignRecipientRoleSchema.optional(),
+  "routingOrder": z.number().int().min(1).max(50).optional(),
+  "customSubject": z.string().max(100).nullable().optional(),
+  "customMessage": z.string().max(2000).nullable().optional(),
+  "language": z.enum(["en"]).optional(),
+  "userId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+});
+export type EsignRecipientInput = z.infer<typeof EsignRecipientInputSchema>;
+
+export const EsignFieldKindSchema = z.enum(["signature", "date_signed"]);
+export type EsignFieldKind = z.infer<typeof EsignFieldKindSchema>;
+
+export const EsignFieldInputSchema = z.object({
+  "documentFileId": FileRefSchema,
+  "recipientEmail": z.string().max(254),
+  "kind": EsignFieldKindSchema,
+  "page": z.number().int().min(1).max(2000),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+  "w": z.number().min(0.01).max(1),
+  "h": z.number().min(0.01).max(1),
+});
+export type EsignFieldInput = z.infer<typeof EsignFieldInputSchema>;
+
+export const CreateEsignEnvelopeRequestSchema = z.object({
+  "sourceType": EsignSourceTypeSchema.optional(),
+  "sourceId": z.string().min(1).max(40).optional(),
+  "subject": z.string().max(100).optional(),
+  "message": z.string().max(2000).optional(),
+  "options": EsignOptionsSchema.optional(),
+  "documentFileIds": z.array(FileRefSchema).max(10).optional(),
+  "recipients": z.array(EsignRecipientInputSchema).max(20).optional(),
+  "fields": z.array(EsignFieldInputSchema).max(200).optional(),
+});
+export type CreateEsignEnvelopeRequest = z.infer<typeof CreateEsignEnvelopeRequestSchema>;
+
 export const CreateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "baseDate": z.string().date().optional(),
@@ -2507,6 +2562,11 @@ export const DecideOwnerApprovalRequestSchema = z.object({
 }).strict();
 export type DecideOwnerApprovalRequest = z.infer<typeof DecideOwnerApprovalRequestSchema>;
 
+export const DeclineEsignRequestSchema = z.object({
+  "reason": z.string().min(1).max(500),
+});
+export type DeclineEsignRequest = z.infer<typeof DeclineEsignRequestSchema>;
+
 export const DefectStatusSchema = z.enum(["draft", "open", "ready_for_review", "closed", "disputed", "void"]);
 export type DefectStatus = z.infer<typeof DefectStatusSchema>;
 
@@ -2608,6 +2668,12 @@ export const DelayRegisterSchema = z.object({
   "truncated": z.boolean(),
 });
 export type DelayRegister = z.infer<typeof DelayRegisterSchema>;
+
+export const DelegateEsignRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "email": z.string().min(3).max(254),
+});
+export type DelegateEsignRequest = z.infer<typeof DelegateEsignRequestSchema>;
 
 export const DeleteMeRequestSchema = z.object({
   "confirm": z.enum(["DELETE"]),
@@ -3110,6 +3176,160 @@ export const EquipmentLogListSchema = z.object({
   "data": z.array(EquipmentLogSchema),
 });
 export type EquipmentLogList = z.infer<typeof EquipmentLogListSchema>;
+
+export const EsignEnvelopeStatusSchema = z.enum(["draft", "sent", "completed", "declined", "voided", "expired"]);
+export type EsignEnvelopeStatus = z.infer<typeof EsignEnvelopeStatusSchema>;
+
+export const EsignRecipientStatusSchema = z.enum(["pending", "sent", "viewed", "signed", "declined", "delegated"]);
+export type EsignRecipientStatus = z.infer<typeof EsignRecipientStatusSchema>;
+
+export const EsignAccessMeSchema = z.object({
+  "recipientId": z.string(),
+  "name": z.string(),
+  "email": z.string(),
+  "role": EsignRecipientRoleSchema,
+  "status": EsignRecipientStatusSchema,
+  "canAct": z.boolean(),
+  "waiting": z.boolean(),
+  "allowPaper": z.boolean(),
+  "allowDelegate": z.boolean(),
+});
+export type EsignAccessMe = z.infer<typeof EsignAccessMeSchema>;
+
+export const EsignFieldSchema = z.object({
+  "id": z.string(),
+  "documentId": z.string(),
+  "recipientId": z.string(),
+  "kind": EsignFieldKindSchema,
+  "page": z.number().int(),
+  "x": z.number(),
+  "y": z.number(),
+  "w": z.number(),
+  "h": z.number(),
+});
+export type EsignField = z.infer<typeof EsignFieldSchema>;
+
+export const EsignAccessSchema = z.object({
+  "envelope": z.object({
+  "subject": z.string(),
+  "message": z.string(),
+  "fromOrg": z.string(),
+  "projectName": z.string(),
+  "sentByName": z.string(),
+  "status": EsignEnvelopeStatusSchema,
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+}),
+  "me": EsignAccessMeSchema,
+  "documents": z.array(z.object({
+  "id": z.string(),
+  "name": z.string(),
+})),
+  "fields": z.array(EsignFieldSchema),
+  "signers": z.array(z.object({
+  "name": z.string(),
+  "role": EsignRecipientRoleSchema,
+  "status": EsignRecipientStatusSchema,
+  "routingOrder": z.number().int(),
+})),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type EsignAccess = z.infer<typeof EsignAccessSchema>;
+
+export const EsignDocumentSchema = z.object({
+  "id": z.string(),
+  "fileId": z.string(),
+  "name": z.string(),
+  "position": z.number().int(),
+  "sha256": z.string().nullable(),
+  "signedSha256": z.string().nullable(),
+});
+export type EsignDocument = z.infer<typeof EsignDocumentSchema>;
+
+export const EsignRecipientSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "email": z.string(),
+  "role": EsignRecipientRoleSchema,
+  "routingOrder": z.number().int(),
+  "status": EsignRecipientStatusSchema,
+  "customSubject": z.string().nullable(),
+  "customMessage": z.string().nullable(),
+  "language": z.enum(["en"]),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "viewedAt": z.string().datetime({ offset: true }).nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "signedOnPaper": z.boolean(),
+  "declineReason": z.string().nullable(),
+  "delegatedFrom": z.string().nullable(),
+});
+export type EsignRecipient = z.infer<typeof EsignRecipientSchema>;
+
+export const EsignEventSchema = z.object({
+  "id": z.string(),
+  "recipientId": z.string().nullable(),
+  "type": z.string(),
+  "at": z.string().datetime({ offset: true }),
+  "ip": z.string().nullable(),
+  "data": z.record(z.string(), z.unknown()),
+});
+export type EsignEvent = z.infer<typeof EsignEventSchema>;
+
+export const EsignEnvelopeSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "sourceType": z.union([EsignSourceTypeSchema, z.null()]),
+  "sourceId": z.string().nullable(),
+  "subject": z.string(),
+  "message": z.string(),
+  "status": EsignEnvelopeStatusSchema,
+  "signingOrder": z.boolean(),
+  "allowPaper": z.boolean(),
+  "allowDelegate": z.boolean(),
+  "expiresDays": z.number().int(),
+  "reminderDays": z.number().int().nullable(),
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidReason": z.string().nullable(),
+  "documents": z.array(EsignDocumentSchema),
+  "recipients": z.array(EsignRecipientSchema),
+  "fields": z.array(EsignFieldSchema),
+  "events": z.array(EsignEventSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type EsignEnvelope = z.infer<typeof EsignEnvelopeSchema>;
+
+export const EsignEnvelopeSummarySchema = z.object({
+  "id": z.string(),
+  "subject": z.string(),
+  "status": EsignEnvelopeStatusSchema,
+  "sourceType": z.union([EsignSourceTypeSchema, z.null()]),
+  "sourceId": z.string().nullable(),
+  "recipientCount": z.number().int(),
+  "signedCount": z.number().int(),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type EsignEnvelopeSummary = z.infer<typeof EsignEnvelopeSummarySchema>;
+
+export const EsignEnvelopePageSchema = z.object({
+  "data": z.array(EsignEnvelopeSummarySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type EsignEnvelopePage = z.infer<typeof EsignEnvelopePageSchema>;
+
+export const EsignPdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+  "signed": z.boolean(),
+});
+export type EsignPdf = z.infer<typeof EsignPdfSchema>;
 
 export const EstimateSettingsSchema = z.object({
   "baseDate": z.string().date(),
@@ -6577,6 +6797,13 @@ export const ShiftListSchema = z.object({
 });
 export type ShiftList = z.infer<typeof ShiftListSchema>;
 
+export const SignEsignRequestSchema = z.object({
+  "signatureKind": z.enum(["typed", "drawn"]),
+  "signature": z.string().min(1).max(150000),
+  "consent": z.boolean(),
+});
+export type SignEsignRequest = z.infer<typeof SignEsignRequestSchema>;
+
 export const SignInResultSchema = z.object({
   "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),
   "eligibility": z.union([EligibilityCheckSchema, z.null()]),
@@ -7427,6 +7654,16 @@ export const UpdateEquipmentRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateEquipmentRequest = z.infer<typeof UpdateEquipmentRequestSchema>;
 
+export const UpdateEsignEnvelopeRequestSchema = z.object({
+  "subject": z.string().max(100).optional(),
+  "message": z.string().max(2000).optional(),
+  "options": EsignOptionsSchema.optional(),
+  "documentFileIds": z.array(FileRefSchema).max(10).optional(),
+  "recipients": z.array(EsignRecipientInputSchema).max(20).optional(),
+  "fields": z.array(EsignFieldInputSchema).max(200).optional(),
+}).refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEsignEnvelopeRequest = z.infer<typeof UpdateEsignEnvelopeRequestSchema>;
+
 export const UpdateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "baseDate": z.string().date().optional(),
@@ -7762,6 +7999,11 @@ export const VoidDirectCostRequestSchema = z.object({
   "note": z.string().min(1).max(5000),
 }).strict();
 export type VoidDirectCostRequest = z.infer<typeof VoidDirectCostRequestSchema>;
+
+export const VoidEsignEnvelopeRequestSchema = z.object({
+  "reason": z.string().min(1).max(500),
+});
+export type VoidEsignEnvelopeRequest = z.infer<typeof VoidEsignEnvelopeRequestSchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),
