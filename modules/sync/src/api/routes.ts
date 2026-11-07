@@ -1,5 +1,6 @@
 import { decodeId } from '@archova/domain';
 import { AppError, defineRoutes, requireTenant, type Database } from '@archova/kernel';
+import type { DrainService } from '../application/drain';
 import type { PullService } from '../application/pull';
 import type { PushService } from '../application/push';
 import type { ReviewService } from '../application/review';
@@ -10,6 +11,7 @@ export function syncRoutes(
   pull: PullService,
   push: PushService,
   review: ReviewService,
+  drain: DrainService,
 ) {
   /** Link sessions never review; the project and the held change come from the path. */
   function reviewer(input: {
@@ -54,6 +56,25 @@ export function syncRoutes(
       );
       return { status: 200, body };
     },
+    endDrainGrants: async (input) => {
+      const { tenant, projectId } = reviewer(input);
+      const userId = decodeId('user', input.body.userId);
+      if (!userId) throw new AppError('validation_failed', 'userId is not valid');
+      const ended = await database.withTenantTx(tenant, async (scope) => {
+        const n = await drain.revoke(scope, { userId, projectId });
+        if (n > 0)
+          scope.events.add({
+            type: 'sync.drain_grant.ended.v1',
+            projectId,
+            entityType: 'drain_grant',
+            entityId: userId,
+            entityVersion: 1,
+            data: { userId, endedBy: scope.ctx.userId, ended: n },
+          });
+        return n;
+      });
+      return { status: 200, body: { ended } };
+    },
     syncPull: async (input) => {
       const q = input.query;
       const scopes = parseScopes(q.scopes);
@@ -74,7 +95,23 @@ export function syncRoutes(
         (scope) => pull.pull(scope, { scopes, since, limit: q.limit }),
         { readOnly: true },
       );
-      return { status: 200, body };
+      // A device told it lost a whole project gets the grant for work it queued (X38). That writes, so it is its
+      // own transaction; nothing here changes what the pull itself returned.
+      const lost = body.revokedScopes.filter((r) => r.module === null);
+      if (lost.length > 0) {
+        const grants = await database.withTenantTx(tenant, (scope) =>
+          pull.grantsFor(
+            scope,
+            lost.map((r) => decodeId('project', r.projectId)!),
+          ),
+        );
+        body.revokedScopes = body.revokedScopes.map((r) => {
+          const drainGrant = r.module === null ? grants.get(r.projectId) : undefined;
+          return drainGrant ? { ...r, drainGrant } : r;
+        });
+      }
+      // The body can carry a drain grant, a secret: no cache, whatever sits in front.
+      return { status: 200, body, headers: { 'cache-control': 'no-store' } };
     },
     syncPush: async (input) => {
       const tenant = requireTenant(input);

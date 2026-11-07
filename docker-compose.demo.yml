@@ -65,6 +65,36 @@ services:
       LOG_LEVEL: info
     extra_hosts: ['demo.localhost:host-gateway']
 
+  # Outbox relay and event subscribers: without it nothing that listens for an event runs (Nova indexing, emails to
+  # the log, access revocation, key dates). Same database roles as CI: app_rw for work, app_platform for the relay.
+  worker:
+    build: { context: ., target: worker }
+    depends_on:
+      db-setup: { condition: service_completed_successfully }
+      valkey: { condition: service_started }
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://app_rw:app_rw@postgres:5432/archova
+      DATABASE_PLATFORM_URL: postgres://app_platform:app_platform@postgres:5432/archova
+      REDIS_URL: redis://valkey:6379
+      API_MESSAGES: log
+      API_AI_PROVIDER: fake
+      LOG_LEVEL: info
+
+  # Nova's background work (indexing, drawing pages, the nightly sweep) with the fake provider.
+  ai-worker:
+    build: { context: ., target: ai-worker }
+    depends_on:
+      db-setup: { condition: service_completed_successfully }
+      valkey: { condition: service_started }
+    environment:
+      NODE_ENV: development
+      WORKER_ROLE: ai
+      DATABASE_URL: postgres://app_rw:app_rw@postgres:5432/archova
+      REDIS_URL: redis://valkey:6379
+      API_AI_PROVIDER: fake
+      LOG_LEVEL: info
+
   web:
     build: { context: ., target: web }
     depends_on: [api]
@@ -85,6 +115,7 @@ services:
     environment:
       SEED_APP_ORIGIN: ${DEMO_ORIGIN:-http://demo.localhost:8080}
       SEED_PASSWORD: *demo-password
+      SEED_DB_URL: postgres://app_rw:app_rw@postgres:5432/archova
     extra_hosts: ['demo.localhost:host-gateway']
     entrypoint: ['/bin/sh', '-c']
     command:

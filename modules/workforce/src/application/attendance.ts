@@ -51,7 +51,7 @@ export type ComplianceSource = (
 
 export interface WorkforceDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'companyExists'>;
+  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'companyExists' | 'getOrg'>;
   identity: Pick<IdentityApi, 'getUser'>;
   complianceSources?: ComplianceSource[];
   now?: () => Date;

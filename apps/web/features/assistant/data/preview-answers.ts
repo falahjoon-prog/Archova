@@ -14,6 +14,8 @@ export interface NovaAnswer {
   citations: Citation[];
   /** `air_…` when the answer came from the API; feedback is only sent for those. */
   runId: string | null;
+  /** A button under the answer that runs the action on the current screen. */
+  action?: { id: string; label: string };
 }
 
 const notFound = (text: string): NovaAnswer => ({
@@ -25,6 +27,27 @@ const notFound = (text: string): NovaAnswer => ({
 const list = (items: string[]) =>
   items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 
+const say = (text: string): NovaAnswer => ({ kind: 'answer', text, citations: [], runId: null });
+
+/** Outside a project: small talk and "what can you do" get a friendly reply; only project questions ask to open one. */
+function generalAnswer(q: string): NovaAnswer {
+  const text = q.replace(/[^\p{L}\p{N}\s']/gu, ' ').trim();
+  if (/^(hi|hello|hey|hiya|howdy|g'?day|good (morning|afternoon|evening)|yo)\b/.test(text)) {
+    return say(
+      "Hi, I'm Nova. Ask me about a project's drawings, RFIs, site diary or defects. Open a project and I'll search its records, or ask me what I can do.",
+    );
+  }
+  if (/\b(thanks|thank you|cheers|ta)\b/.test(text)) return say("You're welcome.");
+  if (/\bhow are you\b|\bwho are you\b|\bwhat are you\b|\bwhat can you do\b|\bhelp\b/.test(text)) {
+    return say(
+      "I'm Nova, Archova's assistant. In a project I can answer questions from its drawings, RFIs, site diary and defects and show where each answer came from. Open a project to get started.",
+    );
+  }
+  return notFound(
+    'I need a project open to answer that. Open one and ask again about its drawings, RFIs, diary or defects.',
+  );
+}
+
 export async function previewAnswer(
   question: string,
   scope: AssistantScope,
@@ -32,9 +55,7 @@ export async function previewAnswer(
 ): Promise<NovaAnswer> {
   const q = question.toLowerCase();
   const projectId = scope.projectId;
-  if (!projectId) {
-    return notFound('Open a project and I can answer about its drawings, RFIs, diary and defects.');
-  }
+  if (!projectId) return generalAnswer(q);
 
   if (/\brfis?\b/.test(q) || scope.record?.type === 'rfi') {
     const { rfisPreviewSource, formatRfiNumber } = await import('@/features/rfis');

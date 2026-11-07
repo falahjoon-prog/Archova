@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiClient } from '@archova/api-client';
 import { classifyFailure, SyncHttpError, projectScope, ORG_SCOPE } from '@archova/sync-core';
 import { createSyncTransport } from '../lib/sync/transport';
-import { deviceScopes } from '../lib/sync/scopes';
+import { OFFLINE_MODULES, deviceScopes } from '../lib/sync/scopes';
 
 type Call = { method: 'GET' | 'POST'; path: string; init: unknown };
 
@@ -111,6 +111,21 @@ describe('createSyncTransport', () => {
     expect(error).toMatchObject({ status: 429, retryAfterMs: 7000 });
   });
 
+  it('keeps the drain grant that comes with an access.revoked problem', async () => {
+    const grant = {
+      token: 'dg_x',
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org1',
+      projectId: null,
+      module: null,
+    };
+    const { api } = fakeApi(() => json(401, { code: 'access.revoked', drainGrant: grant }));
+    const error = await createSyncTransport(api, 'org1')
+      .pull({ scopes: [ORG_SCOPE], since: '0', limit: 500 })
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 401, code: 'access.revoked', drainGrant: grant });
+  });
+
   it('refuses a drain push that has no grant', async () => {
     const { api, calls } = fakeApi(() => json(200, { results: [] }));
     const error = await createSyncTransport(api, 'org1')
@@ -145,6 +160,15 @@ describe('deviceScopes', () => {
     const scopes = await deviceScopes(api, 'org1');
     expect(scopes).toContainEqual(ORG_SCOPE);
     expect(scopes).toContainEqual(projectScope('p2', 'diary'));
-    expect(scopes).toHaveLength(1 + 2 * 3);
+    expect(scopes).toHaveLength(1 + 2 * OFFLINE_MODULES.length);
+  });
+
+  it('leaves out projects removed from the device', async () => {
+    const { api } = fakeApi(() =>
+      json(200, { data: [{ id: 'p1' }, { id: 'p2' }], nextCursor: null }),
+    );
+    const scopes = await deviceScopes(api, 'org1', async () => new Set(['p1']));
+    expect(scopes).not.toContainEqual(projectScope('p1', 'diary'));
+    expect(scopes).toHaveLength(1 + OFFLINE_MODULES.length);
   });
 });

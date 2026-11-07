@@ -346,8 +346,52 @@ describe('drawings API source', () => {
     });
   });
 
-  it('has no geometry yet, so measuring stays off', async () => {
-    await expect(createDrawingsApi('org_1').getGeometry('prj_1', 'drv_c')).resolves.toBeNull();
+  describe('sheet scale', () => {
+    const G = `${P}/drawing-revisions/{drawingRevisionId}/geometry`;
+    const SCALE = `${P}/drawing-revisions/{drawingRevisionId}/scale`;
+    const geometry = (over: Record<string, unknown> = {}) => ({
+      revisionId: 'drv_c',
+      status: 'ready',
+      scaleDetected: 100,
+      scaleConfirmed: null,
+      scaleConfirmedBy: null,
+      scaleConfirmedAt: null,
+      extractedAt: '2026-10-30T00:00:00Z',
+      version: 1,
+      ...over,
+    });
+
+    it('stays off until the sheet has been read', async () => {
+      fake.on('GET', G, () =>
+        geometry({ status: 'pending', scaleDetected: null, extractedAt: null }),
+      );
+      await expect(createDrawingsApi('org_1').getGeometry('prj_1', 'drv_c')).resolves.toBeNull();
+    });
+
+    it('reads the detected scale as 1:N and measures as on a raster sheet', async () => {
+      fake.on('GET', G, () => geometry());
+      await expect(createDrawingsApi('org_1').getGeometry('prj_1', 'drv_c')).resolves.toMatchObject(
+        {
+          scaleDetected: '1:100',
+          scaleConfirmed: null,
+          hasVector: false,
+          segments: [],
+        },
+      );
+    });
+
+    it('confirms a scale as the N in 1:N', async () => {
+      fake.on('PUT', SCALE, () =>
+        geometry({
+          scaleConfirmed: 50,
+          scaleConfirmedBy: 'usr_me',
+          scaleConfirmedAt: '2026-10-30T01:00:00Z',
+        }),
+      );
+      const g = await createDrawingsApi('org_1').confirmScale('prj_1', 'drv_c', '1:50', me);
+      expect(fake.callsTo('PUT', SCALE)[0]!.init.body).toEqual({ scale: 50 });
+      expect(g).toMatchObject({ scaleConfirmed: '1:50', scaleConfirmedAt: '2026-10-30T01:00:00Z' });
+    });
   });
 
   it("moves an RFI's or a defect's own pin with the version it last read", async () => {

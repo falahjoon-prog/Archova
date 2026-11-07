@@ -1,5 +1,6 @@
 // Where a worker is in the online induction and what to ask next (IND-US1). Pure, so it runs in Node tests.
 import type { InductionCompletion } from '@archova/contracts';
+import { animationKey } from './animation';
 
 type Section = InductionCompletion['content']['sections'][number];
 
@@ -51,20 +52,36 @@ export function quizOutcome(result: {
   };
 }
 
-/** Block kinds the phone shows in full: text and slides inline, images and documents from a download link. */
-const READABLE_BLOCKS = new Set(['text', 'slides', 'image', 'document']);
+/** Block kinds the phone shows in full: text and slides inline; images, documents, videos and SWMS from a download link. */
+const READABLE_BLOCKS = new Set([
+  'text',
+  'slides',
+  'animation',
+  'image',
+  'document',
+  'video',
+  'swms',
+]);
 
 /** A document must stay open this long before it counts as read; opening it and closing it at once is not reading. */
 export const MIN_DOCUMENT_MS = 5000;
 
 /**
- * Images and documents in a section the worker has not yet viewed. "Seen to the end" is the record, so the
+ * Images, documents, videos and SWMS in a section the worker has not yet viewed. "Seen to the end" is the record, so the
  * section cannot be ticked until each one has been.
  */
 export function unviewedFiles(section: Section, viewed: ReadonlySet<string>): string[] {
-  return section.blocks.flatMap((b) =>
-    (b.type === 'image' || b.type === 'document') && !viewed.has(b.fileId) ? [b.fileId] : [],
-  );
+  return section.blocks.flatMap((b) => {
+    const id =
+      b.type === 'image' || b.type === 'document' || b.type === 'video'
+        ? b.fileId
+        : b.type === 'swms'
+          ? b.documentId
+          : b.type === 'animation'
+            ? animationKey(b)
+            : null;
+    return id !== null && !viewed.has(id) ? [id] : [];
+  });
 }
 
 /**
@@ -77,10 +94,8 @@ export function unsupportedBlockKinds(section: Section): string[] {
 }
 
 const kindLabel: Record<string, string> = {
-  video: 'a video',
   document: 'a document',
   image: 'an image',
-  swms: 'a SWMS',
 };
 
 export function unsupportedBlocksMessage(kinds: string[]): string {

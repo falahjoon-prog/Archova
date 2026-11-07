@@ -1,7 +1,7 @@
+import type { MarkupShape } from '@archova/markup';
+
 // `rfis.rfis`, `rfis.assignees` and `rfis.responses` (backend schema/rfis-submittals-correspondence.md) as the web
 // app uses them. `data/api.ts` maps the API's shapes onto these, so the screens serve both sources.
-
-import type { Citation } from '@archova/ui';
 
 export const RFI_STATUSES = ['draft', 'open', 'answered', 'closed', 'void'] as const;
 export type RfiStatus = (typeof RFI_STATUSES)[number];
@@ -16,6 +16,8 @@ export interface RfiResponse {
   isOfficial: boolean;
   /** Set when the text started as a Nova draft. */
   aiSuggestionId: string | null;
+  /** Files attached to the response; photos among them can be marked up. */
+  fileIds: string[];
   createdAt: string;
 }
 
@@ -55,6 +57,8 @@ export interface Rfi {
   } | null;
   specSection: string | null;
   location: string | null;
+  /** Photos and files on the question itself. */
+  fileIds: string[];
   responses: RfiResponse[];
   officialResponseId: string | null;
   activity: RfiActivity[];
@@ -81,11 +85,41 @@ export interface RfiInput {
   nova?: { suggestionId: string; subject: string; question: string };
 }
 
-/** Nova output, always a suggestion with sources (P6). */
+/** Nova's rewording of a question, a suggestion until the person accepts it (P6). */
+export interface NovaWording {
+  id: string;
+  text: string;
+}
+
+/** A drawing, spec clause or earlier RFI Nova relied on, with the words that make it relevant. */
+export interface NovaReference {
+  id: string;
+  kind: 'document' | 'drawing' | 'rfi' | 'defect' | 'diary';
+  sourceId: string;
+  revisionId: string;
+  label: string;
+  quote: string;
+}
+
+/** Nova's draft of a response to an RFI that exists: it fills the response box, the person edits and sends (P6). */
 export interface NovaDraft {
   id: string;
   text: string;
-  citations: Citation[];
+  /** What the draft rests on; `none` means no document or direction supports it, and the person should know. */
+  basis: 'documents' | 'direction' | 'none';
+  /** Points the thread and documents leave open, for the person to settle before sending. */
+  needsDecision: string[];
+  references: NovaReference[];
+  unsupportedNumbers: string[];
+  /** Files attached to the responses that Nova couldn't use (a scan, a large photo). */
+  unreadFiles: string[];
+}
+
+/** What Nova drafts a new RFI from: a note, a site photo, a drawing markup, or any mix (F3). */
+export interface NovaRfiSource {
+  note: string;
+  photo?: File | null;
+  markup?: { revisionId: string; markupId: string } | null;
 }
 
 /** Nova's draft of a new RFI from a site note (F3): it fills the form, and the person edits and sends it. */
@@ -95,14 +129,7 @@ export interface NovaRfiDraft {
   question: string;
   discipline: string | null;
   /** Drawings and spec clauses the question refers to, with the words that make them relevant. */
-  references: Array<{
-    id: string;
-    kind: 'document' | 'drawing' | 'rfi' | 'defect' | 'diary';
-    sourceId: string;
-    revisionId: string;
-    label: string;
-    quote: string;
-  }>;
+  references: NovaReference[];
   /** What a complete RFI states that the note didn't: location, drawing_reference, proposed_solution, impact. */
   gaps: string[];
   unsupportedNumbers: string[];
@@ -120,3 +147,25 @@ export const STATUS_LABELS: Record<RfiStatus, string> = {
 
 export const formatRfiNumber = (n: number | null) =>
   n === null ? 'Draft' : `RFI-${String(n).padStart(3, '0')}`;
+
+/** An image attached to an RFI (to the question or to a response), with a short-lived link to show it. */
+export interface RfiPhoto {
+  fileId: string;
+  name: string;
+  /** Signed or object URL; expires, so it is fetched fresh when the RFI is opened. */
+  url: string;
+  origin: 'question' | 'response';
+}
+
+/** One person's marks on one photo. The photo itself never changes. */
+export interface RfiAnnotation {
+  id: string;
+  fileId: string;
+  authorId: string;
+  authorName: string;
+  shapes: MarkupShape[];
+  updatedAt: string;
+}
+
+/** Image types every browser draws; other image types (HEIC, TIFF) are kept as files but not marked up here. */
+export const MARKABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;

@@ -1,6 +1,7 @@
 import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
+import type { Entitlements, MessageSender } from '@archova/kernel';
 import type { FilesModule } from '@archova/mod-files';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -11,19 +12,34 @@ import { createDrawingService } from './application/drawings';
 import { createGeometryService } from './application/geometry';
 import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
+import { createSpecService } from './application/specs';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
+import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
+import {
+  createDrawingsSyncSource,
+  createMarkupCommand,
+  deleteMarkupCommand,
+  updateMarkupCommand,
+} from './api/drawings-sync';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
   services: KernelServices,
   deps: {
     access: AccessService;
-    platform: Pick<PlatformApi, 'getProject'>;
-    files: Pick<FilesModule['api'], 'getFile' | 'signTiles'>;
-    identity: Pick<IdentityApi, 'findUserByEmail'>;
+    platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
+    files: Pick<FilesModule['api'], 'getFile' | 'signTiles' | 'downloadUrl'>;
+    identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
+    /** Transmittal emails for recipients without an account (X45). */
+    links: {
+      messages: MessageSender;
+      entitlements: (orgId: string) => Promise<Entitlements>;
+      /** The public web origin the link points at, e.g. `https://app.archova.com.au`. */
+      baseUrl: string;
+    };
   },
 ) {
   const c = createContext(deps);
@@ -31,9 +47,20 @@ export function createDocumentsModule(
   const documents = createDocumentService(c, folders);
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
+  const specs = createSpecService(c);
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
+  const transmittalLinks = createTransmittalLinkService({
+    database: services.database,
+    transmittals,
+    c,
+    platform: deps.platform,
+    files: deps.files,
+    entitlements: deps.links.entitlements,
+    redis: services.redis,
+    logger: services.logger,
+  });
   const aiSources = createAiSourceService(c, folders);
   const syncSource: SyncSource = {
     module: 'documents',
@@ -58,6 +85,7 @@ export function createDocumentsModule(
       return out;
     },
   };
+  const drawingsSyncSource = createDrawingsSyncSource(drawings, markups);
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -67,17 +95,37 @@ export function createDocumentsModule(
       documents,
       drawings,
       markups,
+      specs,
       geometry,
       tiles,
       transmittals,
+      links: transmittalLinks,
+      platform: deps.platform,
+      messages: deps.links.messages,
+      baseUrl: deps.links.baseUrl,
+      logger: services.logger,
     }),
     api: {
+      /** For folder links (integrations/03 M2): each sheet's current revision, to publish what is already issued. */
+      currentDrawingRevisions: drawings.currentRevisions,
+      /** Global search (`search`): documents the caller can open that match some words. */
+      searchHits: documents.searchHits,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
+      /** The drawing register and revisions the mobile pull reads (modules/sync). */
+      drawingsSyncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: [
+        createMarkupCommand(drawings, markups),
+        updateMarkupCommand(markups),
+        deleteMarkupCommand(markups),
+      ],
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */
       getDocumentRef: documents.ref,
+      /** For inductions: a SWMS document's current file, for a worker the induction itself authorises. */
+      getDocumentFileAuthorised: documents.currentFileAuthorised,
       /** For Nova revision compare (F21): the revision this one superseded on its sheet, or null. */
       getPreviousDrawingRevision: drawings.getPreviousRevision,
       /** For Nova RFI drafts (F3): a markup the caller may see on a revision, or markup.not_found. */

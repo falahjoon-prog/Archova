@@ -1,6 +1,13 @@
 import { and, asc, desc, eq, gt, inArray, isNull, notInArray, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  decodeCursor,
+  toPage,
+  versionConflict,
+  type TenantScope,
+  type SearchHit,
+} from '@archova/kernel';
 import { documentRevisions, documentsTable, type DocumentStatus } from '../infra/tables';
 import type { DocumentsContext } from './context';
 import { uniqueViolation } from './errors';
@@ -278,9 +285,15 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
   }
 
   /** Revisions by id, for transmittals. Only revisions in this project and in folders the caller can open. */
-  async function revisionsByIds(scope: TenantScope, projectId: string, ids: string[]) {
+  /** `authorised`: the caller has already decided the reader may see these (a transmittal's issuer chose them). */
+  async function revisionsByIds(
+    scope: TenantScope,
+    projectId: string,
+    ids: string[],
+    opts: { authorised?: boolean } = {},
+  ) {
     if (!ids.length) return [];
-    const hidden = await folders.hiddenIds(scope, projectId);
+    const hidden = opts.authorised ? new Set<string>() : await folders.hiddenIds(scope, projectId);
     const rows = await scope.tx
       .select({ revision: documentRevisions, document: documentsTable })
       .from(documentRevisions)
@@ -293,6 +306,34 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
   async function ref(scope: TenantScope, projectId: string, documentId: string) {
     const row = await getRow(scope, projectId, documentId);
     return { id: row.id, title: row.title, docNumber: row.docNumber };
+  }
+
+  /**
+   * The current revision's file of a live document in this project, with no folder check: the caller is another
+   * module that has already authorised the read (an induction's SWMS for a worker who holds only sign-in).
+   */
+  async function currentFileAuthorised(scope: TenantScope, projectId: string, documentId: string) {
+    const [row] = await scope.tx
+      .select()
+      .from(documentsTable)
+      .where(
+        and(
+          eq(documentsTable.id, documentId),
+          eq(documentsTable.projectId, projectId),
+          isNull(documentsTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    const [withCurrent] = row ? await attachCurrent(scope, [row]) : [];
+    if (!withCurrent?.current) throw new AppError('document.not_found');
+    const { current } = withCurrent;
+    return {
+      id: withCurrent.id,
+      title: withCurrent.title,
+      docNumber: withCurrent.docNumber,
+      rev: current.rev,
+      fileId: current.fileId,
+    };
   }
 
   /**
@@ -315,7 +356,34 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return attachCurrent(scope, rows);
   }
 
-  return { list, detail, create, addRevision, update, revisionsByIds, ref, visibleAmong };
+  /** Global search (`search`): the documents the caller can open that match the words. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await c.access.can(scope, 'documents.documents.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((d) => ({
+        id: d.id,
+        ref: d.docNumber ?? 'Document',
+        title: d.title,
+        status: d.status,
+      })),
+    };
+  }
+
+  return {
+    searchHits,
+    list,
+    detail,
+    create,
+    addRevision,
+    update,
+    revisionsByIds,
+    ref,
+    currentFileAuthorised,
+    visibleAmong,
+  };
 }
 
 async function changed(scope: TenantScope, projectId: string, id: string, version: number) {

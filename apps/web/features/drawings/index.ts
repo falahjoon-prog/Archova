@@ -5,5 +5,6 @@ export { DrawingViewerScreen } from './screens/DrawingViewerScreen';
 export { DrawingUploadScreen } from './screens/DrawingUploadScreen';
 export { DrawingSetReviewScreen } from './screens/DrawingSetReviewScreen';
 export { useSheetPicker, type SheetOption } from './hooks/useSheetPicker';
+export { useMarkupPicker, type MarkupOption } from './hooks/useMarkupPicker';
 /** Preview only: read access for Ask Nova's sample answers until the ai module answers from the API. */
 export { drawingsSource as drawingsPreviewSource } from './data/source';

@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
 import {
   addMember,
+  Browser,
+  removeMember,
   createOrg,
   createProject,
   createTestContext,
@@ -477,6 +479,181 @@ describe('transmittals (DOC-AC10–AC12)', () => {
   });
 });
 
+describe('transmittals to people without an account (X45)', () => {
+  const tokenIn = (to: string) => {
+    const mail = t.messages.sent.filter((m) => m.to === to).at(-1)!;
+    return /\/t\/(arl_[A-Za-z0-9_-]+)/.exec(mail.text)![1]!;
+  };
+
+  it('emails a link that records opened, downloaded and acknowledged, and can be replaced', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'S-001', rev: '0', discipline: 'S' }]);
+    const draft = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'Structural IFC',
+      purpose: 'for_construction',
+      message: 'Please confirm receipt.',
+      recipients: [{ email: 'engineer@example.com', name: 'Eli Engineer' }],
+      currentSetDisciplines: ['S'],
+    });
+    const tr = draft.json();
+    const sent = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/send`,
+      undefined,
+      { 'if-match': draft.headers.etag as string },
+    );
+    expect(sent.statusCode).toBe(200);
+    // The response never carries the token or the file behind an item.
+    expect(JSON.stringify(sent.json())).not.toMatch(/arl_|fileId/);
+    expect(sent.json().recipients[0].deliveredAt).toBeTruthy();
+    expect(sent.json().recipients[0].openedAt).toBeNull();
+
+    const guest = new Browser(t.app);
+    const first = tokenIn('engineer@example.com');
+    const opened = await guest.post('/v1/transmittal-access', { token: first });
+    expect(opened.statusCode).toBe(200);
+    expect(opened.headers['referrer-policy']).toBe('no-referrer');
+    const view = opened.json();
+    expect(view.transmittal).toMatchObject({
+      number: 1,
+      subject: 'Structural IFC',
+      fromOrg: 'Docs Builder',
+    });
+    expect(view.items.map((i: { number: string }) => i.number)).toEqual(['S-001']);
+    expect(view.recipient.openedAt).toBeTruthy();
+    expect(view.recipient.acknowledgedAt).toBeNull();
+
+    const dl = await guest.post('/v1/transmittal-access/download', {
+      revisionType: 'drawing',
+      revisionId: view.items[0].revisionId,
+    });
+    expect(dl.statusCode).toBe(200);
+    expect(dl.json().url).toBeTruthy();
+    // Only items on this transmittal can be fetched.
+    const other = await guest.post('/v1/transmittal-access/download', {
+      revisionType: 'drawing',
+      revisionId: 'drv_00000000000000000000000000',
+    });
+    expect(other.json().code).toBe('transmittal.item_not_found');
+
+    const ack = await guest.post('/v1/transmittal-access/acknowledge', {});
+    expect(ack.json().recipient.acknowledgedAt).toBeTruthy();
+
+    const detail = (
+      await s.owner.browser.get(`${s.base}/transmittals/${tr.transmittal.id}`)
+    ).json();
+    expect(detail.recipients[0]).toMatchObject({ email: 'engineer@example.com' });
+    expect(detail.recipients[0].openedAt).toBeTruthy();
+    expect(detail.recipients[0].downloadedAt).toBeTruthy();
+    expect(detail.recipients[0].acknowledgedAt).toBeTruthy();
+
+    // A lost email: resend replaces the link, and the old one stops working at once.
+    const resent = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/recipients/${detail.recipients[0].id}/resend`,
+    );
+    expect(resent.statusCode).toBe(200);
+    expect(resent.json().deliveredAt).toBeTruthy();
+    expect(tokenIn('engineer@example.com')).not.toBe(first);
+    expect((await guest.get('/v1/transmittal-access')).json().code).toBe('access_link.invalid');
+    expect(
+      (await new Browser(t.app).post('/v1/transmittal-access', { token: first })).json().code,
+    ).toBe('access_link.invalid');
+    const again = new Browser(t.app);
+    expect(
+      (await again.post('/v1/transmittal-access', { token: tokenIn('engineer@example.com') }))
+        .statusCode,
+    ).toBe(200);
+  });
+
+  async function sendTo(
+    s: Awaited<ReturnType<typeof setup>>,
+    to: string,
+    browser = s.owner.browser,
+  ) {
+    const draft = await browser.post(`${s.base}/transmittals`, {
+      subject: 'IFC',
+      purpose: 'for_information',
+      recipients: [{ email: to }],
+      currentSetDisciplines: ['A'],
+    });
+    const sent = await browser.post(
+      `${s.base}/transmittals/${draft.json().transmittal.id}/send`,
+      undefined,
+      { 'if-match': draft.headers.etag as string },
+    );
+    expect(sent.statusCode).toBe(200);
+    return sent.json();
+  }
+
+  it('keeps one link to its own transmittal, names the sender, and caps resends', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'A-001', rev: '0', discipline: 'A' }]);
+    const a = await sendTo(s, 'a@example.com');
+    await sendTo(s, 'b@example.com');
+    expect(t.messages.sent.filter((m) => m.to === 'a@example.com').at(-1)!.text).toMatch(
+      /Sent by .*\(.*@.*\)/,
+    );
+    // A's link cannot fetch an item that is only on B's transmittal, or any made-up one.
+    const guest = new Browser(t.app);
+    const opened = (
+      await guest.post('/v1/transmittal-access', { token: tokenIn('a@example.com') })
+    ).json();
+    expect(opened.items).toHaveLength(1);
+    const bOnly = new Browser(t.app);
+    const bView = (
+      await bOnly.post('/v1/transmittal-access', { token: tokenIn('b@example.com') })
+    ).json();
+    expect(bView.transmittal.number).toBe(2);
+    expect(opened.transmittal.number).toBe(1);
+
+    const rid = a.recipients[0].id;
+    const url = `${s.base}/transmittals/${a.transmittal.id}/recipients/${rid}/resend`;
+    for (let i = 0; i < 3; i++) expect((await s.owner.browser.post(url)).statusCode).toBe(200);
+    const capped = await s.owner.browser.post(url);
+    expect(capped.statusCode).toBe(429);
+    expect(capped.json().code).toBe('access_link.rate_limited');
+  });
+
+  it('stops a link when the person who issued it can no longer issue transmittals', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'A-001', rev: '0', discipline: 'A' }]);
+    const pm = await signUp(t.app, 'tx-pm');
+    await addMember(s.owner.browser, s.org.id, s.project.id, pm.email, 'Project Manager');
+    await sendTo(s, 'late@example.com', pm.browser);
+    const guest = new Browser(t.app);
+    expect(
+      (await guest.post('/v1/transmittal-access', { token: tokenIn('late@example.com') }))
+        .statusCode,
+    ).toBe(200);
+    await removeMember(s.owner.browser, s.org.id, s.project.id, pm.email);
+    // Both the open session and the emailed link stop at once.
+    expect((await guest.get('/v1/transmittal-access')).json().code).toBe('access_link.invalid');
+    expect(
+      (
+        await new Browser(t.app).post('/v1/transmittal-access', {
+          token: tokenIn('late@example.com'),
+        })
+      ).json().code,
+    ).toBe('access_link.invalid');
+  });
+
+  it('refuses people who are not the issuer, and an induction link or no cookie', async () => {
+    const s = await setup();
+    const none = await new Browser(t.app).get('/v1/transmittal-access');
+    expect(none.json().code).toBe('access_link.session_required');
+    const sub = await signUp(t.app, 'tx-nolink');
+    await addMember(s.owner.browser, s.org.id, s.project.id, sub.email, 'Subcontractor');
+    const draft = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'x',
+      purpose: 'for_information',
+      recipients: [{ email: 'nobody@example.com' }],
+    });
+    const resend = await sub.browser.post(
+      `${s.base}/transmittals/${draft.json().transmittal.id}/recipients/trr_00000000000000000000000000/resend`,
+    );
+    expect(resend.statusCode).toBe(403);
+  });
+});
+
 describe('tenant isolation', () => {
   it("never shows one org's drawings to another org, even with a guessed id", async () => {
     const a = await setup();
@@ -488,5 +665,77 @@ describe('tenant isolation', () => {
       `/v1/orgs/${a.org.id}/projects/${a.project.id}/drawings`,
     );
     expect(cross.statusCode).toBe(404);
+  });
+});
+
+describe('specification books (DOC-US10)', () => {
+  it('splits a book into sections, supersedes it with the next issue and finds sections in the current one', async () => {
+    const s = await setup();
+    const fileId = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'spec.pdf');
+    const made = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Architectural spec, Issue A',
+      issuedDate: '2026-10-01',
+      fileId,
+    });
+    expect(made.statusCode).toBe(201);
+    const book = made.json().book;
+    expect(book).toMatchObject({ status: 'current', sectionCount: 0 });
+
+    const sections = [
+      { sectionNumber: '03 30 00', title: 'Cast-in-place concrete', pageFrom: 4, pageTo: 20 },
+      { sectionNumber: '09 30 00', title: 'Tiling', pageFrom: 21, pageTo: 30, revision: 'A' },
+    ];
+    const stale = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections },
+      {
+        'if-match': '"99"',
+      },
+    );
+    expect(stale.statusCode).toBeGreaterThanOrEqual(400);
+    const split = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections },
+      {
+        'if-match': String(made.headers.etag),
+      },
+    );
+    expect(split.statusCode).toBe(200);
+    expect(split.json().sections.map((x: { sectionNumber: string }) => x.sectionNumber)).toEqual([
+      '03 30 00',
+      '09 30 00',
+    ]);
+    expect(split.json().sections[0]).toMatchObject({ division: '03', pageFrom: 4, pageTo: 20 });
+
+    const twice = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections: [sections[0], sections[0]] },
+      { 'if-match': String(split.headers.etag) },
+    );
+    expect(twice.json().code).toBe('spec_book.invalid');
+
+    const found = await s.owner.browser.get(`${s.base}/spec-sections?q=09`);
+    expect(found.json().data).toHaveLength(1);
+    expect(found.json().data[0]).toMatchObject({ bookName: 'Architectural spec, Issue A' });
+    expect(
+      (await s.owner.browser.get(`${s.base}/spec-sections?q=tiling`)).json().data,
+    ).toHaveLength(1);
+
+    // The next issue supersedes it; searches then only see the current book.
+    const next = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Architectural spec, Issue B',
+      supersedesBookId: book.id,
+    });
+    expect(next.statusCode).toBe(201);
+    const old = (await s.owner.browser.get(`${s.base}/spec-books/${book.id}`)).json().book;
+    expect(old).toMatchObject({ status: 'superseded', supersededById: next.json().book.id });
+    expect((await s.owner.browser.get(`${s.base}/spec-sections?q=09`)).json().data).toHaveLength(0);
+    const listed = (await s.owner.browser.get(`${s.base}/spec-books`)).json().data;
+    expect(listed).toHaveLength(2);
+    const again = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Issue C',
+      supersedesBookId: book.id,
+    });
+    expect(again.json().code).toBe('spec_book.invalid');
   });
 });

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-wasm.mjs",
     "dev": "next dev -p 3000",
+    "prebuild": "node scripts/copy-wasm.mjs",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
@@ -26,9 +28,13 @@
     "@archova/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
     "next": "^15.5.28",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
+    "qrcode-generator": "2.0.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "three": "0.170.0",
+    "web-ifc": "0.0.66"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
@@ -41,6 +47,7 @@
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/three": "0.170.0",
     "eslint": "^9.39.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^26.1.0",

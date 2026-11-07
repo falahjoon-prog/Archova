@@ -49,7 +49,7 @@ export const requests = ai.table('ai_requests', {
   promptVersion: integer('prompt_version').notNull(),
   provider: text('provider').notNull(),
   model: text('model').notNull(),
-  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr'>().notNull(),
+  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr' | 'speech'>().notNull(),
   attempt: smallint('attempt').notNull(),
   tokensIn: integer('tokens_in').notNull().default(0),
   tokensOut: integer('tokens_out').notNull().default(0),
@@ -73,6 +73,18 @@ export const usageLedger = ai.table('ai_usage_ledger', {
   costMicros: bigint('cost_micros', { mode: 'number' }).notNull().default(0),
   runs: integer('runs').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const creditGrants = ai.table('ai_credit_grants', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  periodStart: date('period_start', { mode: 'string' }).notNull(),
+  credits: numeric('credits', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+  kind: text('kind').$type<'top_up' | 'goodwill' | 'promo'>().notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  grantedBy: uuid('granted_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type SuggestionStatus = 'pending' | 'accepted' | 'edited' | 'rejected';
@@ -195,4 +207,82 @@ export const drawingVisualCompares = ai.table('ai_drawing_visual_compares', {
   runId: uuid('run_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const contractPlaybookTopics = ai.table('ai_contract_playbook_topics', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractType: text('contract_type').notNull(),
+  key: text('key').notNull(),
+  topic: text('topic').notNull(),
+  position: text('position').notNull(),
+  threshold: text('threshold'),
+  severity: text('severity').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  fallbackTitle: text('fallback_title'),
+  fallbackWording: text('fallback_wording'),
+  fallbackApprovedBy: text('fallback_approved_by'),
+  fallbackApprovedOn: date('fallback_approved_on', { mode: 'string' }),
+  fallbackReviewBy: date('fallback_review_by', { mode: 'string' }),
+  ...audit,
+});
+
+export const contractPlaybookHistory = ai.table('ai_contract_playbook_history', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractType: text('contract_type').notNull(),
+  topics: jsonb('topics').$type<unknown>().notNull(),
+  savedBy: uuid('saved_by'),
+  savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const legalRules = ai.table('ai_legal_rules', {
+  id: uuid('id').primaryKey(),
+  ruleKey: text('rule_key').notNull(),
+  version: integer('version').notNull(),
+  state: text('state').notNull(),
+  contractTypes: text('contract_types').array().notNull(),
+  topic: text('topic').notNull(),
+  detect: text('detect').notNull(),
+  wording: text('wording').notNull(),
+  provision: text('provision').notNull(),
+  status: text('status').notNull(),
+  signedBy: text('signed_by'),
+  signedOn: date('signed_on', { mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const nccProvisions = ai.table('ai_ncc_provisions', {
+  id: uuid('id').primaryKey(),
+  provisionKey: text('provision_key').notNull(),
+  version: integer('version').notNull(),
+  edition: text('edition').notNull(),
+  volume: text('volume').notNull(),
+  clause: text('clause').notNull(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  url: text('url').notNull(),
+  keywords: text('keywords').array().notNull(),
+  status: text('status').notNull(),
+  signedBy: text('signed_by'),
+  signedOn: date('signed_on', { mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hazardSignals = ai.table('ai_hazard_signals', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  scanId: uuid('scan_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  runId: uuid('run_id').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  category: text('category').notNull(),
+  observation: text('observation').notNull(),
+  confidence: text('confidence').$type<'low' | 'medium' | 'high'>().notNull(),
+  status: text('status').$type<'open' | 'confirmed' | 'dismissed'>().notNull().default('open'),
+  reviewNote: text('review_note'),
+  reviewedBy: uuid('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  ...audit,
 });

@@ -1,10 +1,12 @@
 import { A1, artworkSegments, buildArtwork, type ArtworkSpec } from '../lib/artwork';
+import { issuedForLabel } from '../lib/types';
 import type {
   Discipline,
   DrawingMarkup,
   DrawingPin,
   DrawingRevision,
   DrawingSet,
+  DrawingSetSummary,
   IssuedFor,
   SheetGeometry,
 } from '../lib/types';
@@ -25,6 +27,8 @@ export interface DrawingsStore {
   pins: Map<string, DrawingPin[]>;
   markups: DrawingMarkup[];
   sets: DrawingSet[];
+  /** Published issues, one per issue date. */
+  setMeta: DrawingSetSummary[];
 }
 
 interface RevSeed {
@@ -271,6 +275,20 @@ export function seedDrawings(): DrawingsStore {
     ],
   ]);
 
+  const addDays = (date: string, n: number) =>
+    new Date(Date.parse(`${date}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+  const setMeta: DrawingSetSummary[] = [...new Set(revisions.map((r) => r.setId))].map((id) => {
+    const date = id.replace('set_', '');
+    const issuedFor = revisions.find((r) => r.setId === id)?.issuedFor ?? null;
+    return {
+      id,
+      name: `${issuedForLabel(issuedFor)}, ${date}`,
+      status: 'published' as const,
+      issuedDate: date,
+      receivedDate: addDays(date, 1),
+    };
+  });
+
   const markups: DrawingMarkup[] = [
     {
       id: 'mku_1',
@@ -310,5 +328,6 @@ export function seedDrawings(): DrawingsStore {
     pins,
     markups,
     sets: [],
+    setMeta,
   };
 }

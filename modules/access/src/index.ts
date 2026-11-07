@@ -5,3 +5,4 @@ export type {
   ProjectMembershipInfo,
   ProjectMembershipLookup,
 } from './application/access-service';
+export { backfillSeededTemplates } from './application/backfill';

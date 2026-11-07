@@ -5,12 +5,32 @@
 import { companyName, personCompanyId, personName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { canTransition, submitErrors, type RfiAction } from '../lib/lifecycle';
-import type { NovaDraft, NovaRfiDraft, Rfi, RfiInput, RfiStatus } from '../lib/types';
+import type {
+  NovaDraft,
+  NovaReference,
+  NovaWording,
+  NovaRfiDraft,
+  NovaRfiSource,
+  Rfi,
+  RfiAnnotation,
+  RfiInput,
+  RfiPhoto,
+  RfiStatus,
+} from '../lib/types';
+import type { MarkupShape } from '@archova/markup';
 
 interface Store {
   rfis: Rfi[];
   nextNumber: number;
+  /** Photos by file id; `url` is a data or object URL, standing in for the signed download link. */
+  photoFiles: Record<string, { name: string; url: string }>;
+  annotations: RfiAnnotation[];
 }
+
+/** A stand-in site photo: a wall with a door opening, so marks have something to point at. */
+const SAMPLE_PHOTO = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect width="800" height="600" fill="#cfd4d6"/><rect y="430" width="800" height="170" fill="#9aa3a6"/><rect x="120" y="90" width="230" height="340" fill="#7a8588"/><rect x="150" y="120" width="170" height="310" fill="#e8ecee"/><rect x="430" y="60" width="260" height="190" fill="#b9c1c4"/><circle cx="560" cy="155" r="42" fill="#8e989b"/></svg>',
+)}`;
 
 export interface Actor {
   id: string;
@@ -37,6 +57,7 @@ function seedRfi(
     drawing: null,
     specSection: null,
     location: null,
+    fileIds: [],
     responses: [],
     officialResponseId: null,
     activity: [],
@@ -50,6 +71,8 @@ function seedRfi(
 function seed(): Store {
   return {
     nextNumber: 5,
+    photoFiles: { fil_binstore: { name: 'bin-store-door.jpg', url: SAMPLE_PHOTO } },
+    annotations: [],
     rfis: [
       seedRfi({
         id: 'rfi_001',
@@ -74,6 +97,7 @@ function seed(): Store {
             body: 'S-201 governs. Set out the slab edge 150 mm off grid C as shown.',
             isOfficial: true,
             aiSuggestionId: null,
+            fileIds: [],
             createdAt: at('2026-09-05'),
           },
         ],
@@ -117,6 +141,7 @@ function seed(): Store {
             body: 'Use the sheet membrane per detail 7/A-501. Spec 0421 will be updated.',
             isOfficial: false,
             aiSuggestionId: null,
+            fileIds: [],
             createdAt: at('2026-09-24'),
           },
         ],
@@ -140,6 +165,7 @@ function seed(): Store {
         dueDate: '2026-09-29',
         drawing: { sheetId: 'sht_a101', revisionId: 'rev_a101_c', label: 'A-101 Rev C' },
         location: 'Ground, bin store',
+        fileIds: ['fil_binstore'],
         activity: [
           { id: 'a1', actor: 'Luca Romano', action: 'submitted the RFI', at: at('2026-09-23') },
         ],
@@ -233,6 +259,7 @@ export const rfisSource = {
       assigneeCompanyId: personCompanyId(input.assigneeId),
       ballInCourtId: actor.id,
       ballInCourtCompanyId: actor.companyId,
+      fileIds: [],
       responses: [],
       officialResponseId: null,
       activity: [],
@@ -289,6 +316,62 @@ export const rfisSource = {
     return delay(rfi);
   },
 
+  async photos(projectId: string, rfi: Rfi): Promise<RfiPhoto[]> {
+    const files = stores.get(projectId).photoFiles;
+    const origins = new Map<string, RfiPhoto['origin']>();
+    for (const id of rfi.fileIds) origins.set(id, 'question');
+    for (const r of rfi.responses)
+      for (const id of r.fileIds) origins.set(id, origins.get(id) ?? 'response');
+    return delay(
+      [...origins].flatMap(([fileId, origin]) =>
+        files[fileId] ? [{ fileId, name: files[fileId].name, url: files[fileId].url, origin }] : [],
+      ),
+    );
+  },
+
+  async addPhoto(projectId: string, rfiId: string, photo: File): Promise<Rfi> {
+    const s = stores.get(projectId);
+    const rfi = find(projectId, rfiId);
+    if (rfi.status === 'closed' || rfi.status === 'void')
+      problem(409, 'rfi.locked', 'Closed and void RFIs can’t be edited.');
+    const fileId = mockId('fil');
+    s.photoFiles[fileId] = { name: photo.name, url: URL.createObjectURL(photo) };
+    rfi.fileIds = [...rfi.fileIds, fileId];
+    return delay(rfi);
+  },
+
+  async annotations(projectId: string, rfiId: string): Promise<RfiAnnotation[]> {
+    find(projectId, rfiId);
+    return delay(stores.get(projectId).annotations.filter((a) => a.id.startsWith(`${rfiId}:`)));
+  },
+
+  /** One layer per person per photo, replaced whole; an empty list removes it. */
+  async saveAnnotation(
+    projectId: string,
+    rfiId: string,
+    fileId: string,
+    shapes: readonly MarkupShape[],
+    actor: Actor,
+  ): Promise<RfiAnnotation | null> {
+    const s = stores.get(projectId);
+    const rfi = find(projectId, rfiId);
+    if (rfi.status === 'closed' || rfi.status === 'void')
+      problem(409, 'rfi.locked', 'Closed and void RFIs can’t be marked up.');
+    const id = `${rfiId}:${fileId}:${actor.id}`;
+    s.annotations = s.annotations.filter((a) => a.id !== id);
+    if (shapes.length === 0) return delay(null);
+    const layer: RfiAnnotation = {
+      id,
+      fileId,
+      authorId: actor.id,
+      authorName: actor.name,
+      shapes: [...shapes],
+      updatedAt: nowIso(),
+    };
+    s.annotations.push(layer);
+    return delay(layer);
+  },
+
   /** A response moves the RFI to Answered and the ball back to the RFI manager (RFI-AC4). */
   async respond(
     projectId: string,
@@ -307,6 +390,7 @@ export const rfisSource = {
       body: input.body.trim(),
       isOfficial: false,
       aiSuggestionId: input.aiSuggestionId,
+      fileIds: [],
       createdAt: nowIso(),
     });
     if (rfi.status === 'open') {
@@ -367,36 +451,59 @@ export const rfisSource = {
 
   // ---- Nova (preview): canned suggestions. Production: POST {p}/rfis/{id}/ai-draft and the ai module. ----
 
-  async novaDraftResponse(projectId: string, id: string): Promise<NovaDraft> {
+  async novaDraftResponse(projectId: string, id: string, direction?: string): Promise<NovaDraft> {
     const rfi = find(projectId, id);
-    const citations = [
+    const references: NovaReference[] = [
       ...(rfi.drawing
         ? [
             {
               id: 'c_dwg',
+              kind: 'drawing' as const,
+              sourceId: rfi.drawing.sheetId,
+              revisionId: rfi.drawing.revisionId,
               label: rfi.drawing.label,
-              href: `drawing:${rfi.drawing.sheetId}:${rfi.drawing.revisionId}`,
+              quote: 'Sheet membrane to detail 7.',
             },
           ]
         : []),
       ...(rfi.specSection
-        ? [{ id: 'c_spec', label: `Spec ${rfi.specSection}`, href: 'documents:doc_spec' }]
+        ? [
+            {
+              id: 'c_spec',
+              kind: 'document' as const,
+              sourceId: 'doc_spec',
+              revisionId: 'docrev_spec',
+              label: `Spec ${rfi.specSection}`,
+              quote: 'Install to manufacturer’s written instructions.',
+            },
+          ]
         : []),
     ];
+    const told = direction?.trim();
     return delay(
       {
         id: mockId('ais'),
-        text: rfi.drawing
-          ? `Based on ${rfi.drawing.label}, the arrangement shown on the current revision governs. Please proceed as drawn and confirm on site before installation.`
-          : 'I couldn’t find a drawing or specification clause that answers this. Please answer from your own records.',
-        citations,
+        text: told
+          ? `${told.charAt(0).toUpperCase()}${told.slice(1)}${/[.!?]$/.test(told) ? '' : '.'} Please confirm on site before installation.`
+          : rfi.drawing
+            ? `Based on ${rfi.drawing.label}, the arrangement shown on the current revision governs. Please proceed as drawn and confirm on site before installation.`
+            : 'I couldn’t find a drawing or specification clause that answers this. Please answer from your own records.',
+        basis: references.length ? 'documents' : told ? 'direction' : 'none',
+        needsDecision: references.length ? [] : ['Whether the work changes scope or time.'],
+        references,
+        unsupportedNumbers: [],
+        unreadFiles: [],
       },
       400,
     );
   },
 
-  async novaDraftRfi(_projectId: string, note: string): Promise<NovaRfiDraft> {
-    const text = note.trim().replace(/\s+/g, ' ');
+  async novaDraftRfi(_projectId: string, source: NovaRfiSource): Promise<NovaRfiDraft> {
+    const text =
+      source.note.trim().replace(/\s+/g, ' ') ||
+      (source.photo
+        ? 'the condition in the attached photo.'
+        : 'the marked-up area of the drawing.');
     return delay(
       {
         suggestionId: mockId('ais'),
@@ -404,7 +511,7 @@ export const rfisSource = {
         question: `On site we found: ${text} Please confirm how this should be built and say whether it changes scope or time.`,
         discipline: null,
         references: [],
-        gaps: ['location', 'proposed_solution'],
+        gaps: source.markup ? ['proposed_solution'] : ['location', 'proposed_solution'],
         unsupportedNumbers: [],
         similar: [],
         drawing: null,
@@ -419,14 +526,13 @@ export const rfisSource = {
     _decision: 'accepted' | 'edited' | 'rejected',
   ) {},
 
-  async novaImproveQuestion(text: string): Promise<NovaDraft> {
+  async novaImproveQuestion(text: string): Promise<NovaWording> {
     const trimmed = text.trim().replace(/\s+/g, ' ');
     const sentence = trimmed.endsWith('?') ? trimmed : `${trimmed.replace(/[.]$/, '')}?`;
     return delay(
       {
         id: mockId('ais'),
         text: `Please confirm: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)} If this changes scope or time, please say so in your answer.`,
-        citations: [],
       },
       400,
     );

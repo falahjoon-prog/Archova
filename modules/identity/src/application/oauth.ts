@@ -9,6 +9,7 @@ import {
 } from '../infra/tables';
 import { ACCESS_TOKEN_TTL_S, AUTH_CODE_TTL_MS, REFRESH_TOKEN_TTL_MS } from '../domain/policy';
 import { newToken, sha256, verifyPkce } from './crypto';
+import type { PartnerAppService } from './partner-apps';
 import type { SessionService } from './sessions';
 import type { TokenSigner } from './tokens';
 
@@ -27,6 +28,8 @@ export interface TokenInput {
   redirect_uri?: string;
   code_verifier?: string;
   refresh_token?: string;
+  /** Third-party apps only; first-party mobile is a public client. */
+  client_secret?: string;
 }
 
 const invalidGrant = (msg = 'The grant is invalid, expired or already used.') =>
@@ -40,6 +43,7 @@ export function createOAuthService(
   database: Database,
   sessions: SessionService,
   signer: TokenSigner,
+  partner: PartnerAppService,
 ) {
   async function getClient(clientId: string) {
     const [c] = await database.withGlobalTx('identity', (tx) =>
@@ -50,6 +54,10 @@ export function createOAuthService(
 
   /** Called with the user's web session. Returns the redirect URL carrying the code. */
   async function authorize(principal: Principal, input: AuthorizeInput): Promise<string> {
+    // A personal access token never opens a session for another client.
+    const { authMethod } = principal;
+    if (authMethod === 'api_token')
+      throw new AppError('api_token.not_allowed', 'Tokens cannot authorise apps.');
     const client = await getClient(input.client_id);
     if (!client) throw new AppError('oauth.invalid_client', 'Unknown client.');
     // Exact match only; never redirect to an unregistered URI.
@@ -59,11 +67,8 @@ export function createOAuthService(
         'redirect_uri is not registered for this client.',
       );
     }
-    if (!client.firstParty)
-      throw new AppError(
-        'oauth.invalid_client',
-        'Third-party apps need a consent screen (phase 2).',
-      );
+    // Third-party apps go through the consent page, where an owner or admin picks the org and approves the scopes.
+    if (!client.firstParty) return partner.consentRedirect(client, input);
     const code = newToken();
     await database.withGlobalTx('identity', (tx) =>
       tx.insert(oauthCodes).values({
@@ -72,7 +77,7 @@ export function createOAuthService(
         userId: principal.userId,
         redirectUri: input.redirect_uri,
         codeChallenge: input.code_challenge,
-        authMethod: principal.authMethod,
+        authMethod,
         authTime: principal.authTime,
         expiresAt: new Date(Date.now() + AUTH_CODE_TTL_MS),
       }),
@@ -195,6 +200,7 @@ export function createOAuthService(
   async function token(input: TokenInput, meta: { ip: string | null; userAgent: string | null }) {
     const client = await getClient(input.client_id);
     if (!client) throw new AppError('oauth.invalid_client', 'Unknown client.');
+    if (!client.firstParty) return partner.token(input);
     return input.grant_type === 'authorization_code'
       ? exchangeCode(input, meta)
       : rotateRefresh(input);
@@ -203,6 +209,7 @@ export function createOAuthService(
   async function revoke(tokenValue: string, clientId: string) {
     const client = await getClient(clientId);
     if (!client) return;
+    if (!client.firstParty) return partner.revokeToken(tokenValue, clientId);
     const [row] = await database.withGlobalTx('identity', (tx) =>
       tx
         .select()

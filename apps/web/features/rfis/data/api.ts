@@ -1,22 +1,29 @@
 // RFIs against the rfis module's endpoints (backend 04 §3, Ben's PR #10), with the same interface as the preview
 // source so the screens and hooks don't change. People and companies come back as ids; names are resolved from the
-// project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed;
-// Nova's answer drafts aren't served yet.
+// project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed.
 
 import { ApiError, unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
+import { compressPhoto } from '@/shared/lib/compress-photo';
 import { allPages } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
+import { fileDownloadUrl, uploadFile } from '@/shared/lib/uploads';
 import type {
   CostImpact,
+  NovaDraft,
+  NovaReference,
   NovaRfiDraft,
   Rfi,
   RfiActivity,
+  RfiAnnotation,
   RfiInput,
+  RfiPhoto,
   RfiResponse,
 } from '../lib/types';
+import { MARKABLE_IMAGE_TYPES } from '../lib/types';
+import { fromApiShape, toApiShape } from '@/shared/markup/api-shape';
 import { rfisSource, type RfiFilters, type RfisSource } from './source';
 
 type ApiRfi = components['schemas']['Rfi'];
@@ -38,6 +45,7 @@ function toResponse(r: ApiResponse, members: readonly ProjectPerson[]): RfiRespo
     body: r.body,
     isOfficial: r.isOfficial,
     aiSuggestionId: r.aiSuggestionId,
+    fileIds: r.fileIds,
     createdAt: r.createdAt,
   };
 }
@@ -105,6 +113,7 @@ export function toRfi(
     drawing: r.pin ? { sheetId: '', revisionId: r.pin.drawingRevisionId, label: 'Drawing' } : null,
     specSection: r.specSection,
     location: r.location,
+    fileIds: r.fileIds,
     responses: responses.map((x) => toResponse(x, members)),
     officialResponseId: r.officialResponseId,
     activity: [],
@@ -129,6 +138,29 @@ function toRequest(input: RfiInput, pin?: unknown) {
     ...(pin !== undefined ? { pin: pin as never } : {}),
   };
 }
+
+const NOVA_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const NOVA_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+
+const unavailable = (detail: string) =>
+  new ApiError(422, {
+    type: 'about:blank',
+    title: detail,
+    status: 422,
+    detail,
+    code: 'validation_failed',
+  } as never);
+
+type ApiCitation = components['schemas']['NovaCitation'];
+
+const toReference = (r: ApiCitation, i: number): NovaReference => ({
+  id: `${r.revisionId}:${r.page}:${i}`,
+  kind: r.sourceType,
+  sourceId: r.sourceId,
+  revisionId: r.revisionId,
+  label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
+  quote: r.quote,
+});
 
 /** Creating leaves an empty spec section or location out. */
 const createRefs = (input: RfiInput) => ({
@@ -226,12 +258,38 @@ export function createRfisApi(orgId: string): RfisSource {
     get,
     novaDecide: decide,
 
-    async novaDraftRfi(projectId, note): Promise<NovaRfiDraft> {
+    async novaDraftRfi(projectId, source): Promise<NovaRfiDraft> {
+      // A phone photo is shrunk first (and loses its EXIF); Nova reads PNG, JPEG or WebP up to 3 MB.
+      let stored: { id: string } | null = null;
+      if (source.photo) {
+        const small = await compressPhoto(source.photo);
+        const photo =
+          small === source.photo
+            ? source.photo
+            : new File([small], `${source.photo.name.replace(/\.\w+$/, '')}.jpg`, {
+                type: small.type,
+              });
+        if (!NOVA_PHOTO_TYPES.includes(photo.type) || photo.size > NOVA_PHOTO_MAX_BYTES)
+          throw unavailable('Add a PNG, JPEG or WebP photo under 3 MB and Nova can draft from it.');
+        stored = await uploadFile(orgId, { file: photo, projectId, module: 'rfis' });
+      }
       await ensureCsrfToken();
+      const note = source.note.trim();
       const d = unwrap(
         await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts', {
           params: { path: { orgId, projectId } },
-          body: { note: note.trim() },
+          body: {
+            ...(note ? { note } : {}),
+            ...(source.markup
+              ? {
+                  markup: {
+                    drawingRevisionId: source.markup.revisionId,
+                    markupId: source.markup.markupId,
+                  },
+                }
+              : {}),
+            ...(stored ? { photo: { fileId: stored.id } } : {}),
+          },
         }),
       );
       return {
@@ -239,14 +297,7 @@ export function createRfisApi(orgId: string): RfisSource {
         subject: d.subject,
         question: d.question,
         discipline: d.discipline,
-        references: d.references.map((r, i) => ({
-          id: `${r.revisionId}:${r.page}:${i}`,
-          kind: r.sourceType,
-          sourceId: r.sourceId,
-          revisionId: r.revisionId,
-          label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
-          quote: r.quote,
-        })),
+        references: d.references.map(toReference),
         gaps: d.gaps,
         unsupportedNumbers: d.unsupportedNumbers,
         similar: d.similarRfis.map(({ id, number, subject }) => ({ id, number, subject })),
@@ -353,14 +404,113 @@ export function createRfisApi(orgId: string): RfisSource {
       );
     },
 
-    async novaDraftResponse() {
-      throw new ApiError(501, {
-        type: 'about:blank',
-        title: 'Not available yet',
-        status: 501,
-        detail: "Nova can't draft RFI answers on this project yet.",
-        code: 'ai.not_available',
-      } as never);
+    async photos(projectId, rfi): Promise<RfiPhoto[]> {
+      const origins = new Map<string, RfiPhoto['origin']>();
+      for (const id of rfi.fileIds) origins.set(id, 'question');
+      for (const r of rfi.responses)
+        for (const id of r.fileIds) origins.set(id, origins.get(id) ?? 'response');
+      const found = await Promise.all(
+        [...origins].map(async ([fileId, origin]): Promise<RfiPhoto | null> => {
+          // A file the person can't open (or that is still being checked) is left out rather than failing the list.
+          try {
+            const file = unwrap(
+              await api.GET('/v1/orgs/{orgId}/files/{fileId}', {
+                params: { path: { orgId, fileId } },
+              }),
+            );
+            if (file.status !== 'ready') return null;
+            if (!(MARKABLE_IMAGE_TYPES as readonly string[]).includes(file.mime)) return null;
+            return {
+              fileId,
+              name: file.filename,
+              url: await fileDownloadUrl(orgId, fileId),
+              origin,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return found.filter((x): x is RfiPhoto => x !== null);
+    },
+
+    async addPhoto(projectId, rfiId, photo) {
+      // A phone photo is shrunk first (and loses its EXIF location); the original is not kept.
+      const small = await compressPhoto(photo);
+      const file =
+        small === photo
+          ? photo
+          : new File([small], `${photo.name.replace(/\.\w+$/, '')}.jpg`, { type: small.type });
+      const stored = await uploadFile(orgId, { file, projectId, module: 'rfis' });
+      const params = await current(projectId, rfiId);
+      const was = await get(projectId, rfiId);
+      return detail(
+        projectId,
+        unwrap(
+          await api.PATCH(`${P}/{rfiId}`, {
+            params,
+            body: { fileIds: [...was.fileIds, stored.id] },
+          }),
+        ),
+      );
+    },
+
+    async annotations(projectId, rfiId): Promise<RfiAnnotation[]> {
+      const [rows, people] = await Promise.all([
+        api.GET(`${P}/{rfiId}/annotations`, { params: { path: { orgId, projectId, rfiId } } }),
+        members(projectId),
+      ]);
+      return unwrap(rows).data.map((a) => ({
+        id: a.id,
+        fileId: a.fileId,
+        authorId: a.authorId ?? '',
+        authorName: people.find((m) => m.id === a.authorId)?.name ?? 'Project member',
+        shapes: a.shapes.flatMap((x) => {
+          const shape = fromApiShape(x);
+          return shape && shape.kind !== 'pin' ? [shape] : [];
+        }),
+        updatedAt: a.updatedAt,
+      }));
+    },
+
+    async saveAnnotation(projectId, rfiId, fileId, shapes, actor): Promise<RfiAnnotation | null> {
+      await ensureCsrfToken();
+      const res = unwrap(
+        await api.PUT(`${P}/{rfiId}/files/{fileId}/annotation`, {
+          params: { path: { orgId, projectId, rfiId, fileId }, header: idempotencyKey() },
+          body: { shapes: shapes.map((x, i) => toApiShape(x, `s${i + 1}`)) },
+        }),
+      );
+      const a = res.annotation;
+      return a
+        ? {
+            id: a.id,
+            fileId: a.fileId,
+            authorId: actor.id,
+            authorName: actor.name,
+            shapes: [...shapes],
+            updatedAt: a.updatedAt,
+          }
+        : null;
+    },
+
+    async novaDraftResponse(projectId, rfiId, direction): Promise<NovaDraft> {
+      await ensureCsrfToken();
+      const d = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfis/{rfiId}/answer-drafts', {
+          params: { path: { orgId, projectId, rfiId } },
+          body: direction?.trim() ? { direction: direction.trim() } : {},
+        }),
+      );
+      return {
+        id: d.suggestionId,
+        text: d.answer,
+        basis: d.basis,
+        needsDecision: d.needsDecision,
+        references: d.references.map(toReference),
+        unsupportedNumbers: d.unsupportedNumbers,
+        unreadFiles: d.attachments.filter((a) => !a.read).map((a) => a.name),
+      };
     },
 
     // Rewording runs on the text alone, so the preview's version serves until Nova's endpoint lands.

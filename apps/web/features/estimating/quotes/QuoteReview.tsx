@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, NovaSuggestion, StatusPill } from '@archova/ui';
-import { companyName } from '@/shared/mocks/directory';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import type { Quote, ScopeLine } from '../lib/quote-types';
 import { money, parseDollars } from './money';
 import type { SourceTarget } from './SourceDialog';
@@ -17,6 +17,7 @@ export function QuoteReview({
   busy,
   onCorrect,
   onConfirm,
+  onDecline,
   onSource,
 }: {
   quote: Quote;
@@ -24,8 +25,11 @@ export function QuoteReview({
   busy: boolean;
   onCorrect: (lineId: string, cents: number) => void;
   onConfirm: () => void;
+  /** Take the quote out of the comparison. */
+  onDecline: () => void;
   onSource: (t: SourceTarget) => void;
 }) {
+  const { companyName } = useProjectDirectory();
   const editable = quote.status === 'ready_to_review';
   const scopeName = (key: string | null) =>
     scope.find((s) => s.key === key)?.description ?? 'Not in scope';
@@ -126,9 +130,14 @@ export function QuoteReview({
     <NovaSuggestion
       title={`Read from ${quote.fileName} (${companyName(quote.companyId)})`}
       actions={
-        <Button size="sm" disabled={busy} onClick={onConfirm}>
-          Confirm quote
-        </Button>
+        <>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={onDecline}>
+            Decline quote
+          </Button>
+          <Button size="sm" disabled={busy} onClick={onConfirm}>
+            Confirm quote
+          </Button>
+        </>
       }
     >
       {body}

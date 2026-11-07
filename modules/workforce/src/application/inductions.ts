@@ -8,6 +8,7 @@ import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { INDUCTION_FIXED_TEXT } from '@archova/mod-ai';
 import { localDateOf, type LocalDate } from '@archova/time';
 import type { EligibilityReason } from '../domain/attendance';
+import type { NumberVault } from '../domain/number-vault';
 import {
   FAILED_ATTEMPTS_BEFORE_OFFICE,
   addMonths,
@@ -92,6 +93,8 @@ export interface RequestFacts {
 }
 
 export type InductionDeps = WorkforceDeps & {
+  /** Seals full credential numbers (compliance/05 §7). */
+  vault: NumberVault;
   files: {
     getFile(
       scope: TenantScope,
@@ -101,7 +104,7 @@ export type InductionDeps = WorkforceDeps & {
     downloadUrl(
       scope: TenantScope,
       fileId: string,
-      opts: { authorised: boolean },
+      opts: { authorised: boolean; expiresInS?: number; contentType?: string },
     ): Promise<{ url: string; expiresAt: Date }>;
   };
   documents: {
@@ -110,6 +113,17 @@ export type InductionDeps = WorkforceDeps & {
       projectId: string,
       documentId: string,
     ): Promise<{ id: string; title: string; docNumber: string | null }>;
+    getDocumentFileAuthorised(
+      scope: TenantScope,
+      projectId: string,
+      documentId: string,
+    ): Promise<{
+      id: string;
+      title: string;
+      docNumber: string | null;
+      rev: string;
+      fileId: string;
+    }>;
   };
 };
 
@@ -720,6 +734,35 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     return deps.files.downloadUrl(scope, fileId, { authorised: true });
   }
 
+  /**
+   * A SWMS this worker's induction names, as its current file. The worker holds only sign-in (no documents
+   * permission), so the pinned induction content is the grant: any other document is not found.
+   */
+  async function downloadSwms(
+    scope: TenantScope,
+    projectId: string,
+    completionId: string,
+    documentId: string,
+  ) {
+    const { completion } = await loadCompletion(scope, projectId, completionId);
+    const [version] = await scope.tx
+      .select({ content: inductionVersions.content })
+      .from(inductionVersions)
+      .where(eq(inductionVersions.id, completion.versionId));
+    const named = version?.content.sections.some((sec) =>
+      sec.blocks.some((b) => b.type === 'swms' && b.documentId === documentId),
+    );
+    if (!named) throw new AppError('document.not_found');
+    const doc = await deps.documents.getDocumentFileAuthorised(scope, projectId, documentId);
+    // Last gate: the file itself must belong to this project.
+    const file = await deps.files
+      .getFile(scope, doc.fileId, { authorised: true })
+      .catch(() => null);
+    if (!file || file.projectId !== projectId) throw new AppError('document.not_found');
+    const link = await deps.files.downloadUrl(scope, doc.fileId, { authorised: true });
+    return { ...link, title: doc.title, docNumber: doc.docNumber, rev: doc.rev };
+  }
+
   async function inProgress(scope: TenantScope, projectId: string, completionId: string) {
     const loaded = await loadCompletion(scope, projectId, completionId);
     if (loaded.completion.status === 'completed')
@@ -844,14 +887,21 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
     }
+    const id = uuidv7();
     const [row] = await scope.tx
       .insert(workerCredentials)
       .values({
-        id: uuidv7(),
+        id,
         orgId: scope.ctx.orgId,
         workerId,
         kind: input.kind,
-        number: input.number.trim(),
+        numberLast4: input.number.trim().slice(-4),
+        numberSealed: deps.vault.seal(
+          scope.ctx.orgId,
+          'worker-credential-number',
+          id,
+          input.number.trim(),
+        ),
         issuingState: input.issuingState ?? null,
         licenceClass: input.licenceClass?.trim() || null,
         issuedOn: input.issuedOn ?? null,
@@ -1186,6 +1236,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     start,
     getCompletion,
     downloadFile,
+    downloadSwms,
     startForLink,
     latestCompletion,
     recordLanguage,

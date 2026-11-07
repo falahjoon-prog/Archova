@@ -29,11 +29,18 @@ export const SUGGESTION_TASKS: Readonly<Record<string, SuggestionTask>> = {
   'diary.summary': { permission: 'diary.entries.write', audience: 'creator' },
   // F4: the weekly report; whoever can write the diary takes or discards it, and it is the asker's alone for the same reason.
   'diary.weekly': { permission: 'diary.entries.write', audience: 'creator' },
+  // F7: the notes are the asker's until they add the items they want; whoever may write the minutes decides it.
+  'minutes.extract': { permission: 'meetings.meetings.write', audience: 'creator' },
   // F5, F3: the person who asked for the tag or draft decides it; the photo, note or markup is theirs until they raise it.
   'defect.tag': { permission: 'defects.defects.create', audience: 'creator' },
   'rfi.draft': { permission: 'rfis.rfis.create', audience: 'creator' },
+  // F20: the person who asked drafts a SWMS from what they know of the job; they edit it and submit it to the register.
+  'swms.draft': { permission: 'safety.swms.submit', audience: 'creator' },
   // F3: the person who asked for the response decides it; their direction and the thread are theirs until they send it.
   'rfi.answer': { permission: 'rfis.rfis.respond', audience: 'creator' },
+  // F34: the commercial team works a contract review together (design/09 CR3), so any member of the project holding the
+  // review permission sees and decides it; the contract itself stays behind that permission.
+  'contract.review': { permission: 'ai.contracts.review', audience: 'deciders' },
   // F31: the person who asked for the mapping confirms it; their file is theirs until they run the import.
   'import.mapping': { permission: 'ai.import_mapping.suggest', audience: 'creator' },
   // F22: the estimator who asked for the reading decides it (a subcontractor's prices are commercial in confidence).

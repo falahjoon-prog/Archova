@@ -15,6 +15,9 @@ import { UploadQueue } from '../lib/files/upload-queue';
 import { backgroundFileTransfer } from '../lib/platform/file-transfer';
 import { randomBytes } from '../lib/platform/crypto';
 import { createDeviceSync } from '../lib/sync/device-sync';
+import { SheetCache } from '../lib/files/sheet-cache';
+import { sheetFiles } from '../lib/platform/sheet-files';
+import { OfflineProjects } from '../lib/sync/offline-projects';
 import { deviceScopes } from '../lib/sync/scopes';
 import { createSyncTransport } from '../lib/sync/transport';
 import { useCurrentOrg } from './org';
@@ -30,6 +33,12 @@ const MODULE_OF: Record<string, string> = {
   diary_plant: 'diary',
   diary_delivery: 'diary',
   diary_delay: 'diary',
+  inspection: 'quality',
+  inspection_template: 'quality',
+  incident: 'safety',
+  drawing_sheet: 'drawings',
+  drawing_revision: 'drawings',
+  drawing_markup: 'drawings',
 };
 const moduleOf = (entityType: string) => MODULE_OF[entityType] ?? entityType;
 
@@ -39,6 +48,8 @@ export interface DeviceData {
   store: SqliteSyncStore;
   uploads: UploadQueue;
   signIns: SignInQueue;
+  offline: OfflineProjects;
+  sheets: SheetCache;
   requestSync: (trigger: SyncTrigger) => void;
 }
 
@@ -69,7 +80,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
       keyOptions: { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY },
       randomBytes,
     })
-      .then((db) => {
+      .then(async (db) => {
         if (!alive) {
           void db.closeAsync();
           return;
@@ -82,11 +93,19 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           backgroundFileTransfer,
         );
         const signIns = new SignInQueue(db, createSignInSender(api, orgId));
+        const sheets = new SheetCache(db, sheetFiles);
+        const offline = new OfflineProjects(db, store, sheets);
         const engine = new SyncEngine({
           store,
           transport: createSyncTransport(api, orgId),
-          scopes: () => deviceScopes(api, orgId),
+          scopes: () => deviceScopes(api, orgId, () => offline.excludedIds()),
         });
+        // Drains saved before the app last stopped, so the unsent work of a lost project is still sent.
+        await engine.restore();
+        if (!alive) {
+          void db.closeAsync();
+          return;
+        }
         const scheduler = new SyncScheduler(createDeviceSync({ uploads, signIns, engine }), {
           setTimeout: (cb, ms) => setTimeout(cb, ms),
           clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
@@ -110,7 +129,16 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
         };
         setState({
           status: 'ready',
-          data: { orgId, db, store, uploads, signIns, requestSync: (t) => scheduler.request(t) },
+          data: {
+            orgId,
+            db,
+            store,
+            uploads,
+            signIns,
+            offline,
+            sheets,
+            requestSync: (t) => scheduler.request(t),
+          },
         });
       })
       .catch((error: unknown) => {

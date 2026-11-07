@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { encodeId } from '@archova/domain';
 import { PDFDocument } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -108,6 +109,93 @@ describe('mobile sync push (backend 04 §4)', () => {
     expect(
       history.events.filter((e: { action: string }) => e.action === 'markReadyForReview'),
     ).toHaveLength(1);
+
+    // The phone queues one command per action, with `note` and `fileIds` (mobile 02 §2.4).
+    const d3 = await issued('Missing fire collar');
+    const noPhotoAction = mutation(
+      d3.id,
+      d3.version,
+      { note: 'Done' },
+      'defects.markReadyForReview',
+    );
+    expect((await push(sub, [noPhotoAction]))[0]).toMatchObject({
+      status: 'rejected',
+      problem: { code: 'defect.photo_required' },
+    });
+    const byAction = mutation(
+      d3.id,
+      d3.version,
+      { note: 'Collar fitted', fileIds: [photo] },
+      'defects.markReadyForReview',
+    );
+    expect((await push(sub, [byAction]))[0]).toMatchObject({ status: 'applied', version: 3 });
+    const closed = mutation(d3.id, 3, { note: 'Checked' }, 'defects.close');
+    expect((await push(pm, [closed]))[0]).toMatchObject({ status: 'applied', version: 4 });
+
+    // A photo attached on its own counts as the "after" photo, and does not move the version the step was queued against.
+    const d4 = await issued('Cracked tile');
+    const attach = (purpose: string) =>
+      mutation(d4.id, null, { fileId: photo, purpose }, 'defects.attachPhoto');
+    expect((await push(sub, [attach('before')]))[0]).toMatchObject({
+      status: 'applied',
+      version: 2,
+    });
+    expect(
+      (await push(sub, [mutation(d4.id, d4.version, {}, 'defects.markReadyForReview')]))[0],
+    ).toMatchObject({ status: 'rejected', problem: { code: 'defect.photo_required' } });
+    const photo2 = await uploadFile(t, sub.browser, org.id, project.id, 'after2.pdf', 'defects');
+    const afterPhoto = mutation(
+      d4.id,
+      null,
+      { fileId: photo2, purpose: 'after' },
+      'defects.attachPhoto',
+    );
+    expect((await push(sub, [afterPhoto]))[0]).toMatchObject({ status: 'applied', version: 2 });
+    expect((await push(sub, [{ ...afterPhoto, mutationId: randomUUID() }]))[0]).toMatchObject({
+      status: 'applied',
+      version: 2,
+    });
+    expect(
+      (await push(sub, [mutation(d4.id, d4.version, {}, 'defects.markReadyForReview')]))[0],
+    ).toMatchObject({ status: 'applied', version: 3 });
+    const bad = mutation(d4.id, null, { fileId: photo2, purpose: 'during' }, 'defects.attachPhoto');
+    expect((await push(sub, [bad]))[0]).toMatchObject({ status: 'rejected' });
+
+    // A defect raised offline is created under the id the phone chose, as a draft, and replays once.
+    const raisedId = encodeId('defect', randomUUID());
+    const raise = mutation(
+      raisedId,
+      null,
+      {
+        projectId: project.id,
+        title: 'Chipped step',
+        description: 'Level 2 stair',
+        priority: 'high',
+        drawingRevisionId: pin.drawingRevisionId,
+        pinX: pin.x,
+        pinY: pin.y,
+        assigneeCompanyId: subCo.companyId,
+      },
+      'defects.create',
+    );
+    expect((await push(pm, [raise]))[0]).toMatchObject({ status: 'applied', version: 1 });
+    expect((await push(pm, [raise]))[0]).toMatchObject({ status: 'applied', version: 1 });
+    const raised = (await pm.browser.get(`${base}/defects/${raisedId}`)).json();
+    expect(raised.defect).toMatchObject({
+      title: 'Chipped step',
+      status: 'draft',
+      priority: 'high',
+    });
+    const unpinned = mutation(
+      encodeId('defect', randomUUID()),
+      null,
+      { projectId: project.id, title: 'No place' },
+      'defects.create',
+    );
+    expect((await push(pm, [unpinned]))[0]).toMatchObject({
+      status: 'rejected',
+      problem: { code: 'defect.location_required' },
+    });
 
     // Changed since the device last saw it: a conflict with the server's copy, not stored.
     const d2 = await issued('Loose handrail');

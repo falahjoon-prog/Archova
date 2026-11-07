@@ -1,19 +1,21 @@
 // Drawings against the documents and ai modules (backend 04 §3, ai/01 F1), with the same interface as the preview
 // source in `source.ts`. Each call maps the contract's records onto the screen's types in `lib/types.ts`.
 //
-// Not in the API yet, so absent here: sheet geometry and scale confirmation (measure and count stay off on these
-// sheets) and per-field "checked" state while a set is in review, which is kept for the session in this module.
+// Not in the API yet, so absent here: the sheet's vector geometry file (no snapping; measuring runs as on a raster
+// sheet, labelled lower confidence) and per-field "checked" state while a set is in review, which is kept for the
+// session in this module. The scale is the API's: detected and confirmed as the N in 1:N.
 
 import { ApiError, unwrap } from '@archova/api-client';
+import type { components } from '@archova/contracts/openapi';
 import type {
   AiSuggestion,
   DrawingRevision as ApiRevision,
   DrawingSheet as ApiSheet,
   Markup as ApiMarkup,
-  MarkupShape as ApiShape,
   PublishConflict,
 } from '@archova/contracts';
-import type { MarkupShape } from '@archova/markup';
+import { formatScale, parseScale } from '@archova/markup';
+import { fromApiShape, toApiShape } from '@/shared/markup/api-shape';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectPeople } from '@/shared/lib/people';
@@ -27,6 +29,7 @@ import type {
   ReadField,
   ReviewSheet,
   SheetConflict,
+  SheetGeometry,
 } from '../lib/types';
 import { compareRevs, publishBlockers, type DrawingsSource } from './source';
 
@@ -63,6 +66,7 @@ export function toSheet(s: ApiSheet): DrawingSheet {
     currentRev: cr?.rev ?? '—',
     currentIssuedFor: cr?.issuedFor ?? null,
     currentDrawingDate: cr?.drawingDate ?? null,
+    currentSetId: cr?.setId ?? null,
     revisionCount: null,
   };
 }
@@ -87,30 +91,7 @@ export function toRevision(r: ApiRevision): DrawingRevision {
   };
 }
 
-/** The API shape for one of ours: the same fields plus the shape's own id. */
-export function toApiShape(shape: MarkupShape, id: string): ApiShape {
-  return { id, ...shape };
-}
-
-/** Ours from the API's, or null for a shape missing the fields its kind needs. */
-export function fromApiShape(s: ApiShape): MarkupShape | null {
-  switch (s.kind) {
-    case 'pen':
-      return s.points ? { kind: 'pen', points: s.points } : null;
-    case 'line':
-    case 'arrow':
-    case 'rect':
-    case 'ellipse':
-    case 'cloud':
-      return s.from && s.to ? { kind: s.kind, from: s.from, to: s.to } : null;
-    case 'text':
-      return s.at ? { kind: 'text', at: s.at, text: s.text ?? '' } : null;
-    case 'pin':
-      return s.at && s.entityType && s.entityId
-        ? { kind: 'pin', at: s.at, entityType: s.entityType, entityId: s.entityId }
-        : null;
-  }
-}
+export { fromApiShape, toApiShape };
 
 /** One row per shape, as the viewer lists them; the id carries the markup and shape so actions find both. */
 export function toMarkups(
@@ -239,6 +220,23 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R
 }
 
 // ---- Source ----
+
+type ApiGeometry = components['schemas']['SheetGeometry'];
+
+const toGeometry = (g: ApiGeometry, people: ReadonlyMap<string, string>): SheetGeometry => ({
+  revisionId: g.revisionId,
+  sheetNo: '1',
+  units: 'mm',
+  scaleDetected: g.scaleDetected ? formatScale(g.scaleDetected) : null,
+  scaleConfirmed: g.scaleConfirmed ? formatScale(g.scaleConfirmed) : null,
+  scaleConfirmedBy: g.scaleConfirmedBy
+    ? (people.get(g.scaleConfirmedBy) ?? 'Project member')
+    : null,
+  scaleConfirmedAt: g.scaleConfirmedAt,
+  scaleConflict: null,
+  hasVector: false,
+  segments: [],
+});
 
 export function createDrawingsApi(orgId: string): DrawingsSource {
   const listApiMarkups = async (projectId: string, revisionId: string) =>
@@ -376,6 +374,28 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
         .sort((a, b) => a.sheetNumber.localeCompare(b.sheetNumber, 'en-AU', { numeric: true }));
     },
 
+    async listSets(projectId) {
+      const sets = await allPages(async (cursor) =>
+        unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawing-sets', {
+            params: {
+              path: { orgId, projectId },
+              query: { limit: 200, ...(cursor ? { cursor } : {}) },
+            },
+          }),
+        ),
+      );
+      return sets
+        .filter((s) => s.status === 'published')
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          status: s.status,
+          issuedDate: s.issuedDate,
+          receivedDate: s.receivedDate,
+        }));
+    },
+
     async listAllRevisions(projectId) {
       const sheets = await source.listSheets(projectId);
       const perSheet = await mapLimit(sheets, 6, async (sheet) =>
@@ -403,24 +423,40 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
           currentRev: current.rev,
           currentIssuedFor: current.issuedFor,
           currentDrawingDate: current.drawingDate,
+          currentSetId: current.setId,
           revisionCount: revs.length,
         },
         revisions: revs.map(toRevision).sort((a, b) => compareRevs(b.rev, a.rev)),
       };
     },
 
-    async getGeometry() {
-      return null;
+    /** Null until the files worker has read the sheet; measuring stays off until then (frontend 07 §3). */
+    async getGeometry(projectId, revisionId) {
+      const g = unwrap(
+        await api.GET(
+          '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry',
+          {
+            params: { path: { orgId, projectId, drawingRevisionId: revisionId } },
+          },
+        ),
+      );
+      return g.status === 'ready' ? toGeometry(g, await projectPeople(orgId, projectId)) : null;
     },
 
-    async confirmScale() {
-      throw new ApiError(501, {
-        type: 'about:blank',
-        title: 'Not available yet',
-        status: 501,
-        detail: "Setting the scale needs the sheet geometry service, which isn't connected yet.",
-        code: 'not_available',
-      } as never);
+    async confirmScale(projectId, revisionId, scale) {
+      const n = parseScale(scale);
+      if (!n) throw new Error(`Not a scale: ${scale}`);
+      await ensureCsrfToken();
+      const g = unwrap(
+        await api.PUT(
+          '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale',
+          {
+            params: { path: { orgId, projectId, drawingRevisionId: revisionId } },
+            body: { scale: n },
+          },
+        ),
+      );
+      return toGeometry(g, await projectPeople(orgId, projectId));
     },
 
     async listPins(projectId, revisionId) {

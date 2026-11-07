@@ -11,6 +11,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { StoredShape } from '@archova/markup';
 import type { RfiStatus } from '../domain/rfi';
 
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -57,6 +58,8 @@ export const rfis = rfisSchema.table('rfis', {
   drawingRevisionId: uuid('drawing_revision_id'),
   pinX: real('pin_x'),
   pinY: real('pin_y'),
+  /** Photos and files on the question itself; responses keep their own. */
+  fileIds: uuid('file_ids').array().notNull().default([]),
   specSectionId: uuid('spec_section_id'),
   /** As written on the form; the spec register and location tree are not built yet. */
   specSection: text('spec_section'),
@@ -94,4 +97,17 @@ export const responses = rfisSchema.table('responses', {
   isOfficial: boolean('is_official').notNull().default(false),
   aiSuggestionId: uuid('ai_suggestion_id'),
   ...audit,
+});
+
+/** One person's marks on one of the RFI's photos. The photo is never changed; the layer is drawn over it. */
+export const photoAnnotations = rfisSchema.table('photo_annotations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  rfiId: uuid('rfi_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  authorId: uuid('author_id').notNull(),
+  shapes: jsonb('shapes').$type<StoredShape[]>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

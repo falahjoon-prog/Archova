@@ -8,9 +8,11 @@ describe('sync routes', () => {
       access: { can: async () => true },
       sources: [],
       commands: [],
+      accessState: async () => null,
     });
     expect(Object.keys(routes).sort()).toEqual([
       'acceptLateSubmission',
+      'endDrainGrants',
       'listLateSubmissions',
       'rejectLateSubmission',
       'syncPull',
@@ -23,6 +25,7 @@ describe('sync routes', () => {
       access: { can: async () => true },
       sources: [],
       commands: [],
+      accessState: async () => null,
     });
     const call = (tenant: object) =>
       (routes.syncPull as (i: unknown) => Promise<unknown>)({

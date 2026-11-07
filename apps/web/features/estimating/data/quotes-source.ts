@@ -5,8 +5,14 @@
 import type { TakeoffUnit } from '@archova/markup';
 import { companyName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
+import {
+  previewNegotiate,
+  topicFromQuestion,
+  type NegotiateAnswer,
+  type NegotiateTopic,
+} from '../lib/negotiate';
 import { allowanceKey, comparableQuotes, levelQuotes, lowestQuoteId } from '../lib/levelling';
-import type { Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
+import type { PackageAction, Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
 
 interface Store {
   packages: TenderPackage[];
@@ -246,7 +252,147 @@ function settleReading(s: Store) {
   }
 }
 
-export const quotesSource = {
+export interface RaisedSubcontract {
+  contractId: string;
+  number: number;
+  created: boolean;
+}
+
+export interface RaisedCommitment {
+  commitmentId: string;
+  number: number;
+  total: string;
+  created: boolean;
+}
+
+export interface QuotesSource {
+  /** The API (true) or the in-browser preview store (false): the preview reads an uploaded file by name only. */
+  live: boolean;
+  listPackages(projectId: string): Promise<TenderPackage[]>;
+  getPackage(projectId: string, id: string): Promise<TenderPackage>;
+  createPackage(
+    projectId: string,
+    input: { name: string; trade: string; dueAt: string },
+  ): Promise<TenderPackage>;
+  addScopeLines(projectId: string, packageId: string, lines: ScopeLine[]): Promise<TenderPackage>;
+  invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    overrideReason?: string,
+  ): Promise<TenderPackage>;
+  /** Email an invited company a new link; the earlier one stops working. */
+  resendInvite(projectId: string, packageId: string, companyId: string): Promise<TenderPackage>;
+  /** Send a draft out to tender, or close, reopen or cancel it. */
+  transition(projectId: string, packageId: string, action: PackageAction): Promise<TenderPackage>;
+  listQuotes(projectId: string, packageId: string): Promise<Quote[]>;
+  uploadQuote(
+    projectId: string,
+    packageId: string,
+    input: { companyId: string; file: File },
+  ): Promise<Quote>;
+  correctLine(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    lineId: string,
+    amountCents: number,
+  ): Promise<Quote>;
+  confirmQuote(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    actor: { name: string },
+  ): Promise<Quote>;
+  declineQuote(projectId: string, packageId: string, quoteId: string): Promise<Quote>;
+  setAllowance(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    scopeKey: string,
+    cents: number | null,
+  ): Promise<TenderPackage>;
+  award(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    reason: string,
+    actor: { name: string },
+    today: string,
+  ): Promise<TenderPackage>;
+  /** Raise the draft subcontract from the awarded quote (`POST …/subcontract`); repeating it returns the same one. */
+  createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract>;
+  /** Raise the draft budget commitment from the awarded quote against a budget line (`POST …/commitment`). */
+  createCommitment(
+    projectId: string,
+    packageId: string,
+    budgetLineId: string,
+  ): Promise<RaisedCommitment>;
+  /** Nova on one confirmed quote (`POST …/ai/quote-negotiations`); nothing is saved or sent. */
+  askNova(
+    projectId: string,
+    packageId: string,
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      /** What the person typed or said; the API answers it, the preview only picks the closest help. */
+      question?: string;
+      today: string;
+    },
+  ): Promise<NegotiateAnswer>;
+  /** Nova listening (`POST …/ai/speech-transcriptions`): a short recording turned into text, not kept. */
+  listen(projectId: string, clip: Blob): Promise<string>;
+}
+
+export const quotesSource: QuotesSource & {
+  addTakeoffLines(
+    projectId: string,
+    packageId: string,
+    totals: Array<{ tag: string; quantity: number; unit: TakeoffUnit }>,
+  ): Promise<TenderPackage>;
+} = {
+  live: false,
+
+  /** Preview of `POST …/ai/quote-negotiations`: Nova on one confirmed quote; nothing is saved or sent. */
+  async askNova(
+    projectId: string,
+    packageId: string,
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      question?: string;
+      today: string;
+    },
+  ): Promise<NegotiateAnswer> {
+    const pkg = findPackage(projectId, packageId);
+    const quotes = comparableQuotes(
+      stores.get(projectId).quotes.filter((q) => q.packageId === packageId),
+    );
+    const quote = quotes.find((q) => q.id === input.quoteId);
+    if (!quote)
+      problem(404, 'quote.not_found', 'Nova can only help with a confirmed quote of this package.');
+    if (input.targetCents !== null && input.targetCents <= 0)
+      problem(422, 'validation', 'The target price must be more than zero.');
+    const { rows, totals } = levelQuotes(pkg, quotes, input.today);
+    return delay(
+      previewNegotiate({
+        quote,
+        rows,
+        totals,
+        trade: pkg.trade,
+        targetCents: input.targetCents,
+        topic: input.question ? topicFromQuestion(input.question) : input.topic,
+      }),
+    );
+  },
+
+  /** Preview of Nova listening: the preview store has no speech service, so it hears a stand-in question. */
+  async listen(): Promise<string> {
+    return delay('How does this quote compare with the others?');
+  },
+
   async listPackages(projectId: string): Promise<TenderPackage[]> {
     return delay(stores.get(projectId).packages);
   },
@@ -310,7 +456,12 @@ export const quotesSource = {
     );
   },
 
-  async invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage> {
+  async invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    _overrideReason?: string,
+  ): Promise<TenderPackage> {
     const pkg = findPackage(projectId, packageId);
     if (!pkg.scope.length)
       problem(422, 'package.no_scope', 'Add scope lines before inviting subcontractors.');
@@ -320,6 +471,43 @@ export const quotesSource = {
     }
     if (pkg.status === 'draft') pkg.status = 'out_to_tender';
     return delay(pkg);
+  },
+
+  async resendInvite(
+    projectId: string,
+    packageId: string,
+    companyId: string,
+  ): Promise<TenderPackage> {
+    const pkg = findPackage(projectId, packageId);
+    const invite = pkg.invites.find((i) => i.companyId === companyId);
+    if (invite) invite.deliveredAt = nowIso();
+    return delay(pkg);
+  },
+
+  async transition(
+    projectId: string,
+    packageId: string,
+    action: PackageAction,
+  ): Promise<TenderPackage> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status === 'awarded') problem(409, 'package.awarded', 'This package is awarded.');
+    if (action === 'send') {
+      if (pkg.status !== 'draft') problem(409, 'package.not_draft', 'Only a draft can be sent.');
+      if (!pkg.scope.length) problem(422, 'package.no_scope', 'Add scope lines first.');
+      if (!pkg.invites.length) problem(422, 'package.no_invites', 'Invite a subcontractor first.');
+      pkg.status = 'out_to_tender';
+    } else if (action === 'close') pkg.status = 'closed';
+    else if (action === 'reopen') pkg.status = 'out_to_tender';
+    else pkg.status = 'cancelled';
+    return delay(pkg);
+  },
+
+  async declineQuote(projectId: string, _packageId: string, quoteId: string): Promise<Quote> {
+    const q = findQuote(projectId, quoteId);
+    if (q.status === 'superseded' || q.status === 'declined')
+      problem(409, 'quote.not_open', 'That quote is already out of the comparison.');
+    q.status = 'declined';
+    return delay(q);
   },
 
   async listQuotes(projectId: string, packageId: string): Promise<Quote[]> {
@@ -332,7 +520,7 @@ export const quotesSource = {
   async uploadQuote(
     projectId: string,
     packageId: string,
-    input: { companyId: string; fileName: string },
+    input: { companyId: string; file: File },
   ): Promise<Quote> {
     const s = stores.get(projectId);
     const pkg = findPackage(projectId, packageId);
@@ -346,11 +534,11 @@ export const quotesSource = {
       companyId: input.companyId,
       version: earlier.length + 1,
       status: 'reading',
-      fileName: input.fileName,
+      fileName: input.file.name,
       reference: '',
       receivedAt: nowIso(),
       validUntil: null,
-      ...extract(pkg, `${input.companyId}${input.fileName}`),
+      ...extract(pkg, `${input.companyId}${input.file.name}`),
       source: 'ai_extracted',
       confirmedBy: null,
     };
@@ -365,6 +553,7 @@ export const quotesSource = {
   /** A corrected value keeps Nova's original so it goes back as feedback. */
   async correctLine(
     projectId: string,
+    _packageId: string,
     quoteId: string,
     lineId: string,
     amountCents: number,
@@ -381,7 +570,12 @@ export const quotesSource = {
   },
 
   /** Extracted values are suggestions until the estimator confirms the quote (EST-AC5). */
-  async confirmQuote(projectId: string, quoteId: string, actor: { name: string }): Promise<Quote> {
+  async confirmQuote(
+    projectId: string,
+    _packageId: string,
+    quoteId: string,
+    actor: { name: string },
+  ): Promise<Quote> {
     const q = findQuote(projectId, quoteId);
     if (q.status !== 'ready_to_review')
       problem(409, 'quote.not_ready', 'Only a quote that is ready to review can be confirmed.');
@@ -432,6 +626,24 @@ export const quotesSource = {
     pkg.status = 'awarded';
     pkg.award = { quoteId, by: actor.name, at: nowIso(), reason: reason.trim() || null, notLowest };
     return delay(pkg);
+  },
+
+  async createCommitment(
+    projectId: string,
+    packageId: string,
+    _budgetLineId: string,
+  ): Promise<RaisedCommitment> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a commitment.');
+    return delay({ commitmentId: mockId('cmt'), number: 1, total: '0.00', created: true });
+  },
+
+  async createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a subcontract.');
+    return delay({ contractId: mockId('cnt'), number: 1, created: true });
   },
 };
 

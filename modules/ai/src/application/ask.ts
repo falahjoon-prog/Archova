@@ -8,9 +8,11 @@ import {
   qaRewritePrompt,
   type PromptPassage,
 } from '@archova/ai-prompts';
+import { eq } from 'drizzle-orm';
 import type { Database, TenantContext, TenantScope } from '@archova/kernel';
+import { matchNccReferences, type NccProvision, type NccReference } from '../domain/ncc-references';
 import { reciprocalRankFusion } from '../domain/retrieval';
-import type { ChunkSourceType } from '../infra/tables';
+import { nccProvisions, type ChunkSourceType } from '../infra/tables';
 import type { Gateway } from './gateway';
 import { searchChunks, toPassage, type ChunkHit } from './search';
 
@@ -40,6 +42,8 @@ export interface AskAnswer {
   citations: Array<AnswerSource & { quote: string }>;
   /** When not found: the passages that came closest, so the user can look themselves. */
   closestMatches: AnswerSource[];
+  /** NCC provisions from Archova's signed table that this answer touches; empty when none apply (never the model's). */
+  nccReferences: NccReference[];
 }
 
 /** Fused candidates the re-ranker scores (ai/03 §4 step 4: ~30). */
@@ -94,7 +98,29 @@ export function createAskService(deps: AskDeps) {
         quote: c.quote,
       })),
       closestMatches: [],
+      nccReferences: await nccFor(ctx, question, run.output.answer),
     };
+  }
+
+  /** Signed NCC provisions the question or answer touches (domain/ncc-references.ts). Never fails an answer. */
+  async function nccFor(ctx: TenantContext, question: string, answer: string) {
+    try {
+      const rows = await database.withTenantTx(
+        ctx,
+        async (scope) =>
+          (
+            await scope.tx.select().from(nccProvisions).where(eq(nccProvisions.status, 'signed'))
+          ).map((r): NccProvision => ({
+            ...r,
+            volume: r.volume as NccProvision['volume'],
+            status: r.status as NccProvision['status'],
+          })),
+        { readOnly: true },
+      );
+      return matchNccReferences(rows, { question, answer });
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -201,7 +227,14 @@ function toSource(r: ChunkRow): AnswerSource {
 }
 
 function notFound(runId: string | null, closestMatches: AnswerSource[]): AskAnswer {
-  return { runId, found: false, answer: NOT_FOUND_ANSWER, citations: [], closestMatches };
+  return {
+    runId,
+    found: false,
+    answer: NOT_FOUND_ANSWER,
+    citations: [],
+    closestMatches,
+    nccReferences: [],
+  };
 }
 
 export type AskService = ReturnType<typeof createAskService>;

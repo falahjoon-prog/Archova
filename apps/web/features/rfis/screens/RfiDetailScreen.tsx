@@ -6,6 +6,7 @@ import {
   ActivityTimeline,
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -16,6 +17,7 @@ import {
   Textarea,
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
+import { OnProgramme } from '@/features/schedule';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -23,11 +25,13 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useSheetPicker } from '@/features/drawings';
+import { RelatedMeetings } from '@/features/meetings';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
 import { RespondForm } from '../components/RespondForm';
+import { RfiPhotos } from '../components/RfiPhotos';
 import { ImpactChip, RfiDue, RfiStatusPill, ballInCourtLabel } from '../components/RfiChips';
 import { RfiForm } from '../forms/RfiForm';
 import { useRfi, useRfiMutations } from '../hooks/useRfis';
@@ -97,6 +101,7 @@ function DraftView({ rfi }: { rfi: Rfi }) {
           m.update.mutate({ id: rfi.id, input }, { onSuccess: () => m.submit.mutate(rfi.id) })
         }
       />
+      <RfiPhotos rfi={rfi} />
     </div>
   );
 }
@@ -109,7 +114,14 @@ function RfiView({ rfi }: { rfi: Rfi }) {
   const m = useRfiMutations(project.projectId);
   const today = todayIn(project.timezone);
   const [params, setParams] = useUrlState(['tab'] as const);
-  const tab = ['details', 'responses', 'activity'].includes(params.tab) ? params.tab : 'details';
+  const tab = [
+    'details',
+    'responses',
+    'activity',
+    ...(previewDataOnly ? [] : ['related']),
+  ].includes(params.tab)
+    ? params.tab
+    : 'details';
   const respondRef = useRef<HTMLTextAreaElement>(null);
   const [closing, setClosing] = useState(false);
   const [official, setOfficial] = useState<string>('');
@@ -216,6 +228,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
           { id: 'details', label: 'Details' },
           { id: 'responses', label: 'Responses', count: rfi.responses.length },
           { id: 'activity', label: 'Activity' },
+          ...(previewDataOnly ? [] : [{ id: 'related', label: 'Related' }]),
         ]}
       >
         {tab === 'details' ? <Details rfi={rfi} /> : null}
@@ -227,6 +240,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
             ) : null}
           </div>
         ) : null}
+        {tab === 'related' ? <RelatedMeetings type="rfi" id={rfi.id} /> : null}
         {tab === 'activity' ? (
           <ActivityTimeline
             entries={rfi.activity.map((a) => ({
@@ -335,6 +349,13 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 }
 
 function Details({ rfi }: { rfi: Rfi }) {
+  const [{ photo }] = useUrlState(['photo'] as const);
+  // A photo open for marking takes the whole tab, so the canvas isn't pushed below the fold.
+  if (photo) return <RfiPhotos rfi={rfi} />;
+  return <DetailsBody rfi={rfi} />;
+}
+
+function DetailsBody({ rfi }: { rfi: Rfi }) {
   const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
@@ -351,62 +372,69 @@ function Details({ rfi }: { rfi: Rfi }) {
       ? { sheetId: match.sheetId, revisionId: match.revisionId, label: match.label }
       : null;
   return (
-    <div className="stack-lg">
-      <section aria-labelledby="rfi-q" className="stack">
-        <h2 id="rfi-q" className="panel-heading">
-          Question
-        </h2>
-        <p className="body-lg u-m-0 u-prewrap">{rfi.question}</p>
-      </section>
-      <DescriptionList
-        items={[
-          {
-            label: 'Assignee',
-            value: rfi.assigneeId
-              ? `${dir.personName(rfi.assigneeId)} · ${dir.companyName(rfi.assigneeCompanyId)}`
-              : '—',
-          },
-          {
-            label: 'Drawing',
-            value: drawing ? (
-              <Link
-                className="link"
-                href={webRoutes.drawing(
-                  org.orgSlug,
-                  project.projectId,
-                  drawing.sheetId,
-                  drawing.revisionId,
-                )}
-              >
-                {drawing.label}
-              </Link>
-            ) : rfi.drawing ? (
-              'Pinned on an earlier revision'
-            ) : (
-              '—'
-            ),
-          },
-          { label: 'Spec section', value: rfi.specSection ?? '—' },
-          { label: 'Location', value: rfi.location ?? '—' },
-          {
-            label: 'Cost impact',
-            value:
-              rfi.costImpact === 'yes' ? 'Yes' : rfi.costImpact === 'no' ? 'No' : 'To be confirmed',
-          },
-          {
-            label: 'Delay',
-            value: rfi.scheduleImpactDays ? `${rfi.scheduleImpactDays} days` : '—',
-          },
-          {
-            label: 'Distribution',
-            value: rfi.distributionCompanyIds.length
-              ? rfi.distributionCompanyIds.map(dir.companyName).join(', ')
-              : '—',
-          },
-          { label: 'Raised', value: formatInstant(rfi.createdAt, project.timezone) },
-          ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
-        ]}
-      />
+    <div className="detail-grid">
+      <div className="stack-lg">
+        <Card title="Question">
+          <p className="body-lg u-m-0 u-prewrap">{rfi.question}</p>
+        </Card>
+        <RfiPhotos rfi={rfi} />
+        <OnProgramme kind="rfi" itemId={rfi.id} />
+      </div>
+      <Card title="Details">
+        <DescriptionList
+          items={[
+            {
+              label: 'Assignee',
+              value: rfi.assigneeId
+                ? `${dir.personName(rfi.assigneeId)} · ${dir.companyName(rfi.assigneeCompanyId)}`
+                : '—',
+            },
+            {
+              label: 'Drawing',
+              value: drawing ? (
+                <Link
+                  className="link"
+                  href={webRoutes.drawing(
+                    org.orgSlug,
+                    project.projectId,
+                    drawing.sheetId,
+                    drawing.revisionId,
+                  )}
+                >
+                  {drawing.label}
+                </Link>
+              ) : rfi.drawing ? (
+                'Pinned on an earlier revision'
+              ) : (
+                '—'
+              ),
+            },
+            { label: 'Spec section', value: rfi.specSection ?? '—' },
+            { label: 'Location', value: rfi.location ?? '—' },
+            {
+              label: 'Cost impact',
+              value:
+                rfi.costImpact === 'yes'
+                  ? 'Yes'
+                  : rfi.costImpact === 'no'
+                    ? 'No'
+                    : 'To be confirmed',
+            },
+            {
+              label: 'Delay',
+              value: rfi.scheduleImpactDays ? `${rfi.scheduleImpactDays} days` : '—',
+            },
+            {
+              label: 'Distribution',
+              value: rfi.distributionCompanyIds.length
+                ? rfi.distributionCompanyIds.map(dir.companyName).join(', ')
+                : '—',
+            },
+            { label: 'Raised', value: formatInstant(rfi.createdAt, project.timezone) },
+            ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
+          ]}
+        />
+      </Card>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { getSettings, SITE_ORIGIN } from '../../src/lib/cms';
 
 export const dynamic = 'force-dynamic';
 
-export const viewport: Viewport = { colorScheme: 'light dark' };
+export const viewport: Viewport = { colorScheme: 'light' };
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const settings = await getSettings();
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" data-theme="light">
       <head>
         <ThemeStyle />
       </head>

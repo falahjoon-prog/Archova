@@ -54,6 +54,8 @@ export const tenderPackages = estimatingSchema.table('tender_packages', {
   scope: jsonb('scope').$type<ScopeLine[]>().notNull().default([]),
   documents: jsonb('documents').$type<PackageDocument[]>().notNull().default([]),
   allowances: jsonb('allowances').$type<Record<string, string>>().notNull().default({}),
+  /** Set while the package's invitee reminders are held because its creator no longer has access. */
+  inviteRemindersPausedAt: timestamp('invite_reminders_paused_at', { withTimezone: true }),
   awardedQuoteId: uuid('awarded_quote_id'),
   awardedBy: uuid('awarded_by'),
   awardedAt: timestamp('awarded_at', { withTimezone: true }),
@@ -78,6 +80,9 @@ export const packageInvites = estimatingSchema.table('package_invites', {
   invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
   viewedAt: timestamp('viewed_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
+  accessLinkId: uuid('access_link_id'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
   createdBy: uuid('created_by'),
 });
 
@@ -137,7 +142,11 @@ export const takeoffMeasurements = estimatingSchema.table('takeoff_measurements'
   label: text('label').notNull(),
   kind: text('kind').$type<MeasurementKind>().notNull(),
   geometry: jsonb('geometry')
-    .$type<{ type: 'polyline' | 'polygon' | 'points'; points: number[][] }>()
+    .$type<{
+      type: 'polyline' | 'polygon' | 'points';
+      points: number[][];
+      holes?: number[][][];
+    }>()
     .notNull(),
   quantity: numeric('quantity', { precision: 18, scale: 3 }).notNull(),
   unit: text('unit').notNull(),
@@ -147,10 +156,105 @@ export const takeoffMeasurements = estimatingSchema.table('takeoff_measurements'
   scopeKey: text('scope_key'),
   confirmedBy: uuid('confirmed_by'),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  rejectedBy: uuid('rejected_by'),
+  rejectedAt: timestamp('rejected_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export type CostCategory = 'labour' | 'material' | 'plant' | 'subcontract' | 'other';
+
+/** The company's cost library: what an item is. Its prices are `costRates`, kept as history. */
+export const bidderLists = estimatingSchema.table('bidder_lists', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  trade: text('trade').notNull().default(''),
+  companyIds: uuid('company_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const costItems = estimatingSchema.table('cost_items', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  code: text('code').notNull(),
+  description: text('description').notNull(),
+  unit: text('unit').notNull(),
+  trade: text('trade').notNull().default(''),
+  category: text('category').$type<CostCategory>().notNull().default('other'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const costRates = estimatingSchema.table('cost_rates', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  costItemId: uuid('cost_item_id').notNull(),
+  rate: numeric('rate', { precision: 18, scale: 2 }).notNull(),
+  region: text('region'),
+  effectiveFrom: date('effective_from').notNull(),
+  source: text('source').$type<'manual' | 'quote' | 'import'>().notNull().default('manual'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export type EstimateStatus = 'draft' | 'issued';
+export type MarginBasis = 'markup' | 'margin';
+
+export const estimates = estimatingSchema.table('estimates', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  name: text('name').notNull(),
+  status: text('status').$type<EstimateStatus>().notNull().default('draft'),
+  baseDate: date('base_date').notNull(),
+  region: text('region'),
+  contingencyPct: numeric('contingency_pct', { precision: 5, scale: 2 }).notNull().default('0'),
+  marginPct: numeric('margin_pct', { precision: 5, scale: 2 }).notNull().default('0'),
+  marginBasis: text('margin_basis').$type<MarginBasis>().notNull().default('markup'),
+  gstPct: numeric('gst_pct', { precision: 5, scale: 2 }).notNull().default('10'),
+  issuedAt: timestamp('issued_at', { withTimezone: true }),
+  issuedBy: uuid('issued_by'),
+  totalExGst: numeric('total_ex_gst', { precision: 18, scale: 2 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export type EstimateLineKind = 'section' | 'item';
+
+export const estimateLines = estimatingSchema.table('estimate_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  estimateId: uuid('estimate_id').notNull(),
+  parentId: uuid('parent_id'),
+  kind: text('kind').$type<EstimateLineKind>().notNull(),
+  sort: integer('sort').notNull().default(0),
+  costItemId: uuid('cost_item_id'),
+  description: text('description').notNull(),
+  quantity: numeric('quantity', { precision: 18, scale: 3 }),
+  unit: text('unit'),
+  rate: numeric('rate', { precision: 18, scale: 2 }),
+  measurementIds: uuid('measurement_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
 });

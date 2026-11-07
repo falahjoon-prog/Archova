@@ -1,10 +1,11 @@
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { CORE_MODULES } from '@archova/domain';
-import type { Entitlements } from '@archova/kernel';
+import type { Entitlements, KernelServices } from '@archova/kernel';
+import { orgAccounts, orgOverrides, planVersions } from '../infra/tables';
 
 /**
- * Phase 0 placeholder for the billing module (Sam owns the commercial model: security-licensing/04–06).
- * Every org gets a trial with the core modules and the phase 1 feature modules; no limits enforced yet.
- * Sam replaces this with `billing.entitlements` materialised per org and cached at `t:{org}:ent:{v}`.
+ * What an org with no account row gets: a trial with the core modules and the phase 1 feature modules, no limits
+ * enforced. Orgs that staff have moved to a plan are read from `billing.org_accounts` (see `dbEntitlementProvider`).
  */
 export const TRIAL_ENTITLEMENTS: Entitlements = {
   plan: 'trial',
@@ -17,11 +18,22 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'submittals',
     'diary',
     'defects',
+    'quality',
+    'safety',
     'photos',
     'meetings',
     'correspondence',
     'workforce',
     'estimating',
+    // Owner and client portal (phase 5).
+    'ownerportal',
+    // Design coordination (phase 5): models and coordination issues.
+    'bim',
+    // Contracts, claims and SOPA schedules (phase 2). Paid plans list this as 'claims'; until the catalogue is
+    // reconciled the trial (pilots) is the only way in, and every date shows "rules not yet legally reviewed".
+    'financials',
+    // Public API access (integrations/06): personal access tokens. A paid plan includes it from Business up.
+    'api',
     // Nova is on every plan with a monthly credit allowance (X27); null = unlimited during the trial.
     'ai',
   ],
@@ -40,3 +52,98 @@ export interface EntitlementProvider {
 export const trialEntitlementProvider: EntitlementProvider = {
   forOrg: async () => TRIAL_ENTITLEMENTS,
 };
+
+type Override = typeof orgOverrides.$inferSelect;
+
+/**
+ * Staff overrides on top of the plan: a module added, or a limit replaced, while the override is live.
+ * Only live rows are passed in; an override never removes a module or lifts read-only/suspension.
+ */
+export function applyOverrides(base: Entitlements, overrides: readonly Override[]): Entitlements {
+  if (!overrides.length) return base;
+  const modules = new Set<string>(base.modules);
+  const limits = { ...base.limits };
+  for (const o of overrides) {
+    if (o.kind === 'module') modules.add(o.key);
+    else if (o.limitValue !== null) limits[o.key] = o.limitValue;
+  }
+  return { ...base, modules: [...modules], limits };
+}
+
+/**
+ * Entitlements from the org's account row and the published plan version: the plan's modules on top of the core
+ * ones, the plan's Nova allowance, and `read_only` while the company is suspended. No row means a trial.
+ */
+export function createDbEntitlementProvider(
+  services: Pick<KernelServices, 'database'>,
+): EntitlementProvider {
+  async function baseEntitlements(orgId: string): Promise<Entitlements> {
+    {
+      const found = await services.database.withGlobalTx('billing', async (tx) => {
+        const [acct] = await tx.select().from(orgAccounts).where(eq(orgAccounts.id, orgId));
+        if (!acct) return null;
+        if (acct.planCode === 'trial') return { acct, plan: null };
+        const pick = {
+          modules: planVersions.modules,
+          aiCreditsMonthly: planVersions.aiCreditsMonthly,
+        };
+        // The published version; if the plan was retired from sale, its latest version, so a company
+        // already on it keeps what it bought. A plan with no version at all gets nothing (fails closed).
+        const [plan] = await tx
+          .select(pick)
+          .from(planVersions)
+          .where(
+            and(
+              eq(planVersions.planCode, acct.planCode),
+              inArray(planVersions.status, ['published', 'retired']),
+            ),
+          )
+          .orderBy(desc(planVersions.version))
+          .limit(1);
+        return { acct, plan };
+      });
+      if (!found) return TRIAL_ENTITLEMENTS;
+      const { acct, plan } = found;
+      if (acct.planCode === 'trial')
+        return {
+          ...TRIAL_ENTITLEMENTS,
+          state: acct.suspendedAt ? 'read_only' : acct.state,
+        };
+      // A plan with no version: core modules only, read-only, no Nova, until staff fix the plan.
+      if (!plan)
+        return {
+          plan: acct.planCode,
+          state: 'read_only',
+          modules: [...CORE_MODULES, 'billing'],
+          limits: { ...TRIAL_ENTITLEMENTS.limits, 'limit.ai_credits': 0 },
+        };
+      return {
+        plan: acct.planCode,
+        state: acct.suspendedAt ? 'read_only' : acct.state,
+        modules: [...CORE_MODULES, 'billing', ...plan.modules],
+        limits: { ...TRIAL_ENTITLEMENTS.limits, 'limit.ai_credits': plan.aiCreditsMonthly },
+      };
+    }
+  }
+
+  return {
+    async forOrg(orgId) {
+      const [base, overrides] = await Promise.all([
+        baseEntitlements(orgId),
+        services.database.withGlobalTx('billing', (tx) =>
+          tx
+            .select()
+            .from(orgOverrides)
+            .where(
+              and(
+                eq(orgOverrides.targetOrgId, orgId),
+                isNull(orgOverrides.revokedAt),
+                gt(orgOverrides.expiresAt, new Date()),
+              ),
+            ),
+        ),
+      ]);
+      return applyOverrides(base, overrides);
+    },
+  };
+}

@@ -44,6 +44,27 @@ export function createMemberService(deps: {
     };
   }
 
+  /** Active project members of one company, with the names and emails to write to them (notices, not lists). */
+  async function contactsOfCompany(scope: TenantScope, projectId: string, companyId: string) {
+    const rows = await scope.tx
+      .select()
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.companyId, companyId),
+          eq(projectMembers.status, 'active'),
+        ),
+      )
+      .orderBy(asc(projectMembers.id))
+      .limit(50);
+    const users = await deps.identity.getUsers(rows.map((r) => r.userId));
+    return rows.flatMap((r) => {
+      const u = users.get(r.userId);
+      return u?.email ? [{ userId: r.userId, name: u.name, email: u.email }] : [];
+    });
+  }
+
   /** Adds an existing user. Invitations for people without an account come with the invite flow. */
   async function add(
     scope: TenantScope,
@@ -267,7 +288,35 @@ export function createMemberService(deps: {
       : null;
   }
 
-  return { list, add, remove, getProjectMembership };
+  /** How someone's access to a project stands, active or ended (the drain grant reads this, X38). */
+  async function getProjectAccessState(scope: TenantScope, projectId: string, userId: string) {
+    const [row] = await scope.tx
+      .select({
+        status: projectMembers.status,
+        kind: projectMembers.removalKind,
+        removedAt: projectMembers.removedAt,
+        episode: projectMembers.accessEpisode,
+      })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
+      .limit(1);
+    if (!row) return null;
+    // An organisation-level hold (suspended membership) is not an ordinary removal; the drain grant fails closed.
+    const [hold] = await scope.tx
+      .select({ id: memberships.id })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.orgId, scope.ctx.orgId),
+          eq(memberships.userId, userId),
+          eq(memberships.status, 'suspended'),
+        ),
+      )
+      .limit(1);
+    return { ...row, held: Boolean(hold) };
+  }
+
+  return { list, add, remove, getProjectMembership, getProjectAccessState, contactsOfCompany };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;

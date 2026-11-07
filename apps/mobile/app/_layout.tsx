@@ -38,6 +38,11 @@ function RootNavigator() {
           name="project/[projectId]/index"
           options={{ headerShown: true, title: 'Project' }}
         />
+        <Stack.Screen name="offline" options={{ headerShown: true, title: 'Offline data' }} />
+        <Stack.Screen
+          name="delete-account"
+          options={{ headerShown: true, title: 'Delete account' }}
+        />
         <Stack.Screen
           name="project/[projectId]/diary"
           options={{ headerShown: true, title: 'Site diary' }}
@@ -63,6 +68,14 @@ function RootNavigator() {
           options={{ headerShown: true, title: 'Drawing' }}
         />
         <Stack.Screen
+          name="project/[projectId]/inspections/index"
+          options={{ headerShown: true, title: 'Inspections' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/inspections/[inspectionId]/index"
+          options={{ headerShown: true, title: 'Inspection' }}
+        />
+        <Stack.Screen
           name="project/[projectId]/defects/index"
           options={{ headerShown: true, title: 'Defects' }}
         />
@@ -77,6 +90,10 @@ function RootNavigator() {
         <Stack.Screen
           name="project/[projectId]/defects/[defectId]/photo"
           options={{ headerShown: true, title: 'Photo' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/incidents/[incidentId]/photo"
+          options={{ headerShown: true, title: 'Incident photo' }}
         />
         <Stack.Screen
           name="assistant"

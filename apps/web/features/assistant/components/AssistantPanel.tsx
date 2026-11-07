@@ -10,10 +10,16 @@ import { resolveCitation } from '@/shared/lib/citations';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { askNova, sendAnswerFeedback } from '../data/ask';
+import { assistNova, sendAnswerFeedback, type AssistTurn } from '../data/ask';
+import { actionRedirect } from '../data/actions';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
-import { useAssistantPanelState, useAssistantScope, type AssistantScope } from './AssistantScope';
+import {
+  useAssistantPanelState,
+  useAssistantScope,
+  useRunAssistantAction,
+  type AssistantScope,
+} from './AssistantScope';
 
 interface Turn {
   id: number;
@@ -114,20 +120,36 @@ export function AssistantPanel() {
   const update = (id: number, patch: Partial<Turn>) =>
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = async (id: number, question: string, s: AssistantScope) => {
+  const run = async (
+    id: number,
+    question: string,
+    s: AssistantScope,
+    history: AssistTurn[] = [],
+  ) => {
     const controller = new AbortController();
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
-        previewDataOnly || !s.projectId
+        actionRedirect(question, s) ??
+        (previewDataOnly || !s.projectId
           ? await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
             )
-          : await askNova(org.orgId, s.projectId, question, controller.signal);
+          : await assistNova(
+              org.orgId,
+              s.projectId,
+              question,
+              // The screen and record the person has open, so "this" means something (ai/07 §3).
+              {
+                ...(s.record ? { screen: s.record.type, record: s.record } : {}),
+              },
+              history,
+              controller.signal,
+            ));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
@@ -156,9 +178,17 @@ export function AssistantPanel() {
       shown: '',
       feedback: null,
     };
+    // The last few finished exchanges, so a follow-up ("and the defects?") keeps its meaning.
+    const history: AssistTurn[] = turns
+      .filter((t) => t.status === 'done' && t.answer)
+      .slice(-3)
+      .flatMap((t) => [
+        { role: 'user' as const, text: t.question.slice(0, 1500) },
+        { role: 'nova' as const, text: t.answer!.text.slice(0, 1500) },
+      ]);
     setTurns((ts) => [...ts, turn]);
     setDraft('');
-    void run(id, q, effective);
+    void run(id, q, effective, history);
   };
 
   const submit = (e: FormEvent) => {
@@ -301,6 +331,7 @@ function AnswerBlock({
   onFeedback: (v: 'up' | 'down') => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const runAction = useRunAssistantAction();
   if (turn.status === 'thinking') {
     return (
       <div className="row-actions">
@@ -343,6 +374,13 @@ function AnswerBlock({
         <NovaIcon size={14} aria-hidden="true" /> {a?.kind === 'not_found' ? 'Not found' : 'Nova'}
       </p>
       <p className="u-m-0">{turn.shown}</p>
+      {turn.status === 'done' && a?.action ? (
+        <div className="row-actions">
+          <Button size="sm" onClick={() => runAction(a.action!.id)}>
+            {a.action.label}
+          </Button>
+        </div>
+      ) : null}
       {turn.status === 'done' && a?.kind === 'not_found' && a.citations.length ? (
         <p className="u-caption u-m-0">Closest matches, so you can check yourself:</p>
       ) : null}

@@ -467,7 +467,23 @@ export function createDiaryService(deps: DiaryDeps) {
       .select()
       .from(t)
       .where(and(...where))) as LineRow[];
-    return { entries: [], lines: rows.map((row) => ({ kind, row })) };
+    // The phone files a line under its day, which the line itself does not carry.
+    const days = rows.length
+      ? await scope.tx
+          .select({ id: entries.id, date: entries.date })
+          .from(entries)
+          .where(inArray(entries.id, [...new Set(rows.map((r) => r.entryId))]))
+      : [];
+    const dayOf = new Map(days.map((d) => [d.id, d.date]));
+    return {
+      entries: [],
+      lines: rows.map((row) => ({ kind, row: { ...row, date: dayOf.get(row.entryId) ?? null } })),
+    };
+  }
+
+  /** The day's current entry version, or null when nothing has been written for it yet. */
+  async function currentVersion(scope: TenantScope, projectId: string, date: LocalDate) {
+    return (await findEntry(scope, projectId, date))?.version ?? null;
   }
 
   async function list(scope: TenantScope, projectId: string, from: LocalDate, to: LocalDate) {
@@ -741,6 +757,40 @@ export function createDiaryService(deps: DiaryDeps) {
    * limited to their own company's labour (a subcontractor, or a member scoped by company) and everyone outside the
    * organisation hold none, so the notes, delays and other companies' labour never reach them through Ask.
    */
+  /**
+   * The delay register (scheduling): every delay line on the project with its day, newest first. Null for a reader who
+   * only sees their own company's lines - the register is for builder staff. At most `limit` + 1 rows come back so the
+   * caller can tell the list was cut.
+   */
+  async function delayLines(
+    scope: TenantScope,
+    projectId: string,
+    opts: { from?: LocalDate; to?: LocalDate; type?: DelayType; limit: number },
+  ) {
+    if ((await viewer(scope, projectId)).scopedCompanyId) return null;
+    const where: SQL[] = [eq(entries.projectId, projectId), isNull(LINE_TABLES.delay.deletedAt)];
+    if (opts.from) where.push(gte(entries.date, opts.from));
+    if (opts.to) where.push(lte(entries.date, opts.to));
+    if (opts.type) where.push(eq(LINE_TABLES.delay.type, opts.type));
+    const rows = await scope.tx
+      .select({
+        id: LINE_TABLES.delay.id,
+        entryId: entries.id,
+        date: entries.date,
+        status: entries.status,
+        type: LINE_TABLES.delay.type,
+        description: LINE_TABLES.delay.description,
+        hours: LINE_TABLES.delay.hours,
+        isEotCandidate: LINE_TABLES.delay.isEotCandidate,
+      })
+      .from(LINE_TABLES.delay)
+      .innerJoin(entries, eq(entries.id, LINE_TABLES.delay.entryId))
+      .where(and(...where))
+      .orderBy(desc(entries.date), desc(LINE_TABLES.delay.id))
+      .limit(opts.limit + 1);
+    return rows;
+  }
+
   async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
     if (scope.ctx.principalType !== 'member') return [];
     if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return [];
@@ -955,7 +1005,19 @@ export function createDiaryService(deps: DiaryDeps) {
     kind: LineKind,
     input: LineValues,
     reason?: string,
+    /** A device-chosen id, so the record the phone already shows is the one the next pull confirms. */
+    deviceId?: string,
   ) {
+    if (deviceId) {
+      // A retry after a lost response: the line is already there.
+      const t = LINE_TABLES[kind];
+      const [have] = (await scope.tx
+        .select()
+        .from(t)
+        .where(and(eq(t.id, deviceId), eq(t.projectId, projectId)))
+        .limit(1)) as LineRow[];
+      if (have) return have;
+    }
     const entry = await ensureEntry(scope, projectId, date);
     const amendmentReason = amendmentReasonFor(entry, reason);
     const values = pick(kind, input);
@@ -964,7 +1026,7 @@ export function createDiaryService(deps: DiaryDeps) {
     if (kind === 'labour') delete values.editReason;
     await checkCompanies(scope, values);
     const t = LINE_TABLES[kind];
-    const id = uuidv7();
+    const id = deviceId ?? uuidv7();
     const [row] = (await scope.tx
       .insert(t)
       .values({
@@ -1157,9 +1219,11 @@ export function createDiaryService(deps: DiaryDeps) {
     detail,
     applyAttendanceTotals,
     visibleAmong,
+    currentVersion,
     dayForSummary,
     aiSources,
     aiAccessScopes,
+    delayLines,
     saveHeader,
     submit,
     signOff,

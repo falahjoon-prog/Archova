@@ -66,9 +66,24 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.diary(projectId))}
       />
       <ListItem
+        title="Hands-free voice"
+        subtitle="Log diary notes and delays by speaking, gloves on"
+        onPress={() => router.push(mobileRoutes.voice(projectId))}
+      />
+      <ListItem
         title="Defects"
         subtitle="Raise, fix and close defects, offline"
         onPress={() => router.push(mobileRoutes.defects(projectId))}
+      />
+      <ListItem
+        title="Inspections"
+        subtitle="Run checklists and submit them, offline"
+        onPress={() => router.push(mobileRoutes.inspections(projectId))}
+      />
+      <ListItem
+        title="Report an incident"
+        subtitle="Log an injury or near miss, offline"
+        onPress={() => router.push(mobileRoutes.incidents(projectId))}
       />
       <ListItem
         title="Site sign-in"
@@ -84,6 +99,21 @@ export function ProjectScreen({
         title="Roll call"
         subtitle="Account for everyone on site in an evacuation"
         onPress={() => router.push(mobileRoutes.rollCall(projectId))}
+      />
+      <ListItem
+        title="Meetings"
+        subtitle="Your open actions and the minutes"
+        onPress={() => router.push(mobileRoutes.meetings(projectId))}
+      />
+      <ListItem
+        title="Tenders"
+        subtitle="Packages you are invited to, and your quotes"
+        onPress={() => router.push(mobileRoutes.tenders(projectId))}
+      />
+      <ListItem
+        title="Owner portal"
+        subtitle="Progress, approvals and the capital plan"
+        onPress={() => router.push(mobileRoutes.ownerPortal(projectId))}
       />
       <ListItem
         title="Drawings"

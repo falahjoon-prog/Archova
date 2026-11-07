@@ -1,5 +1,14 @@
 import { encodeId } from '@archova/domain';
-import type { Company, MembershipSummary, Org, Project, ProjectMember } from '@archova/contracts';
+import type {
+  Company,
+  KeyDateChange,
+  KeyDates,
+  MembershipSummary,
+  Org,
+  Project,
+  ProjectMember,
+} from '@archova/contracts';
+import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
 import type { companies, orgs, projectMembers, projects } from '../infra/tables';
 
 const iso = (d: Date) => d.toISOString();
@@ -24,6 +33,7 @@ export const toProjectDto = (p: typeof projects.$inferSelect): Project => ({
   name: p.name,
   number: p.number,
   status: p.status,
+  phase: p.phase,
   state: p.state,
   timezone: p.timezone,
   address: p.address,
@@ -76,4 +86,28 @@ export const toMembershipSummary = (o: {
   orgSlug: o.slug,
   role: o.role,
   kind: o.role ? 'member' : 'external',
+});
+
+export const toKeyDatesDto = (k: KeyDatesView): KeyDates => ({
+  ...k,
+  projectId: encodeId('project', k.projectId),
+});
+
+export const toKeyDateChangeDto = (
+  c: KeyDateChangeRow,
+  names: ReadonlyMap<string, string>,
+): KeyDateChange => ({
+  id: c.id,
+  field: c.field as KeyDateChange['field'],
+  sectionId: c.sectionId,
+  sectionName: c.sectionName,
+  from: c.oldValue,
+  to: c.newValue,
+  reason: c.reason,
+  note: c.note,
+  changedBy:
+    c.changedBy && names.has(c.changedBy)
+      ? { id: encodeId('user', c.changedBy), name: names.get(c.changedBy)! }
+      : null,
+  changedAt: c.changedAt.toISOString(),
 });

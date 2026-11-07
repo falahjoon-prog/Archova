@@ -12,17 +12,38 @@ export const GLOBAL_TABLES = new Set([
   'identity.refresh_tokens',
   'identity.oauth_clients',
   'identity.oauth_codes',
+  // Partner app codes and tokens are found by hash before any org is known; they carry `target_org_id`.
+  'identity.app_codes',
+  'identity.app_tokens',
   'kernel.schema_migrations',
+  // Nova statutory clause-rule table: lawyer-signed reference data, read-only to the app (ai/11 F34).
+  'ai.ai_legal_rules',
+  'ai.ai_ncc_provisions',
   // Owner console and price book: staff-only and public catalogue data, no org content (backend 09).
   'billing.plans',
   'billing.plan_versions',
   'billing.price_books',
   'billing.prices',
+  'billing.org_accounts',
+  'billing.org_discounts',
+  'billing.org_overrides',
+  'billing.org_refunds',
+  'billing.trial_notices',
   'backoffice.staff_users',
   'backoffice.staff_role_assignments',
   'backoffice.staff_sessions',
   'backoffice.requests',
   'backoffice.tenant_directory',
+  'backoffice.cohorts',
+  'backoffice.cohort_members',
+  'backoffice.flags',
+  'backoffice.flag_targets',
+  'backoffice.flag_changes',
+  'backoffice.org_actions',
+  'backoffice.support_grants',
+  'backoffice.support_sessions',
+  'backoffice.support_events',
+  'backoffice.staff_audit',
 ]);
 
 /** Tenant tables keyed by something other than org_id. */

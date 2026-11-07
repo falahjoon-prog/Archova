@@ -15,6 +15,7 @@ import {
   uploadBytes,
   uploadFile,
   type TestContext,
+  removeMember,
 } from './helpers';
 
 let t: TestContext;
@@ -80,8 +81,13 @@ async function world(label: string) {
     entitlements: TRIAL,
     requestId: 'test',
   };
-  const grant = async (projectId: string | null) =>
-    (await t.database.withTenantTx(ctx, (scope) =>
+  const grant = async (projectId: string | null) => {
+    // Off the project in the ordinary way first: a grant is only honoured for someone who was removed.
+    const on = projectId ?? project.id;
+    if (on !== project.id)
+      await addMember(pm.browser, org.id, on, sub.email, 'Subcontractor', `Other ${on.slice(-4)}`);
+    await removeMember(pm.browser, org.id, on, sub.email);
+    return (await t.database.withTenantTx(ctx, (scope) =>
       t.modules.sync.api.drain.issue(scope, {
         userId: decodeId('user', sub.userId)!,
         projectId: projectId ? decodeId('project', projectId)! : null,
@@ -89,6 +95,7 @@ async function world(label: string) {
         accessEndedAt: new Date(),
       }),
     ))!;
+  };
   const sendLate = async (token: string, projectId: string, over: object = {}) => {
     const m = {
       mutationId: randomUUID(),
@@ -128,9 +135,9 @@ describe('late submissions: deciding (X38)', () => {
     const q = await w.queue();
     expect(q.pendingCount).toBe(1);
     expect(q.items[0]!.payload).toBeDefined();
-    // The subcontractor cannot read or decide on the queue.
+    // The subcontractor, off the project now, cannot read or decide on the queue.
     const forbidden = await w.sub.browser.get(`${w.base}/late-submissions`);
-    expect(forbidden.statusCode).toBe(403);
+    expect([403, 404]).toContain(forbidden.statusCode);
 
     const accepted = await w.pm.browser.post(`${w.base}/late-submissions/${q.items[0]!.id}/accept`);
     expect(accepted.statusCode, accepted.body).toBe(200);
@@ -159,8 +166,8 @@ describe('late submissions: deciding (X38)', () => {
 
   it('refuses an accept whose record is in another project than the device said, and leaves it waiting', async () => {
     const w = await world('late-mismatch');
-    // An organisation-wide grant lets the device name any project; this defect is in w.project.
-    const g = await w.grant(null);
+    // A grant for the other project lets the device name it; this defect is in w.project.
+    const g = await w.grant(w.other.id);
     await w.sendLate(g.token, w.other.id);
     const q = await w.queue();
     expect(q.pendingCount).toBe(0);
@@ -214,6 +221,15 @@ describe('late submissions: deciding (X38)', () => {
       status: 'rejected',
       problem: { code: 'late_submission.rejected' },
     });
+    // Added back, the subcontractor pushes normally; the rejection still holds for that mutation id.
+    await addMember(
+      w.pm.browser,
+      w.org.id,
+      w.project.id,
+      w.sub.email,
+      'Subcontractor',
+      'Sparky Again',
+    );
     const normal = await w.sub.browser.post(`/v1/orgs/${w.org.id}/sync/push`, {
       mutations: [stale.m],
     });

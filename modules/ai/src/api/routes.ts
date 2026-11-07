@@ -11,7 +11,20 @@ import {
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { AssistService } from '../application/assist';
+import type { ContractPlaybookService } from '../application/contract-playbook';
+import type {
+  ContractReviewPayload,
+  ContractReviewRow,
+  ContractReviewService,
+} from '../application/contract-review';
+import type { TakeoffDetectService } from '../application/takeoff-detect';
+import type { SpeechService } from '../application/speech';
+import type { BudgetReviewService } from '../application/budget-review';
+import type { QuoteNegotiateService } from '../application/quote-negotiate';
+import type { LaborProductivityService } from '../application/labor-productivity';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -30,15 +43,22 @@ import type {
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answer';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
+import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
+import { NCC_NOTE } from '../domain/ncc-references';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
 function payloadDto(task: string, payload: unknown): Record<string, unknown> {
+  if (task === 'contract.review') {
+    const p = payload as ContractReviewPayload;
+    return { ...p, fileId: encodeId('file', p.fileId) };
+  }
   if (task === 'induction.draft' || task === 'induction.refresh') {
     const p = payload as InductionDraftPayload;
     const cite = (c: DraftCitation) => ({ ...c, ...sourceIds(c) });
@@ -82,6 +102,18 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
     };
   }
+  if (task === 'minutes.extract') {
+    const p = payload as MinutesExtractPayload;
+    return {
+      ...p,
+      meetingId: encodeId('meeting', p.meetingId),
+      items: p.items.map((i) => ({
+        ...i,
+        sectionId: i.sectionId ? encodeId('meetingSection', i.sectionId) : null,
+        attendeeId: i.attendeeId ? encodeId('meetingAttendee', i.attendeeId) : null,
+      })),
+    };
+  }
   if (task === 'rfi.draft') {
     const p = payload as RfiDraftPayload;
     return {
@@ -93,6 +125,10 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
         ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
         : null,
     };
+  }
+  if (task === 'swms.draft') {
+    const p = payload as SwmsDraftPayload;
+    return { ...p, references: p.references.map((c) => ({ ...c, ...sourceIds(c) })) };
   }
   if (task === 'rfi.answer') {
     const p = payload as RfiAnswerPayload;
@@ -168,6 +204,7 @@ const TARGET_KINDS = {
   diary_entry: 'diary',
   tender_package: 'tenderPackage',
   rfi: 'rfi',
+  contract_file: 'file',
 } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
@@ -187,6 +224,20 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
   decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
 });
 
+/** A saved review as the API shows it: ids public, decisions with the person's public user id. */
+function toContractReviewDto(r: ContractReviewRow) {
+  return {
+    ...payloadDto('contract.review', r.payload),
+    decisions: (r.payload.decisions ?? []).map((d) => ({
+      ...d,
+      decidedBy: encodeId('user', d.decidedBy),
+    })),
+    runId: encodeId('aiRun', r.runId),
+    suggestionId: encodeId('aiSuggestion', r.id),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
 const toSourceDto = (s: AnswerSource) => ({
   sourceType: s.sourceType,
   ...sourceIds(s),
@@ -194,6 +245,19 @@ const toSourceDto = (s: AnswerSource) => ({
   title: s.title,
   reference: s.reference,
   page: s.page,
+});
+
+const toHazardSignalDto = (s: HazardSignalView) => ({
+  id: encodeId('aiHazardSignal', s.id),
+  fileId: encodeId('file', s.fileId),
+  category: s.category,
+  categoryLabel: s.categoryLabel,
+  observation: s.observation,
+  confidence: s.confidence,
+  status: s.status,
+  reviewNote: s.reviewNote,
+  reviewedAt: s.reviewedAt?.toISOString() ?? null,
+  createdAt: s.createdAt.toISOString(),
 });
 
 const projectUuid = (id: string) => {
@@ -229,6 +293,17 @@ export function aiRoutes(
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
+  quoteNegotiations: QuoteNegotiateService,
+  laborProductivity: LaborProductivityService,
+  budgetReviews: BudgetReviewService,
+  playbooks: ContractPlaybookService,
+  contractReviews: ContractReviewService,
+  speech: SpeechService,
+  takeoffDetect: TakeoffDetectService,
+  minutesExtract: MinutesExtractService,
+  swmsDrafts: SwmsDraftService,
+  hazardScans: HazardScanService,
+  assist: AssistService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -295,6 +370,32 @@ export function aiRoutes(
           answer: a.answer,
           citations: a.citations.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
           closestMatches: a.closestMatches.map(toSourceDto),
+          nccReferences: a.nccReferences,
+          ...(a.nccReferences.length ? { nccNote: NCC_NOTE } : {}),
+        },
+      };
+    },
+    assistNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const b = input.body;
+      const a = await assist.ask(requireTenant(input), projectId, {
+        question: b.question,
+        context: b.context ?? {},
+        history: b.history ?? [],
+      });
+      return {
+        status: 200,
+        body: {
+          runId: a.runId ? encodeId('aiRun', a.runId) : null,
+          found: a.found,
+          answer: a.answer,
+          citations: a.citations.map((c) => ({
+            sourceType: c.type,
+            sourceId: c.id,
+            title: c.title,
+            quote: c.quote,
+          })),
+          lookups: a.lookups,
         },
       };
     },
@@ -438,6 +539,200 @@ export function aiRoutes(
         },
       };
     },
+    getContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => playbooks.list(scope, contractType),
+        ro,
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    replaceContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(requireTenant(input), (scope) =>
+        playbooks.replace(scope, contractType, input.body.topics),
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    reviewContractWithNova: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const { runId, suggestionId, ...payload } = await contractReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          fileId,
+          contractType: input.body.contractType,
+          ourSide: input.body.ourSide,
+          baseForm: input.body.baseForm ?? null,
+          multiState: input.body.multiState ?? false,
+          state: input.body.state ?? null,
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          ...payloadDto('contract.review', payload),
+          decisions: [],
+          createdAt: new Date().toISOString(),
+          runId: encodeId('aiRun', runId),
+          suggestionId: encodeId('aiSuggestion', suggestionId),
+        },
+      };
+    },
+    listContractReviews: async (input) => {
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.list(scope, projectUuid(input.params.projectId)),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toContractReviewDto) } };
+    },
+    getContractReview: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.get(scope, projectUuid(input.params.projectId), id),
+        ro,
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    decideContractFlag: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        contractReviews.decideFlag(
+          scope,
+          projectUuid(input.params.projectId),
+          id,
+          Number(input.params.flagIndex),
+          { decision: input.body.decision, note: input.body.note ?? null },
+        ),
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    askContract: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const a = await contractReviews.ask(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        id,
+        input.body.question,
+      );
+      return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
+    },
+    compareContracts: async (input) => {
+      const baseId = decodeId('aiSuggestion', input.body.baseReviewId);
+      const otherId = decodeId('aiSuggestion', input.body.otherReviewId);
+      if (!baseId || !otherId) throw new AppError('ai.suggestion.not_found');
+      const c = await contractReviews.compare(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        baseId,
+        otherId,
+      );
+      return {
+        status: 200,
+        body: {
+          ...c,
+          runId: encodeId('aiRun', c.runId),
+          base: { ...c.base, suggestionId: encodeId('aiSuggestion', c.base.suggestionId) },
+          other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
+        },
+      };
+    },
+    transcribeSpeech: async (input) => {
+      const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
+        audio: Buffer.from(input.body.audio, 'base64'),
+        mimeType: input.body.mimeType,
+      });
+      return { status: 200, body: { runId: encodeId('aiRun', r.runId), text: r.text } };
+    },
+    negotiateQuote: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const quoteId = decodeId('quote', input.body.quoteId);
+      if (!quoteId) throw new AppError('quote.not_found');
+      const r = await quoteNegotiations.negotiate(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          packageId,
+          quoteId,
+          targetExGst: input.body.targetExGst ?? null,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          stance: r.stance,
+          gap: r.gap,
+          reply: r.reply,
+          points: r.points,
+          levers: r.levers,
+          counterExGst: r.counterExGst,
+          counterReason: r.counterReason,
+          draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    explainLaborProductivity: async (input) => {
+      const costCodeId = decodeId('costCode', input.body.costCodeId);
+      if (!costCodeId) throw new AppError('financials.cost_code.not_found');
+      const r = await laborProductivity.explain(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          costCodeId,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          causes: r.causes,
+          questions: r.questions,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    reviewBudgetWithNova: async (input) => {
+      const r = await budgetReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          points: r.points,
+          options: r.options,
+          draftReason: r.draftReason,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
     tagDefectWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
       const photoFileId = decodeId('file', input.body.photo.fileId);
@@ -491,6 +786,62 @@ export function aiRoutes(
         },
       };
     },
+    scanSitePhotoForHazardsWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const photoFileId = decodeId('file', input.body.photo.fileId);
+      if (!photoFileId) throw new AppError('file.not_found');
+      const r = await hazardScans.scan(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        photoFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          scanId: encodeId('aiHazardScan', r.scanId),
+          signals: r.signals.map(toHazardSignalDto),
+          photoUnclear: r.photoUnclear,
+          dropped: r.dropped,
+          unsupportedNumbers: r.unsupportedNumbers,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    listHazardSignals: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) =>
+          hazardScans.list(scope, projectId, {
+            limit: input.query.limit ?? 50,
+            ...(input.query.status ? { status: input.query.status } : {}),
+          }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toHazardSignalDto) } };
+    },
+    reviewHazardSignal: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const id = decodeId('aiHazardSignal', input.params.signalId);
+      if (!id) throw new AppError('ai.hazard_signal.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        hazardScans.review(scope, projectId, id, {
+          decision: input.body.decision,
+          ...(input.body.note ? { note: input.body.note } : {}),
+        }),
+      );
+      return { status: 200, body: toHazardSignalDto(row) };
+    },
+    getHazardPatterns: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const days = input.query.days ?? 30;
+      const data = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => hazardScans.patterns(scope, projectId, days),
+        ro,
+      );
+      return { status: 200, body: { days, data } };
+    },
     summariseDiaryDayWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
       const row = await diarySummary.summariseDate(
@@ -508,6 +859,47 @@ export function aiRoutes(
         input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
+    },
+    draftMinutesWithNova: async (input) => {
+      const meetingId = decodeId('meeting', input.params.meetingId);
+      if (!meetingId) throw new AppError('meeting.not_found');
+      const row = await minutesExtract.extract(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        meetingId,
+        { notes: input.body.notes },
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    detectTakeoffWithNova: async (input) => {
+      const revisionId = decodeId('drawingRevision', input.body.revisionId);
+      if (!revisionId)
+        throw new AppError('takeoff.revision_not_found', undefined, [
+          { path: 'revisionId', message: 'Not a drawing revision on this project' },
+        ]);
+      const d = await takeoffDetect.detect(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          revisionId,
+          target: input.body.target,
+          examples: input.body.examples ?? [],
+          ...(input.body.image ? { image: input.body.image } : {}),
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          revisionId: encodeId('drawingRevision', d.revisionId),
+          kind: d.kind,
+          what: d.what,
+          scanned: d.scanned,
+          caveat: d.caveat,
+          dropped: d.dropped,
+          items: d.items,
+        },
+      };
     },
     compareDrawingRevision: async (input) => {
       const projectId = projectUuid(input.params.projectId);
@@ -545,6 +937,11 @@ export function aiRoutes(
       const row = await inductionDrafts.draft(requireTenant(input), projectId, {
         siteName: input.body.siteName,
       });
+      return { status: 201, body: toSuggestionDto(row) };
+    },
+    draftSwms: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const row = await swmsDrafts.draft(requireTenant(input), projectId, input.body);
       return { status: 201, body: toSuggestionDto(row) };
     },
     getInductionDraftCurrency: async (input) => {

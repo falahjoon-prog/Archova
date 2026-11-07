@@ -1,5 +1,5 @@
 // The online site induction (IND-US1): read each section, pass the quiz, sign the declaration. Needs a connection.
-// Video and SWMS blocks come later; a section with those cannot be ticked as seen. Images and documents must be viewed first.
+// Images, documents, videos and SWMS must be viewed before a section can be ticked as seen.
 import { useEffect, useRef, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { ApiError } from '@archova/api-client';
@@ -11,6 +11,7 @@ import { StateMessage, useCurrentOrg } from '../../../shared';
 import {
   getInductionCompletion,
   getInductionFile,
+  getInductionSwms,
   recordSectionSeen,
   signInduction,
   startInduction,
@@ -24,7 +25,10 @@ import {
   unsupportedBlockKinds,
   unsupportedBlocksMessage,
 } from '../flow';
+import { animationKey } from '../animation';
+import { AnimationBlockView } from './AnimationBlockView';
 import { FileBlockView } from './FileBlockView';
+import { VideoBlockView } from './VideoBlockView';
 import { SignaturePad } from './SignaturePad';
 import { WhiteCardStep } from './WhiteCardStep';
 
@@ -135,6 +139,31 @@ export function InductionScreen({ projectId }: { projectId: string }) {
                   </View>
                 ))}
               </View>
+            ) : b.type === 'animation' ? (
+              <AnimationBlockView
+                key={animationKey(b)}
+                title={b.title}
+                scenes={b.scenes}
+                viewed={viewed.has(animationKey(b))}
+                onViewed={() => setViewed((v) => new Set(v).add(animationKey(b)))}
+              />
+            ) : b.type === 'video' ? (
+              <VideoBlockView
+                key={b.fileId}
+                title={b.title}
+                viewed={viewed.has(b.fileId)}
+                load={() => getInductionFile(api, target, completion.id, b.fileId)}
+                onViewed={() => setViewed((v) => new Set(v).add(b.fileId))}
+              />
+            ) : b.type === 'swms' ? (
+              <FileBlockView
+                key={b.documentId}
+                kind="document"
+                title={b.title ?? 'SWMS'}
+                viewed={viewed.has(b.documentId)}
+                load={() => getInductionSwms(api, target, completion.id, b.documentId)}
+                onViewed={() => setViewed((v) => new Set(v).add(b.documentId))}
+              />
             ) : b.type === 'image' || b.type === 'document' ? (
               <FileBlockView
                 key={b.fileId}

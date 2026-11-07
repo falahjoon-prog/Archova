@@ -33,10 +33,11 @@ output "app_distribution_arn" {
 
 output "buckets" {
   value = {
-    files         = module.files.id
-    exports       = module.exports.id
-    static_web    = module.static_web.id
-    audit_archive = module.audit_archive.id
+    files           = module.files.id
+    exports         = module.exports.id
+    static_web      = module.static_web.id
+    audit_archive   = module.audit_archive.id
+    claims_evidence = module.claims_evidence.id
   }
 }
 

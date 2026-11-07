@@ -4,6 +4,7 @@
 import {
   commandModule,
   type AttentionReason,
+  type Drain,
   type NewOutboxEntry,
   type OutboxEntry,
   type OutboxStatus,
@@ -43,6 +44,7 @@ export class MemorySyncStore implements SyncStore {
   readonly records = new Map<string, LocalRecord>();
   private outbox: OutboxEntry[] = [];
   private checkpoints = new Map<string, string>();
+  private drains: Drain[] = [];
   private nextSeq = 1;
   private readonly moduleOf: (entityType: string) => string;
 
@@ -221,11 +223,20 @@ export class MemorySyncStore implements SyncStore {
     return countByType(dropped);
   }
 
+  async loadDrains(): Promise<Drain[]> {
+    return structuredClone(this.drains);
+  }
+
+  async saveDrains(drains: readonly Drain[]): Promise<void> {
+    this.drains = structuredClone([...drains]);
+  }
+
   async wipe(): Promise<WipeCounts> {
     const dropped = this.outbox.filter((e) => e.status !== 'pending_review');
     this.records.clear();
     this.outbox = [];
     this.checkpoints.clear();
+    this.drains = [];
     return countByType(dropped);
   }
 

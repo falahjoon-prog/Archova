@@ -9,6 +9,8 @@ import {
   unsupportedBlocksMessage,
   unviewedFiles,
   getInductionFile,
+  getInductionSwms,
+  createWatchTracker,
   signaturePath,
   thinStroke,
 } from '../features/inductions';
@@ -141,9 +143,9 @@ describe('unsupported blocks', () => {
   });
 
   it('names the content the phone cannot show yet, once each', () => {
-    const kinds = unsupportedBlockKinds(section('text', 'video', 'video', 'swms'));
-    expect(kinds).toEqual(['video', 'swms']);
-    expect(unsupportedBlocksMessage(kinds)).toContain('a video and a SWMS');
+    const kinds = unsupportedBlockKinds(section('text', 'hologram', 'hologram', 'image'));
+    expect(kinds).toEqual(['hologram']);
+    expect(unsupportedBlocksMessage(kinds)).toContain('content');
   });
 });
 
@@ -155,6 +157,8 @@ describe('image and document blocks', () => {
       { type: 'text', body: 'x' },
       { type: 'image', fileId: 'fil_a' },
       { type: 'document', fileId: 'fil_b' },
+      { type: 'video', fileId: 'fil_c' },
+      { type: 'swms', documentId: 'doc_d' },
     ],
   } as never;
 
@@ -163,9 +167,48 @@ describe('image and document blocks', () => {
   });
 
   it('keeps the section from being ticked until each file was viewed', () => {
-    expect(unviewedFiles(withFiles, new Set())).toEqual(['fil_a', 'fil_b']);
-    expect(unviewedFiles(withFiles, new Set(['fil_a']))).toEqual(['fil_b']);
-    expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b']))).toEqual([]);
+    expect(unviewedFiles(withFiles, new Set())).toEqual(['fil_a', 'fil_b', 'fil_c', 'doc_d']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a']))).toEqual(['fil_b', 'fil_c', 'doc_d']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b', 'fil_c', 'doc_d']))).toEqual([]);
+  });
+
+  it('shows animations and keeps the section locked until the last scene has played', () => {
+    const withAnimation = {
+      key: 'ppe',
+      title: 'PPE',
+      blocks: [{ type: 'animation', title: null, scenes: [{ id: 'sc1' }, { id: 'sc2' }] }],
+    } as never;
+    expect(unsupportedBlockKinds(withAnimation)).toEqual([]);
+    expect(unviewedFiles(withAnimation, new Set())).toEqual(['animation:sc1,sc2']);
+    expect(unviewedFiles(withAnimation, new Set(['animation:sc1,sc2']))).toEqual([]);
+  });
+
+  it('fetches a download link for a SWMS by document id', async () => {
+    const GET = vi.fn(async () => ({
+      data: {
+        url: 'https://files.test/s',
+        expiresAt: '2026-10-30T06:00:00Z',
+        title: 'Working at heights',
+        docNumber: 'SWMS-004',
+        rev: 'B',
+      },
+      response: new Response(null, { status: 200 }),
+    }));
+    const link = await getInductionSwms(
+      { GET } as never,
+      { orgId: 'o', projectId: 'p' },
+      'inc_1',
+      'doc_d',
+    );
+    expect(link.title).toBe('Working at heights');
+    expect(GET).toHaveBeenCalledWith(
+      expect.stringContaining('/swms/{documentId}/download'),
+      expect.objectContaining({
+        params: {
+          path: { orgId: 'o', projectId: 'p', completionId: 'inc_1', documentId: 'doc_d' },
+        },
+      }),
+    );
   });
 
   it('fetches a download link for the induction file', async () => {
@@ -186,6 +229,49 @@ describe('image and document blocks', () => {
         params: { path: { orgId: 'o', projectId: 'p', completionId: 'inc_1', fileId: 'fil_a' } },
       }),
     );
+  });
+});
+
+describe('video watching', () => {
+  const play = (t: ReturnType<typeof createWatchTracker>, from: number, to: number) => {
+    for (let at = from; at <= to; at += 0.5) t.tick(at);
+  };
+
+  it('counts a video played through to the end', () => {
+    const t = createWatchTracker();
+    play(t, 0, 60);
+    t.ended();
+    expect(t.complete(60)).toBe(true);
+  });
+
+  it('does not count a video skipped to the end', () => {
+    const t = createWatchTracker();
+    play(t, 0, 5);
+    play(t, 58, 60);
+    t.ended();
+    expect(t.complete(60)).toBe(false);
+  });
+
+  it('needs the end to be reached as well as the time played', () => {
+    const t = createWatchTracker();
+    play(t, 0, 59);
+    expect(t.complete(60)).toBe(false);
+  });
+
+  it('does not count replaying one part over and over', () => {
+    const t = createWatchTracker();
+    for (let i = 0; i < 4; i++) play(t, 0, 20);
+    play(t, 59, 60);
+    t.ended();
+    expect(t.complete(60)).toBe(false);
+  });
+
+  it('allows a short rewind without losing credit', () => {
+    const t = createWatchTracker();
+    play(t, 0, 30);
+    play(t, 25, 60);
+    t.ended();
+    expect(t.complete(60)).toBe(true);
   });
 });
 

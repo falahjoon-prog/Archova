@@ -17,6 +17,7 @@ const holds =
 describe('suggestion audience', () => {
   it('opens a task to its deciders only where the team works the draft together', () => {
     expect([...DECIDER_TASKS].sort()).toEqual([
+      'contract.review',
       'drawing.titleblock',
       'induction.draft',
       'induction.refresh',
@@ -27,6 +28,7 @@ describe('suggestion audience', () => {
       'defect.tag',
       'rfi.draft',
       'rfi.answer',
+      'swms.draft',
       'import.mapping',
       'quote.read',
     ])

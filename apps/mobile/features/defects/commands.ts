@@ -5,6 +5,7 @@
 import {
   defectTransition,
   hasDefectLocation,
+  uuidv7,
   type DefectAction,
   type DefectActor,
   type DefectPriority,
@@ -52,6 +53,8 @@ export type CommandResult<T> = { ok: true; value: T } | { ok: false; code: Comma
 export interface NewDefectInput {
   defectId: string;
   mutationId: string;
+  /** Id of the follow-up `defects.issue` queued for an assigned defect; made if not given. */
+  issueMutationId?: string;
   projectId: string;
   title: string;
   description?: string;
@@ -115,6 +118,22 @@ export async function createDefect(
       dependsOn: [],
     },
   );
+  // The server starts every defect as a draft, as on the web, so an assigned one is issued in a second command
+  // that follows the first. A new defect is at version 1.
+  if (defect.assigneeCompanyId) {
+    await store.write(
+      { entityType: DEFECT_ENTITY, id: defect.id, data: defect },
+      {
+        mutationId: input.issueMutationId ?? uuidv7(),
+        command: 'defects.issue',
+        projectId: defect.projectId,
+        baseVersion: 1,
+        clientAt: input.clientAt,
+        payload: { projectId: defect.projectId, note: null, photoIds: [] },
+        dependsOn: [input.mutationId],
+      },
+    );
+  }
   return { ok: true, value: { defect, mutationId: input.mutationId } };
 }
 
@@ -213,18 +232,17 @@ export async function pendingCreateMutation(
 export async function defectPhotos(store: SqliteSyncStore, defect: LocalDefect) {
   const rows = await store.listRecords<{
     purpose: 'before' | 'after' | null;
+    mutationId?: string;
     thumbnailUri?: string;
     capture?: { takenAt?: string };
   }>('photo', defect.projectId, { '$.defectId': defect.id });
-  const outbox = await store.listOutbox();
-  const mutationOf = new Map(
-    outbox.filter((e) => e.command === 'photos.create').map((e) => [e.entityId, e.mutationId]),
-  );
+  // The photo's own queued command, while it is still unsent, so a step that needs the photo can follow it.
+  const unsent = new Set((await store.listOutbox()).map((e) => e.mutationId));
   return rows.map((r) => {
     const takenAt = r.data.capture?.takenAt ?? null;
     return {
       photoId: r.id,
-      mutationId: mutationOf.get(r.id) ?? null,
+      mutationId: r.data.mutationId && unsent.has(r.data.mutationId) ? r.data.mutationId : null,
       thumbnailUri: r.data.thumbnailUri ?? null,
       purpose: r.data.purpose,
       takenAt,

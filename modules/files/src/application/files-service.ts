@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, like, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
@@ -27,6 +27,9 @@ const FILE_STATUS = {
   unscannable: 'failed',
   pending: 'scanning',
 } as const satisfies Record<ScanVerdict, FileRow['status']>;
+
+/** Modules whose images show in the project photo gallery. Safety, workforce and other restricted records are left out. */
+export const PHOTO_MODULES = ['photos', 'diary', 'defects', 'quality', 'rfis'] as const;
 
 /** No scan result after this long fails closed (security-licensing/09 §4). */
 const SCAN_TIMEOUT_MS = 15 * 60_000;
@@ -318,23 +321,32 @@ export function createFilesService({
   async function downloadUrl(
     scope: TenantScope,
     fileId: string,
-    opts: { authorised?: boolean } = {},
+    opts: { authorised?: boolean; expiresInS?: number; contentType?: string } = {},
   ) {
     const f = await get(scope, fileId, opts);
     assertFileReady(f);
+    // A caller can ask for a shorter life (never a longer one).
+    const ttl = Math.min(DOWNLOAD_URL_TTL_S, Math.max(1, opts.expiresInS ?? DOWNLOAD_URL_TTL_S));
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
-      expiresInS: DOWNLOAD_URL_TTL_S,
+      expiresInS: ttl,
+      contentType: opts.contentType,
     });
-    return { url, expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000) };
+    return { url, expiresAt: new Date(Date.now() + ttl * 1000) };
   }
 
   /**
    * The file's bytes for server-side processing, after the same read check as a download. Capped so one request
-   * can't pull a huge file into memory; bigger files wait for the worker.
+   * can't pull a huge file into memory; bigger files wait for the worker. `authorised` is for background jobs
+   * that run as the system principal on a record another check already covers; routes never pass it.
    */
-  async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
-    const f = await get(scope, fileId);
+  async function readBytes(
+    scope: TenantScope,
+    fileId: string,
+    maxBytes: number,
+    opts: { authorised?: boolean } = {},
+  ) {
+    const f = await get(scope, fileId, opts);
     assertFileReady(f);
     if (f.sizeBytes > maxBytes)
       throw new AppError('validation_failed', 'This file is too large to process here.', [
@@ -345,7 +357,40 @@ export function createFilesService({
     return { file: f, bytes };
   }
 
-  return { createUpload, complete, get, downloadUrl, readBytes };
+  /**
+   * The newest ready photos on a project, for the project home gallery. Only modules whose photos are meant for the
+   * whole project team feed it (`PHOTO_MODULES`); incident and induction photos stay inside their own records.
+   * Newest by capture time, falling back to upload time. Each photo comes with a short-lived download link.
+   */
+  async function listProjectPhotos(scope: TenantScope, projectId: string, limit: number) {
+    await authorise(scope, projectId, 'read');
+    const rows = await scope.tx
+      .select()
+      .from(fileObjects)
+      .where(
+        and(
+          eq(fileObjects.projectId, projectId),
+          eq(fileObjects.status, 'ready'),
+          like(fileObjects.mime, 'image/%'),
+          inArray(fileObjects.module, [...PHOTO_MODULES]),
+          isNull(fileObjects.deletedAt),
+        ),
+      )
+      .orderBy(desc(sql`coalesce(${fileObjects.takenAt}, ${fileObjects.createdAt})`))
+      .limit(Math.min(Math.max(limit, 1), 30));
+    return Promise.all(
+      rows.map(async (f) => ({
+        file: f,
+        url: await store.presignGet(f.storageKey, {
+          contentDisposition: contentDisposition(f.filename),
+          expiresInS: DOWNLOAD_URL_TTL_S,
+        }),
+        expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000),
+      })),
+    );
+  }
+
+  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

@@ -11,6 +11,8 @@ import {
   createTestContext,
   signUp,
   type TestContext,
+  addMember,
+  removeMember,
 } from './helpers';
 
 let t: TestContext;
@@ -32,6 +34,18 @@ async function world(label: string) {
   const org = await createOrg(pm.browser, `${label} Builders`);
   const a = await createProject(pm.browser, org.id, { name: 'Tower A', state: 'NSW' });
   const b = await createProject(pm.browser, org.id, { name: 'Tower B', state: 'NSW' });
+  // Both projects had them on, and an admin took them off in the ordinary way.
+  for (const p of [a, b]) {
+    await addMember(
+      pm.browser,
+      org.id,
+      p.id,
+      ex.email,
+      'Subcontractor',
+      `${label} Formco ${p.id.slice(-4)}`,
+    );
+    await removeMember(pm.browser, org.id, p.id, ex.email);
+  }
   const ctx: TenantContext = {
     orgId: decodeId('org', org.id)!,
     userId: decodeId('user', pm.userId)!,
@@ -146,13 +160,11 @@ describe('drain grant (X38), queueing', () => {
       expect(r.json().results[0].problem.code).toBe('validation_failed');
     }
 
+    // Organisation-wide revocation is not built: a grant with no project has nothing to check, so it is refused.
     const org = (await w.grant(null))!;
-    const both = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
-    expect(both.json().results.map((r: { status: string }) => r.status)).toEqual([
-      'pending_review',
-      'pending_review',
-    ]);
-    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(2);
+    const wide = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
+    expect(wide.statusCode).toBe(401);
+    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(0);
   });
 
   it('caps payloads and the queue', async () => {
@@ -233,6 +245,25 @@ describe('drain grant (X38), who can use it', () => {
       sql`update sync.drain_grants set expires_at = now() - interval '1 minute' where revoked_at is null`,
     );
     expect(await ok(late.token)).toBe(401);
+  });
+
+  it("lets a project admin end a person's grants, and no one else", async () => {
+    const w = await world('drain-end');
+    const g = (await w.grant(w.a.id))!;
+    const other = (await w.grant(w.b.id))!;
+    const url = `/v1/orgs/${w.org.id}/projects/${w.a.id}/late-submissions/end-grants`;
+    const body = { userId: w.ex.userId };
+    // Someone with no project access can not end it.
+    expect((await w.ex.browser.post(url, body)).statusCode).toBeGreaterThanOrEqual(403);
+    expect((await send(w.org.id, g.token, [mutation(w.a.id)])).statusCode).toBe(200);
+
+    const done = await w.pm.browser.post(url, body);
+    expect(done.statusCode).toBe(200);
+    expect(done.json()).toEqual({ ended: 1 });
+    expect((await send(w.org.id, g.token, [mutation(w.a.id)])).statusCode).toBe(401);
+    // The other project's grant is untouched, and ending twice is harmless.
+    expect((await send(w.org.id, other.token, [mutation(w.b.id)])).statusCode).toBe(200);
+    expect((await w.pm.browser.post(url, body)).json()).toEqual({ ended: 0 });
   });
 
   it('limits guesses per caller address without keeping a record per guess', async () => {

@@ -61,7 +61,7 @@ export function createLimiter(limit: number) {
   };
 }
 
-const HOURS_72 = 72 * 60 * 60 * 1000;
+export const DRAIN_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -73,9 +73,26 @@ const rejected = (mutationId: string, code: string, detail: string): Result => (
   problem: { code, detail },
 });
 
+/** How someone's access to a project stands; the platform module answers (X38). */
+export interface AccessState {
+  status: 'active' | 'removed';
+  kind: 'ordinary' | 'for_cause' | 'wipe_now' | null;
+  removedAt: Date | null;
+  episode: number;
+  /** The person is on an organisation-level hold (suspended): no grant stands (X38). */
+  held?: boolean;
+}
+export type AccessStateLookup = (
+  scope: TenantScope,
+  projectId: string,
+  userId: string,
+) => Promise<AccessState | null>;
+
 export interface DrainDeps {
   database: Database;
   commands: readonly SyncCommand[];
+  /** Required: a grant is only honoured while the platform says the person's access ended in the ordinary way. */
+  accessState: AccessStateLookup;
 }
 
 /**
@@ -102,13 +119,17 @@ export function createDrainService(deps: DrainDeps) {
       projectId: string | null;
       module: string | null;
       accessEndedAt: Date;
+      /** Which time round someone was given access; rotations count within it. */
+      episode?: number;
     },
   ): Promise<DrainGrant | null> {
+    const episode = input.episode ?? 1;
     const same = and(
       eq(drainGrants.orgId, scope.ctx.orgId),
       eq(drainGrants.userId, input.userId),
       input.projectId ? eq(drainGrants.projectId, input.projectId) : isNull(drainGrants.projectId),
       input.module ? eq(drainGrants.module, input.module) : isNull(drainGrants.module),
+      eq(drainGrants.accessEpisode, episode),
     );
     const [{ n } = { n: 0 }] = await scope.tx.select({ n: count() }).from(drainGrants).where(same);
     if (Number(n) >= DRAIN_LIMITS.rotations) return null;
@@ -117,7 +138,7 @@ export function createDrainService(deps: DrainDeps) {
       .set({ revokedAt: new Date() })
       .where(and(same, isNull(drainGrants.revokedAt)));
     const token = DRAIN_TOKEN_PREFIX + randomBytes(32).toString('base64url');
-    const expiresAt = new Date(input.accessEndedAt.getTime() + HOURS_72);
+    const expiresAt = new Date(input.accessEndedAt.getTime() + DRAIN_WINDOW_MS);
     await scope.tx.insert(drainGrants).values({
       orgId: scope.ctx.orgId,
       userId: input.userId,
@@ -125,6 +146,7 @@ export function createDrainService(deps: DrainDeps) {
       module: input.module,
       tokenHash: hashToken(token),
       expiresAt,
+      accessEpisode: episode,
     });
     return {
       token,
@@ -140,7 +162,7 @@ export function createDrainService(deps: DrainDeps) {
     scope: TenantScope,
     input: { userId: string; projectId?: string | null; module?: string | null },
   ) {
-    await scope.tx
+    const ended = await scope.tx
       .update(drainGrants)
       .set({ revokedAt: new Date() })
       .where(
@@ -151,7 +173,9 @@ export function createDrainService(deps: DrainDeps) {
           input.projectId ? eq(drainGrants.projectId, input.projectId) : undefined,
           input.module ? eq(drainGrants.module, input.module) : undefined,
         ),
-      );
+      )
+      .returning({ id: drainGrants.id });
+    return ended.length;
   }
 
   async function queue(
@@ -289,6 +313,19 @@ export function createDrainService(deps: DrainDeps) {
         )
         .limit(1);
       if (!grant) throw invalid();
+      // Fails closed. Organisation-wide revocation is not built, so a grant with no project has nothing to check
+      // and is refused. A project grant stands only while the person is still off the project, removed in the
+      // ordinary way, in the same episode it was minted for (a re-add or a later removal ends it).
+      if (!grant.projectId) throw invalid();
+      const state = await deps.accessState(scope, grant.projectId, grant.userId);
+      if (
+        !state ||
+        state.held ||
+        state.status !== 'removed' ||
+        state.kind !== 'ordinary' ||
+        state.episode !== grant.accessEpisode
+      )
+        throw invalid();
       // Two requests for the same person and scope take turns, so the queue cap cannot be passed together.
       await scope.tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${`${grant.userId}:${grant.projectId ?? ''}:${grant.module ?? ''}`}, 0))`,

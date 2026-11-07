@@ -5,11 +5,20 @@ export interface Principal {
   userId: string;
   sessionId: string;
   client: 'web' | 'ios' | 'android' | 'api';
-  authMethod: 'password' | 'passkey' | 'sso' | 'oauth';
+  authMethod: 'password' | 'passkey' | 'sso' | 'oauth' | 'api_token';
   authTime: Date;
+  /**
+   * Set when the caller used a personal access token or a partner app token: it works in one org and only within
+   * these scopes. `app` marks a partner app token, which needs its approver to still be a member of the org.
+   */
+  apiToken?: { id: string; orgId: string; scopes: readonly string[]; app?: true };
 }
 
-export type PrincipalType = 'member' | 'external';
+/**
+ * `support` is an Archova staff member inside an open support session (Sam 12 §4a): read only, and none of the
+ * member or external checks pass for it, so a module that does not know about support shows it nothing.
+ */
+export type PrincipalType = 'member' | 'external' | 'support';
 
 /** Per-request tenant context (multi-tenancy.md §3). The org always comes from the URL path (X4). */
 export interface TenantContext {
@@ -18,12 +27,27 @@ export interface TenantContext {
   principalType: PrincipalType;
   orgRole: 'owner' | 'admin' | 'billing_admin' | 'member' | null;
   entitlements: Entitlements;
+  /** Feature-flag reader for this org; set by apps/api. Absent in jobs and tests, where every flag is off. */
+  flags?: FlagReader;
   requestId: string;
   /**
    * Set when the caller is a person on an access link (X45) rather than a signed-in user. `userId` is then the
    * subject's id in the owning module (a workforce worker), never an identity user.
    */
   actor?: LinkActor;
+}
+
+/** Evaluates registry flags for the request's org (backend 09 §5). A flag never grants an unlicensed module. */
+export interface FlagReader {
+  isOn(key: string): Promise<boolean>;
+}
+
+/** Off unless the context carries a reader that says otherwise. */
+export async function isFlagOn(
+  ctx: { flags?: FlagReader | undefined },
+  key: string,
+): Promise<boolean> {
+  return ctx.flags ? ctx.flags.isOn(key) : false;
 }
 
 export interface LinkActor {
