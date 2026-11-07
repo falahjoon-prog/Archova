@@ -140,3 +140,28 @@ describe('BudgetScreen', () => {
     });
   });
 });
+
+describe('Snapshots tab', () => {
+  it('names a snapshot before taking it and lists it afterwards', async () => {
+    fake.on('GET', `${P}/budget`, () => budget());
+    fake.on('GET', `${P}/budget/snapshots`, () => ({ data: [] }));
+    fake.on('POST', `${P}/budget/snapshots`, () => ({
+      id: 'bsn_1',
+      name: 'Tender',
+      note: null,
+      takenAt: '2026-11-06T00:00:00Z',
+      lines: [],
+      totals: { original: '0.00', approvedChanges: '0.00', revised: '0.00' },
+    }));
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Snapshots' }));
+    await user.click(await screen.findByRole('button', { name: 'Take snapshot' }));
+    expect(await screen.findByText(/Give the snapshot a name/)).toBeTruthy();
+    expect(fake.callsTo('POST', `${P}/budget/snapshots`)).toHaveLength(0);
+    await enterText(user, screen.getByLabelText(/^Name/), 'Tender');
+    await user.click(screen.getByRole('button', { name: 'Take snapshot' }));
+    await waitFor(() => expect(fake.callsTo('POST', `${P}/budget/snapshots`)).toHaveLength(1));
+    expect(fake.callsTo('POST', `${P}/budget/snapshots`)[0]!.init.body).toEqual({ name: 'Tender' });
+  });
+});

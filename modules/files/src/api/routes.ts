@@ -60,6 +60,24 @@ export function filesRoutes(database: Database, files: FilesService) {
       const row = await database.withTenantTx(requireTenant(input), (s) => files.get(s, id));
       return { status: 200, body: toFileDto(row) };
     },
+    listProjectPhotos: async (input) => {
+      const projectId = decodeId('project', input.params.projectId);
+      if (!projectId) throw new AppError('project.not_found');
+      const photos = await database.withTenantTx(requireTenant(input), (s) =>
+        files.listProjectPhotos(s, projectId, input.query.limit ?? 12),
+      );
+      return {
+        status: 200,
+        body: {
+          data: photos.map((p) => ({
+            file: toFileDto(p.file),
+            url: p.url,
+            expiresAt: p.expiresAt.toISOString(),
+          })),
+        },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
     getFileDownload: async (input) => {
       const id = fileUuid(input.params.fileId);
       const link = await database.withTenantTx(requireTenant(input), (s) =>

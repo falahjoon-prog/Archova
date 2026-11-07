@@ -541,6 +541,37 @@ export const BudgetAdjustmentListSchema = z.object({
 });
 export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
 
+export const BudgetSnapshotLineSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "description": z.string(),
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "isMargin": z.boolean(),
+});
+export type BudgetSnapshotLine = z.infer<typeof BudgetSnapshotLineSchema>;
+
+export const BudgetSnapshotSchema = z.object({
+  "id": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "note": z.string().nullable(),
+  "takenAt": z.string().datetime({ offset: true }),
+  "lines": z.array(BudgetSnapshotLineSchema),
+  "totals": z.object({
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+}),
+});
+export type BudgetSnapshot = z.infer<typeof BudgetSnapshotSchema>;
+
+export const BudgetSnapshotListSchema = z.object({
+  "data": z.array(BudgetSnapshotSchema),
+});
+export type BudgetSnapshotList = z.infer<typeof BudgetSnapshotListSchema>;
+
 export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
 export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
 
@@ -1283,6 +1314,19 @@ export const CostCodeListSchema = z.object({
 });
 export type CostCodeList = z.infer<typeof CostCodeListSchema>;
 
+export const CostCodeProductionSchema = z.object({
+  "uom": z.string().min(1).max(20),
+  "budgetedHours": z.number().min(0).max(9999999999),
+  "budgetedQuantity": z.number().min(0).max(999999999999),
+  "quantityComplete": z.number().min(0).max(999999999999),
+});
+export type CostCodeProduction = z.infer<typeof CostCodeProductionSchema>;
+
+export const CostCodeProductionSavedSchema = z.intersection(CostCodeProductionSchema, z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+}));
+export type CostCodeProductionSaved = z.infer<typeof CostCodeProductionSavedSchema>;
+
 export const ForecastAdjustmentCategorySchema = z.enum(["unawarded_work", "allowance", "risk", "saving", "other"]);
 export type ForecastAdjustmentCategory = z.infer<typeof ForecastAdjustmentCategorySchema>;
 
@@ -1399,6 +1443,12 @@ export const CreateBimModelRequestSchema = z.object({
   "supersedesModelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateBimModelRequest = z.infer<typeof CreateBimModelRequestSchema>;
+
+export const CreateBudgetSnapshotRequestSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export type CreateBudgetSnapshotRequest = z.infer<typeof CreateBudgetSnapshotRequestSchema>;
 
 export const CreateCommitmentFromAwardRequestSchema = z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
@@ -1986,6 +2036,9 @@ export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificatio
 export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
+export const ProjectPhaseSchema = z.enum(["planning", "design", "tender", "pre_construction", "construction", "handover", "defects_liability"]);
+export type ProjectPhase = z.infer<typeof ProjectPhaseSchema>;
+
 export const GeoPointSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -1996,6 +2049,7 @@ export const CreateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "number": z.string().max(50).optional(),
   "status": ProjectStatusSchema.optional(),
+  "phase": ProjectPhaseSchema.optional(),
   "state": AuStateSchema.optional(),
   "timezone": z.string().max(64).optional(),
   "address": AddressSchema.optional(),
@@ -4083,6 +4137,46 @@ export const KeyDatesSchema = z.object({
 });
 export type KeyDates = z.infer<typeof KeyDatesSchema>;
 
+export const LaborProductivityRowSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "uom": z.string().nullable(),
+  "budgetedHours": z.number().nullable(),
+  "timesheetHours": z.number(),
+  "pctHoursUsed": z.number().nullable(),
+  "pctComplete": z.number().nullable(),
+  "earnedHours": z.number().nullable(),
+  "budgetedQuantity": z.number().nullable(),
+  "quantityComplete": z.number().nullable(),
+  "budgetedRate": z.number().nullable(),
+  "actualRate": z.number().nullable(),
+  "flagged": z.boolean(),
+});
+export type LaborProductivityRow = z.infer<typeof LaborProductivityRowSchema>;
+
+export const LaborProductivitySchema = z.object({
+  "rows": z.array(LaborProductivityRowSchema),
+  "totals": z.object({
+  "budgetedHours": z.number(),
+  "timesheetHours": z.number(),
+  "earnedHours": z.number(),
+  "pctHoursUsed": z.number().nullable(),
+  "efficiency": z.number().nullable(),
+  "flaggedRows": z.number().int(),
+}),
+  "unallocatedHours": z.number(),
+  "codes": z.array(z.object({
+  "id": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+})),
+});
+export type LaborProductivity = z.infer<typeof LaborProductivitySchema>;
+
 export const LateSopaClaimRiskClaimSchema = z.object({
   "claimId": z.string(),
   "claimNumber": z.number().int(),
@@ -5241,6 +5335,7 @@ export const PortfolioBudgetSchema = z.object({
   "hasBudget": z.boolean(),
   "revised": FinancialsSignedMoneySchema,
   "forecastFinal": FinancialsSignedMoneySchema,
+  "spent": FinancialsSignedMoneySchema,
   "variance": FinancialsSignedMoneySchema,
   "overBudgetCodes": z.number().int(),
 });
@@ -5251,6 +5346,8 @@ export const PortfolioProjectSchema = z.object({
   "name": z.string(),
   "number": z.string().nullable(),
   "status": z.string(),
+  "phase": z.union([ProjectPhaseSchema, z.null()]),
+  "siteLocation": z.union([GeoPointSchema, z.null()]),
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
@@ -5375,6 +5472,7 @@ export const ProjectSchema = z.object({
   "name": z.string(),
   "number": z.string().nullable(),
   "status": ProjectStatusSchema,
+  "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
   "state": z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]).nullable(),
   "timezone": z.string(),
   "address": z.union([AddressSchema, z.null()]),
@@ -5412,6 +5510,13 @@ export const ProjectPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type ProjectPage = z.infer<typeof ProjectPageSchema>;
+
+export const ProjectPhotoSchema = z.object({
+  "file": FileObjectSchema,
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ProjectPhoto = z.infer<typeof ProjectPhotoSchema>;
 
 export const PublicPriceBookSchema = z.object({
   "version": z.string(),
@@ -7328,6 +7433,7 @@ export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "number": z.string().max(50).nullable().optional(),
   "status": ProjectStatusSchema.optional(),
+  "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
   "state": AuStateSchema.optional(),
   "timezone": z.string().max(64).optional(),
   "address": AddressSchema.optional(),

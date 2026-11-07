@@ -119,6 +119,7 @@ describe('budget against forecast', () => {
     hasBudget: true,
     revisedCents: revised,
     forecastFinalCents: forecast,
+    spentCents: 0,
     varianceCents: revised - forecast,
     overBudgetCodes: over,
   });
@@ -131,6 +132,7 @@ describe('budget against forecast', () => {
       hasBudget: true,
       revised: '10000.50',
       forecastFinal: '12000.00',
+      spent: '0.00',
       variance: '-1999.50',
       overBudgetCodes: 2,
     });

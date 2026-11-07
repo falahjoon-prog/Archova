@@ -14,8 +14,12 @@ export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
 export type AdjustBudgetLine = S['AdjustBudgetLineRequest'];
 export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
+export type BudgetSnapshot = S['BudgetSnapshot'];
 export type DirectCost = S['DirectCost'];
 export type DirectCostList = S['DirectCostList'];
+export type LaborProductivity = S['LaborProductivity'];
+export type LaborProductivityRow = S['LaborProductivityRow'];
+export type CostCodeProduction = S['CostCodeProduction'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
@@ -82,6 +86,24 @@ export function createBudgetApi(orgId: string) {
         }),
       );
     },
+    async laborProductivity(
+      projectId: string,
+      filter: { divisionId?: string; subJobId?: string },
+    ): Promise<LaborProductivity> {
+      return unwrap(
+        await api.GET(`${P}/reports/labor-productivity`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async setProduction(projectId: string, costCodeId: string, body: CostCodeProduction) {
+      return unwrap(
+        await api.PUT(`${P}/cost-codes/{costCodeId}/production`, {
+          params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
     async directCosts(projectId: string): Promise<DirectCostList> {
       return unwrap(await api.GET(`${P}/direct-costs`, { params: { path: { orgId, projectId } } }));
     },
@@ -102,6 +124,22 @@ export function createBudgetApi(orgId: string) {
         await api.POST(`${P}/direct-costs/{directCostId}/void`, {
           params: { path: { orgId, projectId, directCostId }, header: idempotencyKey() },
           body: { note },
+        }),
+      );
+    },
+    async snapshots(projectId: string): Promise<BudgetSnapshot[]> {
+      return unwrap(
+        await api.GET(`${P}/budget/snapshots`, { params: { path: { orgId, projectId } } }),
+      ).data;
+    },
+    async createSnapshot(
+      projectId: string,
+      body: { name: string; note?: string },
+    ): Promise<BudgetSnapshot> {
+      return unwrap(
+        await api.POST(`${P}/budget/snapshots`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
         }),
       );
     },

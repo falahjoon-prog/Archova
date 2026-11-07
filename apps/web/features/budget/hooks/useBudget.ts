@@ -8,6 +8,7 @@ import {
   createBudgetApi,
   type AddBudgetLine,
   type AdjustBudgetLine,
+  type CostCodeProduction,
   type CreateCostCode,
   type RecordDirectCost,
   type UpdateBudgetLine,
@@ -34,6 +35,25 @@ export function useCostCodes(projectId: string) {
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costCodes: true }),
     queryFn: () => source.costCodes(projectId),
+  });
+}
+
+export function useSnapshots(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { snapshots: true }),
+    queryFn: () => source.snapshots(projectId),
+  });
+}
+
+export function useCreateSnapshot(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
   });
 }
 
@@ -119,4 +139,28 @@ export function useBudgetMutations(projectId: string) {
       onSuccess: refresh,
     }),
   };
+}
+
+export function useLaborProductivity(
+  projectId: string,
+  filter: { divisionId?: string; subJobId?: string },
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { productivity: filter }),
+    queryFn: () => source.laborProductivity(projectId, filter),
+  });
+}
+
+/** Saving a plan or the quantity in place refreshes the report. */
+export function useSetProduction(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; body: CostCodeProduction }) =>
+      source.setProduction(projectId, v.costCodeId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
 }
