@@ -67,6 +67,7 @@ import {
   CORRESPONDENCE_PERMISSIONS,
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
+import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -76,6 +77,7 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
+  CONVERSATIONS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -261,6 +263,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+  });
+
+  const conversations = createConversationsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
   });
 
   const defects = createDefectsModule(services, {
@@ -505,6 +512,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
@@ -544,6 +552,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,

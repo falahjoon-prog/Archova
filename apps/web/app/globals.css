@@ -3185,3 +3185,82 @@ fieldset.worker-card > legend {
 .row-end > :first-child {
   flex: 1 1 16rem;
 }
+
+/* Project home: conversations card */
+.conversations__list,
+.conversations__thread {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.conversations__list > li + li,
+.conversations__thread > li + li {
+  border-top: 1px solid var(--c-border-divider);
+}
+.conversations__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.conversations__item:hover {
+  background: var(--c-surface-sunken, var(--c-bg));
+}
+.conversations__item:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.conversations__message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.conversations__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--c-action-primary);
+  color: var(--c-surface);
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+.conversations__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.conversations__who {
+  font-weight: 600;
+}
+.conversations__subject {
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.conversations__preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+.conversations__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

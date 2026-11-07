@@ -44,6 +44,7 @@ export type ProjectTool =
   | 'rfis'
   | 'submittals'
   | 'correspondence'
+  | 'conversations'
   | 'coordination'
   | 'diary'
   | 'key-dates'
