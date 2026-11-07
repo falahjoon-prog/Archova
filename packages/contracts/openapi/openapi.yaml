@@ -13293,7 +13293,7 @@ components:
         overdue: { type: integer }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, variance, overBudgetCodes]
+      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -13307,6 +13307,11 @@ components:
         hasBudget: { type: boolean }
         revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        spent:
+          {
+            allOf: [{ $ref: '#/components/schemas/FinancialsSignedMoney' }],
+            description: 'Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures.',
+          }
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
@@ -13318,6 +13323,8 @@ components:
           name,
           number,
           status,
+          phase,
+          siteLocation,
           rfis,
           defects,
           submittals,
@@ -13333,6 +13340,8 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { type: string }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
@@ -15054,6 +15063,10 @@ components:
     ProjectStatus:
       type: string
       enum: [tender, active, on_hold, closed, archived]
+    ProjectPhase:
+      type: string
+      enum: [planning, design, tender, pre_construction, construction, handover, defects_liability]
+      description: Where the project is in its life. Separate from `status`, which says whether it is live.
     Address:
       type: object
       additionalProperties: false
@@ -15117,6 +15130,7 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { type: [string, 'null'], enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null] }
         timezone:
           { type: string, description: 'IANA time zone; local dates and deadlines use it (X32)' }
@@ -15302,6 +15316,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: string, maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { $ref: '#/components/schemas/ProjectPhase' }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }
@@ -15317,6 +15332,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: [string, 'null'], maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }

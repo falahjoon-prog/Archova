@@ -33,6 +33,7 @@ export const toProjectDto = (p: typeof projects.$inferSelect): Project => ({
   name: p.name,
   number: p.number,
   status: p.status,
+  phase: p.phase,
   state: p.state,
   timezone: p.timezone,
   address: p.address,

@@ -39,6 +39,7 @@ const NO_BUDGET = {
   hasBudget: false,
   revisedCents: 0,
   forecastFinalCents: 0,
+  spentCents: 0,
   varianceCents: 0,
   overBudgetCodes: 0,
 };
@@ -406,6 +407,7 @@ export function createBudgetService(
       hasBudget: true,
       revisedCents: r.totals.revisedCents,
       forecastFinalCents: r.totals.forecastFinalCents,
+      spentCents: r.totals.claimedCents + r.totals.directCents,
       varianceCents: r.totals.varianceCents,
       overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
     };
