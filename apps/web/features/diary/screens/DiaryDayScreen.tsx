@@ -244,7 +244,7 @@ function DayHeader({
         ) : undefined
       }
       actions={
-        <div className="row-actions">
+        <div className="row-actions diary-nav">
           <Link
             className="ac-button ac-button--secondary ac-button--sm"
             href={href(addDays(day, -1))}

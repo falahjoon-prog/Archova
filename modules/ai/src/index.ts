@@ -1,7 +1,7 @@
 // Public interface of @archova/mod-ai: Nova's gateway (ai/03). Feature modules call `api.runTask`; nothing else in
 // the codebase talks to an AI vendor (X26).
 import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
-import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
+import { AppError, defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createContractPlaybookService } from './application/contract-playbook';
 import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
@@ -17,18 +17,22 @@ import { createProjectIndexService, type SourceRevision } from './application/pr
 import type { DefectSource } from './domain/defect-source';
 import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
+import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
 import { createRfiDraftService } from './application/rfi-draft';
+import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
+import { createHazardScanService } from './application/hazard-scan';
 import { createImportMappingService } from './application/import-mapping';
 import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createLaborProductivityService, type LaborFacts } from './application/labor-productivity';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
 import { createTakeoffDetectService } from './application/takeoff-detect';
@@ -241,6 +245,8 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** financials.api.laborFactsForNova: a cost code's labor productivity figures for Nova's read of it. */
+    laborFacts?: (scope: TenantScope, projectId: string, costCodeId: string) => Promise<LaborFacts>;
     /** diary.api.dayForSummary: one diary day as the caller may read it, or null (F4). */
     dayForSummary: (
       scope: TenantScope,
@@ -274,6 +280,8 @@ export function createAiModule(
       packageId: string,
       quoteId: string,
     ) => Promise<QuoteForNegotiation>;
+    /** financials.api.budgetReviewFacts: the code-found budget findings and totals, margin never included (Nova). */
+    budgetReviewFacts: (scope: TenantScope, projectId: string) => Promise<BudgetForReview>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -373,6 +381,13 @@ export function createAiModule(
     gateway,
     currency: inductionCurrency,
   });
+  const swmsDrafts = createSwmsDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    accessScopes: deps.accessScopes,
+    enabled: deps.config.swmsDrafts ?? false,
+  });
   const rfiDrafts = createRfiDraftService({
     database: services.database,
     gateway,
@@ -404,6 +419,12 @@ export function createAiModule(
     projectCompanies: deps.projectCompanies,
     openDefectsNear: deps.openDefectsNear,
   });
+  const hazardScans = createHazardScanService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const importMappings = createImportMappingService({
     database: services.database,
     gateway,
@@ -430,6 +451,21 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
+  });
+  const laborProductivity = createLaborProductivityService({
+    database: services.database,
+    gateway,
+    facts:
+      deps.laborFacts ??
+      (async () => {
+        throw new AppError('not_found', 'Labor productivity is not available here.');
+      }),
+  });
+  const budgetReviews = createBudgetReviewService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    budget: deps.budgetReviewFacts,
   });
   const speech = createSpeechService({
     database: services.database,
@@ -496,11 +532,15 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      laborProductivity,
+      budgetReviews,
       contractPlaybooks,
       contractReviews,
       speech,
       takeoffDetect,
       minutesExtract,
+      swmsDrafts,
+      hazardScans,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -529,6 +569,8 @@ export function createAiModule(
       /** F33 I2: Nova redrafts the sections of a drafted induction that rest on a changed document. */
       refreshInductionDraft: inductionRefresh.refresh,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
+      /** F20: a first-draft SWMS from the activity, site and high-risk work; saved as a pending suggestion, not a SWMS. */
+      draftSwms: swmsDrafts.draft,
       draftRfi: rfiDrafts.draft,
       /** F3: a response to an RFI that exists, from its thread, its files and the project documents; nothing is sent. */
       draftRfiAnswer: rfiAnswers.draft,
@@ -540,6 +582,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova on the project budget: what the checks mean and what to do about them; nothing is changed. */
+      reviewBudget: budgetReviews.review,
       /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
       reviewContract: contractReviews.review,
       /** Nova Esti: items of one kind found on a drawing sheet, as marks to accept or reject; nothing is saved. */

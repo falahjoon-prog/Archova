@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { AppError, defineModule, type Entitlements, type KernelServices } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
+import { createAccountDeletionService } from './application/account-deletion';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
@@ -13,7 +14,10 @@ import { platformRoutes, type SupportAccessPort } from './api/routes';
 export function createPlatformModule(
   services: KernelServices,
   deps: {
-    identity: Pick<IdentityApi, 'getUser' | 'getUsers' | 'findUserByEmail'>;
+    identity: Pick<
+      IdentityApi,
+      'getUser' | 'getUsers' | 'findUserByEmail' | 'eraseAccount' | 'revokeOwnApiTokens'
+    >;
     /** Resolved lazily: access and platform depend on each other's public interfaces. */
     access: () => AccessService;
     defaultEntitlements: Entitlements;
@@ -35,6 +39,12 @@ export function createPlatformModule(
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
   const companies = createCompanyService();
+  const accountDeletion = createAccountDeletionService({
+    database: services.database,
+    orgs,
+    identity: deps.identity,
+    defaultEntitlements: deps.defaultEntitlements,
+  });
   const members = createMemberService({ identity: deps.identity, access, companies, projects });
   return {
     definition: defineModule({ name: 'platform' }),
@@ -46,6 +56,7 @@ export function createPlatformModule(
       keyDates,
       companies,
       members,
+      accountDeletion,
       ...(deps.supportAccess ? { supportAccess: deps.supportAccess } : {}),
     }),
     api: {
@@ -130,7 +141,9 @@ export function createPlatformModule(
         return [...users.values()].map((u) => ({ email: u.email, name: u.name }));
       },
       companyExists: companies.exists,
+      companyContacts: companies.contacts,
       companyIdentity: companies.identity,
+      companyLinkedOrgs: companies.linkedOrgs,
       projectCompanies: companies.onProject,
       projectCompaniesWithTrades: companies.onProjectWithTrades,
     },

@@ -37,20 +37,27 @@ const nextConfig: NextConfig = {
    * everything else is limited to our own origin. Uploads and downloads go to presigned object-store URLs, so
    * `connect-src` and `img-src` allow https; nothing can frame the app or load plugins.
    *
-   * Guest pages (`/i/*` inductions and `/t/*` transmittals, X45, Sam's review) hold a worker's name, mobile number
+   * Guest pages (`/i/*` inductions, `/t/*` transmittals and `/q/*` tender invites, X45, Sam's review) hold a worker's name, mobile number
    * and ticket photos, or a link's files, so they also send no referrer: the link token must not leak to anything
    * the page links to (Sam 11 §3). Their rule comes last so it wins on the shared header.
    */
   async headers() {
-    const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self' 'unsafe-inline'";
+    // `wasm-unsafe-eval` lets the IFC reader (WebAssembly) start; it does not allow eval of text.
+    const scriptSrc = isDev
+      ? "'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'"
+      : "'self' 'unsafe-inline' 'wasm-unsafe-eval'";
     const connectSrc = isDev
       ? "'self' https: http://localhost:* ws://localhost:*"
       : "'self' https:";
+    // Photos come from presigned object-store URLs; in dev that is a local store over http.
+    const imgSrc = isDev
+      ? "'self' data: blob: https: http://localhost:*"
+      : "'self' data: blob: https:";
     const csp = [
       "default-src 'self'",
       `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
+      `img-src ${imgSrc}`,
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
       "worker-src 'self' blob:",
@@ -77,6 +84,7 @@ const nextConfig: NextConfig = {
       { source: '/:path*', headers: appWide },
       { source: '/i/:path*', headers: guest },
       { source: '/t/:path*', headers: guest },
+      { source: '/q/:path*', headers: guest },
     ];
   },
   async rewrites() {

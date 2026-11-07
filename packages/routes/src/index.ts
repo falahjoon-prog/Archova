@@ -13,11 +13,17 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  /** Global search; `q` pre-fills the box. */
+  search: (orgSlug: string, q?: string) =>
+    `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
+  readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,
+  integrations: (orgSlug: string) => `/${enc(orgSlug)}/settings/integrations`,
   folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
@@ -27,6 +33,7 @@ export const webRoutes = {
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
+  dataExport: (orgSlug: string) => `/${enc(orgSlug)}/settings/data-export`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
@@ -35,6 +42,9 @@ export const webRoutes = {
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
   coordination: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/coordination`,
+  /** The 3D viewer for the project's IFC models, with clash checking. */
+  coordinationModels: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/coordination/models`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
@@ -52,6 +62,7 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/correspondence/new`,
@@ -75,6 +86,7 @@ export const webRoutes = {
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   budget: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/budget`,
+  commitments: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/commitments`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
@@ -88,6 +100,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  safetySignals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/safety-signals`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
@@ -114,6 +127,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/timesheets`,
+  attendanceCheckIn: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/check-in`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>
@@ -137,12 +152,15 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   offline: () => '/offline',
+  deleteAccount: () => '/delete-account',
   bidBoard: () => '/bid-board',
   tenders: (projectId: string) => `/project/${enc(projectId)}/tenders`,
   tender: (projectId: string, packageId: string) =>
     `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
+  voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,

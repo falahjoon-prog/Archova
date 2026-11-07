@@ -23,6 +23,12 @@ import { clientIp, safeEqualStrings } from './util';
 
 type Surface = 'app' | 'api';
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** Writes that stay open on a read-only or cancelled organisation. */
+const READ_ONLY_ALLOWED = new Set<string>([
+  'revokeSupportAccessGrant',
+  'createDataExport',
+  'createDataExportDownload',
+]);
 
 /**
  * The request pipeline from backend 02 §1, applied to every operation in the OpenAPI contract:
@@ -298,8 +304,8 @@ export function registerOperations(
       (state === 'read_only' || state === 'cancelled') &&
       UNSAFE.has(method) &&
       module !== 'billing' &&
-      // Withdrawing consent for support access must work however the account stands.
-      operationId !== 'revokeSupportAccessGrant'
+      // Withdrawing consent for support access, and taking your data with you, must work however the account stands.
+      !READ_ONLY_ALLOWED.has(operationId)
     ) {
       throw new AppError(
         'org.read_only',
@@ -396,6 +402,9 @@ export function registerOperations(
                   module: 'api',
                 },
               );
+            // A partner app was approved by an org member; once that person is no longer one, the app stops.
+            if (principal.apiToken?.app && tenant.principalType !== 'member')
+              throw new AppError('org.not_found');
             if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
             if (def.rateLimit) await limitOperation(reply, operationId, def.rateLimit, tenant);
             checkEntitlement(def, tenant, req.method, operationId);

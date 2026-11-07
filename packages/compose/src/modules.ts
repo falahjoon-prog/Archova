@@ -58,13 +58,16 @@ import {
   type NumberVault,
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
   CORRESPONDENCE_PERMISSIONS,
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
+import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -74,12 +77,15 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
+  CONVERSATIONS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  SEARCH_PERMISSIONS,
+  EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
@@ -112,14 +118,28 @@ export interface ModuleOptions {
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
-  const identity = await createIdentityModule(services, opts.identity);
+  // The identity module is built first; it tells an org's admins about partner app changes through platform, built later.
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
+  const identity = await createIdentityModule(services, {
+    ...opts.identity,
+    partnerApps: {
+      ...opts.identity.partnerApps,
+      notifyAdmins: async (orgId, subject, text) => {
+        const admins = await platformApi!.orgAdminContacts(orgId);
+        await Promise.all(
+          admins.map((a) =>
+            opts.messages.email(a.email, { subject, text: `Hi ${a.name},\n\n${text}` }),
+          ),
+        );
+      },
+    },
+  });
   const billing = createBillingModule(
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
   // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
-  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
@@ -245,6 +265,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  const conversations = createConversationsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -285,6 +310,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
+    // workforce is built later; the report only calls this at request time.
+    timesheetMinutes: (scope, projectId) =>
+      workforce.api.timesheetMinutesByCostCode(scope, projectId),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -319,6 +347,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     files: files.api,
     financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -358,8 +395,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     quotePackage: (scope, projectId, packageId) =>
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
+    laborFacts: (scope, projectId, costCodeId) =>
+      financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),
@@ -382,15 +422,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     submittals: submittals.api,
     platform: platform.api,
+    access: access.api,
   });
 
-  const reporting = createReportingModule({
-    database: services.database as Database,
-    platform: platform.api,
-    rfis: rfis.api,
-    defects: defects.api,
-    submittals: submittals.api,
-  });
+  const exportsModule = createExportsModule(services, { store: opts.files.store });
 
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
@@ -414,6 +449,38 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       baseUrl: opts.linkBaseUrl,
       redis: services.redis,
       logger: services.logger,
+    },
+  });
+
+  // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    access: access.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+    claims: financials.api.reporting.claims,
+    variations: financials.api.reporting.variations,
+    incidents: safety.api.reporting,
+    programme: scheduling.api.reporting,
+    budget: { portfolioSummary: financials.api.budgetSummary },
+    precon: precon.api,
+    workforce: workforce.api,
+    safety: safety.api,
+    financials: financials.api,
+    scheduling: scheduling.api,
+  });
+
+  const search = createSearchModule({
+    database: services.database as Database,
+    platform: platform.api,
+    sources: {
+      rfi: rfis.api,
+      document: documents.api,
+      defect: defects.api,
+      submittal: submittals.api,
+      correspondence: correspondence.api,
     },
   });
 
@@ -451,6 +518,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
@@ -465,6 +533,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
+    exportsModule,
     workforce,
     sync,
   ];
@@ -488,6 +558,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
@@ -503,6 +574,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    search,
+    exportsModule,
     workforce,
     routes,
   };

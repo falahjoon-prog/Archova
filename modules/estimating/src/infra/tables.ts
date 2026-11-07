@@ -54,6 +54,8 @@ export const tenderPackages = estimatingSchema.table('tender_packages', {
   scope: jsonb('scope').$type<ScopeLine[]>().notNull().default([]),
   documents: jsonb('documents').$type<PackageDocument[]>().notNull().default([]),
   allowances: jsonb('allowances').$type<Record<string, string>>().notNull().default({}),
+  /** Set while the package's invitee reminders are held because its creator no longer has access. */
+  inviteRemindersPausedAt: timestamp('invite_reminders_paused_at', { withTimezone: true }),
   awardedQuoteId: uuid('awarded_quote_id'),
   awardedBy: uuid('awarded_by'),
   awardedAt: timestamp('awarded_at', { withTimezone: true }),
@@ -78,6 +80,9 @@ export const packageInvites = estimatingSchema.table('package_invites', {
   invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
   viewedAt: timestamp('viewed_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
+  accessLinkId: uuid('access_link_id'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
   createdBy: uuid('created_by'),
 });
 

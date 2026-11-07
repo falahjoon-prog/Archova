@@ -23,9 +23,37 @@ export const OauthAuthorizeQuery = z.object({
   "code_challenge": z.string().min(43).max(128),
   "code_challenge_method": z.enum(["S256"]),
   "state": z.string().max(512),
+  "prompt": z.enum(["login"]).optional(),
+});
+export const GetOauthConsentQuery = z.object({
+  "client_id": z.string().max(100),
+  "redirect_uri": z.string().max(2000),
+});
+export const ListOauthAppsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppBody = s.CreateOauthAppRequestSchema;
+export const RotateOauthAppSecretParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "clientId": z.string().regex(new RegExp("^app_[0-9a-f]{24}$")),
+});
+export const ListAppInstallsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppBody = s.InstallAppRequestSchema;
+export const RevokeAppInstallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "appInstallId": z.string().regex(new RegExp("^ain_[0-9A-Za-z]{26}$")),
 });
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
+export const DeleteMeBody = s.DeleteMeRequestSchema;
 export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -156,6 +184,16 @@ export const DeleteScheduleActivityParams = z.object({
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
 });
+export const SetScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const ClearScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
 export const CreateScheduleDependencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -255,6 +293,13 @@ export const GetFileParams = z.object({
 export const GetFileDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectPhotosQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(30).default(12),
 });
 export const ListFoldersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -597,6 +642,40 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const ScanSitePhotoForHazardsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanSitePhotoForHazardsWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListHazardSignalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHazardSignalsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewHazardSignalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const GetHazardPatternsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHazardPatternsQuery = z.object({
+  "days": z.coerce.number().int().min(7).max(180).default(30),
+});
 export const SuggestImportMappingWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -706,6 +785,14 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const ReviewBudgetWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewBudgetWithNovaBody = z.object({
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.BudgetReviewTurnSchema).max(10).optional(),
+}).strict();
 export const TranscribeSpeechParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -741,6 +828,21 @@ export const DraftInductionParams = z.object({
 });
 export const DraftInductionBody = z.object({
   "siteName": z.string().min(1).max(200),
+}).strict();
+export const DraftSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftSwmsBody = z.object({
+  "siteAddress": z.string().min(1).max(300),
+  "activity": z.string().min(1).max(500),
+  "highRiskWorkCategories": z.array(s.HighRiskWorkCategorySchema).min(1).max(19),
+  "workArea": z.string().min(1).max(500),
+  "access": z.string().min(1).max(500),
+  "plant": z.array(z.string().min(1).max(200)).max(20),
+  "adjacentTrades": z.array(z.string().min(1).max(200)).max(20),
+  "whsPlanApplies": z.boolean().optional(),
+  "notes": z.string().max(2000).optional(),
 }).strict();
 export const GetInductionDraftCurrencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -814,6 +916,25 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const SearchOrgParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SearchOrgQuery = z.object({
+  "q": z.string().min(1).max(200),
+  "perType": z.coerce.number().int().min(1).max(25).default(8),
+});
+export const GetLateSopaClaimRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetLateSopaClaimRiskQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const GetReadinessPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetReadinessPackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -841,6 +962,20 @@ export const DeleteReportParams = z.object({
 export const RunReportParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const ListDataExportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -887,6 +1022,14 @@ export const InviteToTenderPackageParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
 export const InviteToTenderPackageBody = s.InvitePackageRequestSchema;
+export const ResendTenderInviteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "companyId": z.string(),
+});
+export const OpenTenderAccessBody = s.OpenInductionAccessRequestSchema;
+export const RespondTenderAccessBody = s.RespondTenderAccessRequestSchema;
 export const SetTenderPackageAllowancesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1149,6 +1292,9 @@ export const ResolveAccountingSyncIssueParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
 });
+export const GetIntegrationsCatalogueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1345,6 +1491,30 @@ export const ListProjectCorrespondenceTypesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListConversationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListConversationsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateConversationBody = s.CreateConversationRequestSchema;
+export const GetConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1441,6 +1611,18 @@ export const GetRfiActivityParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
+export const ListRfiAnnotationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationBody = s.PutRfiAnnotationRequestSchema;
 export const CloseRfiParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2520,6 +2702,11 @@ export const AddBudgetLineParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddBudgetLineBody = s.AddBudgetLineRequestSchema;
+export const ImportBudgetLinesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportBudgetLinesBody = s.ImportBudgetLinesRequestSchema;
 export const UpdateBudgetLineParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2535,7 +2722,67 @@ export const GetBudgetVsForecastParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetLaborProductivityQuery = z.object({
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ExportLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExportLaborProductivityQuery = z.object({
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ListCostCodeQuantityLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityBody = s.LogQuantityRequestSchema;
+export const ExplainLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExplainLaborProductivityBody = s.ExplainLaborProductivityRequestSchema;
+export const SetCostCodeProductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const SetCostCodeProductionBody = s.CostCodeProductionSchema;
 export const LockBudgetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListBudgetSnapshotsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetSnapshotBody = s.CreateBudgetSnapshotRequestSchema;
+export const GetBudgetSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "snapshotId": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetReviewChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
@@ -2712,6 +2959,29 @@ export const QueueClaimEvidenceDeliveryParams = z.object({
   "kind": z.enum(["claim", "schedule"]),
 });
 export const QueueClaimEvidenceDeliveryBody = s.QueueClaimEvidenceDeliveryRequestSchema;
+export const ListClaimEvidenceServiceRecordsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceBody = s.RecordClaimEvidenceServiceRequestSchema;
+export const VoidClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+  "recordId": z.string(),
+});
+export const VoidClaimEvidenceServiceBody = z.object({
+  "reason": z.string().min(1).max(1000),
+}).strict();
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2982,6 +3252,90 @@ export const operations = {
     query: OauthAuthorizeQuery,
     body: null,
   },
+  getOauthConsent: {
+    method: 'GET',
+    path: '/v1/oauth/consent',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: null,
+    query: GetOauthConsentQuery,
+    body: null,
+  },
+  listOauthApps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListOauthAppsParams,
+    query: null,
+    body: null,
+  },
+  createOauthApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateOauthAppParams,
+    query: null,
+    body: CreateOauthAppBody,
+  },
+  rotateOauthAppSecret: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RotateOauthAppSecretParams,
+    query: null,
+    body: null,
+  },
+  listAppInstalls: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListAppInstallsParams,
+    query: null,
+    body: null,
+  },
+  installApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: InstallAppParams,
+    query: null,
+    body: InstallAppBody,
+  },
+  revokeAppInstall: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/app-installs/{appInstallId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeAppInstallParams,
+    query: null,
+    body: null,
+  },
   oauthToken: {
     method: 'POST',
     path: '/v1/oauth/token',
@@ -3029,6 +3383,18 @@ export const operations = {
     params: null,
     query: null,
     body: null,
+  },
+  deleteMe: {
+    method: 'DELETE',
+    path: '/v1/me',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DeleteMeBody,
   },
   createOrg: {
     method: 'POST',
@@ -3390,6 +3756,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  setScheduleBaseline: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: SetScheduleBaselineParams,
+    query: null,
+    body: null,
+  },
+  clearScheduleBaseline: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: ClearScheduleBaselineParams,
+    query: null,
+    body: null,
+  },
   createScheduleDependency: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies',
@@ -3604,6 +3994,18 @@ export const operations = {
     contentType: null,
     params: GetFileDownloadParams,
     query: null,
+    body: null,
+  },
+  listProjectPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListProjectPhotosParams,
+    query: ListProjectPhotosQuery,
     body: null,
   },
   listFolders: {
@@ -4314,6 +4716,54 @@ export const operations = {
     query: null,
     body: TagDefectWithNovaBody,
   },
+  scanSitePhotoForHazardsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanSitePhotoForHazardsWithNovaParams,
+    query: null,
+    body: ScanSitePhotoForHazardsWithNovaBody,
+  },
+  listHazardSignals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: ListHazardSignalsParams,
+    query: ListHazardSignalsQuery,
+    body: null,
+  },
+  reviewHazardSignal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewHazardSignalParams,
+    query: null,
+    body: ReviewHazardSignalBody,
+  },
+  getHazardPatterns: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: GetHazardPatternsParams,
+    query: GetHazardPatternsQuery,
+    body: null,
+  },
   suggestImportMappingWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings',
@@ -4459,6 +4909,18 @@ export const operations = {
     query: null,
     body: NegotiateQuoteBody,
   },
+  reviewBudgetWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewBudgetWithNovaParams,
+    query: null,
+    body: ReviewBudgetWithNovaBody,
+  },
   transcribeSpeech: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions',
@@ -4530,6 +4992,18 @@ export const operations = {
     params: DraftInductionParams,
     query: null,
     body: DraftInductionBody,
+  },
+  draftSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: DraftSwmsParams,
+    query: null,
+    body: DraftSwmsBody,
   },
   getInductionDraftCurrency: {
     method: 'GET',
@@ -4687,6 +5161,54 @@ export const operations = {
     query: GetPortfolioQuery,
     body: null,
   },
+  searchOrg: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/search',
+    module: "search",
+    auth: "required",
+    permission: "search.global.read",
+    internal: false,
+    contentType: null,
+    params: SearchOrgParams,
+    query: SearchOrgQuery,
+    body: null,
+  },
+  getLateSopaClaimRisk: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/risk/late-sopa-claims',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetLateSopaClaimRiskParams,
+    query: GetLateSopaClaimRiskQuery,
+    body: null,
+  },
+  getReadinessPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackParams,
+    query: null,
+    body: null,
+  },
+  getReadinessPackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackPdfParams,
+    query: null,
+    body: null,
+  },
   listReports: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/reports',
@@ -4768,6 +5290,56 @@ export const operations = {
     internal: false,
     contentType: null,
     params: RunReportParams,
+    query: null,
+    body: null,
+  },
+  listDataExports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: ListDataExportsParams,
+    query: null,
+    body: null,
+  },
+  createDataExport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 10,
+    contentType: null,
+    params: CreateDataExportParams,
+    query: null,
+    body: null,
+  },
+  getDataExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: GetDataExportParams,
+    query: null,
+    body: null,
+  },
+  createDataExportDownload: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}/download',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 30,
+    contentType: null,
+    params: CreateDataExportDownloadParams,
     query: null,
     body: null,
   },
@@ -4854,6 +5426,54 @@ export const operations = {
     params: InviteToTenderPackageParams,
     query: null,
     body: InviteToTenderPackageBody,
+  },
+  resendTenderInvite: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: null,
+    params: ResendTenderInviteParams,
+    query: null,
+    body: null,
+  },
+  getTenderAccess: {
+    method: 'GET',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenTenderAccessBody,
+  },
+  respondTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access/respond',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: RespondTenderAccessBody,
   },
   setTenderPackageAllowances: {
     method: 'PUT',
@@ -5408,6 +6028,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  getIntegrationsCatalogue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/integrations/catalogue',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.marketplace.read",
+    internal: true,
+    contentType: null,
+    params: GetIntegrationsCatalogueParams,
+    query: null,
+    body: null,
+  },
   listWebhooks: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/webhooks',
@@ -5828,6 +6460,54 @@ export const operations = {
     query: null,
     body: null,
   },
+  listConversations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: ListConversationsParams,
+    query: ListConversationsQuery,
+    body: null,
+  },
+  createConversation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateConversationParams,
+    query: null,
+    body: CreateConversationBody,
+  },
+  getConversation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: GetConversationParams,
+    query: null,
+    body: null,
+  },
+  postConversationMessage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.messages.post",
+    internal: false,
+    contentType: "application/json",
+    params: PostConversationMessageParams,
+    query: null,
+    body: PostConversationMessageBody,
+  },
   listCorrespondence: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
@@ -6007,6 +6687,30 @@ export const operations = {
     params: GetRfiActivityParams,
     query: null,
     body: null,
+  },
+  listRfiAnnotations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: ListRfiAnnotationsParams,
+    query: null,
+    body: null,
+  },
+  putRfiFileAnnotation: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: PutRfiFileAnnotationParams,
+    query: null,
+    body: PutRfiFileAnnotationBody,
   },
   closeRfi: {
     method: 'POST',
@@ -8424,6 +9128,18 @@ export const operations = {
     query: null,
     body: AddBudgetLineBody,
   },
+  importBudgetLines: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ImportBudgetLinesParams,
+    query: null,
+    body: ImportBudgetLinesBody,
+  },
   updateBudgetLine: {
     method: 'PATCH',
     path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}',
@@ -8460,6 +9176,78 @@ export const operations = {
     query: null,
     body: null,
   },
+  getLaborProductivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetLaborProductivityParams,
+    query: GetLaborProductivityQuery,
+    body: null,
+  },
+  exportLaborProductivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ExportLaborProductivityParams,
+    query: ExportLaborProductivityQuery,
+    body: null,
+  },
+  listCostCodeQuantityLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListCostCodeQuantityLogParams,
+    query: null,
+    body: null,
+  },
+  logCostCodeQuantity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.production.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogCostCodeQuantityParams,
+    query: null,
+    body: LogCostCodeQuantityBody,
+  },
+  explainLaborProductivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ExplainLaborProductivityParams,
+    query: null,
+    body: ExplainLaborProductivityBody,
+  },
+  setCostCodeProduction: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetCostCodeProductionParams,
+    query: null,
+    body: SetCostCodeProductionBody,
+  },
   lockBudget: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lock',
@@ -8469,6 +9257,66 @@ export const operations = {
     internal: false,
     contentType: null,
     params: LockBudgetParams,
+    query: null,
+    body: null,
+  },
+  listBudgetSnapshots: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListBudgetSnapshotsParams,
+    query: null,
+    body: null,
+  },
+  createBudgetSnapshot: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBudgetSnapshotParams,
+    query: null,
+    body: CreateBudgetSnapshotBody,
+  },
+  getBudgetSnapshot: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetSnapshotParams,
+    query: null,
+    body: null,
+  },
+  getBudgetReviewChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/review-checks',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetReviewChecksParams,
+    query: null,
+    body: null,
+  },
+  listProjectBudgetAdjustments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectBudgetAdjustmentsParams,
     query: null,
     body: null,
   },
@@ -8843,6 +9691,42 @@ export const operations = {
     params: QueueClaimEvidenceDeliveryParams,
     query: null,
     body: QueueClaimEvidenceDeliveryBody,
+  },
+  listClaimEvidenceServiceRecords: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceServiceRecordsParams,
+    query: null,
+    body: null,
+  },
+  recordClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimEvidenceServiceParams,
+    query: null,
+    body: RecordClaimEvidenceServiceBody,
+  },
+  voidClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: VoidClaimEvidenceServiceParams,
+    query: null,
+    body: VoidClaimEvidenceServiceBody,
   },
   listMeetingSeries: {
     method: 'GET',

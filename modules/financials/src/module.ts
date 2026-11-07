@@ -6,9 +6,12 @@ import { paymentRoutes } from './api/paymentRoutes';
 import { createPaymentsService } from './application/payments';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productivityRoutes } from './api/productivityRoutes';
+import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
+import { createReportingSources } from './application/reportingSources';
 import { createRetentionService } from './application/retention';
 import { createTrustService } from './application/trust';
 import { FINANCIALS_PERMISSIONS } from './permissions';
@@ -26,6 +29,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     forecastInputs: forecast.inputsByCode,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const productivity = createProductivityService({
+    access: deps.access,
+    timesheetMinutes: deps.timesheetMinutes,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const commitments = createCommitmentsService({
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
@@ -38,6 +46,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     access: deps.access,
     platform: deps.platform,
     contractFor: service.contractFor,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const reportingSources = createReportingSources({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const trustDeps = {
@@ -54,14 +67,26 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
       ...paymentRoutes(services.database, payments),
+      ...productivityRoutes(services.database, productivity),
     },
     api: {
       ledgerSource: service.ledgerSource,
+      sopaRiskSignals: service.sopaRiskSignals,
       recordPayment: service.recordPayment,
       createContract: service.createContract,
       contractForQuote: service.contractForQuote,
+      /** Retention-trust standing of a project's subcontracts, for the tender-readiness pack (`reporting`). */
+      trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
+      laborFactsForNova: productivity.laborFacts,
+      /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
+      budgetSummary: budget.portfolioSummary,
+      /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */
+      budgetReviewFacts: budget.reviewFacts,
+      /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
+      reporting: reportingSources,
     },
   };
 }

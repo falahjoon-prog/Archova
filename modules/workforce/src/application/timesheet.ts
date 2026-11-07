@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
@@ -327,7 +327,8 @@ export function createTimesheetService(deps: TimesheetDeps) {
         ),
       )
       .orderBy(asc(timesheets.localDate), asc(workers.fullName))
-      .for('update', { of: timesheets });
+      // Not `of timesheets`: Postgres wants an unqualified name there and drizzle prints the schema.
+      .for('update');
     const lines = await linesFor(
       scope,
       sheets.map((s) => s.sheet.id),
@@ -375,7 +376,42 @@ export function createTimesheetService(deps: TimesheetDeps) {
     };
   }
 
-  return { list, get, generate, addLine, adjustLine, submit, approve, reject, exportCsv };
+  /**
+   * Worked minutes per cost code on a project (break taken off), from submitted, approved or exported sheets: a draft
+   * is still being filled in and a rejected one is being redone. Lines with no cost code come back under `null`.
+   * For the labor productivity report in `financials`.
+   */
+  async function minutesByCostCode(scope: TenantScope, projectId: string) {
+    await need(scope, 'workforce.timesheets.view', projectId);
+    const rows = await scope.tx
+      .select({
+        costCodeId: timesheetLines.costCodeId,
+        minutes: sql<string>`sum(${timesheetLines.minutes} - ${timesheetLines.breakMinutes})`,
+      })
+      .from(timesheetLines)
+      .innerJoin(timesheets, eq(timesheets.id, timesheetLines.timesheetId))
+      .where(
+        and(
+          eq(timesheets.projectId, projectId),
+          inArray(timesheets.status, ['submitted', 'approved', 'exported']),
+        ),
+      )
+      .groupBy(timesheetLines.costCodeId);
+    return rows.map((r) => ({ costCodeId: r.costCodeId, minutes: Number(r.minutes) }));
+  }
+
+  return {
+    list,
+    get,
+    generate,
+    addLine,
+    adjustLine,
+    submit,
+    approve,
+    reject,
+    exportCsv,
+    minutesByCostCode,
+  };
 }
 
 export type TimesheetService = ReturnType<typeof createTimesheetService>;

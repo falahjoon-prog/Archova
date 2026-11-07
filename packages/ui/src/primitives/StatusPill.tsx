@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AlertOctagon, AlertTriangle, CheckCircle2, Circle, Info, Sparkles } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, Circle, Info } from 'lucide-react';
+import { NovaMark } from '../icons/NovaMark';
 import { cx } from '../lib/cx';
 
 /** Status families (design 02 §2.2). `ai` is only for Nova content (§2.3). */
@@ -11,7 +12,7 @@ const ICONS = {
   danger: AlertOctagon,
   info: Info,
   neutral: Circle,
-  ai: Sparkles,
+  ai: NovaMark,
 } as const;
 
 export interface StatusPillProps {

@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -29,6 +30,9 @@ interface AssistantContextValue {
   /** Set by "Ask Nova about this"; the panel focuses its input when it changes. */
   focusRequest: number;
   requestFocus: () => void;
+  /** Screens register what chat may do for them ("draft"); the panel runs it so chat and the screen stay in sync. */
+  registerAction: (id: string, run: () => void) => () => void;
+  runAction: (id: string) => boolean;
 }
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
@@ -45,9 +49,30 @@ export function AssistantScopeProvider({ children }: { children: ReactNode }) {
     setOpen(true);
     setFocusRequest((n) => n + 1);
   }, []);
+  const actions = useRef(new Map<string, () => void>());
+  const registerAction = useCallback((id: string, run: () => void) => {
+    actions.current.set(id, run);
+    return () => {
+      if (actions.current.get(id) === run) actions.current.delete(id);
+    };
+  }, []);
+  const runAction = useCallback((id: string) => {
+    const run = actions.current.get(id);
+    run?.();
+    return Boolean(run);
+  }, []);
   const value = useMemo(
-    () => ({ scope, setScope, open, setOpen, focusRequest, requestFocus }),
-    [scope, open, focusRequest, requestFocus],
+    () => ({
+      scope,
+      setScope,
+      open,
+      setOpen,
+      focusRequest,
+      requestFocus,
+      registerAction,
+      runAction,
+    }),
+    [scope, open, focusRequest, requestFocus, registerAction, runAction],
   );
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }
@@ -86,4 +111,16 @@ export function usePublishAssistantScope(scope: AssistantScope) {
     setScope(JSON.parse(key) as AssistantScope);
     return () => setScope({});
   }, [setScope, key]);
+}
+
+/** Lets chat start an action on the current screen, e.g. "Draft with Nova" on an induction. */
+export function useRegisterAssistantAction(id: string, run: () => void) {
+  const register = useContext(AssistantContext)?.registerAction;
+  const latest = useRef(run);
+  latest.current = run;
+  useEffect(() => register?.(id, () => latest.current()), [register, id]);
+}
+
+export function useRunAssistantAction() {
+  return useContext(AssistantContext)?.runAction ?? (() => false);
 }

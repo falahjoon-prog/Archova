@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import {
   Alert,
   Button,
+  Card,
   DataTable,
   Dialog,
   EmptyState,
@@ -382,21 +383,22 @@ function RunnerBody({ detail, back }: { detail: InspectionDetail; back: React.Re
         ) : null
       ) : null}
       {sections.map((section) => (
-        <section key={section} className="stack" aria-label={section || 'Items'}>
-          {section ? <h2>{section}</h2> : null}
-          {detail.items
-            .filter((x) => x.section === section)
-            .map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                value={draft[item.id]}
-                editable={editable}
-                failed={detail.failedItemIds.includes(item.id)}
-                onChange={(patch) => set(item.id, patch)}
-              />
-            ))}
-        </section>
+        <Card key={section} title={section || 'Items'}>
+          <div className="stack">
+            {detail.items
+              .filter((x) => x.section === section)
+              .map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  value={draft[item.id]}
+                  editable={editable}
+                  failed={detail.failedItemIds.includes(item.id)}
+                  onChange={(patch) => set(item.id, patch)}
+                />
+              ))}
+          </div>
+        </Card>
       ))}
       <LinkedIncidentActions source={{ type: 'inspection', id: i.id }} />
       {signing ? (

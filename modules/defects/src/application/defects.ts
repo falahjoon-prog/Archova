@@ -17,6 +17,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -309,7 +310,7 @@ export function createDefectService(deps: DefectsDeps) {
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: DefectFields & { title: string; aiSuggestionId?: string },
+    input: DefectFields & { title: string; aiSuggestionId?: string; id?: string },
   ) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
@@ -325,7 +326,8 @@ export function createDefectService(deps: DefectsDeps) {
         values.assigneeUserId,
         values.assigneeCompanyId ?? null,
       );
-    const id = uuidv7();
+    // A phone raising a defect offline picked its id already; the same id is what it pulls back.
+    const id = input.id ?? uuidv7();
     const number = await nextNumber(scope, projectId, 'defect');
     const [row] = await scope.tx
       .insert(defects)
@@ -439,10 +441,13 @@ export function createDefectService(deps: DefectsDeps) {
     if (!(await deps.access.can(scope, permissionFor(input.action), { projectId })))
       throw new AppError('access.denied', `You can't ${input.action} this defect.`);
     const fileIds = [...new Set(input.fileIds ?? [])];
+    // Photos the phone attached one by one before this step (`attachPhoto`) count as its "after" evidence.
+    const attachedAfter =
+      input.action === 'markReadyForReview' ? await attachedPhotos(scope, defectId, 'after') : 0;
     const result = resolveTransition(defect, v, {
       action: input.action,
       reason: input.reason ?? null,
-      photoCount: fileIds.length,
+      photoCount: fileIds.length + attachedAfter,
     });
     if (!result.ok) {
       const messages: Record<typeof result.code, string> = {
@@ -520,6 +525,56 @@ export function createDefectService(deps: DefectsDeps) {
       },
     });
     return detail(scope, projectId, defectId);
+  }
+
+  async function attachedPhotos(scope: TenantScope, defectId: string, purpose: 'before' | 'after') {
+    const rows = await scope.tx
+      .select({ fileIds: events.fileIds })
+      .from(events)
+      .where(
+        and(eq(events.defectId, defectId), eq(events.action, 'photo'), eq(events.note, purpose)),
+      );
+    return rows.reduce((n, r) => n + r.fileIds.length, 0);
+  }
+
+  /**
+   * A photo taken on site for a defect, attached on its own because the phone only knows the file's id once the
+   * upload finishes. It is a history line (`photo`, with the purpose as its note) and does not change the defect's
+   * version, so a transition queued against that version still applies. Sending the same file again changes nothing.
+   */
+  async function attachPhoto(
+    scope: TenantScope,
+    projectId: string,
+    defectId: string,
+    fileId: string,
+    purpose: 'before' | 'after',
+  ) {
+    const { defect } = await getVisible(scope, projectId, defectId);
+    const permission = purpose === 'after' ? 'defects.defects.respond' : 'defects.defects.create';
+    if (!(await deps.access.can(scope, permission, { projectId })))
+      throw new AppError('access.denied', "You can't add photos to this defect.");
+    const [have] = await scope.tx
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.defectId, defectId),
+          eq(events.action, 'photo'),
+          sql`${fileId}::uuid = any(${events.fileIds})`,
+        ),
+      )
+      .limit(1);
+    if (have) return { version: defect.version };
+    await checkFiles(scope, projectId, [fileId]);
+    const [row] = await scope.tx.select().from(defects).where(eq(defects.id, defectId));
+    await recordEvent(scope, row!, {
+      action: 'photo',
+      from: defect.status,
+      note: purpose,
+      fileIds: [fileId],
+    });
+    await changed(scope, row!);
+    return { version: row!.version };
   }
 
   /**
@@ -709,7 +764,12 @@ export function createDefectService(deps: DefectsDeps) {
       })
       .from(events)
       .innerJoin(defects, eq(defects.id, events.defectId))
-      .where(and(live, sql`${events.note} is not null and btrim(${events.note}) <> ''`))
+      .where(
+        and(
+          live,
+          sql`${events.action} <> 'photo' and ${events.note} is not null and btrim(${events.note}) <> ''`,
+        ),
+      )
       .orderBy(asc(events.at), asc(events.id));
     const companies = new Map(
       (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
@@ -741,12 +801,30 @@ export function createDefectService(deps: DefectsDeps) {
     return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
   }
 
+  /** Global search (`search`): the defects the caller can see that match the words, newest first. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     list,
     create,
     detail,
     update,
     transition,
+    attachPhoto,
     openNear,
     openForMeeting,
     portfolioCounts,

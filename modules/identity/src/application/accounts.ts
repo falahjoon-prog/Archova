@@ -1,7 +1,13 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type Principal } from '@archova/kernel';
-import { credentials, users } from '../infra/tables';
+import {
+  credentials,
+  oauthCodes,
+  refreshTokens,
+  sessions as sessionRows,
+  users,
+} from '../infra/tables';
 import { passwordProblems } from '../domain/policy';
 import { dummyPasswordHash, hashPassword, verifyPassword } from './passwords';
 import type { SessionService } from './sessions';
@@ -136,7 +142,40 @@ export function createAccountService(database: Database, sessions: SessionServic
     return u && u.status === 'active' ? toRecord(u) : null;
   }
 
-  return { signup, login, getUser, getUsers, findUserByEmail };
+  /**
+   * Erases the person (account deletion): profile cleared, credentials and codes deleted, refresh tokens spent, all
+   * sessions revoked. The row and its id stay so records others keep still point at someone. Safe to repeat.
+   */
+  async function eraseAccount(userId: string): Promise<void> {
+    const now = new Date();
+    await database.withGlobalTx('identity', async (tx) => {
+      await tx
+        .update(users)
+        .set({
+          email: `deleted+${userId}@deleted.invalid`,
+          name: 'Deleted user',
+          phone: null,
+          avatarFileId: null,
+          emailVerifiedAt: null,
+          status: 'deleted',
+          deletedAt: now,
+        })
+        .where(eq(users.id, userId));
+      await tx.delete(credentials).where(eq(credentials.userId, userId));
+      await tx.delete(oauthCodes).where(eq(oauthCodes.userId, userId));
+      const mine = tx
+        .select({ id: sessionRows.id })
+        .from(sessionRows)
+        .where(eq(sessionRows.userId, userId));
+      await tx
+        .update(refreshTokens)
+        .set({ usedAt: now })
+        .where(and(inArray(refreshTokens.sessionId, mine), isNull(refreshTokens.usedAt)));
+    });
+    await sessions.revokeAllForUser(userId);
+  }
+
+  return { signup, login, getUser, getUsers, findUserByEmail, eraseAccount };
 }
 
 export type AccountService = ReturnType<typeof createAccountService>;

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { localDateOf } from '@archova/time';
 import { AppError, type TenantScope } from '@archova/kernel';
@@ -6,8 +6,8 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { fromCents, percentOf, toCents } from '../domain/money';
 import { trustPosition, trustRequirement, trustTotals, type MovementInput } from '../domain/trust';
-import type { contracts } from '../infra/tables';
 import {
+  contracts as contractsTable,
   paymentClaims,
   paymentSchedules,
   payments,
@@ -15,7 +15,7 @@ import {
   trustMovements,
 } from '../infra/tables';
 
-type ContractRow = typeof contracts.$inferSelect;
+type ContractRow = typeof contractsTable.$inferSelect;
 export type TrustAccountRow = typeof trustAccounts.$inferSelect;
 export type TrustMovementRow = typeof trustMovements.$inferSelect;
 
@@ -315,7 +315,35 @@ export function createTrustService(deps: TrustDeps) {
     return { contract, rows, dueTotal, paidTotal, trust };
   }
 
-  return { getTrust, saveProfile, recordMovement, releaseFromTrust, paymentSummary };
+  /**
+   * Retention-trust standing of the project's subcontracts, one count per status, for the tender-readiness pack
+   * (`reporting`). `rulesReviewed` is always false today (compliance has not signed the state rules), so the pack
+   * words "required" as "likely required".
+   */
+  async function trustSummary(scope: TenantScope, projectId: string) {
+    const counts = { ok: 0, shortfall: 0, not_set_up: 0, not_required: 0 };
+    if (!(await deps.access.can(scope, 'financials.contracts.read', { projectId })))
+      return { restricted: true, subcontracts: 0, shortfallCents: 0, ...counts };
+    const rows = await scope.tx
+      .select()
+      .from(contractsTable)
+      .where(
+        and(
+          eq(contractsTable.projectId, projectId),
+          eq(contractsTable.kind, 'subcontract'),
+          ne(contractsTable.status, 'terminated'),
+        ),
+      );
+    let shortfallCents = 0;
+    for (const c of rows) {
+      const { position } = await summary(scope, c);
+      counts[position.status] += 1;
+      shortfallCents += position.shortfallCents;
+    }
+    return { restricted: false, subcontracts: rows.length, shortfallCents, ...counts };
+  }
+
+  return { getTrust, trustSummary, saveProfile, recordMovement, releaseFromTrust, paymentSummary };
 }
 
 export type TrustService = ReturnType<typeof createTrustService>;

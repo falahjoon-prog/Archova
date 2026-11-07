@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { FileText, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { FileText, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { NovaMark } from '../icons/NovaMark';
 import { cx } from '../lib/cx';
 
 export interface Citation {
@@ -55,7 +56,7 @@ export interface NovaSuggestionProps {
 }
 
 /**
- * Nova suggestion block (design 02 §7.7): purple left border, "Drafted by Nova" label, source links and the
+ * Nova suggestion block (design 02 §7.7): amber left border, "Drafted by Nova" label, source links and the
  * caller's Accept / Edit / Discard actions. It never auto-saves (principle P6).
  */
 export function NovaSuggestion({
@@ -69,7 +70,7 @@ export function NovaSuggestion({
   return (
     <section className={cx('ac-nova', className)} aria-label="Drafted by Nova">
       <p className="ac-nova__label">
-        <Sparkles size={14} strokeWidth={2} aria-hidden="true" />
+        <NovaMark size={14} />
         Drafted by Nova
       </p>
       {title ? <p className="ac-nova__title">{title}</p> : null}

@@ -12,10 +12,10 @@ import type {
   DrawingRevision as ApiRevision,
   DrawingSheet as ApiSheet,
   Markup as ApiMarkup,
-  MarkupShape as ApiShape,
   PublishConflict,
 } from '@archova/contracts';
-import { formatScale, parseScale, type MarkupShape } from '@archova/markup';
+import { formatScale, parseScale } from '@archova/markup';
+import { fromApiShape, toApiShape } from '@/shared/markup/api-shape';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectPeople } from '@/shared/lib/people';
@@ -90,30 +90,7 @@ export function toRevision(r: ApiRevision): DrawingRevision {
   };
 }
 
-/** The API shape for one of ours: the same fields plus the shape's own id. */
-export function toApiShape(shape: MarkupShape, id: string): ApiShape {
-  return { id, ...shape };
-}
-
-/** Ours from the API's, or null for a shape missing the fields its kind needs. */
-export function fromApiShape(s: ApiShape): MarkupShape | null {
-  switch (s.kind) {
-    case 'pen':
-      return s.points ? { kind: 'pen', points: s.points } : null;
-    case 'line':
-    case 'arrow':
-    case 'rect':
-    case 'ellipse':
-    case 'cloud':
-      return s.from && s.to ? { kind: s.kind, from: s.from, to: s.to } : null;
-    case 'text':
-      return s.at ? { kind: 'text', at: s.at, text: s.text ?? '' } : null;
-    case 'pin':
-      return s.at && s.entityType && s.entityId
-        ? { kind: 'pin', at: s.at, entityType: s.entityType, entityId: s.entityId }
-        : null;
-  }
-}
+export { fromApiShape, toApiShape };
 
 /** One row per shape, as the viewer lists them; the id carries the markup and shape so actions find both. */
 export function toMarkups(

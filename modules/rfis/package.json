@@ -15,6 +15,7 @@
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
+    "@archova/markup": "workspace:*",
     "@archova/mod-access": "workspace:*",
     "@archova/mod-documents": "workspace:*",
     "@archova/mod-files": "workspace:*",

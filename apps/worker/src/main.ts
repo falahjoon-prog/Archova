@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
-import { createS3ObjectStore } from '@archova/mod-files';
+import { createS3ObjectStore, createS3WriteOnceStore } from '@archova/mod-files';
+import { createEvidenceSigner } from '@archova/mod-financials';
 import {
   createHttpsTransport,
   createWebhookService,
@@ -13,6 +14,7 @@ import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
+import { inviteeReminders } from './jobs/invitee-reminders';
 import { trustReminders } from './jobs/trust-reminders';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
@@ -23,6 +25,8 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { createSmtpSender } from './smtp';
+import { evidenceArchive } from './jobs/evidence-archive';
 import { evidenceDeliveries } from './jobs/evidence-deliveries';
 import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
@@ -31,6 +35,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { walletRetention } from './jobs/wallet-retention';
+import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -61,8 +66,21 @@ async function main() {
           from: config.email.from,
           replyTo: config.email.replyTo,
         })
-      : createLogSender((msg, o) => log.info(o, msg));
+      : config.email.provider === 'smtp' && config.email.smtp
+        ? createSmtpSender({
+            ...config.email.smtp,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg));
+  SUBSCRIBERS.push(dataExportNotices(emailSender, (msg, o) => log.info(o ?? {}, msg)));
+  if (process.env.NODE_ENV === 'production' && !config.evidenceSigning)
+    log.warn(
+      {},
+      'WORKER_EVIDENCE_SIGNING_KEY is not set: sealed claim send proofs will be hashed and timestamped but not signed',
+    );
   /** Nightly and hourly per-org jobs (backend 05 §3). */
+
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,
@@ -71,7 +89,20 @@ async function main() {
     trialBackfill,
     trialEndingEmail(emailSender, config.email.appBaseUrl),
     // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
-    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    // SMTP can send sealed claims too, but only ever as dispatch: no delivery confirmation comes back (compliance/01 §4).
+    ...(config.email.provider === 'ses' || config.email.provider === 'smtp'
+      ? [
+          evidenceDeliveries(emailSender, {
+            provider: config.email.provider,
+            signer: config.evidenceSigning
+              ? createEvidenceSigner(
+                  config.evidenceSigning.keyId,
+                  config.evidenceSigning.privateKeyPem,
+                )
+              : null,
+          }),
+        ]
+      : []),
     ...(config.evidenceTimestampUrl
       ? [
           evidenceTimestamps(
@@ -84,6 +115,7 @@ async function main() {
     templateBackfill,
     meetingReminders,
     bidReminders,
+    inviteeReminders(emailSender, config.email.appBaseUrl),
     trustReminders,
     incidentActionNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
@@ -107,6 +139,24 @@ async function main() {
   } else {
     log.warn({}, 'WORKER_WEBHOOK_SECRET_KEY is not set: webhooks are not delivered');
   }
+  if (config.evidenceStore.store === 's3') {
+    if (!config.evidenceStore.bucket)
+      throw new Error('WORKER_EVIDENCE_STORE=s3 needs WORKER_EVIDENCE_BUCKET');
+    jobs.push(
+      evidenceArchive(
+        createS3WriteOnceStore({
+          bucket: config.evidenceStore.bucket,
+          region: config.evidenceStore.region,
+        }),
+        (msg, o) => log.warn(o, msg),
+      ),
+    );
+  } else if (process.env.NODE_ENV === 'production') {
+    log.warn(
+      {},
+      'WORKER_EVIDENCE_STORE is not s3: sent claim emails are not copied to write-once storage',
+    );
+  }
   if (config.files.store === 's3') {
     const store = createS3ObjectStore({
       bucket: config.files.bucket,
@@ -114,9 +164,13 @@ async function main() {
       ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
       ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
     });
-    jobs.push(threatMove(store, log));
+    jobs.push(threatMove(store, log), dataExportSweep(store));
+    SUBSCRIBERS.push(dataExportBuilder(store, (msg, o) => log.info(o ?? {}, msg)));
   } else {
-    log.warn({}, 'WORKER_FILES_STORE is not s3: file jobs (threat move) are not scheduled');
+    log.warn(
+      {},
+      'WORKER_FILES_STORE is not s3: file jobs (threat move, data export) are not scheduled',
+    );
   }
   const platform = new pg.Pool({ connectionString: config.platformDatabaseUrl, max: 2 });
   const { publish, running } = startQueues(config.redisUrl, database, SUBSCRIBERS, {

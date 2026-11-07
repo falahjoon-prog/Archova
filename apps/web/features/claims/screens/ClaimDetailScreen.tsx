@@ -126,35 +126,40 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
           The contract allows longer to pay than the Act does, so the Act&apos;s period is used.
         </Alert>
       ) : null}
-      <Card title="Dates">
-        <DescriptionList
-          items={[
-            { label: 'Claim period ends', value: formatLocalDate(c.periodEnd) },
-            { label: 'Received', value: formatInstant(c.receivedAt, project.timezone) },
-            {
-              label: 'Counted as served on',
-              value: c.servedOn ? formatLocalDate(c.servedOn) : '—',
-            },
-            {
-              label: 'Payment schedule due',
-              value: c.scheduleDueOn ? formatLocalDate(c.scheduleDueOn) : '—',
-            },
-            { label: 'Payment due', value: c.paymentDueOn ? formatLocalDate(c.paymentDueOn) : '—' },
-          ]}
-        />
-      </Card>
-      <Card title="Amounts">
-        <DescriptionList
-          items={[
-            { label: 'Claimed to date (ex GST)', value: aud(c.claimedGross), mono: true },
-            { label: 'Less previously claimed', value: aud(c.lessPrevious), mono: true },
-            { label: 'Retention held back', value: aud(c.retention), mono: true },
-            { label: 'Net this claim (ex GST)', value: aud(c.claimedNet), mono: true },
-            { label: 'GST', value: aud(c.gst), mono: true },
-            { label: 'Total (inc GST)', value: aud(c.claimedTotal), mono: true },
-          ]}
-        />
-      </Card>
+      <div className="two-col">
+        <Card title="Dates">
+          <DescriptionList
+            items={[
+              { label: 'Claim period ends', value: formatLocalDate(c.periodEnd) },
+              { label: 'Received', value: formatInstant(c.receivedAt, project.timezone) },
+              {
+                label: 'Counted as served on',
+                value: c.servedOn ? formatLocalDate(c.servedOn) : '—',
+              },
+              {
+                label: 'Payment schedule due',
+                value: c.scheduleDueOn ? formatLocalDate(c.scheduleDueOn) : '—',
+              },
+              {
+                label: 'Payment due',
+                value: c.paymentDueOn ? formatLocalDate(c.paymentDueOn) : '—',
+              },
+            ]}
+          />
+        </Card>
+        <Card title="Amounts">
+          <DescriptionList
+            items={[
+              { label: 'Claimed to date (ex GST)', value: aud(c.claimedGross), mono: true },
+              { label: 'Less previously claimed', value: aud(c.lessPrevious), mono: true },
+              { label: 'Retention held back', value: aud(c.retention), mono: true },
+              { label: 'Net this claim (ex GST)', value: aud(c.claimedNet), mono: true },
+              { label: 'GST', value: aud(c.gst), mono: true },
+              { label: 'Total (inc GST)', value: aud(c.claimedTotal), mono: true },
+            ]}
+          />
+        </Card>
+      </div>
       <DataTable
         caption="Lines claimed"
         columns={lineColumns}

@@ -189,6 +189,7 @@ export const evidenceDeliveries = financialsSchema.table('evidence_deliveries', 
   evidenceId: uuid('evidence_id').notNull(),
   kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
   recipientEmail: text('recipient_email').notNull(),
+  addressBasis: text('address_basis'),
   status: text('status')
     .$type<'queued' | 'sending' | 'sent' | 'delivered' | 'bounced' | 'failed'>()
     .notNull()
@@ -202,6 +203,81 @@ export const evidenceDeliveries = financialsSchema.table('evidence_deliveries', 
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   bouncedAt: timestamp('bounced_at', { withTimezone: true }),
   lastError: text('last_error'),
+});
+
+export const evidenceSendProofs = financialsSchema.table('evidence_send_proofs', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  id: uuid('id').notNull().defaultRandom(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  evidenceId: uuid('evidence_id').notNull(),
+  provider: text('provider').$type<'ses' | 'smtp' | 'log'>().notNull(),
+  recipientEmail: text('recipient_email').notNull(),
+  providerMessageId: text('provider_message_id'),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  message: text('message').notNull(),
+  messageSha256: text('message_sha256').notNull(),
+  contentSha256: text('content_sha256').notNull(),
+  addressBasis: text('address_basis'),
+  rawMessage: bytea('raw_message'),
+  rawSha256: text('raw_sha256'),
+  serverResponse: text('server_response'),
+  keyId: text('key_id'),
+  signature: text('signature'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceSendTimestamps = financialsSchema.table('evidence_send_timestamps', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  id: uuid('id').notNull().defaultRandom(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  authority: text('authority').notNull(),
+  imprintSha256: text('imprint_sha256').notNull(),
+  genTime: timestamp('gen_time', { withTimezone: true }).notNull(),
+  serialHex: text('serial_hex').notNull(),
+  token: bytea('token').notNull(),
+  caChainPem: text('ca_chain_pem').notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceServiceRecords = financialsSchema.table('evidence_service_records', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  evidenceId: uuid('evidence_id').notNull(),
+  kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
+  method: text('method')
+    .$type<'hand' | 'courier' | 'post' | 'recipient_reply' | 'other'>()
+    .notNull(),
+  servedAt: timestamp('served_at', { withTimezone: true }).notNull(),
+  servedTo: text('served_to').notNull(),
+  note: text('note'),
+  basis: text('basis').$type<'self_reported'>().notNull().default('self_reported'),
+  recordedBy: uuid('recorded_by'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceArchive = financialsSchema.table('evidence_archive', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  id: uuid('id').notNull().defaultRandom(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  objectKey: text('object_key').notNull(),
+  rawSha256: text('raw_sha256').notNull(),
+  storedSha256: text('stored_sha256'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceServiceVoids = financialsSchema.table('evidence_service_voids', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  recordId: uuid('record_id').notNull(),
+  reason: text('reason').notNull(),
+  voidedBy: uuid('voided_by'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const costCodes = financialsSchema.table('cost_codes', {
@@ -253,6 +329,29 @@ export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   reason: text('reason').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export interface SnapshotLine {
+  costCodeId: string;
+  code: string;
+  codeDescription: string;
+  description: string;
+  original: string;
+  approvedChanges: string;
+  revised: string;
+  isMargin: boolean;
+}
+
+export const budgetSnapshots = financialsSchema.table('budget_snapshots', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetId: uuid('budget_id').notNull(),
+  name: text('name').notNull(),
+  note: text('note'),
+  lines: jsonb('lines').$type<SnapshotLine[]>().notNull(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  takenBy: uuid('taken_by'),
 });
 
 export const forecastAdjustments = financialsSchema.table('forecast_adjustments', {
@@ -397,4 +496,31 @@ export const retentionReleases = financialsSchema.table('retention_releases', {
   note: text('note'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   recordedBy: uuid('recorded_by'),
+});
+
+export const costCodeProduction = financialsSchema.table('cost_code_production', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  uom: text('uom').notNull(),
+  budgetedHours: numeric('budgeted_hours', { precision: 12, scale: 2 }).notNull(),
+  budgetedQuantity: numeric('budgeted_quantity', { precision: 14, scale: 2 }).notNull(),
+  quantityComplete: numeric('quantity_complete', { precision: 14, scale: 2 })
+    .notNull()
+    .default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const productionLog = financialsSchema.table('production_log', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  loggedOn: date('logged_on').notNull(),
+  quantity: numeric('quantity', { precision: 14, scale: 2 }).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
 });

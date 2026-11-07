@@ -129,6 +129,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the consent page shows for a partner app. Needs a signed-in web session. */
+        get: operations["getOauthConsent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Partner apps this organisation has registered. Owners and admins only. */
+        get: operations["listOauthApps"];
+        put?: never;
+        /** Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client secret is in the response once. A private app can be installed only into this organisation. */
+        post: operations["createOauthApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace an app's client secret. The old one stops working at once. Needs a recent sign-in. */
+        post: operations["rotateOauthAppSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Apps installed in this organisation, with their approved scopes and last use. Owners and admins only. */
+        get: operations["listAppInstalls"];
+        put?: never;
+        /** Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed. */
+        post: operations["installApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs/{appInstallId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an app. Every token it holds stops working on its next request. */
+        delete: operations["revokeAppInstall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/token": {
         parameters: {
             query?: never;
@@ -191,7 +288,19 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete my account (the in-app deletion both app stores require).
+         * @description Needs a sign-in in the last 15 minutes (`403 auth.step_up_required` otherwise) and `confirm: DELETE`.
+         *     Clears the profile, credentials, sessions and API tokens, and ends the person's seat in every organisation and
+         *     project (their phone is told to wipe). Records they made or signed stay, as retention rules require, and read
+         *     "Deleted user". The email can be used to sign up again.
+         *
+         *     `409 account.sole_owner` (with `orgs`) means an organisation others still use has no other owner: make
+         *     someone else an owner first. `409 account.org_on_hold` means the person's own empty organisation can't be
+         *     closed because of a platform hold: contact support. An owner who is alone in an organisation closes it with
+         *     the account. Returns 204; the session ends, so the client signs the person out locally.
+         */
+        delete: operations["deleteMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -687,6 +796,28 @@ export interface paths {
         patch: operations["updateScheduleActivity"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the current dates as the baseline, replacing any earlier one. Returns the whole programme. */
+        put: operations["setScheduleBaseline"];
+        post?: never;
+        /** Remove the baseline. Returns the whole programme. */
+        delete: operations["clearScheduleBaseline"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies": {
         parameters: {
             query?: never;
@@ -1007,6 +1138,29 @@ export interface paths {
         };
         /** A short-lived signed URL for downloading the file. */
         get: operations["getFileDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+         * @description Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+         */
+        get: operations["listProjectPhotos"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1889,7 +2043,7 @@ export interface paths {
          *     access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
          *     people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
          *     `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
-         *     called; nothing when no visible passage matches.
+         *     called; nothing when no visible passage matches. `nccReferences` lists signed NCC provisions the answer touches.
          */
         post: operations["askNova"];
         delete?: never;
@@ -2023,6 +2177,109 @@ export interface paths {
          *     first); anything else is a 422.
          */
         post: operations["tagDefectWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova flags visual hazard signals in a site photo (F35).
+         * @description Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+         *     the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+         *     an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+         *     confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+         *     does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+         *     (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+         *     a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanSitePhotoForHazardsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Hazard signals Nova flagged in this project's photos, newest first. */
+        get: operations["listHazardSignals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss a hazard signal.
+         * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+         *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+         *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+         *     the manager reports one from the incidents screen if it warrants it.
+         */
+        post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hazard categories that keep showing up in this project's photos.
+         * @description Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+         *     least three signals in it across at least two different photos, the early warning that a near miss may follow.
+         *     `trend` compares the later half of the window with the earlier half.
+         */
+        get: operations["getHazardPatterns"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2325,6 +2582,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova explains the budget checks and suggests what to do about each one.
+         * @description Code finds the problems (`GET .../budget/review-checks`) and works out every amount; Nova explains them,
+         *     helps the person choose between ways to deal with each (`options`, each pointing at a finding) and, when
+         *     asked, drafts a reason for an adjustment. Code removes any point or option about a finding that doesn't
+         *     exist and any dollar figure the checks don't hold (`notes` says what it removed). She is shown cost codes
+         *     and amounts only: never margin lines, companies, people or notes. The server keeps no conversation; pass
+         *     `history` from the last answer with the next question. Nothing is saved or changed: every option is for the
+         *     person to carry out. She is an AI assistant, not an accountant (`disclaimer`). Costs half a Nova credit.
+         *     Builder staff who can read the budget only.
+         */
+        post: operations["reviewBudgetWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions": {
         parameters: {
             query?: never;
@@ -2509,6 +2796,39 @@ export interface paths {
          *     and accepts or rejects it with the suggestion decision endpoint. Costs 3 Nova credits.
          */
         post: operations["draftInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+         * @description Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+         *     particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+         *     draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+         *     adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+         *     Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+         *     are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+         *     a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+         *     `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+         *     register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+         *     it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+         *     on for pilots.
+         */
+        post: operations["draftSwms"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2802,6 +3122,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Search RFIs, documents, defects, submittals and correspondence across the projects the caller can see.
+         * @description Global search from the header. Looks for the words in every project the caller can see (archived projects are
+         *     left out, at most 100 projects), in each tool the caller may read on that project, and returns at most
+         *     `perType` rows of each type. Each tool applies its own permission and visibility rules, so a row only appears
+         *     if the caller could open it from that tool's own list. `truncated` is true when more rows or projects matched
+         *     than were returned. A query under two characters returns nothing. Staff only.
+         */
+        get: operations["searchOrg"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/risk/late-sopa-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+         * @description Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+         *     payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+         *     both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+         *     subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+         *     low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+         *     as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+         *     a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+         *     a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+         *     Staff only.
+         */
+        get: operations["getLateSopaClaimRisk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/readiness-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+         * @description One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+         *     caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+         *     safety and trust cover only the projects where the caller can read them (the rest are counted in
+         *     `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+         */
+        get: operations["getReadinessPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/readiness-pack/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The tender-readiness pack as a PDF. */
+        get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -2886,6 +3306,80 @@ export interface paths {
         get: operations["runReport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's recent full exports, newest first.
+         * @description Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+         */
+        get: operations["listDataExports"];
+        put?: never;
+        /**
+         * Start a full export of everything the organisation holds in Archova.
+         * @description Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+         *     original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+         *     sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+         *     a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+         *     hours later, depending on how many files there are, and kept for 7 days.
+         */
+        post: operations["createDataExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        /** One export and how far it has got. */
+        get: operations["getDataExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A short-lived link to download a finished export.
+         * @description The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+         *     still being built or if it failed; 410 once it has expired.
+         */
+        post: operations["createDataExportDownload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2998,6 +3492,66 @@ export interface paths {
         put?: never;
         /** Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2). */
         post: operations["inviteToTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email an invited company a new link to the package. The earlier link stops working (X45). */
+        post: operations["resendTenderInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The package behind the current link session. */
+        get: operations["getTenderAccess"];
+        put?: never;
+        /**
+         * Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openTenderAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The invited company says it intends to quote or declines. It can change its answer until a quote is submitted. */
+        post: operations["respondTenderAccess"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3711,6 +4265,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/integrations/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Every connector the org can set up, with its live status (integrations/06 §4). */
+        get: operations["getIntegrationsCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/webhooks": {
         parameters: {
             query?: never;
@@ -4267,6 +4840,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The project team's conversations, most recent activity first, each with its latest message.
+         * @description Project team only; outside users (subcontractors, owners) get 403.
+         */
+        get: operations["listConversations"];
+        put?: never;
+        /** Start a conversation with a subject and a first message. */
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        /** One conversation with its messages, oldest first. */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a message to a conversation. */
+        post: operations["postConversationMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -4492,6 +5131,54 @@ export interface paths {
         /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
         get: operations["getRfiActivity"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone's marks on the RFI's photos, for anyone who can see the RFI. */
+        get: operations["listRfiAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+         * @description Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+         *     The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+         *     closed or void. The original photo is never changed.
+         */
+        put: operations["putRfiFileAnnotation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7809,6 +8496,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill a draft budget from spreadsheet rows, all or nothing. New cost codes are created from the row's description. */
+        post: operations["importBudgetLines"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}": {
         parameters: {
             query?: never;
@@ -7851,6 +8558,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Timesheet hours against the production plan for each cost code, with rows flagged where the crew is slower than planned.
+         * @description One row per cost code that has a production plan or booked hours. Timesheet hours come from submitted, approved
+         *     or exported timesheets (break taken off); hours with no cost code are reported as `unallocatedHours`. Earned
+         *     hours are percent complete times budgeted hours. A row is flagged when the actual production rate is below the
+         *     budgeted rate. `divisionId` keeps one top-level code and everything under it; `subJobId` keeps a code and its
+         *     children. Staff only.
+         */
+        get: operations["getLaborProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The labor productivity report as CSV text, for the same filters. */
+        get: operations["exportLaborProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 100 quantity-in-place entries for a cost code, newest first. */
+        get: operations["listCostCodeQuantityLog"];
+        put?: never;
+        /** Log quantity put in place for a day. It adds to the cost code's quantity in place; a negative entry corrects and needs a note. */
+        post: operations["logCostCodeQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests why a cost code is behind plan and discusses it. Nothing is changed.
+         * @description Nova reads one cost code's labor productivity figures and recent quantity entries and suggests causes to check on
+         *     site and questions to ask. The server keeps no conversation: pass `history` from the last answer back with the next
+         *     `question`. Every figure in Nova's words is checked against the report. Staff only. Uses AI credits.
+         */
+        post: operations["explainLaborProductivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the production plan for a cost code, or update the quantity in place to date. */
+        put: operations["setCostCodeProduction"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lock": {
         parameters: {
             query?: never;
@@ -7865,6 +8687,92 @@ export interface paths {
         put?: never;
         /** Freeze the original budget. Changes after this are adjustments with a reason. */
         post: operations["lockBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Budget snapshots, newest first. Margin lines are left out without the margin permission. */
+        get: operations["listBudgetSnapshots"];
+        put?: never;
+        /** Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted. */
+        post: operations["createBudgetSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        /** One budget snapshot with its frozen lines. */
+        get: operations["getBudgetSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/review-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Lines committed or spent past their budget, close to it, unbudgeted or changed a lot (found by code, not a model).
+         * @description The checks Nova explains on the budget page. Margin lines are never included, so the totals here leave
+         *     margin out too.
+         */
+        get: operations["getBudgetReviewChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every budget revision on the project, newest first, for the Budget Modifications report. */
+        get: operations["listProjectBudgetAdjustments"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8424,6 +9332,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** Records that this sealed record was served by other means. Builder staff only. */
+        get: operations["listClaimEvidenceServiceRecords"];
+        put?: never;
+        /** Record that the sealed claim or schedule was served by hand, courier, post or the recipient's own reply, and when. Append-only; it is a person's statement, kept apart from email deliveries. Recording service of a schedule needs `financials.claims.assess`. */
+        post: operations["recordClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate append-only row. Voiding service of a schedule needs `financials.claims.assess`. */
+        post: operations["voidClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -8881,6 +9835,8 @@ export interface components {
             source: components["schemas"]["ScheduleSource"];
             /** Format: date */
             dataDate: string | null;
+            /** Format: date-time */
+            baselineSetAt: string | null;
             activityCount: number;
             /** Format: date */
             startDate: string | null;
@@ -8910,6 +9866,12 @@ export interface components {
             /** @description Total float in working days, from the dates on the programme. */
             floatDays: number;
             critical: boolean;
+            /** Format: date */
+            baselineStart: string | null;
+            /** Format: date */
+            baselineFinish: string | null;
+            /** @description Working days the finish is after the baseline finish (negative = ahead); null without a baseline. */
+            varianceDays: number | null;
         };
         ScheduleDependency: {
             id: string;
@@ -8970,15 +9932,47 @@ export interface components {
             open: number;
             overdue: number;
         };
+        PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
+            /** @description Activities at 0% complete. */
+            notStarted: number;
+            /** @description Activities at 100% complete. */
+            completed: number;
+            /** @description Days late summed over the late activities; divide by `overdue` for the average. */
+            lateDays: number;
+        };
+        /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
+        PortfolioBudget: {
+            /** @description True when the caller may not read the budget or forecast; figures are then zero. */
+            restricted: boolean;
+            hasBudget: boolean;
+            revised: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures. */
+            spent: components["schemas"]["FinancialsSignedMoney"];
+            variance: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Cost codes whose forecast is over their revised budget. */
+            overBudgetCodes: number;
+        };
         PortfolioProject: {
             id: string;
             name: string;
             number: string | null;
             status: string;
+            phase: components["schemas"]["ProjectPhase"] | null;
+            siteLocation: components["schemas"]["GeoPoint"] | null;
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
-            /** @description Overdue RFIs, defects and submittals together. */
+            /** @description Payment claims not yet paid or withdrawn; overdue means the SOPA schedule or payment date has passed. */
+            claims: components["schemas"]["PortfolioTool"];
+            /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
+            variations: components["schemas"]["PortfolioTool"];
+            /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
+            incidents: components["schemas"]["PortfolioTool"];
+            /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
+            programme: components["schemas"]["PortfolioProgramme"];
+            budget: components["schemas"]["PortfolioBudget"];
+            /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;
         };
         PortfolioTotals: {
@@ -8989,6 +9983,84 @@ export interface components {
             defectsOverdue: number;
             submittalsOpen: number;
             submittalsOverdue: number;
+            claimsOpen: number;
+            claimsOverdue: number;
+            variationsOpen: number;
+            variationsOverdue: number;
+            incidentsOpen: number;
+            incidentsOverdue: number;
+            programmeOpen: number;
+            programmeOverdue: number;
+            /** @description Projects with a budget the caller can see. */
+            budgetProjects: number;
+            projectsOverBudget: number;
+            budgetRevised: components["schemas"]["FinancialsSignedMoney"];
+            budgetForecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            budgetVariance: components["schemas"]["FinancialsSignedMoney"];
+        };
+        LateSopaClaimRisk: {
+            projects: components["schemas"]["LateSopaClaimRiskProject"][];
+            /** @description Projects left out because the caller cannot read their claims. */
+            unreadableProjects: number;
+            truncated: boolean;
+        };
+        LateSopaClaimRiskProject: {
+            projectId: string;
+            projectName: string;
+            number: string | null;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            insuranceProblem: boolean;
+            scheduleSlip: boolean;
+            /** @description Signals Nova could not read, so a gap is never shown as no risk. */
+            unknown: string[];
+            claims: components["schemas"]["LateSopaClaimRiskClaim"][];
+            slip: {
+                lateCount: number;
+                worst: {
+                    id: string;
+                    wbs: string;
+                    name: string;
+                    /** Format: date */
+                    finish: string;
+                    daysLate: number;
+                }[];
+            };
+        };
+        LateSopaClaimRiskClaim: {
+            claimId: string;
+            claimNumber: number;
+            contractNumber: number;
+            contractTitle: string;
+            subbieName: string | null;
+            claimedTotal: string;
+            /** Format: date */
+            scheduleDueOn: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** @enum {string} */
+            deadline: "overdue" | "due_soon";
+            daysToScheduleDue: number;
+            /** @enum {string} */
+            insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
+            summary: string;
+        };
+        SearchResults: {
+            /** @description The words searched for, trimmed. */
+            query: string;
+            results: components["schemas"]["SearchResult"][];
+            truncated: boolean;
+        };
+        SearchResult: {
+            /** @enum {string} */
+            type: "rfi" | "document" | "defect" | "submittal" | "correspondence";
+            id: string;
+            projectId: string;
+            projectName: string;
+            /** @description Human reference such as RFI-012. */
+            ref: string;
+            title: string;
+            status: string;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -8996,9 +10068,80 @@ export interface components {
             /** @description True when more than 200 projects matched and the rest were left out. */
             truncated: boolean;
         };
+        ReadinessPackPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        ReadinessPack: {
+            /** @description Local date the pack was built. */
+            generatedOn: string;
+            timeZone: string;
+            prequal: {
+                restricted: boolean;
+                companies: number;
+                qualified: number;
+                expiring: number;
+                pending: number;
+                expired: number;
+                notQualified: number;
+                requiredForTenders: boolean;
+            };
+            credentials: {
+                restricted: boolean;
+                current: number;
+                expiring: number;
+                expired: number;
+                noExpiry: number;
+                items: {
+                    itemType: string;
+                    title: string;
+                    insurer: string | null;
+                    expiresOn: string | null;
+                    /** @enum {string} */
+                    evidence: "recorded" | "sighted" | "self_declared";
+                    /** @enum {string} */
+                    state: "current" | "expiring" | "expired" | "no_expiry";
+                }[];
+            };
+            safety: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                incidents: {
+                    total: number;
+                    notifiable: number;
+                    notClosed: number;
+                    high: number;
+                    critical: number;
+                };
+                swms: {
+                    accepted: number;
+                    expired: number;
+                    awaitingReview: number;
+                    rejected: number;
+                };
+            };
+            trust: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                subcontracts: number;
+                ok: number;
+                shortfall: number;
+                notSetUp: number;
+                notRequired: number;
+                shortfallCents: number;
+            };
+            attention: {
+                /** @enum {string} */
+                area: "prequal" | "credentials" | "safety" | "trust";
+                text: string;
+            }[];
+            truncated: boolean;
+        };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations" | "incidents" | "programme";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}
@@ -9026,6 +10169,38 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        DataExport: {
+            id: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "ready" | "failed" | "expired";
+            requestedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            sizeBytes: number | null;
+            /** @description SHA-256 of the zip */
+            sha256: string | null;
+            tableCount: number | null;
+            fileCount: number | null;
+            /** @description Files that could not be included (infected */
+            skippedFileCount: number | null;
+            /** @description Why a failed export failed */
+            error: string | null;
+        };
+        DataExportList: {
+            data: components["schemas"]["DataExport"][];
+        };
+        DataExportDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            filename: string;
         };
         ReportList: {
             data: components["schemas"]["Report"][];
@@ -9093,6 +10268,8 @@ export interface components {
             finish?: string;
             pctComplete?: number;
             assignee?: string;
+            /** @description Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule). */
+            cascade?: boolean;
         };
         CreateScheduleDependencyRequest: {
             predecessorId: string;
@@ -9559,16 +10736,38 @@ export interface components {
             caChainPem: string;
         };
         ClaimEvidenceDelivery: {
+            /**
+             * @description `confirmed_delivery` only when the receiving mail server confirmed it. `dispatch_only` means we sent it and have a record of that, which is not proof it arrived. Never show dispatch_only as served.
+             * @enum {string}
+             */
+            serviceBasis: "confirmed_delivery" | "dispatch_only";
+            /** @description Our signed record of what was sent, to whom and when. Null until the message has been sent. */
+            sendProof: {
+                /** Format: date-time */
+                recordedAt: string;
+                messageSha256: string;
+                signed: boolean;
+                /**
+                 * Format: date-time
+                 * @description Time the outside authority stamped the send proof, once taken.
+                 */
+                timestampedAt: string | null;
+            } | null;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
             kind: "claim" | "schedule";
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it, as typed at send time. */
+            addressBasis: string | null;
             /** @enum {string} */
             status: "queued" | "sending" | "sent" | "delivered" | "bounced" | "failed";
             /** Format: date-time */
             queuedAt: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description When our mail relay accepted it. Not delivery to the recipient.
+             */
             sentAt: string | null;
             /**
              * Format: date-time
@@ -9580,6 +10779,45 @@ export interface components {
             /** @description True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it. */
             notConfirmed: boolean;
         };
+        ClaimEvidenceServiceRecord: {
+            /**
+             * Format: date-time
+             * @description Set when the record was voided as mistaken. A voided record stays on file.
+             */
+            voidedAt: string | null;
+            voidReason: string | null;
+            /**
+             * @description The recording user's own statement; Archova has not checked it. Never show as verified.
+             * @enum {string}
+             */
+            basis: "self_reported";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /**
+             * Format: date-time
+             * @description When it reached the recipient, as stated by the person recording.
+             */
+            servedAt: string;
+            servedTo: string;
+            note: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ClaimEvidenceServiceRecordList: {
+            records: components["schemas"]["ClaimEvidenceServiceRecord"][];
+        };
+        RecordClaimEvidenceServiceRequest: {
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /** Format: date-time */
+            servedAt: string;
+            servedTo: string;
+            note?: string | null;
+        };
         ClaimEvidenceDeliveryList: {
             deliveries: components["schemas"]["ClaimEvidenceDelivery"][];
         };
@@ -9589,6 +10827,8 @@ export interface components {
              * @description The address the payer gave for service.
              */
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it. Kept in the signed send record. */
+            addressBasis?: string | null;
         };
         ClaimEvidenceList: {
             records: components["schemas"]["ClaimEvidenceRecord"][];
@@ -9700,6 +10940,8 @@ export interface components {
             redirect_uri?: string;
             code_verifier?: string;
             refresh_token?: string;
+            /** @description Required for partner apps. */
+            client_secret?: string;
         };
         TokenResponse: {
             access_token: string;
@@ -9707,6 +10949,8 @@ export interface components {
             token_type: "Bearer";
             expires_in: number;
             refresh_token: string;
+            /** @description Partner apps only. The scopes approved */
+            scope?: string;
         };
         RevokeRequest: {
             token: string;
@@ -9835,6 +11079,11 @@ export interface components {
         AuState: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT";
         /** @enum {string} */
         ProjectStatus: "tender" | "active" | "on_hold" | "closed" | "archived";
+        /**
+         * @description Where the project is in its life. Separate from `status`, which says whether it is live.
+         * @enum {string}
+         */
+        ProjectPhase: "planning" | "design" | "tender" | "pre_construction" | "construction" | "handover" | "defects_liability";
         Address: {
             line1?: string;
             line2?: string;
@@ -9871,6 +11120,7 @@ export interface components {
             name: string;
             number: string | null;
             status: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             /** @enum {string|null} */
             state: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
             /** @description IANA time zone; local dates and deadlines use it (X32) */
@@ -10005,6 +11255,7 @@ export interface components {
             name: string;
             number?: string;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"];
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -10019,6 +11270,7 @@ export interface components {
             name?: string;
             number?: string | null;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -10157,7 +11409,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -10199,7 +11451,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -10330,6 +11582,34 @@ export interface components {
             citations: components["schemas"]["NovaCitation"][];
             /** @description When not found, the nearest passages so the user can check themselves. */
             closestMatches: components["schemas"]["NovaSource"][];
+            /**
+             * @description National Construction Code provisions from Archova's signed table (edition, volume, clause, link) that the
+             *     question or answer touches. Chosen by matching the table's keywords, never written by the model, and
+             *     empty when no signed provision applies.
+             */
+            nccReferences?: components["schemas"]["NccReference"][];
+            /** @description Fixed wording to show with `nccReferences` when there are any. */
+            nccNote?: string;
+        };
+        NccReference: {
+            provisionKey: string;
+            /**
+             * @description The NCC edition the clause number was checked against.
+             * @example 2022
+             */
+            edition: string;
+            /** @enum {string} */
+            volume: "1" | "2" | "3";
+            /** @example J3D3 */
+            clause: string;
+            title: string;
+            /** @description In Archova's own words */
+            summary: string;
+            /** Format: uri */
+            url: string;
+            signedBy: string;
+            /** Format: date */
+            signedOn: string;
         };
         NovaRfiDraft: {
             /** @description For feedback (`air_`) */
@@ -10467,6 +11747,29 @@ export interface components {
             /** @enum {string} */
             role: "estimator" | "nova";
             text: string;
+        };
+        BudgetReviewTurn: {
+            /** @enum {string} */
+            role: "user" | "nova";
+            text: string;
+        };
+        BudgetReviewAdvice: {
+            runId: string;
+            reply: string;
+            points: {
+                findingId: string | null;
+                text: string;
+            }[];
+            options: {
+                findingId: string | null;
+                /** @enum {string} */
+                kind: "adjust_budget" | "reallocate" | "review_commitment" | "check_costs" | "raise_variation" | "get_forecast" | "no_action";
+                text: string;
+            }[];
+            draftReason: string | null;
+            notes: string[];
+            history: components["schemas"]["BudgetReviewTurn"][];
+            disclaimer: string;
         };
         QuoteNegotiationAdvice: {
             runId: string;
@@ -10657,6 +11960,17 @@ export interface components {
                 dayType: "business" | "calendar" | "unclear";
                 source: components["schemas"]["ContractSourceRef"];
             }[];
+            /** @description Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed. */
+            obligations?: {
+                /** @enum {string} */
+                party: "builder" | "other_party" | "both" | "unclear";
+                /** @enum {string} */
+                category: "payment" | "notice" | "insurance" | "security" | "reporting" | "programme" | "quality" | "other";
+                action: string;
+                /** @description The contract's own words for when. Nova works out no dates. */
+                timing: string | null;
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
             /** @description Highest severity first. Each cites its clause. */
             flags: {
                 topicKey: string;
@@ -10776,6 +12090,52 @@ export interface components {
             /** @enum {string|null} */
             warning: "source_not_found" | null;
         }[];
+        /** @enum {string} */
+        HazardSignalStatus: "open" | "confirmed" | "dismissed";
+        /** @enum {string} */
+        HazardConfidence: "low" | "medium" | "high";
+        HazardSignal: {
+            /** @description The signal (`ahs_`) */
+            id: string;
+            /** @description The photo it was flagged in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the photo shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaHazardScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`ahn_`); its signals share it */
+            scanId: string;
+            signals: components["schemas"]["HazardSignal"][];
+            /** @description The photo was too dark */
+            photoUnclear: boolean;
+            /** @description Signals left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
+        HazardPattern: {
+            category: string;
+            label: string;
+            open: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description Photos with a confirmed signal in this category. */
+            photos: number;
+            isPattern: boolean;
+            /** @enum {string} */
+            trend: "rising" | "steady" | "falling";
+        };
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -10985,6 +12345,12 @@ export interface components {
             capture: components["schemas"]["Capture"] | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        ProjectPhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         DownloadLink: {
             url: string;
@@ -11964,6 +13330,52 @@ export interface components {
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
+        ConversationMessage: {
+            id: string;
+            authorId: string;
+            authorName: string;
+            body: string;
+            mentionedUserIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConversationSummary: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            lastMessage: components["schemas"]["ConversationMessage"];
+            /** Format: date-time */
+            lastMessageAt: string;
+        };
+        ConversationPage: {
+            data: components["schemas"]["ConversationSummary"][];
+            nextCursor: string | null;
+        };
+        ConversationDetail: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            messages: components["schemas"]["ConversationMessage"][];
+        };
+        CreateConversationRequest: {
+            subject: string;
+            body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
+        };
+        PostConversationMessageRequest: {
+            body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -12079,6 +13491,8 @@ export interface components {
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
+            /** @description Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`). */
+            fileIds: string[];
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -12129,6 +13543,7 @@ export interface components {
             /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
             location?: string;
             pin?: components["schemas"]["RfiPinInput"];
+            fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
         };
@@ -12150,12 +13565,34 @@ export interface components {
             specSection?: string | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
+            /** @description The files attached to the question; replaces the list. */
+            fileIds?: components["schemas"]["FileRef"][];
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
+        };
+        RfiAnnotation: {
+            id: string;
+            rfiId: string;
+            fileId: string;
+            authorId: string | null;
+            shapes: components["schemas"]["MarkupShape"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RfiAnnotationList: {
+            data: components["schemas"]["RfiAnnotation"][];
+        };
+        RfiAnnotationResult: {
+            annotation: components["schemas"]["RfiAnnotation"] | null;
+        };
+        PutRfiAnnotationRequest: {
+            shapes: components["schemas"]["MarkupShape"][];
         };
         RfiActivityItem: {
             id: string;
@@ -12281,6 +13718,46 @@ export interface components {
             viewedAt: string | null;
             /** Format: date-time */
             respondedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the invite email last went out; null if it has not (no contact email, or the send failed)
+             */
+            deliveredAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the last reminder email went out; null if none has
+             */
+            lastRemindedAt: string | null;
+        };
+        RespondTenderAccessRequest: {
+            /** @enum {string} */
+            response: "intends_to_quote" | "declined";
+        };
+        TenderAccess: {
+            package: {
+                number: string;
+                name: string;
+                trade: string;
+                /** Format: date-time */
+                dueAt: string | null;
+                scope: {
+                    description: string;
+                }[];
+                fromOrg: string;
+                projectName: string;
+            };
+            invite: {
+                companyId: string;
+                email: string | null;
+                status: components["schemas"]["PackageInviteStatus"];
+                /** Format: date-time */
+                viewedAt: string | null;
+                /** Format: date-time */
+                respondedAt: string | null;
+            };
+            actions: ("view" | "respond")[];
+            /** Format: date-time */
+            expiresAt: string;
         };
         PackageAward: {
             quoteId: string;
@@ -12847,6 +14324,67 @@ export interface components {
             finishedAt: string | null;
             version: number;
         };
+        OauthConsent: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            /** @description The only organisation this app can be installed into. */
+            ownerOrgId: string;
+            scopes: string[];
+        };
+        OauthApp: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            redirectUris: string[];
+            scopes: string[];
+            disabled: boolean;
+        };
+        OauthAppList: {
+            data: components["schemas"]["OauthApp"][];
+            availableScopes: string[];
+        };
+        CreateOauthAppRequest: {
+            name: string;
+            description?: string;
+            redirectUris: string[];
+            scopes: string[];
+        };
+        OauthAppCreated: components["schemas"]["OauthApp"] & {
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        OauthAppSecret: {
+            clientId: string;
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        InstallAppRequest: {
+            clientId: string;
+            redirectUri: string;
+            codeChallenge: string;
+            state: string;
+            scopes: string[];
+        };
+        InstallAppResponse: {
+            redirectUrl: string;
+        };
+        AppInstall: {
+            id: string;
+            clientId: string;
+            appName: string;
+            scopes: string[];
+            installedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        AppInstallList: {
+            data: components["schemas"]["AppInstall"][];
+        };
         ApiToken: {
             id: string;
             userId: string;
@@ -12890,6 +14428,24 @@ export interface components {
             disabledReason: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        IntegrationCatalogueEntry: {
+            key: string;
+            name: string;
+            /** @enum {string} */
+            category: "accounting" | "files" | "developer";
+            summary: string;
+            /** @enum {string} */
+            status: "connected" | "available" | "needs_attention" | "not_configured" | "coming_soon";
+            detail: string | null;
+            /**
+             * @description Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+             * @enum {string|null}
+             */
+            manage: "accounting" | "folders" | "api" | null;
+        };
+        IntegrationCatalogue: {
+            data: components["schemas"]["IntegrationCatalogueEntry"][];
         };
         /** @enum {string} */
         AccountingProviderName: "xero" | "myob";
@@ -13266,6 +14822,18 @@ export interface components {
             original: components["schemas"]["FinancialsMoney"];
             isMargin?: boolean;
         };
+        ImportBudgetLinesRequest: {
+            rows: {
+                code: string;
+                codeDescription?: string;
+                description?: string;
+                original: string;
+                isMargin?: boolean;
+            }[];
+        };
+        ImportBudgetLinesResult: components["schemas"]["Budget"] & {
+            imported: number;
+        };
         UpdateBudgetLineRequest: {
             description?: string;
             original?: components["schemas"]["FinancialsMoney"];
@@ -13296,6 +14864,104 @@ export interface components {
             unallocated: components["schemas"]["BudgetVsForecastRow"];
             totals: components["schemas"]["BudgetVsForecastRow"];
         };
+        CostCodeProduction: {
+            /** @description Unit of measure, e.g. m2, lm, each. */
+            uom: string;
+            budgetedHours: number;
+            budgetedQuantity: number;
+            /** @description Opening quantity in place; leave out to keep the running total. Progress is logged with the quantity log. */
+            quantityComplete?: number;
+        };
+        CostCodeProductionSaved: {
+            costCodeId: string;
+            uom: string;
+            budgetedHours: number;
+            budgetedQuantity: number;
+            quantityComplete: number;
+        };
+        ProductionLogEntry: {
+            id: string;
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LogQuantityRequest: {
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note?: string;
+        };
+        LaborTurn: {
+            /** @enum {string} */
+            role: "user" | "nova";
+            text: string;
+        };
+        ExplainLaborProductivityRequest: {
+            costCodeId: string;
+            question?: string;
+            history?: components["schemas"]["LaborTurn"][];
+        };
+        LaborProductivityExplanation: {
+            runId: string;
+            reply: string;
+            causes: {
+                title: string;
+                why: string;
+                check: string;
+                /** @enum {string} */
+                likelihood: "likely" | "possible";
+            }[];
+            questions: string[];
+            notes: string[];
+            history: components["schemas"]["LaborTurn"][];
+            disclaimer: string;
+        };
+        LaborProductivityRow: {
+            costCodeId: string;
+            code: string;
+            description: string;
+            divisionId: string;
+            parentId: string | null;
+            uom: string | null;
+            budgetedHours: number | null;
+            timesheetHours: number;
+            /** @description Fraction, 1 = 100%. */
+            pctHoursUsed: number | null;
+            /** @description Fraction, 1 = 100%. */
+            pctComplete: number | null;
+            earnedHours: number | null;
+            budgetedQuantity: number | null;
+            quantityComplete: number | null;
+            /** @description Units per hour the plan allows. */
+            budgetedRate: number | null;
+            /** @description Units per hour achieved; null until hours are booked. */
+            actualRate: number | null;
+            flagged: boolean;
+        };
+        LaborProductivity: {
+            rows: components["schemas"]["LaborProductivityRow"][];
+            totals: {
+                budgetedHours: number;
+                timesheetHours: number;
+                earnedHours: number;
+                pctHoursUsed: number | null;
+                /** @description Earned over booked hours. */
+                efficiency: number | null;
+                flaggedRows: number;
+            };
+            /** @description Timesheet hours with no cost code. */
+            unallocatedHours: number;
+            /** @description Every cost code on the project, for the division and sub-job filters. */
+            codes: {
+                id: string;
+                code: string;
+                description: string;
+                parentId: string | null;
+            }[];
+        };
         BudgetAdjustment: {
             id: string;
             /** @description Signed decimal AUD ex GST. */
@@ -13304,8 +14970,81 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        BudgetSnapshotLine: {
+            costCodeId: string;
+            code: string;
+            codeDescription: string;
+            description: string;
+            original: components["schemas"]["FinancialsMoney"];
+            /** @description Signed decimal AUD ex GST. */
+            approvedChanges: string;
+            /** @description Signed decimal AUD ex GST. */
+            revised: string;
+            isMargin: boolean;
+        };
+        BudgetSnapshot: {
+            id: string;
+            name: string;
+            note: string | null;
+            /** Format: date-time */
+            takenAt: string;
+            lines: components["schemas"]["BudgetSnapshotLine"][];
+            totals: {
+                original: components["schemas"]["FinancialsMoney"];
+                /** @description Signed decimal AUD ex GST. */
+                approvedChanges: string;
+                /** @description Signed decimal AUD ex GST. */
+                revised: string;
+            };
+        };
+        BudgetSnapshotList: {
+            data: components["schemas"]["BudgetSnapshot"][];
+        };
+        CreateBudgetSnapshotRequest: {
+            name: string;
+            note?: string;
+        };
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
+        };
+        BudgetFinding: {
+            id: string;
+            /** @enum {string} */
+            kind: "over_committed" | "over_spent" | "unbudgeted" | "near_limit" | "large_change";
+            /** @enum {string} */
+            severity: "high" | "medium";
+            lineId: string;
+            code: string;
+            codeDescription: string;
+            summary: string;
+            figures: {
+                [key: string]: components["schemas"]["FinancialsSignedMoney"];
+            };
+        };
+        BudgetReviewChecks: {
+            hasBudget: boolean;
+            /** @enum {string} */
+            status: "draft" | "locked";
+            lineCount: number;
+            totals: {
+                revised: components["schemas"]["FinancialsSignedMoney"];
+                committed: components["schemas"]["FinancialsSignedMoney"];
+                actual: components["schemas"]["FinancialsSignedMoney"];
+            };
+            findings: components["schemas"]["BudgetFinding"][];
+        };
+        ProjectBudgetAdjustment: {
+            id: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
+            lineId: string;
+            code: string;
+            codeDescription: string;
+        };
+        ProjectBudgetAdjustmentList: {
+            data: components["schemas"]["ProjectBudgetAdjustment"][];
         };
         /** @description Decimal AUD ex GST, negative allowed. */
         FinancialsSignedMoney: string;
@@ -14619,7 +16358,50 @@ export interface components {
             /** @description Filled in from the document register; ignored on input. */
             title?: string | null;
         };
-        InductionBlock: components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
+        /** @description One drawn thing on a scene. Positions and sizes are percentages of the scene (0 to 100). */
+        InductionAnimationElement: {
+            id: string;
+            /** @enum {string} */
+            kind: "text" | "icon" | "arrow" | "box";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            text?: string | null;
+            /** @enum {string|null} */
+            icon?: "hazard" | "helmet" | "vest" | "boots" | "glasses" | "gloves" | "hearing" | "fire" | "exit" | "first_aid" | "stop" | "forklift" | "person" | "tick" | "cross" | null;
+            /** @enum {string} */
+            tone: "neutral" | "info" | "warning" | "danger" | "safe";
+            /** @description Degrees; arrows only. */
+            rotation?: number;
+            motion: {
+                /** @enum {string} */
+                preset: "none" | "fade_in" | "slide_up" | "slide_left" | "pop" | "pulse" | "draw_on";
+                startMs: number;
+                durationMs: number;
+            };
+        };
+        InductionAnimationScene: {
+            id: string;
+            /**
+             * @description The starting layout the editor used; the player only draws the elements.
+             * @enum {string}
+             */
+            template: "blank" | "hazard_callout" | "steps" | "site_walkthrough" | "ppe_checklist" | "emergency_route";
+            title: string;
+            /** @description Read aloud when voiceover is on, and shown as the caption otherwise. */
+            narration?: string | null;
+            durationMs: number;
+            elements: components["schemas"]["InductionAnimationElement"][];
+        };
+        /** @description A scene-based motion lesson, played to the end like a video (the worker cannot skip ahead). */
+        InductionAnimationBlock: {
+            /** @enum {string} */
+            type: "animation";
+            title?: string | null;
+            scenes: components["schemas"]["InductionAnimationScene"][];
+        };
+        InductionBlock: components["schemas"]["InductionAnimationBlock"] | components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
         InductionSection: {
             key: components["schemas"]["InductionSectionKey"];
             title: string;
@@ -15414,6 +17196,10 @@ export interface components {
         TranslateInductionRequest: {
             lang: string;
         };
+        DeleteMeRequest: {
+            /** @enum {string} */
+            confirm: "DELETE";
+        };
         AskInductionRequest: {
             question: string;
         };
@@ -16052,10 +17838,12 @@ export interface components {
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
         CoordinationIssueId: string;
+        ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
         CostCodeId: string;
+        BudgetSnapshotId: string;
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
@@ -16092,6 +17880,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -16277,6 +18066,8 @@ export interface operations {
                 code_challenge: string;
                 code_challenge_method: "S256";
                 state: string;
+                /** @description `login` forces a fresh sign-in: a session whose sign-in is older than five minutes is sent back to the sign-in page, and the code carries the new sign-in time (so step-up checks such as account deletion pass). */
+                prompt?: "login";
             };
             header?: never;
             path?: never;
@@ -16286,6 +18077,176 @@ export interface operations {
         responses: {
             /** @description Redirect to the client with an authorisation code */
             302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOauthConsent: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthConsent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOauthApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOauthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOauthAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rotateOauthAppSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppSecret"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAppInstalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInstallList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    installApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Installed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallAppResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeAppInstall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16379,6 +18340,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Me"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Account deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -17159,6 +19143,56 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    setScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     createScheduleDependency: {
         parameters: {
             query?: never;
@@ -17638,6 +19672,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectPhotos: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProjectPhoto"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];
@@ -19340,6 +21402,131 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    scanSitePhotoForHazardsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the photo. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHazardScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHazardSignals: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HazardSignal"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewHazardSignal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided signal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHazardPatterns: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The categories, patterns first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        days: number;
+                        data: components["schemas"]["HazardPattern"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     suggestImportMappingWithNova: {
         parameters: {
             query?: never;
@@ -19740,6 +21927,37 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    reviewBudgetWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question?: string;
+                    history?: components["schemas"]["BudgetReviewTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetReviewAdvice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     transcribeSpeech: {
         parameters: {
             query?: never;
@@ -19896,6 +22114,45 @@ export interface operations {
             content: {
                 "application/json": {
                     siteName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    siteAddress: string;
+                    activity: string;
+                    highRiskWorkCategories: components["schemas"]["HighRiskWorkCategory"][];
+                    workArea: string;
+                    access: string;
+                    plant: string[];
+                    adjacentTrades: string[];
+                    /** @description True on projects of $250,000 or more (Vic $350,000). */
+                    whsPlanApplies?: boolean;
+                    notes?: string;
                 };
             };
         };
@@ -20261,6 +22518,102 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    searchOrg: {
+        parameters: {
+            query: {
+                q: string;
+                perType?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getLateSopaClaimRisk: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects at risk */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSopaClaimRisk"];
+                };
+            };
+        };
+    };
+    getReadinessPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReadinessPackPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listReports: {
         parameters: {
             query?: never;
@@ -20433,6 +22786,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDataExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted; poll the export until it is ready. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExportDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportDownload"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -20643,6 +23091,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resendTenderInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package; the invite's `deliveredAt` shows when the email went out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The package behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondTenderAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -21946,6 +24491,29 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getIntegrationsCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCatalogue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listWebhooks: {
         parameters: {
             query?: never;
@@ -22931,6 +25499,119 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listConversations: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    postConversationMessage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostConversationMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCorrespondence: {
         parameters: {
             query?: {
@@ -23379,6 +26060,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiActivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfiAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putRfiFileAnnotation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutRfiAnnotationRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's layer after the change; `null` when it was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationResult"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -29035,6 +31773,36 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    importBudgetLines: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBudgetLinesRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBudgetLinesResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     deleteBudgetLine: {
         parameters: {
             query?: never;
@@ -29115,6 +31883,184 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getLaborProductivity: {
+        parameters: {
+            query?: {
+                divisionId?: string;
+                subJobId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborProductivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    exportLaborProductivity: {
+        parameters: {
+            query?: {
+                divisionId?: string;
+                subJobId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file name, CSV text and row count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        filename: string;
+                        csv: string;
+                        count: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCostCodeQuantityLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProductionLogEntry"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logCostCodeQuantity: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogQuantityRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entry: components["schemas"]["ProductionLogEntry"];
+                        quantityComplete: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    explainLaborProductivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainLaborProductivityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborProductivityExplanation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setCostCodeProduction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostCodeProduction"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostCodeProductionSaved"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     lockBudget: {
         parameters: {
             query?: never;
@@ -29136,6 +32082,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Budget"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBudgetSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshotList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                snapshotId: components["parameters"]["BudgetSnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetReviewChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetReviewChecks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectBudgetAdjustments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBudgetAdjustmentList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -30003,6 +33076,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceDelivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidenceServiceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimEvidenceServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
                 };
             };
             default: components["responses"]["Problem"];

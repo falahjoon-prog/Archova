@@ -22,12 +22,21 @@ export const PROBLEM_CODES = {
   'auth.step_up_required': 403,
   'auth.email_taken': 409,
   'auth.weak_password': 422,
+  // deleting your own account
+  'account.sole_owner': 409,
+  'account.org_on_hold': 409,
   // personal access tokens (public API)
   'api_token.not_found': 404,
   'api_token.invalid_scope': 422,
   'api_token.limit_reached': 409,
   'api_token.scope_missing': 403,
   'api_token.not_allowed': 403,
+  // partner apps (third-party OAuth clients for the public API)
+  'app.not_found': 404,
+  'app.invalid_redirect': 422,
+  'app.invalid_scope': 422,
+  'app.limit_reached': 409,
+  'app.not_allowed': 403,
   // webhooks (public API)
   'webhook.not_found': 404,
   'webhook.invalid_event_type': 422,
@@ -169,6 +178,8 @@ export const PROBLEM_CODES = {
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
   'ai.suggestion.not_found': 404,
+  'ai.hazard_signal.not_found': 404,
+  'ai.hazard_signal.already_reviewed': 409,
   // rfis
   'rfi.not_found': 404,
   'rfi.invalid_transition': 409,
@@ -176,6 +187,7 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  'rfi.photo_not_markable': 422,
   // submittals
   'submittal.not_found': 404,
   'submittal.invalid_transition': 409,
@@ -188,6 +200,8 @@ export const PROBLEM_CODES = {
   'bim.model_not_found': 404,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
+  // conversations
+  'conversation.not_found': 404,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -216,6 +230,8 @@ export const PROBLEM_CODES = {
   'tender.company_not_on_project': 422,
   'tender.company_not_qualified': 422,
   'tender.reason_required': 422,
+  'tender.invite_not_found': 404,
+  'tender.no_contact_email': 422,
   'quote.not_found': 404,
   'quote.invalid_state': 409,
   'quote.company_not_invited': 422,
@@ -285,6 +301,11 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // data export (one-click full export)
+  'data_export.not_found': 404,
+  'data_export.in_progress': 409,
+  'data_export.not_ready': 409,
+  'data_export.expired': 410,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,
@@ -319,6 +340,8 @@ export const PROBLEM_CODES = {
   'financials.budget.locked': 409,
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
+  'financials.production.no_plan': 409,
+  'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,
   'financials.commitment.not_found': 404,
@@ -354,6 +377,7 @@ export const PROBLEM_CODES = {
   'incident.closed': 409,
   'incident.cannot_close': 422,
   'incident.reason_required': 422,
+  'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,
   'ai.induction.cannot_refresh': 422,

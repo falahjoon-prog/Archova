@@ -9,6 +9,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -24,11 +25,13 @@ import {
   type RfiStatus,
   type RfiViewer,
 } from '../domain/rfi';
-import { assignees, responses, rfis, type CostImpact } from '../infra/tables';
+import { invalidShape, type StoredShape } from '@archova/markup';
+import { assignees, photoAnnotations, responses, rfis, type CostImpact } from '../infra/tables';
 
 export type RfiRow = typeof rfis.$inferSelect;
 export type AssigneeRow = typeof assignees.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
+export type PhotoAnnotationRow = typeof photoAnnotations.$inferSelect;
 export type RfiView = RfiRow & { assignees: AssigneeRow[]; isOverdue: boolean };
 
 /** Default RFI response time when the project has no setting (RFI-AC3). */
@@ -66,6 +69,8 @@ export interface RfiFields {
   specSection?: string | null;
   location?: string | null;
   pin?: PinInput | null;
+  /** Photos and files on the question; replaces the list. */
+  fileIds?: string[];
 }
 
 export interface ImportRfiInput {
@@ -465,6 +470,7 @@ export function createRfiService(deps: RfisDeps) {
     if (f.delayDays !== undefined) v.delayDays = f.delayDays;
     if (f.specSection !== undefined) v.specSection = f.specSection?.trim() || null;
     if (f.location !== undefined) v.location = f.location?.trim() || null;
+    if (f.fileIds !== undefined) v.fileIds = [...new Set(f.fileIds)];
     if (f.pin !== undefined) {
       v.drawingRevisionId = f.pin?.drawingRevisionId ?? null;
       v.pinX = f.pin?.x ?? null;
@@ -481,6 +487,7 @@ export function createRfiService(deps: RfisDeps) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
     if (input.pin) await checkPin(scope, projectId, input.pin);
+    await checkFiles(scope, projectId, input.fileIds ?? []);
     const list = await resolveAssignees(scope, projectId, input.assigneeIds ?? []);
     const id = uuidv7();
     const [row] = await scope.tx
@@ -538,6 +545,7 @@ export function createRfiService(deps: RfisDeps) {
       throw new AppError('access.denied', "You can't change this RFI.");
     if (rfi.version !== expectedVersion) throw versionConflict();
     if (patch.pin) await checkPin(scope, projectId, patch.pin);
+    if (patch.fileIds) await checkFiles(scope, projectId, patch.fileIds);
     const values = fieldValues(patch);
     values.version = rfi.version + 1;
     values.updatedBy = scope.ctx.userId;
@@ -695,6 +703,82 @@ export function createRfiService(deps: RfisDeps) {
         fromCaller: x.authorId === scope.ctx.userId,
       })),
     };
+  }
+
+  /** Everyone's marks on this RFI's photos; whoever can see the RFI sees them all. */
+  async function listAnnotations(scope: TenantScope, projectId: string, rfiId: string) {
+    await getVisible(scope, projectId, rfiId);
+    return scope.tx
+      .select()
+      .from(photoAnnotations)
+      .where(eq(photoAnnotations.rfiId, rfiId))
+      .orderBy(asc(photoAnnotations.createdAt), asc(photoAnnotations.id));
+  }
+
+  /**
+   * Sets the caller's own layer on one of the RFI's photos: one layer per person per photo, replaced whole, removed
+   * when empty. The photo must be an image on the question or on a response. Frozen once the RFI is closed or void.
+   */
+  async function setAnnotation(
+    scope: TenantScope,
+    projectId: string,
+    rfiId: string,
+    fileId: string,
+    shapes: StoredShape[],
+  ): Promise<PhotoAnnotationRow | null> {
+    const { rfi } = await getVisible(scope, projectId, rfiId);
+    if (rfi.status === 'closed' || rfi.status === 'void')
+      throw new AppError(
+        'rfi.invalid_transition',
+        `An RFI that is ${rfi.status} can't be marked up.`,
+        undefined,
+        { status: rfi.status },
+      );
+    const onResponse = await scope.tx
+      .select({ id: responses.id })
+      .from(responses)
+      .where(and(eq(responses.rfiId, rfiId), sql`${fileId} = any(${responses.fileIds})`))
+      .limit(1);
+    if (!rfi.fileIds.includes(fileId) && onResponse.length === 0)
+      throw new AppError('rfi.photo_not_markable', 'That file is not attached to this RFI.');
+    const file = await deps.files.getFile(scope, fileId);
+    if (!file.mime.startsWith('image/'))
+      throw new AppError('rfi.photo_not_markable', 'Only photos can be marked up.');
+    if (shapes.some((s) => s.kind === 'pin'))
+      throw new AppError('validation_failed', 'Pins belong on drawings, not photos.', [
+        { path: 'shapes', message: 'Pins are not allowed on photos' },
+      ]);
+    const bad = invalidShape(shapes);
+    if (bad)
+      throw new AppError('validation_failed', bad.reason, [
+        { path: `shapes/${bad.index}`, message: bad.reason },
+      ]);
+    const mine = and(
+      eq(photoAnnotations.rfiId, rfiId),
+      eq(photoAnnotations.fileId, fileId),
+      eq(photoAnnotations.authorId, scope.ctx.userId),
+    );
+    if (shapes.length === 0) {
+      await scope.tx.delete(photoAnnotations).where(mine);
+      return null;
+    }
+    const [row] = await scope.tx
+      .insert(photoAnnotations)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        rfiId,
+        fileId,
+        authorId: scope.ctx.userId,
+        shapes,
+      })
+      .onConflictDoUpdate({
+        target: [photoAnnotations.rfiId, photoAnnotations.fileId, photoAnnotations.authorId],
+        set: { shapes, updatedAt: now() },
+      })
+      .returning();
+    return row!;
   }
 
   async function respond(
@@ -1143,12 +1227,31 @@ export function createRfiService(deps: RfisDeps) {
     };
   }
 
+  /** Global search (`search`): the RFIs the caller can see that match the words, newest first. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: r.number === null ? 'RFI' : formatRfiNumber(r.number),
+        title: r.subject,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     overdueForMeeting,
     portfolioCounts,
     reportRows,
     list,
     detail,
+    listAnnotations,
+    setAnnotation,
     activity,
     create,
     update,

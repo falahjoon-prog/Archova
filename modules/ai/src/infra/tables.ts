@@ -251,3 +251,38 @@ export const legalRules = ai.table('ai_legal_rules', {
   signedOn: date('signed_on', { mode: 'string' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const nccProvisions = ai.table('ai_ncc_provisions', {
+  id: uuid('id').primaryKey(),
+  provisionKey: text('provision_key').notNull(),
+  version: integer('version').notNull(),
+  edition: text('edition').notNull(),
+  volume: text('volume').notNull(),
+  clause: text('clause').notNull(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  url: text('url').notNull(),
+  keywords: text('keywords').array().notNull(),
+  status: text('status').notNull(),
+  signedBy: text('signed_by'),
+  signedOn: date('signed_on', { mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hazardSignals = ai.table('ai_hazard_signals', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  scanId: uuid('scan_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  runId: uuid('run_id').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  category: text('category').notNull(),
+  observation: text('observation').notNull(),
+  confidence: text('confidence').$type<'low' | 'medium' | 'high'>().notNull(),
+  status: text('status').$type<'open' | 'confirmed' | 'dismissed'>().notNull().default('open'),
+  reviewNote: text('review_note'),
+  reviewedBy: uuid('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  ...audit,
+});

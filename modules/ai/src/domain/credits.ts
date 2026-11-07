@@ -26,6 +26,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'translation.translate': 0.25,
   'translation.check': 0,
   'rfi.draft': 1,
+  // F20: a whole SWMS at the standard tier, longer than an RFI draft; about three questions' worth. Priya to confirm.
+  'swms.draft': 3,
   // F3: the response to an RFI that exists, drafted from its thread and the project documents; like a new draft.
   'rfi.answer': 1,
   // F21: one sheet's text changes put into words; cached per revision pair, so opening it again is free. Priya to
@@ -36,16 +38,22 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'drawing.compare_visual': 0.5,
   // Nova Esti (ai/10 E1): one sheet image in, the found items out; one run per target on a sheet. Priya to confirm.
   'takeoff.detect': 1,
+  // Nova on the budget: the findings and totals in, a short read and options out, standard tier. Priya to confirm.
+  'budget.review': 0.5,
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
   'defect.tag': 0.1,
+  // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
+  'safety.hazard_scan': 0.25,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
   'quote.read': 1.5,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
+  // Nova: one turn of discussion on a slow cost code's labor productivity; same size as a quote negotiation turn. Priya to confirm.
+  'labor.productivity': 0.5,
   // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
   'contract.review': 40,
   // F34 Ask the contract: the pages and one question at the standard tier, a short cited answer out. Priya to confirm.

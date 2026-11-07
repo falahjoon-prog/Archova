@@ -4,10 +4,12 @@ import type { OutboxEntry, SyncStore } from '@archova/sync-core';
 
 const COMMAND_LABEL: Record<string, string> = {
   'defects.create': 'New defect',
+  'defects.issue': 'Defect issued',
   'defects.assign': 'Defect assignment',
   'defects.markReadyForReview': 'Defect marked ready for review',
   'defects.close': 'Defect closed',
   'photos.create': 'Photo',
+  'defects.attachPhoto': 'Defect photo',
   'drawings.createMarkup': 'Drawing markup',
   'drawings.updateMarkup': 'Drawing markup change',
   'drawings.deleteMarkup': 'Drawing markup deleted',

@@ -4,6 +4,9 @@ import type { TenantContext } from '@archova/kernel';
 import {
   findUntimestamped,
   markDeliverySent,
+  findUnarchivedSends,
+  recordArchive,
+  recordSendProof,
   recordDeliveryEvent,
   recordTimestamp,
   takeDueDeliveries,
@@ -159,7 +162,7 @@ describe('Contracts and payment claims (product/09)', () => {
     // Serve the schedule by email: queued, shown as not yet confirmed service, capped per day.
     const served = await s.pm.browser.post(
       `${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`,
-      { recipientEmail: 'accounts@owner.example' },
+      { recipientEmail: 'accounts@owner.example', addressBasis: 'Contract cl 12.3 notice address' },
     );
     expect(served.statusCode).toBe(201);
     expect(served.json()).toMatchObject({
@@ -196,13 +199,104 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(taken).toHaveLength(1);
     expect(taken[0]!.pdf.subarray(0, 5).toString()).toBe('%PDF-');
     expect(await t.database.withTenantTx(wctx, (sc) => takeDueDeliveries(sc, at))).toHaveLength(0);
-    await t.database.withTenantTx(wctx, (sc) =>
-      markDeliverySent(sc, taken[0]!.id, at, 'ses-msg-1'),
-    );
+    expect(taken[0]!.addressBasis).toBe('Contract cl 12.3 notice address');
+    const rawBytes = Buffer.from('From: a\r\n\r\nraw message bytes');
+    await t.database.withTenantTx(wctx, async (sc) => {
+      await markDeliverySent(sc, taken[0]!.id, at, 'ses-msg-1');
+      await recordSendProof(
+        sc,
+        taken[0]!,
+        at,
+        {
+          provider: 'ses',
+          providerMessageId: 'ses-msg-1',
+          contentSha256: 'c'.repeat(64),
+          raw: rawBytes,
+        },
+        null,
+      );
+    });
     let after = (
       await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
     ).json().deliveries[0];
-    expect(after).toMatchObject({ status: 'sent', deliveredAt: null });
+    // Sent and recorded, but only dispatch: not confirmed, never service.
+    expect(after).toMatchObject({
+      status: 'sent',
+      deliveredAt: null,
+      serviceBasis: 'dispatch_only',
+      addressBasis: 'Contract cl 12.3 notice address',
+      sendProof: { signed: false, timestampedAt: null },
+    });
+    expect(after.sendProof.messageSha256).toMatch(/^[0-9a-f]{64}$/);
+    // The raw bytes are archived once: found until a copy is recorded, then not again, and the record cannot change.
+    const unarchived = await t.database.withTenantTx(wctx, (sc) => findUnarchivedSends(sc));
+    expect(unarchived).toHaveLength(1);
+    expect(unarchived[0]!.raw.equals(rawBytes)).toBe(true);
+    await t.database.withTenantTx(wctx, (sc) =>
+      recordArchive(
+        sc,
+        {
+          deliveryId: unarchived[0]!.deliveryId,
+          projectId: unarchived[0]!.projectId,
+          objectKey: 'claims-evidence/x.eml',
+          rawSha256: unarchived[0]!.rawSha256,
+          storedSha256: unarchived[0]!.rawSha256,
+        },
+        new Date(),
+      ),
+    );
+    expect(await t.database.withTenantTx(wctx, (sc) => findUnarchivedSends(sc))).toHaveLength(0);
+    await expect(
+      t.database.withTenantTx(wctx, (sc) =>
+        sc.tx.execute(sql`update financials.evidence_archive set object_key = 'other'`),
+      ),
+    ).rejects.toThrow();
+    // The send proof is append-only and keeps the raw bytes.
+    await expect(
+      t.database.withTenantTx(wctx, (sc) =>
+        sc.tx.execute(
+          sql`update financials.evidence_send_proofs set recipient_email = 'x@y.example'`,
+        ),
+      ),
+    ).rejects.toThrow();
+    // Service by other means is a self-reported record, kept apart from deliveries.
+    const manual = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+      { method: 'hand', servedAt: new Date().toISOString(), servedTo: 'Owner reception' },
+    );
+    expect(manual.statusCode).toBe(201);
+    expect(manual.json()).toMatchObject({ basis: 'self_reported', method: 'hand' });
+    const future = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+      {
+        method: 'hand',
+        servedAt: new Date(Date.now() + 86_400_000).toISOString(),
+        servedTo: 'Owner reception',
+      },
+    );
+    expect(future.statusCode).toBe(422);
+    const records = await s.pm.browser.get(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+    );
+    expect(records.json().records).toHaveLength(1);
+    // A mistaken record is voided with a reason, never edited; it stays listed as void.
+    const recId = records.json().records[0].id;
+    const voided = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'Entered against the wrong claim' },
+    );
+    expect(voided.statusCode).toBe(200);
+    expect(voided.json().voidReason).toBe('Entered against the wrong claim');
+    const voidedTwice = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'again' },
+    );
+    expect(voidedTwice.statusCode).toBe(409);
+    const subManual = await s.sub.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/claim/service-records`,
+      { method: 'hand', servedAt: new Date().toISOString(), servedTo: 'x' },
+    );
+    expect(subManual.statusCode).toBeGreaterThanOrEqual(403);
     expect(
       await t.database.withTenantTx(wctx, (sc) =>
         recordDeliveryEvent(sc, 'ses-msg-1', 'delivered', new Date()),
@@ -211,7 +305,11 @@ describe('Contracts and payment claims (product/09)', () => {
     after = (
       await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
     ).json().deliveries[0];
-    expect(after).toMatchObject({ status: 'delivered', notConfirmed: false });
+    expect(after).toMatchObject({
+      status: 'delivered',
+      notConfirmed: false,
+      serviceBasis: 'confirmed_delivery',
+    });
     expect(after.deliveredAt).not.toBeNull();
     // A later bounce report does not undo a delivery.
     expect(
@@ -903,12 +1001,129 @@ describe('Budget and cost codes', () => {
     const history = (await s.pm.browser.get(`${s.base}/budget/lines/${l1.id}/adjustments`)).json();
     expect(history.data.map((a: { amount: string }) => a.amount)).toEqual(['2500.75', '-500.00']);
 
+    // The project-wide list carries the cost code, newest first.
+    const all = (await s.pm.browser.get(`${s.base}/budget/adjustments`)).json();
+    expect(all.data.map((a: { amount: string }) => a.amount)).toEqual(['-500.00', '2500.75']);
+    expect(all.data[0]).toMatchObject({ lineId: l1.id, code: expect.any(String) });
+
     const after = (await s.pm.browser.get(`${s.base}/budget`)).json();
     expect(after.totals).toMatchObject({
       original: '59000.00',
       approvedChanges: '2000.75',
       revised: '61000.75',
     });
+  });
+
+  it('freezes the budget as a named snapshot that later adjustments do not change', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/budget/snapshots', { name: 'Early' })).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lock');
+    expect((await post('/budget/snapshots', { name: '   ' })).statusCode).toBe(422);
+    const snap = await post('/budget/snapshots', { name: 'Tender', note: 'As approved' });
+    expect(snap.statusCode).toBe(201);
+    const made = snap.json();
+    expect(made).toMatchObject({
+      name: 'Tender',
+      note: 'As approved',
+      totals: { original: '50000.00', approvedChanges: '0.00', revised: '50000.00' },
+    });
+
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '2500.00', reason: 'Extra slab' });
+    const again = (await s.pm.browser.get(`${s.base}/budget/snapshots/${made.id}`)).json();
+    expect(again.totals).toMatchObject({ approvedChanges: '0.00', revised: '50000.00' });
+    expect(again.lines).toHaveLength(1);
+
+    const list = (await s.pm.browser.get(`${s.base}/budget/snapshots`)).json();
+    expect(list.data.map((x: { name: string }) => x.name)).toEqual(['Tender']);
+    expect((await s.sub.browser.get(`${s.base}/budget/snapshots/${made.id}`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/budget/snapshots`, { name: 'x' })).statusCode).toBe(
+      403,
+    );
+  });
+
+  it('checks the budget in code and has Nova explain it, without margin ever reaching her', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    expect((await post('/ai/budget-reviews', {})).statusCode).toBe(404);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Secret margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '50000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '777777.00', isMargin: true });
+    await post('/budget/lock');
+    await post(`/budget/lines/${l1.id}/adjustments`, { amount: '10000.00', reason: 'Extra slab' });
+
+    const checks = (await s.pm.browser.get(`${s.base}/budget/review-checks`)).json();
+    expect(checks).toMatchObject({
+      hasBudget: true,
+      status: 'locked',
+      lineCount: 1,
+      totals: { revised: '60000.00' },
+    });
+    expect(checks.findings.map((f: { id: string }) => f.id)).toEqual(['large_change:03-100']);
+    expect(checks.findings[0].lineId).toBe(l1.id);
+
+    const before = t.ai.calls.length;
+    const res = await post('/ai/budget-reviews', { question: 'What should I do?' });
+    expect(res.statusCode, res.body).toBe(200);
+    const d = res.json();
+    expect(d.runId).toMatch(/^air_/);
+    expect(d.disclaimer).toMatch(/not an accountant/);
+    expect(d.history.at(-1).role).toBe('nova');
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'budget.review')!;
+    expect(call.text).toContain('03-100');
+    expect(call.text).not.toMatch(/777777|Secret margin|99-000/);
+
+    expect((await s.sub.browser.get(`${s.base}/budget/review-checks`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
+  });
+
+  it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const rows = [
+      { code: '03-100', codeDescription: 'Concrete', original: '50000.00' },
+      { code: '09-200', codeDescription: 'Painting', original: '8000.50', description: 'Internal' },
+    ];
+    expect((await post('/budget/lines/import', { rows })).statusCode).toBe(404);
+    await post('/budget');
+    await post('/cost-codes', { code: '05-000', description: 'Steel' });
+
+    // One bad row stops the lot, and every problem is listed.
+    const bad = await post('/budget/lines/import', {
+      rows: [
+        rows[0],
+        { code: '11-000', original: '10.00' },
+        { code: '03-100', codeDescription: 'Again', original: '1.00' },
+        { code: '12-000', codeDescription: 'Doors', original: 'abc' },
+      ],
+    });
+    expect(bad.statusCode).toBe(422);
+    expect(bad.json().errors.map((e: { path: string }) => e.path)).toEqual([
+      'rows[1].codeDescription',
+      'rows[2].code',
+      'rows[3].original',
+    ]);
+    expect((await s.pm.browser.get(`${s.base}/budget`)).json().lines).toHaveLength(0);
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(1);
+
+    const ok = await post('/budget/lines/import', {
+      rows: [...rows, { code: '05-000', original: '1000.00', isMargin: true }],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ imported: 3, totals: { original: '59000.50' } });
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(3);
+    // Importing the same codes again is refused: each already has a line.
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(422);
+    await post('/budget/lock');
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(409);
+    expect((await s.sub.browser.post(`${s.base}/budget/lines/import`, { rows })).statusCode).toBe(
+      403,
+    );
   });
 
   it('keeps the budget away from a subcontractor', async () => {
@@ -1423,6 +1638,118 @@ describe('Direct costs', () => {
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/direct-costs`)).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);
+  });
+});
+
+describe('Labor productivity', () => {
+  it('keeps a production plan, logs quantity by day, reports and exports it, and talks to Nova', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const div = (await post('cost-codes', { code: '09', description: 'Finishes' })).json();
+    const code = (
+      await post('cost-codes', { code: '09-300', description: 'Wall tiling', parentId: div.id })
+    ).json();
+    const url = `cost-codes/${code.id}/production`;
+    const plan = { uom: 'm2', budgetedHours: 100, budgetedQuantity: 500, quantityComplete: 50 };
+
+    // A plan is staff and budget-manager work; logging needs a plan first.
+    expect((await post(`${url}/log`, { loggedOn: '2026-10-01', quantity: 10 })).json().code).toBe(
+      'financials.production.no_plan',
+    );
+    const put = await s.pm.browser.put(`${s.base}/${url}`, plan);
+    expect(put.statusCode, put.body).toBe(200);
+    expect(put.json()).toMatchObject({ costCodeId: code.id, quantityComplete: 50 });
+
+    // Logging adds to the running total; a correction needs a note and cannot go below zero.
+    const a = await post(`${url}/log`, { loggedOn: '2026-10-01', quantity: 12.5 });
+    expect(a.statusCode, a.body).toBe(201);
+    expect(a.json()).toMatchObject({ quantityComplete: 62.5, entry: { quantity: 12.5 } });
+    expect((await post(`${url}/log`, { loggedOn: '2026-10-02', quantity: -5 })).statusCode).toBe(
+      422,
+    );
+    const fix = await post(`${url}/log`, {
+      loggedOn: '2026-10-02',
+      quantity: -2.5,
+      note: 'Mis-keyed',
+    });
+    expect(fix.json().quantityComplete).toBe(60);
+    expect(
+      (await post(`${url}/log`, { loggedOn: '2026-10-02', quantity: -100, note: 'Too much' }))
+        .statusCode,
+    ).toBe(422);
+    expect((await post(`${url}/log`, { loggedOn: '2999-01-01', quantity: 1 })).statusCode).toBe(
+      422,
+    );
+    const log = (await get(`${url}/log`)).json();
+    expect(log.data.map((e: { quantity: number }) => e.quantity)).toEqual([-2.5, 12.5]);
+
+    // Re-saving the plan without a quantity keeps the running total.
+    await s.pm.browser.put(`${s.base}/${url}`, {
+      uom: 'm2',
+      budgetedHours: 120,
+      budgetedQuantity: 500,
+    });
+
+    // The report shows the plan; division and sub-job filters narrow it.
+    const rep = (await get('reports/labor-productivity')).json();
+    expect(rep.rows).toHaveLength(1);
+    expect(rep.rows[0]).toMatchObject({
+      code: '09-300',
+      divisionId: div.id,
+      uom: 'm2',
+      budgetedHours: 120,
+      quantityComplete: 60,
+      pctComplete: 0.12,
+      timesheetHours: 0,
+      flagged: false,
+    });
+    expect(rep.codes.map((c: { code: string }) => c.code)).toEqual(['09', '09-300']);
+    expect((await get(`reports/labor-productivity?divisionId=${div.id}`)).json().rows).toHaveLength(
+      1,
+    );
+    expect((await get(`reports/labor-productivity?subJobId=${code.id}`)).json().rows).toHaveLength(
+      1,
+    );
+    const other = (await post('cost-codes', { code: '10', description: 'Specialties' })).json();
+    expect(
+      (await get(`reports/labor-productivity?divisionId=${other.id}`)).json().rows,
+    ).toHaveLength(0);
+
+    const csv = (await get('reports/labor-productivity/export')).json();
+    expect(csv).toMatchObject({ filename: 'labor-productivity.csv', count: 1 });
+    expect(csv.csv.split('\r\n')[1]).toContain('09-300,Wall tiling');
+
+    // Nova suggests and discusses; the server keeps no conversation and changes nothing.
+    const before = t.ai.calls.length;
+    const nova = await post('ai/labor-productivity', { costCodeId: code.id });
+    expect(nova.statusCode, nova.body).toBe(200);
+    expect(nova.json().runId).toMatch(/^air_/);
+    expect(nova.json().history.at(-1).role).toBe('nova');
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'labor.productivity')!;
+    expect(call.text).toContain('09-300');
+    const next = await post('ai/labor-productivity', {
+      costCodeId: code.id,
+      question: 'Could weather explain it?',
+      history: nova.json().history,
+    });
+    expect(next.json().history.map((h: { role: string }) => h.role)).toEqual([
+      'nova',
+      'user',
+      'nova',
+    ]);
+    expect((await get(`${url}/log`)).json().data).toHaveLength(2);
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/reports/labor-productivity`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/${url}/log`, { loggedOn: '2026-10-01', quantity: 1 }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/ai/labor-productivity`, { costCodeId: code.id }))
+        .statusCode,
+    ).toBe(403);
   });
 });
 
