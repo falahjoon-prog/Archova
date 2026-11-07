@@ -23,6 +23,7 @@ function target(orgSlug: string, n: Notification): string | null {
   if (n.entityType === 'incident') return webRoutes.incidents(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'conversation')
     return `${webRoutes.conversations(orgSlug, n.projectId)}?thread=${encodeURIComponent(n.entityId)}`;
+  if (n.entityType === 'form_submission') return webRoutes.forms(orgSlug, n.projectId, n.entityId);
   return null;
 }
 

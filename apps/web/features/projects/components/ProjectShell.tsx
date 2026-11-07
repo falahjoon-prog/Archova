@@ -212,6 +212,11 @@ export function projectToolGroups(
       icon: InspectionsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.forms(orgSlug, projectId),
+      label: 'Forms',
+      icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.observations(orgSlug, projectId),
       label: 'Observations',
       icon: ObservationsIcon,

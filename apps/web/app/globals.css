@@ -3499,3 +3499,41 @@ fieldset.worker-card > legend {
 .drw-group .ac-table th {
   overflow-wrap: anywhere;
 }
+
+/* Forms builder and fill-in */
+.forms-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.forms-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.forms-field__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+}
+.forms-upload {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+.forms-upload input {
+  max-width: 100%;
+}
+.forms-nowrap {
+  white-space: nowrap;
+}
+.forms-title {
+  text-align: start;
+}

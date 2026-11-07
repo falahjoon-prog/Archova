@@ -1522,6 +1522,91 @@ export const PostConversationMessageParams = z.object({
   "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
 });
 export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
+export const ListFormTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListFormTemplatesQuery = z.object({
+  "status": z.enum(["draft", "published", "archived"]).optional(),
+});
+export const CreateFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFormTemplateBody = s.FormTemplateInputSchema;
+export const GetFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateFormTemplateBody = s.FormTemplateInputSchema;
+export const PublishFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const ArchiveFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const NewFormTemplateVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const ListFormSubmissionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListFormSubmissionsQuery = z.object({
+  "status": s.FormSubmissionStatusSchema.optional(),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")).optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).optional(),
+  "mine": z.enum(["true", "false"]).optional(),
+  "flagged": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateFormSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFormSubmissionBody = s.CreateFormSubmissionRequestSchema;
+export const GetFormSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submissionId": z.string().regex(new RegExp("^frs_[0-9A-Za-z]{26}$")),
+});
+export const SaveFormSubmissionAnswersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submissionId": z.string().regex(new RegExp("^frs_[0-9A-Za-z]{26}$")),
+});
+export const SaveFormSubmissionAnswersBody = s.SaveFormAnswersRequestSchema;
+export const SubmitFormSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submissionId": z.string().regex(new RegExp("^frs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewFormSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submissionId": z.string().regex(new RegExp("^frs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewFormSubmissionBody = z.object({
+  "decision": z.enum(["close", "return"]),
+}).strict();
+export const SuggestFormSubmissionAnswersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submissionId": z.string().regex(new RegExp("^frs_[0-9A-Za-z]{26}$")),
+});
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6520,6 +6605,174 @@ export const operations = {
     params: PostConversationMessageParams,
     query: null,
     body: PostConversationMessageBody,
+  },
+  listFormTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.read",
+    internal: false,
+    contentType: null,
+    params: ListFormTemplatesParams,
+    query: ListFormTemplatesQuery,
+    body: null,
+  },
+  createFormTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateFormTemplateParams,
+    query: null,
+    body: CreateFormTemplateBody,
+  },
+  getFormTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.read",
+    internal: false,
+    contentType: null,
+    params: GetFormTemplateParams,
+    query: null,
+    body: null,
+  },
+  updateFormTemplate: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateFormTemplateParams,
+    query: null,
+    body: UpdateFormTemplateBody,
+  },
+  publishFormTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/publish',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: null,
+    params: PublishFormTemplateParams,
+    query: null,
+    body: null,
+  },
+  archiveFormTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/archive',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: null,
+    params: ArchiveFormTemplateParams,
+    query: null,
+    body: null,
+  },
+  newFormTemplateVersion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/versions',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: null,
+    params: NewFormTemplateVersionParams,
+    query: null,
+    body: null,
+  },
+  listFormSubmissions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.read",
+    internal: false,
+    contentType: null,
+    params: ListFormSubmissionsParams,
+    query: ListFormSubmissionsQuery,
+    body: null,
+  },
+  createFormSubmission: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.assign",
+    internal: false,
+    contentType: "application/json",
+    params: CreateFormSubmissionParams,
+    query: null,
+    body: CreateFormSubmissionBody,
+  },
+  getFormSubmission: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.read",
+    internal: false,
+    contentType: null,
+    params: GetFormSubmissionParams,
+    query: null,
+    body: null,
+  },
+  saveFormSubmissionAnswers: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/answers',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.fill",
+    internal: false,
+    contentType: "application/json",
+    params: SaveFormSubmissionAnswersParams,
+    query: null,
+    body: SaveFormSubmissionAnswersBody,
+  },
+  submitFormSubmission: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/submit',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.fill",
+    internal: false,
+    contentType: null,
+    params: SubmitFormSubmissionParams,
+    query: null,
+    body: null,
+  },
+  reviewFormSubmission: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/review',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.close",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewFormSubmissionParams,
+    query: null,
+    body: ReviewFormSubmissionBody,
+  },
+  suggestFormSubmissionAnswers: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/suggestions',
+    module: "forms",
+    auth: "required",
+    permission: "forms.submissions.fill",
+    internal: false,
+    contentType: null,
+    params: SuggestFormSubmissionAnswersParams,
+    query: null,
+    body: null,
   },
   listCorrespondence: {
     method: 'GET',

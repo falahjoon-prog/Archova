@@ -46,6 +46,7 @@ export type ProjectTool =
   | 'submittals'
   | 'correspondence'
   | 'conversations'
+  | 'forms'
   | 'coordination'
   | 'diary'
   | 'key-dates'

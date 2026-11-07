@@ -200,6 +200,12 @@ export const PROBLEM_CODES = {
   'bim.model_not_found': 404,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
+  // forms
+  'form_template.not_found': 404,
+  'form_template.invalid_state': 409,
+  'form_template.name_taken': 409,
+  'form_submission.not_found': 404,
+  'form_submission.invalid_transition': 409,
   // conversations
   'conversation.not_found': 404,
   // correspondence

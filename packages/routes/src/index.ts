@@ -62,6 +62,8 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  forms: (orgSlug: string, projectId: string, submissionId?: string) =>
+    `${p(orgSlug, projectId)}/forms${submissionId ? `?id=${enc(submissionId)}` : ''}`,
   conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>

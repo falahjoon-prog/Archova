@@ -1901,6 +1901,16 @@ export const CreateForecastAdjustmentRequestSchema = z.object({
 }).strict();
 export type CreateForecastAdjustmentRequest = z.infer<typeof CreateForecastAdjustmentRequestSchema>;
 
+export const CreateFormSubmissionRequestSchema = z.object({
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+  "title": z.string().min(1).max(200).optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "relatedType": z.enum(["incident"]).nullable().optional(),
+  "relatedId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type CreateFormSubmissionRequest = z.infer<typeof CreateFormSubmissionRequestSchema>;
+
 export const CreateGateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
@@ -3340,6 +3350,127 @@ export const FolderListSchema = z.object({
 });
 export type FolderList = z.infer<typeof FolderListSchema>;
 
+export const FormAnswersSchema = z.record(z.string(), z.union([z.string().max(5000), z.number(), z.boolean(), z.array(z.string().max(200)).max(50)]));
+export type FormAnswers = z.infer<typeof FormAnswersSchema>;
+
+export const FormFieldTypeSchema = z.enum(["text", "long_text", "number", "date", "yes_no", "single_select", "multi_select"]);
+export type FormFieldType = z.infer<typeof FormFieldTypeSchema>;
+
+export const FormPrefillKeySchema = z.enum(["project.name", "project.number", "project.address", "today", "incident.title", "incident.type", "incident.severity", "incident.date", "incident.location", "incident.description", "incident.immediateActions"]);
+export type FormPrefillKey = z.infer<typeof FormPrefillKeySchema>;
+
+export const FormFieldSchema = z.object({
+  "id": z.string(),
+  "section": z.string(),
+  "label": z.string(),
+  "type": FormFieldTypeSchema,
+  "required": z.boolean(),
+  "helpText": z.string().nullable(),
+  "options": z.array(z.string()),
+  "prefillKey": z.union([FormPrefillKeySchema, z.null()]),
+});
+export type FormField = z.infer<typeof FormFieldSchema>;
+
+export const FormFieldInputSchema = z.object({
+  "id": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")),
+  "section": z.string().max(100).optional(),
+  "label": z.string().min(1).max(300),
+  "type": FormFieldTypeSchema,
+  "required": z.boolean().optional(),
+  "helpText": z.string().max(500).nullable().optional(),
+  "options": z.array(z.string().min(1).max(200)).max(50).optional(),
+  "prefillKey": z.union([FormPrefillKeySchema, z.null()]).optional(),
+}).strict();
+export type FormFieldInput = z.infer<typeof FormFieldInputSchema>;
+
+export const FormSubmissionStatusSchema = z.enum(["assigned", "in_progress", "submitted", "closed"]);
+export type FormSubmissionStatus = z.infer<typeof FormSubmissionStatusSchema>;
+
+export const FormSubmissionFlagSchema = z.enum(["overdue", "due_soon", "stale"]);
+export type FormSubmissionFlag = z.infer<typeof FormSubmissionFlagSchema>;
+
+export const FormSubmissionSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "templateId": z.string(),
+  "templateName": z.string(),
+  "templateVersion": z.number().int(),
+  "title": z.string(),
+  "status": FormSubmissionStatusSchema,
+  "assigneeId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "flags": z.array(FormSubmissionFlagSchema),
+  "daysLate": z.number().int(),
+  "missingRequiredCount": z.number().int(),
+  "relatedType": z.enum(["incident"]).nullable(),
+  "relatedId": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type FormSubmission = z.infer<typeof FormSubmissionSchema>;
+
+export const FormSubmissionDetailSchema = z.object({
+  "submission": FormSubmissionSchema,
+  "fields": z.array(FormFieldSchema),
+  "answers": FormAnswersSchema,
+  "fileIds": z.array(z.string()),
+  "missingRequired": z.array(z.string()),
+  "canFill": z.boolean(),
+  "canClose": z.boolean(),
+});
+export type FormSubmissionDetail = z.infer<typeof FormSubmissionDetailSchema>;
+
+export const FormSubmissionPageSchema = z.object({
+  "data": z.array(FormSubmissionSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type FormSubmissionPage = z.infer<typeof FormSubmissionPageSchema>;
+
+export const FormSuggestionSchema = z.object({
+  "fieldId": z.string(),
+  "value": z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]),
+  "source": z.string(),
+});
+export type FormSuggestion = z.infer<typeof FormSuggestionSchema>;
+
+export const FormSuggestionListSchema = z.object({
+  "data": z.array(FormSuggestionSchema),
+});
+export type FormSuggestionList = z.infer<typeof FormSuggestionListSchema>;
+
+export const FormTemplateStatusSchema = z.enum(["draft", "published", "archived"]);
+export type FormTemplateStatus = z.infer<typeof FormTemplateStatusSchema>;
+
+export const FormTemplateSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "description": z.string().nullable(),
+  "category": z.string().nullable(),
+  "version": z.number().int(),
+  "status": FormTemplateStatusSchema,
+  "fields": z.array(FormFieldSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type FormTemplate = z.infer<typeof FormTemplateSchema>;
+
+export const FormTemplateInputSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "description": z.string().max(2000).nullable().optional(),
+  "category": z.string().max(60).nullable().optional(),
+  "fields": z.array(FormFieldInputSchema).max(200),
+}).strict();
+export type FormTemplateInput = z.infer<typeof FormTemplateInputSchema>;
+
+export const FormTemplateListSchema = z.object({
+  "data": z.array(FormTemplateSchema),
+});
+export type FormTemplateList = z.infer<typeof FormTemplateListSchema>;
+
 export const GateWithCodeSchema = z.object({
   "gate": GateSchema,
   "code": z.string(),
@@ -4744,7 +4875,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "form_submission"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -6425,6 +6556,12 @@ export const SaveDiaryEntryRequestSchema = z.object({
   "amendmentReason": z.string().min(1).max(1000).optional(),
 }).strict();
 export type SaveDiaryEntryRequest = z.infer<typeof SaveDiaryEntryRequestSchema>;
+
+export const SaveFormAnswersRequestSchema = z.object({
+  "answers": z.record(z.string(), z.union([z.string().max(5000), z.number(), z.boolean(), z.array(z.string().max(200)).max(50), z.null()])).optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(50).optional(),
+}).strict();
+export type SaveFormAnswersRequest = z.infer<typeof SaveFormAnswersRequestSchema>;
 
 export const SaveInductionDraftRequestSchema = z.object({
   "content": InductionContentSchema,
