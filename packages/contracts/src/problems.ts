@@ -292,6 +292,12 @@ export const PROBLEM_CODES = {
   'notification.not_found': 404,
   // recents
   'recent.invalid_target': 422,
+  // logistics (material deliveries)
+  'logistics_resource.not_found': 404,
+  'logistics_resource.name_taken': 409,
+  'logistics_delivery.not_found': 404,
+  'logistics_delivery.bad_state': 409,
+  'logistics_delivery.commitment_not_found': 422,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,

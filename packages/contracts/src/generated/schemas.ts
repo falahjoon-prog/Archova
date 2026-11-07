@@ -723,6 +723,23 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ChangeDeliveryRequestSchema = z.object({
+  "action": z.enum(["delay", "miss", "cancel", "reschedule"]),
+  "reason": z.string().max(1000).optional(),
+  "windowStart": z.string().datetime({ offset: true }).optional(),
+  "windowEnd": z.string().datetime({ offset: true }).optional(),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type ChangeDeliveryRequest = z.infer<typeof ChangeDeliveryRequestSchema>;
+
+export const CheckInDeliveryRequestSchema = z.object({
+  "event": z.enum(["arrived", "unloaded"]),
+  "at": z.string().datetime({ offset: true }).optional(),
+  "note": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CheckInDeliveryRequest = z.infer<typeof CheckInDeliveryRequestSchema>;
+
 export const ClaimEvidenceDeliverySchema = z.object({
   "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
   "sendProof": z.object({
@@ -1778,6 +1795,34 @@ export const CreateDefectRequestSchema = z.object({
 }).strict();
 export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
 
+export const DeliveryItemSchema = z.object({
+  "description": z.string().min(1).max(300),
+  "quantity": z.string().max(40).nullable().optional(),
+  "unit": z.string().max(40).nullable().optional(),
+}).strict();
+export type DeliveryItem = z.infer<typeof DeliveryItemSchema>;
+
+export const CreateDeliveryRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "supplierName": z.string().min(1).max(200),
+  "supplierCompanyId": z.string().optional(),
+  "supplierContact": z.string().max(200).optional(),
+  "supplierEmail": z.string().email().max(320).optional(),
+  "supplierPhone": z.string().max(40).optional(),
+  "items": z.array(DeliveryItemSchema).max(50).optional(),
+  "windowStart": z.string().datetime({ offset: true }),
+  "windowEnd": z.string().datetime({ offset: true }),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "needsLift": z.boolean().optional(),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "liftStart": z.string().datetime({ offset: true }).optional(),
+  "liftEnd": z.string().datetime({ offset: true }).optional(),
+  "vehicle": z.string().max(200).optional(),
+  "accessNotes": z.string().max(2000).optional(),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateDeliveryRequest = z.infer<typeof CreateDeliveryRequestSchema>;
+
 export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
 export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
 
@@ -2014,6 +2059,17 @@ export const CreateLinkUploadRequestSchema = z.object({
   "sha256": z.string().regex(new RegExp("^[0-9a-f]{64}$")),
 }).strict();
 export type CreateLinkUploadRequest = z.infer<typeof CreateLinkUploadRequestSchema>;
+
+export const LogisticsResourceKindSchema = z.enum(["dock", "laydown", "crane", "hoist", "lift", "forklift"]);
+export type LogisticsResourceKind = z.infer<typeof LogisticsResourceKindSchema>;
+
+export const CreateLogisticsResourceRequestSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "kind": LogisticsResourceKindSchema,
+  "capacity": z.number().int().min(1).max(20).optional(),
+  "note": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateLogisticsResourceRequest = z.infer<typeof CreateLogisticsResourceRequestSchema>;
 
 export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
 export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
@@ -2673,6 +2729,123 @@ export const DeleteMeRequestSchema = z.object({
   "confirm": z.enum(["DELETE"]),
 }).strict();
 export type DeleteMeRequest = z.infer<typeof DeleteMeRequestSchema>;
+
+export const DeliveryStatusSchema = z.enum(["scheduled", "arrived", "unloaded", "delayed", "missed", "cancelled"]);
+export type DeliveryStatus = z.infer<typeof DeliveryStatusSchema>;
+
+export const DeliverySchema = z.object({
+  "id": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "supplierName": z.string(),
+  "supplierCompanyId": z.string().nullable(),
+  "supplierContact": z.string().nullable(),
+  "supplierEmail": z.string().nullable(),
+  "supplierPhone": z.string().nullable(),
+  "items": z.array(DeliveryItemSchema),
+  "windowStart": z.string().datetime({ offset: true }),
+  "windowEnd": z.string().datetime({ offset: true }),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).nullable(),
+  "needsLift": z.boolean(),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).nullable(),
+  "liftStart": z.string().datetime({ offset: true }).nullable(),
+  "liftEnd": z.string().datetime({ offset: true }).nullable(),
+  "vehicle": z.string().nullable(),
+  "accessNotes": z.string().nullable(),
+  "status": DeliveryStatusSchema,
+  "arrivedAt": z.string().datetime({ offset: true }).nullable(),
+  "unloadedAt": z.string().datetime({ offset: true }).nullable(),
+  "statusReason": z.string().nullable(),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")).nullable(),
+  "commitmentLabel": z.string().nullable(),
+  "version": z.number().int(),
+});
+export type Delivery = z.infer<typeof DeliverySchema>;
+
+export const DeliveryEventSchema = z.object({
+  "id": z.string().regex(new RegExp("^dle_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["created", "updated", "rescheduled", "arrived", "unloaded", "delayed", "missed", "cancelled", "notice_drafted"]),
+  "detail": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type DeliveryEvent = z.infer<typeof DeliveryEventSchema>;
+
+export const DeliveryDetailSchema = z.object({
+  "delivery": DeliverySchema,
+  "events": z.array(DeliveryEventSchema),
+});
+export type DeliveryDetail = z.infer<typeof DeliveryDetailSchema>;
+
+export const DeliveryFlagSchema = z.object({
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["late", "overdue", "arrived_late", "double_booked", "lift_clash", "no_plan"]),
+  "severity": z.enum(["high", "medium", "low"]),
+  "message": z.string(),
+  "relatedDeliveryIds": z.array(z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$"))),
+});
+export type DeliveryFlag = z.infer<typeof DeliveryFlagSchema>;
+
+export const DeliveryInsightsSchema = z.object({
+  "asOf": z.string().datetime({ offset: true }),
+  "today": z.string().date(),
+  "counts": z.object({
+  "today": z.number().int(),
+  "arrivedToday": z.number().int(),
+  "late": z.number().int(),
+  "clashes": z.number().int(),
+  "noPlan": z.number().int(),
+}),
+  "flags": z.array(DeliveryFlagSchema),
+});
+export type DeliveryInsights = z.infer<typeof DeliveryInsightsSchema>;
+
+export const DeliveryListSchema = z.object({
+  "data": z.array(DeliverySchema),
+});
+export type DeliveryList = z.infer<typeof DeliveryListSchema>;
+
+export const DeliverySlotSchema = z.object({
+  "start": z.string().datetime({ offset: true }),
+  "end": z.string().datetime({ offset: true }),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).nullable(),
+  "liftEnd": z.string().datetime({ offset: true }).nullable(),
+});
+export type DeliverySlot = z.infer<typeof DeliverySlotSchema>;
+
+export const DeliveryNoticeSchema = z.object({
+  "to": z.string().nullable(),
+  "subject": z.string(),
+  "body": z.string(),
+  "proposed": z.union([z.null(), z.intersection(DeliverySlotSchema, z.object({
+  "zoneName": z.string().nullable(),
+}))]),
+});
+export type DeliveryNotice = z.infer<typeof DeliveryNoticeSchema>;
+
+export const DeliveryNoticeRequestSchema = z.object({
+  "kind": z.enum(["confirm", "late", "reschedule", "cancel"]),
+  "reason": z.string().max(1000).optional(),
+  "senderName": z.string().max(200).optional(),
+}).strict();
+export type DeliveryNoticeRequest = z.infer<typeof DeliveryNoticeRequestSchema>;
+
+export const DeliverySlotListSchema = z.object({
+  "data": z.array(DeliverySlotSchema),
+});
+export type DeliverySlotList = z.infer<typeof DeliverySlotListSchema>;
+
+export const DeliverySlotRequestSchema = z.object({
+  "durationMinutes": z.number().int().min(15).max(480),
+  "fromDate": z.string().date().optional(),
+  "days": z.number().int().min(1).max(14).optional(),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "needsLift": z.boolean().optional(),
+  "liftMinutes": z.number().int().min(15).max(480).optional(),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "ignoreDeliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type DeliverySlotRequest = z.infer<typeof DeliverySlotRequestSchema>;
 
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
@@ -4480,6 +4653,22 @@ export const LoginRequestSchema = z.object({
   "password": z.string().min(1).max(256),
 }).strict();
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const LogisticsResourceSchema = z.object({
+  "id": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "kind": LogisticsResourceKindSchema,
+  "capacity": z.number().int().min(1).max(20),
+  "active": z.boolean(),
+  "note": z.string().nullable(),
+  "version": z.number().int(),
+});
+export type LogisticsResource = z.infer<typeof LogisticsResourceSchema>;
+
+export const LogisticsResourceListSchema = z.object({
+  "data": z.array(LogisticsResourceSchema),
+});
+export type LogisticsResourceList = z.infer<typeof LogisticsResourceListSchema>;
 
 export const MarkRollCallRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
@@ -7461,6 +7650,26 @@ export const UpdateDefectRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDefectRequest = z.infer<typeof UpdateDefectRequestSchema>;
 
+export const UpdateDeliveryRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "supplierName": z.string().min(1).max(200).optional(),
+  "supplierCompanyId": z.string().optional(),
+  "supplierContact": z.string().max(200).optional(),
+  "supplierEmail": z.string().max(320).optional(),
+  "supplierPhone": z.string().max(40).optional(),
+  "items": z.array(DeliveryItemSchema).max(50).optional(),
+  "zoneId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "needsLift": z.boolean().optional(),
+  "liftResourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")).optional(),
+  "liftStart": z.string().datetime({ offset: true }).optional(),
+  "liftEnd": z.string().datetime({ offset: true }).optional(),
+  "vehicle": z.string().max(200).optional(),
+  "accessNotes": z.string().max(2000).optional(),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")).optional(),
+  "clear": z.array(z.enum(["zoneId", "liftResourceId", "commitmentId"])).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateDeliveryRequest = z.infer<typeof UpdateDeliveryRequestSchema>;
+
 export const UpdateDiaryDelayRequestSchema = z.object({
   "type": DiaryDelayTypeSchema.optional(),
   "description": z.string().min(1).max(2000).optional(),
@@ -7640,6 +7849,14 @@ export const UpdateKeyDatesRequestSchema = z.object({
   "note": z.string().max(1000).nullable().optional(),
 }).strict();
 export type UpdateKeyDatesRequest = z.infer<typeof UpdateKeyDatesRequestSchema>;
+
+export const UpdateLogisticsResourceRequestSchema = z.object({
+  "name": z.string().min(1).max(120).optional(),
+  "capacity": z.number().int().min(1).max(20).optional(),
+  "active": z.boolean().optional(),
+  "note": z.string().max(1000).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateLogisticsResourceRequest = z.infer<typeof UpdateLogisticsResourceRequestSchema>;
 
 export const UpdateMarkupRequestSchema = z.object({
   "visibility": MarkupVisibilitySchema.optional(),

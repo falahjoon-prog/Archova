@@ -6,6 +6,7 @@ import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/p
 import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
+  DeliveriesIcon,
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
@@ -206,6 +207,11 @@ export function projectToolGroups(
       label: 'Attendance',
       icon: AttendanceIcon,
     },
+    canRead('workforce') && {
+      href: webRoutes.deliveries(orgSlug, projectId),
+      label: 'Deliveries',
+      icon: DeliveriesIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
       label: 'Inspections',
@@ -325,7 +331,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
   },
   {
     id: 'quality-safety',

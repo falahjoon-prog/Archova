@@ -52,6 +52,7 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createRecentsModule } from '@archova/mod-recents';
+import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -95,6 +96,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  LOGISTICS_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -454,6 +456,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  const logistics = createLogisticsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    purchaseOrder: (scope, projectId, id) => financials.api.purchaseOrderRef(scope, projectId, id),
+  });
+
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
@@ -541,6 +549,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     search,
     exportsModule,
     workforce,
+    logistics,
     sync,
   ];
   const routes: RouteTable = {};
@@ -583,6 +592,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     search,
     exportsModule,
     workforce,
+    logistics,
     routes,
   };
 }

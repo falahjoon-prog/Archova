@@ -3175,6 +3175,73 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListLogisticsResourcesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateLogisticsResourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateLogisticsResourceBody = s.CreateLogisticsResourceRequestSchema;
+export const UpdateLogisticsResourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "resourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateLogisticsResourceBody = s.UpdateLogisticsResourceRequestSchema;
+export const ListDeliveriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeliveriesQuery = z.object({
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "status": s.DeliveryStatusSchema.optional(),
+});
+export const CreateDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDeliveryBody = s.CreateDeliveryRequestSchema;
+export const GetDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeliveryBody = s.UpdateDeliveryRequestSchema;
+export const CheckInDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const CheckInDeliveryBody = s.CheckInDeliveryRequestSchema;
+export const ChangeDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const ChangeDeliveryBody = s.ChangeDeliveryRequestSchema;
+export const DraftDeliveryNoticeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const DraftDeliveryNoticeBody = s.DeliveryNoticeRequestSchema;
+export const GetDeliveryInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestDeliverySlotsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestDeliverySlotsBody = s.DeliverySlotRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -10173,6 +10240,150 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listLogisticsResources: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: ListLogisticsResourcesParams,
+    query: null,
+    body: null,
+  },
+  createLogisticsResource: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateLogisticsResourceParams,
+    query: null,
+    body: CreateLogisticsResourceBody,
+  },
+  updateLogisticsResource: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources/{resourceId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateLogisticsResourceParams,
+    query: null,
+    body: UpdateLogisticsResourceBody,
+  },
+  listDeliveries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: ListDeliveriesParams,
+    query: ListDeliveriesQuery,
+    body: null,
+  },
+  createDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDeliveryParams,
+    query: null,
+    body: CreateDeliveryBody,
+  },
+  getDelivery: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: GetDeliveryParams,
+    query: null,
+    body: null,
+  },
+  updateDelivery: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDeliveryParams,
+    query: null,
+    body: UpdateDeliveryBody,
+  },
+  checkInDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/check-in',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.checkin",
+    internal: false,
+    contentType: "application/json",
+    params: CheckInDeliveryParams,
+    query: null,
+    body: CheckInDeliveryBody,
+  },
+  changeDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/changes',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ChangeDeliveryParams,
+    query: null,
+    body: ChangeDeliveryBody,
+  },
+  draftDeliveryNotice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/notice',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftDeliveryNoticeParams,
+    query: null,
+    body: DraftDeliveryNoticeBody,
+  },
+  getDeliveryInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delivery-insights',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: GetDeliveryInsightsParams,
+    query: null,
+    body: null,
+  },
+  suggestDeliverySlots: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delivery-slot-suggestions',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: "application/json",
+    params: SuggestDeliverySlotsParams,
+    query: null,
+    body: SuggestDeliverySlotsBody,
   },
 } as const satisfies Record<string, OperationDef>;
 
