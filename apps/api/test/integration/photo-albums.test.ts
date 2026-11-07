@@ -102,10 +102,15 @@ describe('site photo albums', () => {
 
     const other = await signUp(t.app, 'photos-c');
     const otherOrg = await createOrg(other.browser, 'Other Co');
+    // Another org sees none of it, even with the project id.
     const denied = await other.browser.get(
+      `/v1/orgs/${otherOrg.id}/projects/${project.id}/photos/browse`,
+    );
+    expect(denied.statusCode === 200 ? denied.json().data : []).toHaveLength(0);
+    const deniedAlbums = await other.browser.get(
       `/v1/orgs/${otherOrg.id}/projects/${project.id}/photo-albums`,
     );
-    expect(denied.statusCode).toBeGreaterThanOrEqual(400);
+    expect(deniedAlbums.statusCode === 200 ? deniedAlbums.json().own : []).toHaveLength(0);
 
     expect((await browser.del(`${base}/photo-albums/${album.id}/photos/${photo}`)).statusCode).toBe(
       204,

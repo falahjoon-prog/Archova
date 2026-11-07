@@ -271,7 +271,13 @@ export function createPhotoAlbumsService({
         'Give both the record type and the record, or neither.',
         [{ path: 'refId', message: 'refKind and refId come together' }],
       );
-    const f = await loadPhoto(scope, projectId, fileId);
+    // Called from other modules' write paths: a file that isn't a gallery photo is simply not filed.
+    const f = opts.onlyIfUnfiled
+      ? await loadPhoto(scope, projectId, fileId).catch((e: unknown) =>
+          e instanceof AppError && e.code === 'file.not_found' ? null : Promise.reject(e),
+        )
+      : await loadPhoto(scope, projectId, fileId);
+    if (!f) return null;
     if (opts.onlyIfUnfiled) {
       const [existing] = await scope.tx
         .select()
