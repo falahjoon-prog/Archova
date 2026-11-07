@@ -46,6 +46,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'defect.tag': 0.1,
   // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
   'safety.hazard_scan': 0.25,
+  // One site photo at the fast tier, area, trade and a few tags out. Priya to confirm.
+  'photo.tag': 0.1,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.

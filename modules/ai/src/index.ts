@@ -27,6 +27,7 @@ import { createRfiDraftService } from './application/rfi-draft';
 import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createHazardScanService } from './application/hazard-scan';
+import { createPhotoTagService } from './application/photo-tag';
 import { createImportMappingService } from './application/import-mapping';
 import {
   createQuoteNegotiateService,
@@ -425,6 +426,12 @@ export function createAiModule(
     assert: deps.assert,
     readFile: deps.readFile,
   });
+  const photoTags = createPhotoTagService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const importMappings = createImportMappingService({
     database: services.database,
     gateway,
@@ -541,6 +548,7 @@ export function createAiModule(
       minutesExtract,
       swmsDrafts,
       hazardScans,
+      photoTags,
     ),
     permissions: AI_PERMISSIONS,
     provider,

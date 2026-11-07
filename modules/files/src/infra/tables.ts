@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -72,3 +73,19 @@ export const fileObjects = files.table('file_objects', {
   ...audit,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const photoTags = files.table(
+  'photo_tags',
+  {
+    orgId: uuid('org_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    area: text('area'),
+    trade: text('trade'),
+    tags: text('tags').array().notNull().default([]),
+    source: text('source').$type<'person' | 'nova'>().notNull().default('person'),
+    runId: uuid('run_id'),
+    ...audit,
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.fileId] })],
+);

@@ -1,9 +1,9 @@
-import { and, desc, eq, inArray, isNull, like, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, like, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import { fileObjects, uploadSessions } from '../infra/tables';
+import { fileObjects, photoTags, uploadSessions } from '../infra/tables';
 import type { ObjectStore } from '../infra/object-store';
 import type { MalwareScanner, ScanVerdict } from '../infra/scanner';
 import {
@@ -357,30 +357,67 @@ export function createFilesService({
     return { file: f, bytes };
   }
 
+  const photoWhere = (projectId: string): SQL[] => [
+    eq(fileObjects.projectId, projectId),
+    eq(fileObjects.status, 'ready'),
+    like(fileObjects.mime, 'image/%'),
+    inArray(fileObjects.module, [...PHOTO_MODULES]),
+    isNull(fileObjects.deletedAt),
+  ];
+  const joinTags = and(
+    eq(photoTags.orgId, fileObjects.orgId),
+    eq(photoTags.fileId, fileObjects.id),
+  );
+  const takenOrUploaded = sql`coalesce(${fileObjects.takenAt}, ${fileObjects.createdAt})`;
+
   /**
    * The newest ready photos on a project, for the project home gallery. Only modules whose photos are meant for the
    * whole project team feed it (`PHOTO_MODULES`); incident and induction photos stay inside their own records.
-   * Newest by capture time, falling back to upload time. Each photo comes with a short-lived download link.
+   * Newest by capture time, falling back to upload time, optionally narrowed by tag, area, trade or a start time.
+   * `facets` count the areas and trades in use across the whole gallery (not just the filtered view) so a filter bar
+   * can offer them. Each photo comes with a short-lived download link.
    */
-  async function listProjectPhotos(scope: TenantScope, projectId: string, limit: number) {
+  async function listProjectPhotos(
+    scope: TenantScope,
+    projectId: string,
+    opts: { limit: number; area?: string; trade?: string; tag?: string; since?: Date },
+  ) {
     await authorise(scope, projectId, 'read');
+    const filters = [...photoWhere(projectId)];
+    if (opts.area) filters.push(sql`lower(${photoTags.area}) = lower(${opts.area})`);
+    if (opts.trade) filters.push(eq(photoTags.trade, opts.trade));
+    if (opts.tag) filters.push(sql`${opts.tag.toLowerCase()} = any(${photoTags.tags})`);
+    if (opts.since) filters.push(gte(takenOrUploaded, opts.since));
     const rows = await scope.tx
-      .select()
+      .select({ file: fileObjects, tag: photoTags })
       .from(fileObjects)
-      .where(
-        and(
-          eq(fileObjects.projectId, projectId),
-          eq(fileObjects.status, 'ready'),
-          like(fileObjects.mime, 'image/%'),
-          inArray(fileObjects.module, [...PHOTO_MODULES]),
-          isNull(fileObjects.deletedAt),
-        ),
-      )
-      .orderBy(desc(sql`coalesce(${fileObjects.takenAt}, ${fileObjects.createdAt})`))
-      .limit(Math.min(Math.max(limit, 1), 30));
-    return Promise.all(
-      rows.map(async (f) => ({
+      .leftJoin(photoTags, joinTags)
+      .where(and(...filters))
+      .orderBy(desc(takenOrUploaded))
+      .limit(Math.min(Math.max(opts.limit, 1), 30));
+    const count = sql<number>`count(*)::int`;
+    const [areas, trades] = await Promise.all([
+      scope.tx
+        .select({ value: photoTags.area, count })
+        .from(fileObjects)
+        .innerJoin(photoTags, joinTags)
+        .where(and(...photoWhere(projectId), sql`${photoTags.area} is not null`))
+        .groupBy(photoTags.area)
+        .orderBy(desc(count))
+        .limit(30),
+      scope.tx
+        .select({ value: photoTags.trade, count })
+        .from(fileObjects)
+        .innerJoin(photoTags, joinTags)
+        .where(and(...photoWhere(projectId), sql`${photoTags.trade} is not null`))
+        .groupBy(photoTags.trade)
+        .orderBy(desc(count))
+        .limit(30),
+    ]);
+    const photos = await Promise.all(
+      rows.map(async ({ file: f, tag }) => ({
         file: f,
+        tag,
         url: await store.presignGet(f.storageKey, {
           contentDisposition: contentDisposition(f.filename),
           expiresInS: DOWNLOAD_URL_TTL_S,
@@ -388,9 +425,71 @@ export function createFilesService({
         expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000),
       })),
     );
+    return {
+      photos,
+      facets: {
+        areas: areas.map((a) => ({ value: a.value!, count: a.count })),
+        trades: trades.map((t) => ({ value: t.value!, count: t.count })),
+      },
+    };
   }
 
-  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos };
+  /**
+   * Set a project photo's area, trade and tags (replacing what was there); all empty removes the tags. `runId` marks
+   * tags a person confirmed from a Nova suggestion. Same access as adding a photo to the project.
+   */
+  async function setPhotoTags(
+    scope: TenantScope,
+    projectId: string,
+    fileId: string,
+    input: { area?: string | null; trade?: string | null; tags?: string[]; runId?: string | null },
+  ) {
+    const f = await getFileRow(scope, fileId);
+    if (f.projectId !== projectId || !f.mime.startsWith('image/'))
+      throw new AppError('file.not_found');
+    await authorise(scope, projectId, 'upload');
+    const area = input.area?.replace(/\s+/g, ' ').trim().slice(0, 60) || null;
+    const trade = input.trade || null;
+    const tags = [
+      ...new Set(
+        (input.tags ?? [])
+          .map((t) => t.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 30))
+          .filter(Boolean),
+      ),
+    ].slice(0, 5);
+    if (!area && !trade && tags.length === 0) {
+      await scope.tx
+        .delete(photoTags)
+        .where(and(eq(photoTags.orgId, scope.ctx.orgId), eq(photoTags.fileId, fileId)));
+      return null;
+    }
+    const values = {
+      area,
+      trade,
+      tags,
+      source: input.runId ? ('nova' as const) : ('person' as const),
+      runId: input.runId ?? null,
+      updatedAt: new Date(),
+      updatedBy: scope.ctx.userId,
+    };
+    const [row] = await scope.tx
+      .insert(photoTags)
+      .values({
+        orgId: scope.ctx.orgId,
+        fileId,
+        projectId,
+        ...values,
+        createdBy: scope.ctx.userId,
+      })
+      .onConflictDoUpdate({
+        target: [photoTags.orgId, photoTags.fileId],
+        set: { ...values, version: sql`${photoTags.version} + 1` },
+      })
+      .returning();
+    return row!;
+  }
+
+  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos, setPhotoTags };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

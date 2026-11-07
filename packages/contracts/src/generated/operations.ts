@@ -300,7 +300,22 @@ export const ListProjectPhotosParams = z.object({
 });
 export const ListProjectPhotosQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(30).default(12),
+  "area": z.string().max(60).optional(),
+  "trade": z.string().regex(new RegExp("^[a-z_]{2,40}$")).optional(),
+  "tag": z.string().max(30).optional(),
+  "sinceDays": z.coerce.number().int().min(1).max(3650).optional(),
 });
+export const SetProjectPhotoTagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const SetProjectPhotoTagsBody = z.object({
+  "area": z.string().max(60).nullable().optional(),
+  "trade": z.string().regex(new RegExp("^[a-z_]{2,40}$")).nullable().optional(),
+  "tags": z.array(z.string().min(1).max(30)).max(5).optional(),
+  "novaRunId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
 export const ListFoldersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -651,6 +666,17 @@ export const ScanSitePhotoForHazardsWithNovaBody = z.object({
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 }).strict(),
   "note": z.string().max(1000).optional(),
+}).strict();
+export const SuggestPhotoTagsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestPhotoTagsWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+  "knownAreas": z.array(z.string().max(60)).max(20).optional(),
 }).strict();
 export const ListHazardSignalsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3990,6 +4016,18 @@ export const operations = {
     query: ListProjectPhotosQuery,
     body: null,
   },
+  setProjectPhotoTags: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/tags',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SetProjectPhotoTagsParams,
+    query: null,
+    body: SetProjectPhotoTagsBody,
+  },
   listFolders: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/folders',
@@ -4709,6 +4747,18 @@ export const operations = {
     params: ScanSitePhotoForHazardsWithNovaParams,
     query: null,
     body: ScanSitePhotoForHazardsWithNovaBody,
+  },
+  suggestPhotoTagsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/photos/tag-suggestions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.photo_tag.suggest",
+    internal: false,
+    contentType: "application/json",
+    params: SuggestPhotoTagsWithNovaParams,
+    query: null,
+    body: SuggestPhotoTagsWithNovaBody,
   },
   listHazardSignals: {
     method: 'GET',

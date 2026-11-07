@@ -1406,6 +1406,30 @@ paths:
             in: query,
             schema: { type: integer, minimum: 1, maximum: 30, default: 12 },
           }
+        - {
+            name: area,
+            in: query,
+            schema: { type: string, maxLength: 60 },
+            description: Only photos tagged with this area (any case).,
+          }
+        - {
+            name: trade,
+            in: query,
+            schema: { type: string, pattern: '^[a-z_]{2,40}$' },
+            description: Only photos tagged with this trade.,
+          }
+        - {
+            name: tag,
+            in: query,
+            schema: { type: string, maxLength: 30 },
+            description: Only photos carrying this tag.,
+          }
+        - {
+            name: sinceDays,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 3650 },
+            description: Only photos taken (or uploaded) in the last this many days.,
+          }
       responses:
         '200':
           description: Recent photos
@@ -1413,11 +1437,54 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data]
+                required: [data, facets]
                 properties:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/ProjectPhoto' }
+                  facets:
+                    type: object
+                    description: Areas and trades in use across the whole gallery, for a filter bar. Not narrowed by the filters.
+                    required: [areas, trades]
+                    properties:
+                      areas: { type: array, items: { $ref: '#/components/schemas/PhotoFacet' } }
+                      trades: { type: array, items: { $ref: '#/components/schemas/PhotoFacet' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/tags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: setProjectPhotoTags
+      tags: [files]
+      x-module: files
+      summary: Set a project photo's area, trade and tags, replacing what was there. Empty removes them.
+      description: Same access as adding a photo to the project. Pass `novaRunId` when the person confirmed a Nova suggestion (`suggestPhotoTagsWithNova`), so the tags are marked as Nova-suggested.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                area: { type: [string, 'null'], maxLength: 60 }
+                trade: { type: [string, 'null'], pattern: '^[a-z_]{2,40}$' }
+                tags:
+                  { type: array, maxItems: 5, items: { type: string, minLength: 1, maxLength: 30 } }
+                novaRunId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: The tags now on the photo, or null when they were cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tags]
+                properties:
+                  tags:
+                    oneOf: [{ $ref: '#/components/schemas/PhotoTags' }, { type: 'null' }]
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/folders:
     parameters:
@@ -2853,6 +2920,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NovaHazardScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/photos/tag-suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: suggestPhotoTagsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.photo_tag.suggest
+      summary: Nova suggests an area, a trade and a few tags for a project photo.
+      description: |
+        Nova looks at a site photo already uploaded to this project and suggests where on the job it is (only when the
+        note or a visible sign says so), the trade the work shows, and up to five short tags. `knownAreas` lets a new
+        suggestion reuse the project's own spelling. Nothing is stored: the person confirms or edits the suggestion
+        with `setProjectPhotoTags`, passing `runId` as `novaRunId`. Costs a tenth of a Nova credit. The photo is a PNG,
+        JPEG or WebP already uploaded to this project, up to 3 MB; anything else is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note: { type: string, maxLength: 1000 }
+                knownAreas: { type: array, maxItems: 20, items: { type: string, maxLength: 60 } }
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runId, area, trade, tags, photoUnclear]
+                properties:
+                  runId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+                  area: { type: [string, 'null'] }
+                  trade: { type: [string, 'null'] }
+                  tags: { type: array, items: { type: string } }
+                  photoUnclear: { type: boolean }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals:
     parameters:
@@ -16070,6 +16185,7 @@ components:
           diary_summary,
           defect_tagging,
           safety_hazards,
+          photo_tagging,
           minutes,
           estimating,
           contract_review,
@@ -17538,11 +17654,26 @@ components:
         status: { type: string, enum: [scanning, ready, infected, failed] }
         capture: { oneOf: [{ $ref: '#/components/schemas/Capture' }, { type: 'null' }] }
         createdAt: { type: string, format: date-time }
+    PhotoFacet:
+      type: object
+      required: [value, count]
+      properties:
+        value: { type: string }
+        count: { type: integer }
+    PhotoTags:
+      type: object
+      required: [area, trade, tags, source]
+      properties:
+        area: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
+        tags: { type: array, items: { type: string } }
+        source: { type: string, enum: [person, nova] }
     ProjectPhoto:
       type: object
-      required: [file, url, expiresAt]
+      required: [file, url, expiresAt, tags]
       properties:
         file: { $ref: '#/components/schemas/FileObject' }
+        tags: { oneOf: [{ $ref: '#/components/schemas/PhotoTags' }, { type: 'null' }] }
         url: { type: string }
         expiresAt: { type: string, format: date-time }
     DownloadLink:
