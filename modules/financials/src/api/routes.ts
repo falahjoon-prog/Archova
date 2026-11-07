@@ -42,18 +42,21 @@ const ref = (kind: IdKind, value: string, path: string) => {
     throw new AppError('validation_failed', 'Invalid id', [{ path, message: 'Invalid id' }]);
   return uuid;
 };
-/** The PDF layout from the query string; anything left out takes the default. */
+/** The PDF layout from the request body; anything left out takes the default. */
 const pdfOptions = (q: {
-  sections?: string;
-  columns?: string;
+  sections?: string[];
+  columns?: string[];
   paper?: 'a4' | 'letter';
   orientation?: 'portrait' | 'landscape';
   notes?: string;
   signatureBlock?: boolean;
   amountCertified?: string;
 }): PdfOptions => {
-  const pick = <T extends string>(csv: string | undefined, all: readonly T[], fallback: T[]) =>
-    csv ? all.filter((x) => csv.split(',').includes(x)) : fallback;
+  const pick = <T extends string>(
+    chosen: string[] | undefined,
+    all: readonly T[],
+    fallback: T[],
+  ) => (chosen?.length ? all.filter((x) => chosen.includes(x)) : fallback);
   return {
     sections: pick(q.sections, PDF_SECTIONS, DEFAULT_PDF_OPTIONS.sections),
     columns: pick(q.columns, PDF_COLUMNS, DEFAULT_PDF_OPTIONS.columns),
@@ -274,7 +277,7 @@ export function financialsRoutes(
           project(input.params),
           ref('commitment', input.params.commitmentId, 'commitmentId'),
           ref('paymentClaim', input.params.claimId, 'claimId'),
-          pdfOptions(input.query ?? {}),
+          pdfOptions(input.body ?? {}),
         ),
       ),
     }),

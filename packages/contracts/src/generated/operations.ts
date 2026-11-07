@@ -2888,15 +2888,7 @@ export const GetCommitmentInvoicePdfParams = z.object({
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
-export const GetCommitmentInvoicePdfQuery = z.object({
-  "sections": z.string().max(100).regex(new RegExp("^(g702|summary|breakdown|payment|proofread)(,(g702|summary|breakdown|payment|proofread)){0,4}$")).optional(),
-  "columns": z.string().max(200).regex(new RegExp("^(code|description|scheduledValue|previous|thisPeriod|completedToDate|percentComplete|balanceToFinish)(,(code|description|scheduledValue|previous|thisPeriod|completedToDate|percentComplete|balanceToFinish)){0,7}$")).optional(),
-  "paper": z.enum(["a4", "letter"]).optional(),
-  "orientation": z.enum(["portrait", "landscape"]).optional(),
-  "notes": z.string().max(500).optional(),
-  "signatureBlock": z.boolean().optional(),
-  "amountCertified": z.string().regex(new RegExp("^\\\\d{1,16}(\\\\.\\\\d{1,2})?$")).optional(),
-});
+export const GetCommitmentInvoicePdfBody = s.CommitmentInvoicePdfRequestSchema;
 export const SubmitCommitmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9558,16 +9550,16 @@ export const operations = {
     body: null,
   },
   getCommitmentInvoicePdf: {
-    method: 'GET',
+    method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf',
     module: "financials",
     auth: "required",
     permission: "financials.claims.read",
     internal: false,
-    contentType: null,
+    contentType: "application/json",
     params: GetCommitmentInvoicePdfParams,
-    query: GetCommitmentInvoicePdfQuery,
-    body: null,
+    query: null,
+    body: GetCommitmentInvoicePdfBody,
   },
   submitCommitment: {
     method: 'POST',

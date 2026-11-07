@@ -857,6 +857,17 @@ export const CommitmentInvoicePdfSchema = z.object({
 });
 export type CommitmentInvoicePdf = z.infer<typeof CommitmentInvoicePdfSchema>;
 
+export const CommitmentInvoicePdfRequestSchema = z.object({
+  "sections": z.array(z.enum(["g702", "summary", "breakdown", "payment", "proofread"])).max(5).optional(),
+  "columns": z.array(z.enum(["code", "description", "scheduledValue", "previous", "thisPeriod", "completedToDate", "percentComplete", "balanceToFinish"])).max(8).optional(),
+  "paper": z.enum(["a4", "letter"]).optional(),
+  "orientation": z.enum(["portrait", "landscape"]).optional(),
+  "notes": z.string().max(500).optional(),
+  "signatureBlock": z.boolean().optional(),
+  "amountCertified": z.string().regex(new RegExp("^\\d{1,12}(\\.\\d{1,2})?$")).optional(),
+}).strict();
+export type CommitmentInvoicePdfRequest = z.infer<typeof CommitmentInvoicePdfRequestSchema>;
+
 export const CommitmentInvoiceSummarySchema = z.object({
   "originalSum": FinancialsMoneySchema,
   "netChange": FinancialsMoneySchema,

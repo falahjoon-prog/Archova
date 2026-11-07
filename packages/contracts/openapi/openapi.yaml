@@ -12351,49 +12351,22 @@ paths:
       - $ref: '#/components/parameters/ProjectId'
       - $ref: '#/components/parameters/CommitmentId'
       - $ref: '#/components/parameters/PaymentClaimId'
-    get:
+    post:
       operationId: getCommitmentInvoicePdf
       tags: [financials]
       x-module: financials
       x-permission: financials.claims.read
       summary: The payment application as a PDF, laid out the way the person chooses.
       description: >
-        Rendered on request from the current claim data and not stored. `sections` and `columns` are comma-separated
-        lists; leave them out for the defaults (summary, breakdown and payment; every column). The proofread section is
-        off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
-      parameters:
-        - name: sections
-          in: query
-          schema:
-            {
-              type: string,
-              maxLength: 100,
-              pattern: '^(g702|summary|breakdown|payment|proofread)(,(g702|summary|breakdown|payment|proofread)){0,4}$',
-            }
-        - name: columns
-          in: query
-          schema:
-            {
-              type: string,
-              maxLength: 200,
-              pattern: '^(code|description|scheduledValue|previous|thisPeriod|completedToDate|percentComplete|balanceToFinish)(,(code|description|scheduledValue|previous|thisPeriod|completedToDate|percentComplete|balanceToFinish)){0,7}$',
-            }
-        - name: paper
-          in: query
-          schema: { type: string, enum: [a4, letter] }
-        - name: orientation
-          in: query
-          schema: { type: string, enum: [portrait, landscape] }
-        - name: notes
-          in: query
-          schema: { type: string, maxLength: 500 }
-        - name: signatureBlock
-          in: query
-          schema: { type: boolean }
-        - name: amountCertified
-          in: query
-          description: The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for.
-          schema: { type: string, pattern: '^\\d{1,16}(\\.\\d{1,2})?$' }
+        A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered
+        from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column).
+        The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff
+        only.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentInvoicePdfRequest' }
       responses:
         '200':
           description: OK
@@ -22556,6 +22529,38 @@ components:
         findings:
           type: array
           items: { $ref: '#/components/schemas/PaymentApplicationFinding' }
+    CommitmentInvoicePdfRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sections:
+          type: array
+          maxItems: 5
+          items: { type: string, enum: [g702, summary, breakdown, payment, proofread] }
+        columns:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            enum:
+              [
+                code,
+                description,
+                scheduledValue,
+                previous,
+                thisPeriod,
+                completedToDate,
+                percentComplete,
+                balanceToFinish,
+              ]
+        paper: { type: string, enum: [a4, letter] }
+        orientation: { type: string, enum: [portrait, landscape] }
+        notes: { type: string, maxLength: 500 }
+        signatureBlock: { type: boolean }
+        amountCertified:
+          type: string
+          pattern: '^\d{1,12}(\.\d{1,2})?$'
+          description: The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for.
     CommitmentInvoicePdf:
       type: object
       required: [filename, contentType, dataBase64]

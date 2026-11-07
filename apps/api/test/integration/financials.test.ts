@@ -1491,18 +1491,18 @@ describe('Commitment invoices', () => {
       summary: { revisedSum: '100000.00', completedToDate: '30000.00', percentComplete: '30.00' },
     });
     expect(app.json().rows).toHaveLength(1);
-    const pdf = await s.pm.browser.get(
-      `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf?sections=g702,breakdown&amountCertified=1.00&paper=letter`,
-    );
+    const pdfUrl = `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf`;
+    const pdf = await s.pm.browser.post(pdfUrl, {
+      sections: ['g702', 'breakdown'],
+      amountCertified: '1.00',
+      paper: 'letter',
+    });
     expect(pdf.statusCode).toBe(200);
     expect(Buffer.from(pdf.json().dataBase64, 'base64').subarray(0, 5).toString()).toBe('%PDF-');
     expect(
-      (
-        await s.pm.browser.get(
-          `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf?sections=bogus`,
-        )
-      ).statusCode,
+      (await s.pm.browser.post(pdfUrl, { amountCertified: '9999999999999.00' })).statusCode,
     ).toBe(400);
+    expect((await s.sub.browser.post(pdfUrl, {})).statusCode).toBe(403);
     expect(
       (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices/${claimId}`))
         .statusCode,

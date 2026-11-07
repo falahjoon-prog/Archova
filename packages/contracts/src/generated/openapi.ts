@@ -9113,13 +9113,13 @@ export interface paths {
             };
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * The payment application as a PDF, laid out the way the person chooses.
-         * @description Rendered on request from the current claim data and not stored. `sections` and `columns` are comma-separated lists; leave them out for the defaults (summary, breakdown and payment; every column). The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
+         * @description A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column). The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
          */
-        get: operations["getCommitmentInvoicePdf"];
-        put?: never;
-        post?: never;
+        post: operations["getCommitmentInvoicePdf"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15460,6 +15460,18 @@ export interface components {
                 percentComplete: string;
             } | null;
             findings: components["schemas"]["PaymentApplicationFinding"][];
+        };
+        CommitmentInvoicePdfRequest: {
+            sections?: ("g702" | "summary" | "breakdown" | "payment" | "proofread")[];
+            columns?: ("code" | "description" | "scheduledValue" | "previous" | "thisPeriod" | "completedToDate" | "percentComplete" | "balanceToFinish")[];
+            /** @enum {string} */
+            paper?: "a4" | "letter";
+            /** @enum {string} */
+            orientation?: "portrait" | "landscape";
+            notes?: string;
+            signatureBlock?: boolean;
+            /** @description The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for. */
+            amountCertified?: string;
         };
         CommitmentInvoicePdf: {
             filename: string;
@@ -32879,16 +32891,7 @@ export interface operations {
     };
     getCommitmentInvoicePdf: {
         parameters: {
-            query?: {
-                sections?: string;
-                columns?: string;
-                paper?: "a4" | "letter";
-                orientation?: "portrait" | "landscape";
-                notes?: string;
-                signatureBlock?: boolean;
-                /** @description The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for. */
-                amountCertified?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 orgId: components["parameters"]["OrgId"];
@@ -32898,7 +32901,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentInvoicePdfRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

@@ -199,7 +199,7 @@ function Preview({
   const [signature, setSignature] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [certified, setCertified] = useState('');
-  const certifiedValid = /^\d{1,16}(\.\d{1,2})?$/.test(certified);
+  const certifiedValid = /^\d{1,12}(\.\d{1,2})?$/.test(certified);
   const variance = certifiedValid ? Number(certified) - Number(app.summary.currentPaymentDue) : 0;
   const s = app.summary;
   const needsReview = app.findings.some((f) => f.severity !== 'info');
