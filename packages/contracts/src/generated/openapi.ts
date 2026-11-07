@@ -10585,6 +10585,8 @@ export interface components {
             accentColor: string | null;
             /** @description The Portfolio widgets that show, in order. */
             dashboardWidgets: string[];
+            /** @description The saved Portfolio tile layout, or null while the default one is used. */
+            dashboardLayout: components["schemas"]["DashboardTile"][] | null;
             availableWidgets: {
                 key: string;
                 label: string;
@@ -10595,6 +10597,20 @@ export interface components {
             logoFileId?: string | null;
             accentColor?: string | null;
             dashboardWidgets?: string[];
+            /** @description Replaces the tile layout; null puts the default layout back. */
+            dashboardLayout?: components["schemas"]["DashboardTile"][] | null;
+        };
+        /** @description A tile on the 12-column dashboard grid. `type` is a tile from the web tile library. */
+        DashboardTile: {
+            id: string;
+            type: string;
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            config?: {
+                [key: string]: unknown;
+            };
         };
         SupportAccessGrant: {
             /** Format: uuid */

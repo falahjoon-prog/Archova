@@ -2311,6 +2311,17 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DashboardTileSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
+  "type": z.string().regex(new RegExp("^[a-z][a-z0-9_]{0,39}$")),
+  "x": z.number().int().min(0).max(11),
+  "y": z.number().int().min(0).max(1000),
+  "w": z.number().int().min(1).max(12),
+  "h": z.number().int().min(1).max(40),
+  "config": z.record(z.string(), z.unknown()).optional(),
+}).strict();
+export type DashboardTile = z.infer<typeof DashboardTileSchema>;
+
 export const DataExportSchema = z.object({
   "id": z.string(),
   "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
@@ -5016,6 +5027,7 @@ export const OrgBrandingSchema = z.object({
   "logoFileId": z.string().nullable(),
   "accentColor": z.string().nullable(),
   "dashboardWidgets": z.array(z.string()),
+  "dashboardLayout": z.array(DashboardTileSchema).nullable(),
   "availableWidgets": z.array(z.object({
   "key": z.string(),
   "label": z.string(),
@@ -7262,6 +7274,7 @@ export const UpdateOrgBrandingRequestSchema = z.object({
   "logoFileId": z.string().nullable().optional(),
   "accentColor": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).nullable().optional(),
   "dashboardWidgets": z.array(z.string()).min(1).max(20).optional(),
+  "dashboardLayout": z.array(DashboardTileSchema).max(40).nullable().optional(),
 }).strict();
 export type UpdateOrgBrandingRequest = z.infer<typeof UpdateOrgBrandingRequestSchema>;
 
