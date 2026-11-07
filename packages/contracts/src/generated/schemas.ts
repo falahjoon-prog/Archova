@@ -2838,6 +2838,15 @@ export const DiaryEntryListSchema = z.object({
 });
 export type DiaryEntryList = z.infer<typeof DiaryEntryListSchema>;
 
+export const DiaryGapListSchema = z.object({
+  "data": z.array(z.object({
+  "date": z.string().date(),
+  "state": z.enum(["missing", "draft"]),
+  "sources": z.array(z.enum(["attendance", "equipment"])),
+})),
+});
+export type DiaryGapList = z.infer<typeof DiaryGapListSchema>;
+
 export const DirectCostCategorySchema = z.enum(["labour", "materials", "plant", "fees", "other"]);
 export type DirectCostCategory = z.infer<typeof DirectCostCategorySchema>;
 

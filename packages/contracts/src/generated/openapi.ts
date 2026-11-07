@@ -5293,6 +5293,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Days with site activity (a sign-in or an equipment log) but no submitted daily log, newest first.
+         * @description A rule, not a model: Nova shows it as "no daily log for a day with site activity". Today is never listed.
+         *     `missing` is no entry at all, `draft` is an entry nobody has submitted. Readers limited to their own
+         *     company get an empty list. At most 93 days.
+         */
+        get: operations["listDiaryGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}": {
         parameters: {
             query?: never;
@@ -15639,6 +15664,15 @@ export interface components {
         };
         DiaryEntryList: {
             data: components["schemas"]["DiaryEntry"][];
+        };
+        DiaryGapList: {
+            data: {
+                /** Format: date */
+                date: string;
+                /** @enum {string} */
+                state: "missing" | "draft";
+                sources: ("attendance" | "equipment")[];
+            }[];
         };
         DiaryAmendment: {
             id: string;
@@ -26308,6 +26342,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryEntryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDiaryGaps: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gap days */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryGapList"];
                 };
             };
             default: components["responses"]["Problem"];

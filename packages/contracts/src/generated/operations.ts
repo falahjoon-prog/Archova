@@ -1656,6 +1656,14 @@ export const ListDiaryEntriesQuery = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
 });
+export const ListDiaryGapsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDiaryGapsQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
 export const GetDiaryEntryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6771,6 +6779,18 @@ export const operations = {
     contentType: null,
     params: ListDiaryEntriesParams,
     query: ListDiaryEntriesQuery,
+    body: null,
+  },
+  listDiaryGaps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/gaps',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: ListDiaryGapsParams,
+    query: ListDiaryGapsQuery,
     body: null,
   },
   getDiaryEntry: {

@@ -392,6 +392,45 @@ describe('site diary (product/05)', () => {
     });
   });
 
+  it('flags days with site activity and no submitted daily log', async () => {
+    const s = await setup('dia-gap');
+    const eq = `/v1/orgs/${s.org.id}/projects/${s.project.id}/equipment`;
+    const created = await s.sm.browser.post(eq, {
+      name: '5t excavator',
+      assetNumber: 'EX-9',
+      type: 'Excavator',
+    });
+    const yesterday = addDays(today(), -1);
+    const older = addDays(today(), -3);
+    for (const date of [today(), yesterday, older])
+      await s.sm.browser.post(`${eq}/${created.json().id}/logs`, { date, hours: 4 });
+    const range = `from=${addDays(today(), -7)}&to=${today()}`;
+
+    // Equipment worked on two past days and nobody filed a log; today isn't over, so it isn't listed.
+    const first = await s.pm.browser.get(`${s.base}/gaps?${range}`);
+    expect(first.statusCode).toBe(200);
+    expect(first.json().data).toEqual([
+      { date: yesterday, state: 'missing', sources: ['equipment'] },
+      { date: older, state: 'missing', sources: ['equipment'] },
+    ]);
+
+    // An unsubmitted draft is still a gap; submitting closes it.
+    await s.sm.browser.post(`${s.base}/${older}/delays`, {
+      type: 'client',
+      description: 'Waiting on client',
+      hours: 1,
+    });
+    const entry = await s.sm.browser.get(`${s.base}/${older}`);
+    const draft = await s.pm.browser.get(`${s.base}/gaps?${range}`);
+    expect(draft.json().data.find((g: { date: string }) => g.date === older).state).toBe('draft');
+    await s.sm.browser.post(`${s.base}/${older}/submit`, {}, { 'if-match': etagOf(entry) });
+    const after = await s.pm.browser.get(`${s.base}/gaps?${range}`);
+    expect(after.json().data.map((g: { date: string }) => g.date)).toEqual([yesterday]);
+
+    // A subcontractor limited to their own company sees no flags (they'd reveal other companies' activity).
+    expect((await s.sub.browser.get(`${s.base}/gaps?${range}`)).json().data).toEqual([]);
+  });
+
   it('shows subcontractors only their own labour and keeps other orgs out', async () => {
     const s = await setup('dia-scope');
     const day = addDays(today(), -1);

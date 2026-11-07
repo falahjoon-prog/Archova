@@ -412,6 +412,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    // workforce is built later; the gap flag only calls this at request time.
+    siteActivityDays: (scope, projectId, from, to) =>
+      workforce.api.siteActivityDays(scope, projectId, from, to),
   });
 
   diaryApi = diary.api;
