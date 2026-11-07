@@ -72,6 +72,7 @@ export type ProjectTool =
   | 'estimates'
   | 'contracts'
   | 'payment-claims'
+  | 'owner-invoices'
   | 'cost-forecast'
   | 'budget';
 
