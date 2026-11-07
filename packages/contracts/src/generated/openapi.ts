@@ -7819,6 +7819,49 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted. */
+        patch: operations["updateInspection"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Mark a whole section not applicable, or put it back. Its items stop counting as unanswered. */
+        put: operations["setInspectionSectionNa"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add another signature (inspector, contractor, client) until the inspection is closed. */
+        post: operations["addInspectionSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -9798,6 +9841,72 @@ export interface paths {
         head?: never;
         /** Change a capital plan line. */
         patch: operations["updateOwnerCapitalItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        /** The item's history, oldest first: answer changes, comments, photos, files and observations raised from it. */
+        get: operations["listInspectionItemActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a comment and/or files to one checklist item without changing its answer. Only while the inspection is not submitted. */
+        post: operations["addInspectionItemComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Observation on a checklist line. Starts from the item (question, answer, latest comment, photos); anything in the body overrides it. Failed items default to high priority. */
+        post: operations["createObservationFromInspectionItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -17195,7 +17304,7 @@ export interface components {
             }[];
         };
         /** @enum {string} */
-        InspectionResponseType: "pass_fail_na" | "yes_no" | "number" | "text" | "photo" | "signature" | "select";
+        InspectionResponseType: "pass_fail_na" | "yes_no" | "number" | "text" | "photo" | "signature" | "select" | "date";
         /** @enum {string} */
         InspectionResult: "pass" | "fail" | "na";
         /** @enum {string} */
@@ -17222,6 +17331,8 @@ export interface components {
             options: string[];
             required: boolean;
             createsDefectOnFail: boolean;
+            /** @description Instructions shown behind the item's info icon. Empty when there are none. */
+            helpText: string;
         };
         InspectionTemplateDetail: {
             template: components["schemas"]["InspectionTemplate"];
@@ -17239,6 +17350,8 @@ export interface components {
             required?: boolean;
             /** @description Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it. */
             createsDefectOnFail?: boolean;
+            /** @description Instructions shown behind the item's info icon. */
+            helpText?: string;
         };
         CreateInspectionTemplateRequest: {
             name: string;
@@ -17268,8 +17381,21 @@ export interface components {
             location: string | null;
             status: components["schemas"]["InspectionStatus"];
             inspectorId: string | null;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description The inspection date.
+             */
             scheduledFor: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            assigneeIds: string[];
+            responsibleCompanyId: string | null;
+            pointOfContactId: string | null;
+            trade: string | null;
+            specSection: string | null;
+            description: string;
+            /** @description Files attached to the inspection itself. */
+            fileIds: string[];
             /** Format: date-time */
             completedAt: string | null;
             signedBy: components["schemas"]["InspectionSignature"] | null;
@@ -17292,10 +17418,27 @@ export interface components {
         };
         InspectionDetail: {
             inspection: components["schemas"]["Inspection"];
+            /** @description One entry per checklist item, for the activity strip under each line. */
+            itemActivity: components["schemas"]["InspectionItemActivity"][];
+            /** @description One entry per section, in checklist order, with the rollup counts. */
+            sections: components["schemas"]["InspectionSection"][];
+            signatures: components["schemas"]["InspectionSignature"][];
             items: components["schemas"]["InspectionTemplateItem"][];
             responses: components["schemas"]["InspectionItemResponse"][];
             missingRequiredItemIds: string[];
             failedItemIds: string[];
+        };
+        InspectionSection: {
+            section: string;
+            items: number;
+            /** @description Items with an answer that is not pass, fail or N/A. */
+            answered: number;
+            pass: number;
+            fail: number;
+            na: number;
+            unanswered: number;
+            /** @description The whole section is marked not applicable. */
+            isNa: boolean;
         };
         InspectionPage: {
             data: components["schemas"]["Inspection"][];
@@ -17309,6 +17452,40 @@ export interface components {
             /** Format: date */
             scheduledFor?: string;
             inspectorId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            dueDate?: string;
+            assigneeIds?: components["schemas"]["UserRef"][];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"];
+            pointOfContactId?: components["schemas"]["UserRef"];
+            trade?: string;
+            specSection?: string;
+            description?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        /** @description Header fields. Send only what changes; null clears an optional field. */
+        UpdateInspectionRequest: {
+            title?: string;
+            location?: string | null;
+            /** Format: date */
+            scheduledFor?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            inspectorId?: components["schemas"]["UserRef"];
+            assigneeIds?: components["schemas"]["UserRef"][];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"] | null;
+            pointOfContactId?: components["schemas"]["UserRef"] | null;
+            trade?: string | null;
+            specSection?: string | null;
+            description?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        SetInspectionSectionNaRequest: {
+            section: string;
+            na: boolean;
+        };
+        AddInspectionSignatureRequest: {
+            name: string;
+            fileId?: components["schemas"]["FileRef"];
         };
         InspectionResponseInput: {
             templateItemId: string;
@@ -17320,8 +17497,9 @@ export interface components {
         RecordInspectionResponsesRequest: {
             responses: components["schemas"]["InspectionResponseInput"][];
         };
+        /** @description Name the signer here, or add signatures first and send an empty body. */
         SubmitInspectionRequest: {
-            signedByName: string;
+            signedByName?: string;
             signatureFileId?: components["schemas"]["FileRef"];
         };
         /** @enum {string} */
@@ -17347,6 +17525,10 @@ export interface components {
             /** Format: date */
             dueDate: string | null;
             isOverdue: boolean;
+            /** @description The inspection it was raised from. */
+            inspectionId: string | null;
+            /** @description The checklist item it was raised from. */
+            inspectionItemId: string | null;
             /** @description The SWMS this observation is about (stop work: SWMS not followed). */
             swmsId: string | null;
             resolutionNote: string | null;
@@ -17750,6 +17932,57 @@ export interface components {
             /** @description The language the SWMS was shown in. */
             language?: string;
         };
+        InspectionItemSuggestion: {
+            /** @enum {string} */
+            code: "failed_with_photo";
+            message: string;
+        };
+        InspectionItemActivity: {
+            templateItemId: string;
+            responseChanges: number;
+            /** @description Files that are not photos. */
+            attachments: number;
+            photos: number;
+            comments: number;
+            /** @description Observations raised from this item. */
+            observations: number;
+            /** @description Set when the item failed with a photo attached and no observation exists yet. A rule, not a reading of the photo. It never creates anything: a person confirms. */
+            suggestion: components["schemas"]["InspectionItemSuggestion"] | null;
+        };
+        InspectionItemEvent: {
+            id: string;
+            /** @enum {string} */
+            kind: "response" | "comment" | "attachment" | "photo" | "observation";
+            body: string | null;
+            result: components["schemas"]["InspectionResult"] | null;
+            fileIds: string[];
+            observationId: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        InspectionItemEventList: {
+            data: components["schemas"]["InspectionItemEvent"][];
+        };
+        AddInspectionItemCommentRequest: {
+            body?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        CreateObservationFromItemRequest: {
+            type?: components["schemas"]["ObservationType"];
+            hazard?: string;
+            description?: string;
+            /** @description Replaces the item's latest comment in the draft description. */
+            comment?: string;
+            location?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            /** Format: date */
+            dueDate?: string;
+            swmsId?: string;
+            /** @description Defaults to the files on the item's answer. */
+            fileIds?: components["schemas"]["FileRef"][];
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -17763,6 +17996,7 @@ export interface components {
         };
     };
     parameters: {
+        InspectionItemId: string;
         TimesheetId: string;
         EquipmentId: string;
         EquipmentBookingId: string;
@@ -30450,6 +30684,101 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    updateInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setInspectionSectionNa: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetInspectionSectionNaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addInspectionSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInspectionSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     recordInspectionResponses: {
         parameters: {
             query?: never;
@@ -33847,6 +34176,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionItemActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionItemEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addInspectionItemComment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInspectionItemCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createObservationFromInspectionItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateObservationFromItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
                 };
             };
             default: components["responses"]["Problem"];

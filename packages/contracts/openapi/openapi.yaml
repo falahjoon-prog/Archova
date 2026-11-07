@@ -10649,6 +10649,78 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InspectionDetail' }
         default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    put:
+      operationId: setInspectionSectionNa
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Mark a whole section not applicable, or put it back. Its items stop counting as unanswered.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetInspectionSectionNaRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/signatures:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: addInspectionSignature
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Add another signature (inspector, contractor, client) until the inspection is closed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddInspectionSignatureRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13238,8 +13310,87 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+      - $ref: '#/components/parameters/InspectionItemId'
+    get:
+      operationId: listInspectionItemActivity
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: >-
+        The item's history, oldest first: answer changes, comments, photos, files and observations raised from it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionItemEventList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+      - $ref: '#/components/parameters/InspectionItemId'
+    post:
+      operationId: addInspectionItemComment
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: >-
+        Add a comment and/or files to one checklist item without changing its answer. Only while the inspection is not submitted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddInspectionItemCommentRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+      - $ref: '#/components/parameters/InspectionItemId'
+    post:
+      operationId: createObservationFromInspectionItem
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: >-
+        Create Observation on a checklist line. Starts from the item (question, answer, latest comment, photos); anything in the body overrides it. Failed items default to high priority.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateObservationFromItemRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    InspectionItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^iti_[0-9A-Za-z]{26}$' }
     TimesheetId:
       name: timesheetId
       in: path
@@ -25331,7 +25482,7 @@ components:
               options: { type: array, items: { type: string } }
     InspectionResponseType:
       type: string
-      enum: [pass_fail_na, yes_no, number, text, photo, signature, select]
+      enum: [pass_fail_na, yes_no, number, text, photo, signature, select, date]
     InspectionResult:
       type: string
       enum: [pass, fail, na]
@@ -25352,7 +25503,8 @@ components:
         updatedAt: { type: string, format: date-time }
     InspectionTemplateItem:
       type: object
-      required: [id, section, sort, prompt, responseType, options, required, createsDefectOnFail]
+      required:
+        [id, section, sort, prompt, responseType, options, required, createsDefectOnFail, helpText]
       properties:
         id: { type: string }
         section: { type: string }
@@ -25362,6 +25514,11 @@ components:
         options: { type: array, items: { type: string } }
         required: { type: boolean }
         createsDefectOnFail: { type: boolean }
+        helpText:
+          {
+            type: string,
+            description: Instructions shown behind the item's info icon. Empty when there are none.,
+          }
     InspectionTemplateDetail:
       type: object
       required: [template, items]
@@ -25394,6 +25551,12 @@ components:
         createsDefectOnFail:
           type: boolean
           description: Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it.
+        helpText:
+          {
+            type: string,
+            maxLength: 2000,
+            description: Instructions shown behind the item's info icon.,
+          }
     CreateInspectionTemplateRequest:
       type: object
       additionalProperties: false
@@ -25440,6 +25603,14 @@ components:
           scheduledFor,
           completedAt,
           signedBy,
+          dueDate,
+          assigneeIds,
+          responsibleCompanyId,
+          pointOfContactId,
+          trade,
+          specSection,
+          description,
+          fileIds,
           createdAt,
           updatedAt,
           version,
@@ -25455,7 +25626,18 @@ components:
         location: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/InspectionStatus' }
         inspectorId: { type: [string, 'null'] }
-        scheduledFor: { type: [string, 'null'], format: date }
+        scheduledFor: { type: [string, 'null'], format: date, description: The inspection date. }
+        dueDate: { type: [string, 'null'], format: date }
+        assigneeIds: { type: array, items: { type: string } }
+        responsibleCompanyId: { type: [string, 'null'] }
+        pointOfContactId: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
+        specSection: { type: [string, 'null'] }
+        description: { type: string }
+        fileIds:
+          type: array
+          description: Files attached to the inspection itself.
+          items: { type: string }
         completedAt: { type: [string, 'null'], format: date-time }
         signedBy:
           oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
@@ -25478,9 +25660,30 @@ components:
         updatedAt: { type: string, format: date-time }
     InspectionDetail:
       type: object
-      required: [inspection, items, responses, missingRequiredItemIds, failedItemIds]
+      required:
+        [
+          inspection,
+          items,
+          itemActivity,
+          sections,
+          signatures,
+          responses,
+          missingRequiredItemIds,
+          failedItemIds,
+        ]
       properties:
         inspection: { $ref: '#/components/schemas/Inspection' }
+        itemActivity:
+          type: array
+          description: One entry per checklist item, for the activity strip under each line.
+          items: { $ref: '#/components/schemas/InspectionItemActivity' }
+        sections:
+          type: array
+          description: One entry per section, in checklist order, with the rollup counts.
+          items: { $ref: '#/components/schemas/InspectionSection' }
+        signatures:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionSignature' }
         items:
           type: array
           items: { $ref: '#/components/schemas/InspectionTemplateItem' }
@@ -25493,6 +25696,19 @@ components:
         failedItemIds:
           type: array
           items: { type: string }
+    InspectionSection:
+      type: object
+      required: [section, items, answered, pass, fail, na, unanswered, isNa]
+      properties:
+        section: { type: string }
+        items: { type: integer }
+        answered:
+          { type: integer, description: 'Items with an answer that is not pass, fail or N/A.' }
+        pass: { type: integer }
+        fail: { type: integer }
+        na: { type: integer }
+        unanswered: { type: integer }
+        isNa: { type: boolean, description: The whole section is marked not applicable. }
     InspectionPage:
       type: object
       required: [data, nextCursor]
@@ -25517,6 +25733,59 @@ components:
         location: { type: string, minLength: 1, maxLength: 300 }
         scheduledFor: { type: string, format: date }
         inspectorId: { $ref: '#/components/schemas/UserRef' }
+        dueDate: { type: string, format: date }
+        assigneeIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        responsibleCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        pointOfContactId: { $ref: '#/components/schemas/UserRef' }
+        trade: { type: string, minLength: 1, maxLength: 200 }
+        specSection: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    UpdateInspectionRequest:
+      type: object
+      additionalProperties: false
+      description: Header fields. Send only what changes; null clears an optional field.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
+        scheduledFor: { type: [string, 'null'], format: date }
+        dueDate: { type: [string, 'null'], format: date }
+        inspectorId: { $ref: '#/components/schemas/UserRef' }
+        assigneeIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        responsibleCompanyId:
+          oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }]
+        pointOfContactId:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        trade: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        specSection: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    SetInspectionSectionNaRequest:
+      type: object
+      additionalProperties: false
+      required: [section, na]
+      properties:
+        section: { type: string, maxLength: 300 }
+        na: { type: boolean }
+    AddInspectionSignatureRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        fileId: { $ref: '#/components/schemas/FileRef' }
     InspectionResponseInput:
       type: object
       additionalProperties: false
@@ -25544,7 +25813,7 @@ components:
     SubmitInspectionRequest:
       type: object
       additionalProperties: false
-      required: [signedByName]
+      description: Name the signer here, or add signatures first and send an empty body.
       properties:
         signedByName: { type: string, minLength: 1, maxLength: 200 }
         signatureFileId: { $ref: '#/components/schemas/FileRef' }
@@ -25575,6 +25844,8 @@ components:
           status,
           dueDate,
           isOverdue,
+          inspectionId,
+          inspectionItemId,
           swmsId,
           resolutionNote,
           fileIds,
@@ -25601,6 +25872,9 @@ components:
         status: { $ref: '#/components/schemas/ObservationStatus' }
         dueDate: { type: [string, 'null'], format: date }
         isOverdue: { type: boolean }
+        inspectionId: { type: [string, 'null'], description: The inspection it was raised from. }
+        inspectionItemId:
+          { type: [string, 'null'], description: The checklist item it was raised from. }
         swmsId:
           {
             type: [string, 'null'],
@@ -26224,3 +26498,75 @@ components:
             maxLength: 10,
             description: The language the SWMS was shown in.,
           }
+    InspectionItemSuggestion:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, enum: [failed_with_photo] }
+        message: { type: string }
+    InspectionItemActivity:
+      type: object
+      required:
+        [templateItemId, responseChanges, attachments, photos, comments, observations, suggestion]
+      properties:
+        templateItemId: { type: string }
+        responseChanges: { type: integer }
+        attachments: { type: integer, description: Files that are not photos. }
+        photos: { type: integer }
+        comments: { type: integer }
+        observations: { type: integer, description: Observations raised from this item. }
+        suggestion:
+          description: 'Set when the item failed with a photo attached and no observation exists yet. A rule, not a reading of the photo. It never creates anything: a person confirms.'
+          oneOf: [{ $ref: '#/components/schemas/InspectionItemSuggestion' }, { type: 'null' }]
+    InspectionItemEvent:
+      type: object
+      required: [id, kind, body, result, fileIds, observationId, actorId, at]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [response, comment, attachment, photo, observation] }
+        body: { type: [string, 'null'] }
+        result:
+          oneOf: [{ $ref: '#/components/schemas/InspectionResult' }, { type: 'null' }]
+        fileIds: { type: array, items: { type: string } }
+        observationId: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    InspectionItemEventList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionItemEvent' }
+    AddInspectionItemCommentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 2000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    CreateObservationFromItemRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 20000 }
+        comment:
+          {
+            type: string,
+            maxLength: 2000,
+            description: Replaces the item's latest comment in the draft description.,
+          }
+        location: { type: string, minLength: 1, maxLength: 300 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: string, format: date }
+        swmsId: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
+        fileIds:
+          type: array
+          maxItems: 20
+          description: Defaults to the files on the item's answer.
+          items: { $ref: '#/components/schemas/FileRef' }

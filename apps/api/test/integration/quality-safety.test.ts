@@ -160,6 +160,104 @@ describe('Inspections (quality-safety schema)', () => {
 });
 
 describe('Observations', () => {
+  it('logs item activity, raises an observation from an item, and rolls up sections', async () => {
+    const s = await setup();
+    const created = await s.pm.browser.post(`${s.base}/inspection-templates`, {
+      name: 'Housekeeping',
+      type: 'site',
+      items: [
+        {
+          section: 'A',
+          prompt: 'Areas are clean',
+          responseType: 'pass_fail_na',
+          helpText: 'Walk the whole floor',
+        },
+        { section: 'A', prompt: 'Inspected on', responseType: 'date' },
+        { section: 'B', prompt: 'Toilets provided', responseType: 'pass_fail_na' },
+      ],
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().items[0].helpText).toBe('Walk the whole floor');
+    const tpl = created.json().template;
+    const items = created.json().items as Array<{ id: string }>;
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.id}/publish`);
+    const started = await s.pm.browser.post(`${s.base}/inspections`, {
+      templateId: tpl.id,
+      dueDate: '2026-12-01',
+      trade: 'Concrete',
+      specSection: '03 30 00',
+      description: 'Weekly walk',
+    });
+    expect(started.statusCode).toBe(201);
+    const ins = started.json().inspection;
+    expect(ins).toMatchObject({
+      dueDate: '2026-12-01',
+      trade: 'Concrete',
+      specSection: '03 30 00',
+    });
+    const base = `${s.base}/inspections/${ins.id}`;
+
+    const answered = await s.pm.browser.put(`${base}/responses`, {
+      responses: [
+        { templateItemId: items[0]!.id, result: 'fail', note: 'Rubbish at stair 2' },
+        { templateItemId: items[1]!.id, value: '2026-11-07' },
+      ],
+    });
+    expect(answered.statusCode).toBe(200);
+    const bad = await s.pm.browser.put(`${base}/responses`, {
+      responses: [{ templateItemId: items[1]!.id, value: 'tomorrow' }],
+    });
+    expect(bad.statusCode).toBe(422);
+
+    // A comment shows in the strip without changing the answer.
+    const commented = await s.pm.browser.post(`${base}/items/${items[0]!.id}/comments`, {
+      body: 'Told the foreman',
+    });
+    expect(commented.statusCode).toBe(200);
+    const strip = commented
+      .json()
+      .itemActivity.find((a: { templateItemId: string }) => a.templateItemId === items[0]!.id);
+    expect(strip).toMatchObject({ comments: 2, observations: 0 }); // the answer's note and this comment;
+
+    // The observation is pre-filled from the item and linked back to it.
+    const obs = await s.pm.browser.post(`${base}/items/${items[0]!.id}/observations`, {});
+    expect(obs.statusCode).toBe(201);
+    expect(obs.json()).toMatchObject({
+      inspectionId: ins.id,
+      inspectionItemId: items[0]!.id,
+      priority: 'high',
+    });
+    expect(obs.json().description).toContain('Areas are clean');
+    const log = await s.pm.browser.get(`${base}/items/${items[0]!.id}/activity`);
+    expect(log.json().data.map((e: { kind: string }) => e.kind)).toEqual(
+      expect.arrayContaining(['response', 'comment', 'observation']),
+    );
+
+    // Marking section B N/A stops it counting as unanswered; it can be put back.
+    const naRes = await s.pm.browser.put(
+      `${base}/section-na`,
+      { section: 'B', na: true },
+      { 'if-match': etagOf(await s.pm.browser.get(base)) },
+    );
+    expect(naRes.statusCode).toBe(200);
+    expect(naRes.json().sections.find((x: { section: string }) => x.section === 'B')).toMatchObject(
+      { isNa: true },
+    );
+    expect(naRes.json().missingRequiredItemIds).toHaveLength(0);
+
+    // Two signatures, and submit with no name needed.
+    await s.pm.browser.post(`${base}/signatures`, { name: 'Pat Manager' });
+    const two = await s.pm.browser.post(`${base}/signatures`, { name: 'Sam Subbie' });
+    expect(two.json().signatures).toHaveLength(2);
+    const done = await s.pm.browser.post(
+      `${base}/submit`,
+      {},
+      { 'if-match': etagOf(await s.pm.browser.get(base)) },
+    );
+    expect(done.statusCode).toBe(200);
+    expect(done.json().inspection.status).toBe('submitted');
+  });
+
   it('is raised, resolved by the assigned company, closed by the builder, and hidden from others', async () => {
     const s = await setup();
     const raised = await s.pm.browser.post(`${s.base}/observations`, {
