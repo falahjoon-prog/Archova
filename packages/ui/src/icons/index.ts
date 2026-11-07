@@ -3,6 +3,7 @@
 export {
   AlertOctagon,
   AlertTriangle,
+  Ban,
   ArrowLeft,
   Bell,
   Calendar,
@@ -64,6 +65,7 @@ export {
   BookOpen as DiaryIcon,
   HardHat as AttendanceIcon,
   Eye as ObservationsIcon,
+  ListChecks as ActionPlansIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,

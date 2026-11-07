@@ -9,9 +9,13 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { ActionPlanService } from '../application/action-plans';
 import type { InspectionService } from '../application/inspections';
 import type { ObservationFields, ObservationService } from '../application/observations';
 import {
+  toActionPlanDetail,
+  toActionPlanDto,
+  toActionPlanTemplateDto,
   toInspectionDetail,
   toInspectionDto,
   toObservationDto,
@@ -39,6 +43,24 @@ type ObservationBody = Omit<ObservationFields, 'assigneeCompanyId' | 'swmsId' | 
   fileIds?: string[];
 };
 
+type PlanItemBody = {
+  title: string;
+  description?: string;
+  assigneeCompanyId?: string;
+  dueDate?: string;
+};
+
+function planItem(b: PlanItemBody, path: string) {
+  return {
+    title: b.title,
+    ...(b.description !== undefined ? { description: b.description } : {}),
+    ...(b.assigneeCompanyId
+      ? { assigneeCompanyId: ref('company', b.assigneeCompanyId, `${path}/assigneeCompanyId`) }
+      : {}),
+    ...(b.dueDate ? { dueDate: b.dueDate } : {}),
+  };
+}
+
 function observationFields(b: ObservationBody): ObservationFields {
   const out: ObservationFields = {};
   if (b.type !== undefined) out.type = b.type;
@@ -63,6 +85,7 @@ export function qualityRoutes(
   database: Database,
   inspections: InspectionService,
   observations: ObservationService,
+  actionPlans: ActionPlanService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -72,6 +95,15 @@ export function qualityRoutes(
     notFound('inspectionTemplate', p.templateId, 'inspection_template.not_found');
   const inspectionId = (p: { inspectionId: string }) =>
     notFound('inspection', p.inspectionId, 'inspection.not_found');
+  const planId = (p: { planId: string }) =>
+    notFound('actionPlan', p.planId, 'action_plan.not_found');
+  const itemId = (p: { itemId: string }) =>
+    notFound('actionPlanItem', p.itemId, 'action_plan.item_not_found');
+  const okPlan = (status: number, d: Awaited<ReturnType<ActionPlanService['detail']>>) => ({
+    status,
+    body: toActionPlanDetail(d),
+    headers: { etag: etag(d.plan.version) },
+  });
   const observationId = (p: { observationId: string }) =>
     notFound('observation', p.observationId, 'observation.not_found');
 
@@ -301,5 +333,141 @@ export function qualityRoutes(
         ),
       );
     },
+
+    listActionPlans: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        actionPlans.list(s, project(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toActionPlanDto), nextCursor: page.nextCursor },
+      };
+    },
+    createActionPlan: async (input) => {
+      const b = input.body;
+      return okPlan(
+        201,
+        await tx(input, (s) =>
+          actionPlans.create(s, project(input.params), {
+            title: b.title,
+            ...(b.description !== undefined ? { description: b.description } : {}),
+            ...(b.dueDate ? { dueDate: b.dueDate } : {}),
+            ...(b.templateId
+              ? { templateId: ref('actionPlanTemplate', b.templateId, 'templateId') }
+              : {}),
+            ...(b.sourceType && b.sourceId
+              ? {
+                  sourceType: b.sourceType,
+                  sourceId: ref(
+                    b.sourceType === 'observation' ? 'observation' : 'inspection',
+                    b.sourceId,
+                    'sourceId',
+                  ),
+                }
+              : b.sourceType || b.sourceId
+                ? { sourceType: b.sourceType!, sourceId: b.sourceId! }
+                : {}),
+            ...(b.items ? { items: b.items.map((i, n) => planItem(i, `items/${n}`)) } : {}),
+          }),
+        ),
+      );
+    },
+    getActionPlan: async (input) =>
+      okPlan(
+        200,
+        await read(input, (s) =>
+          actionPlans.detail(s, project(input.params), planId(input.params)),
+        ),
+      ),
+    updateActionPlan: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return okPlan(
+        200,
+        await tx(input, (s) =>
+          actionPlans.update(s, project(input.params), planId(input.params), expected, input.body),
+        ),
+      );
+    },
+    addActionPlanItem: async (input) =>
+      okPlan(
+        201,
+        await tx(input, (s) =>
+          actionPlans.addItem(
+            s,
+            project(input.params),
+            planId(input.params),
+            planItem(input.body, ''),
+          ),
+        ),
+      ),
+    updateActionPlanItem: async (input) => {
+      const b = input.body;
+      return okPlan(
+        200,
+        await tx(input, (s) =>
+          actionPlans.updateItem(
+            s,
+            project(input.params),
+            planId(input.params),
+            itemId(input.params),
+            {
+              ...(b.title !== undefined ? { title: b.title } : {}),
+              ...(b.description !== undefined ? { description: b.description } : {}),
+              ...(b.assigneeCompanyId !== undefined
+                ? {
+                    assigneeCompanyId:
+                      b.assigneeCompanyId === null
+                        ? null
+                        : ref('company', b.assigneeCompanyId, 'assigneeCompanyId'),
+                  }
+                : {}),
+              ...(b.dueDate !== undefined ? { dueDate: b.dueDate } : {}),
+              ...(b.status !== undefined ? { status: b.status } : {}),
+              ...(b.note !== undefined ? { note: b.note } : {}),
+            },
+          ),
+        ),
+      );
+    },
+    saveActionPlanAsTemplate: async (input) => ({
+      status: 201,
+      body: toActionPlanTemplateDto(
+        await tx(input, (s) =>
+          actionPlans.saveAsTemplate(
+            s,
+            project(input.params),
+            planId(input.params),
+            input.body.name,
+          ),
+        ),
+      ),
+    }),
+    listActionPlanTemplates: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => actionPlans.listTemplates(s, project(input.params)))).map(
+          toActionPlanTemplateDto,
+        ),
+      },
+    }),
+    createActionPlanTemplate: async (input) => ({
+      status: 201,
+      body: toActionPlanTemplateDto(
+        await tx(input, (s) =>
+          actionPlans.createTemplate(s, project(input.params), {
+            name: input.body.name,
+            ...(input.body.description !== undefined
+              ? { description: input.body.description }
+              : {}),
+            items: input.body.items,
+          }),
+        ),
+      ),
+    }),
   });
 }

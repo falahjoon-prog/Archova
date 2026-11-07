@@ -10808,6 +10808,200 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Observation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listActionPlans
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: The project's action plans, newest first. People outside the builder's team see only plans with a step assigned to their company.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ActionPlanStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Start an action plan, from a template or with its steps, optionally raised from an observation or inspection. It is numbered AP-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    get:
+      operationId: getActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: One action plan with its steps.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Edit the plan, cancel it, or reopen a cancelled one. A plan completes by itself when every step is done or skipped.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateActionPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    post:
+      operationId: addActionPlanItem
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Add a step to the end of the plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+      - $ref: '#/components/parameters/ActionPlanItemId'
+    patch:
+      operationId: updateActionPlanItem
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: Builder staff edit a step; the company it is assigned to marks it done, skipped or open again and leaves a note.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateActionPlanItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/save-as-template:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    post:
+      operationId: saveActionPlanAsTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Keep the plan's steps as a template to start the same plan again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveActionPlanTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plan-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listActionPlanTemplates
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: The project's action plan templates.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createActionPlanTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Write a template of steps with due dates as days after the plan starts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incidents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13134,6 +13328,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    ActionPlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^apl_[0-9A-Za-z]{26}$' }
+    ActionPlanItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ali_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -25472,6 +25676,206 @@ components:
           type: string
           pattern: '^sws_[0-9A-Za-z]{26}$'
           description: For stopWork when the observation is not already linked to a SWMS.
+    ActionPlanStatus:
+      type: string
+      enum: [active, completed, cancelled]
+    ActionPlanItemStatus:
+      type: string
+      enum: [open, done, skipped]
+    ActionPlanSourceType:
+      type: string
+      enum: [observation, inspection]
+    ActionPlan:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          description,
+          status,
+          dueDate,
+          isOverdue,
+          templateId,
+          sourceType,
+          sourceId,
+          itemCount,
+          doneCount,
+          completedAt,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'AP-0007' }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/ActionPlanStatus' }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        templateId: { type: [string, 'null'] }
+        sourceType:
+          { oneOf: [{ $ref: '#/components/schemas/ActionPlanSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        itemCount: { type: integer }
+        doneCount: { type: integer, description: Steps that are done or skipped. }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    ActionPlanItem:
+      type: object
+      required:
+        [
+          id,
+          planId,
+          sort,
+          title,
+          description,
+          assigneeCompanyId,
+          dueDate,
+          isOverdue,
+          status,
+          note,
+          completedAt,
+          canUpdate,
+        ]
+      properties:
+        id: { type: string }
+        planId: { type: string }
+        sort: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        assigneeCompanyId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        status: { $ref: '#/components/schemas/ActionPlanItemStatus' }
+        note: { type: [string, 'null'] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        canUpdate: { type: boolean, description: Whether the caller can change this step. }
+    ActionPlanDetail:
+      type: object
+      required: [plan, items, canManage]
+      properties:
+        plan: { $ref: '#/components/schemas/ActionPlan' }
+        items: { type: array, items: { $ref: '#/components/schemas/ActionPlanItem' } }
+        canManage:
+          { type: boolean, description: Whether the caller can edit the plan and its steps. }
+    ActionPlanPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ActionPlan' } }
+        nextCursor: { type: [string, 'null'] }
+    NewActionPlanItem:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: string, format: date }
+    CreateActionPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        dueDate: { type: string, format: date }
+        templateId:
+          {
+            type: string,
+            pattern: '^apt_[0-9A-Za-z]{26}$',
+            description: Start from this template; its steps replace `items`.,
+          }
+        sourceType: { $ref: '#/components/schemas/ActionPlanSourceType' }
+        sourceId: { type: string, pattern: '^(obs|ins)_[0-9A-Za-z]{26}$' }
+        items:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/NewActionPlanItem' }
+    UpdateActionPlanRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        dueDate: { type: [string, 'null'], format: date }
+        status:
+          type: string
+          enum: [active, cancelled]
+          description: cancelled stops the plan; active reopens a cancelled one.
+    CreateActionPlanItemRequest:
+      $ref: '#/components/schemas/NewActionPlanItem'
+    UpdateActionPlanItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/ActionPlanItemStatus' }
+        note: { type: [string, 'null'], maxLength: 2000 }
+    ActionPlanTemplateItem:
+      type: object
+      additionalProperties: false
+      required: [title, description, dueOffsetDays]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        dueOffsetDays:
+          {
+            type: [integer, 'null'],
+            minimum: 0,
+            maximum: 3650,
+            description: Days after the plan starts.,
+          }
+    ActionPlanTemplate:
+      type: object
+      required: [id, projectId, name, description, items, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        items: { type: array, items: { $ref: '#/components/schemas/ActionPlanTemplateItem' } }
+        createdAt: { type: string, format: date-time }
+    ActionPlanTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ActionPlanTemplate' } }
+    CreateActionPlanTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, items]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ActionPlanTemplateItem' }
+    SaveActionPlanTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
     HighRiskWorkCategory:
       type: string
       description: The 19 high-risk construction work categories (compliance 03 §2), the same in every state.

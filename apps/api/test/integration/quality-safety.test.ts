@@ -368,3 +368,124 @@ describe('SWMS register', () => {
     expect((await s.pm.browser.get(`${s.base}/swms?status=accepted`)).json().data).toEqual([]);
   });
 });
+
+describe('Action plans', () => {
+  it('starts from steps, lets the assigned company tick its step, completes by itself and saves as a template', async () => {
+    const s = await setup();
+    const created = await s.pm.browser.post(`${s.base}/action-plans`, {
+      title: 'Level 3 edge protection',
+      dueDate: '2030-02-01',
+      items: [
+        { title: 'Install edge protection', assigneeCompanyId: s.subCo.companyId },
+        { title: 'Builder sign-off' },
+      ],
+    });
+    expect(created.statusCode).toBe(201);
+    const plan = created.json();
+    expect(plan.plan).toMatchObject({
+      numberLabel: 'AP-0001',
+      status: 'active',
+      itemCount: 2,
+      doneCount: 0,
+    });
+    const [mine, theirs] = plan.items;
+
+    // The assigned company sees the plan and only its own step is changeable; others see nothing.
+    const asSub = (await s.sub.browser.get(`${s.base}/action-plans/${plan.plan.id}`)).json();
+    expect(asSub.canManage).toBe(false);
+    expect(asSub.items.map((i: { canUpdate: boolean }) => i.canUpdate)).toEqual([true, false]);
+    expect((await s.other.browser.get(`${s.base}/action-plans/${plan.plan.id}`)).statusCode).toBe(
+      404,
+    );
+    expect((await s.other.browser.get(`${s.base}/action-plans`)).json().data).toEqual([]);
+    expect((await s.sub.browser.get(`${s.base}/action-plans`)).json().data).toHaveLength(1);
+
+    const denied = await s.sub.browser.patch(
+      `${s.base}/action-plans/${plan.plan.id}/items/${theirs.id}`,
+      { status: 'done' },
+    );
+    expect(denied.statusCode).toBe(403);
+    const retitle = await s.sub.browser.patch(
+      `${s.base}/action-plans/${plan.plan.id}/items/${mine.id}`,
+      { title: 'Something else' },
+    );
+    expect(retitle.statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/action-plans`, { title: 'Sneaky', items: [] }))
+        .statusCode,
+    ).toBe(403);
+
+    const ticked = await s.sub.browser.patch(
+      `${s.base}/action-plans/${plan.plan.id}/items/${mine.id}`,
+      { status: 'done', note: 'Installed and photographed' },
+    );
+    expect(ticked.statusCode).toBe(200);
+    expect(ticked.json().plan).toMatchObject({ status: 'active', doneCount: 1 });
+
+    const finished = await s.pm.browser.patch(
+      `${s.base}/action-plans/${plan.plan.id}/items/${theirs.id}`,
+      { status: 'skipped' },
+    );
+    expect(finished.json().plan).toMatchObject({ status: 'completed', doneCount: 2 });
+    expect(finished.json().plan.completedAt).not.toBeNull();
+
+    // Reopening a step reactivates the plan; adding a step to a completed plan does too.
+    const reopened = await s.pm.browser.patch(
+      `${s.base}/action-plans/${plan.plan.id}/items/${theirs.id}`,
+      { status: 'open' },
+    );
+    expect(reopened.json().plan.status).toBe('active');
+
+    const tpl = await s.pm.browser.post(`${s.base}/action-plans/${plan.plan.id}/save-as-template`, {
+      name: 'Edge protection',
+    });
+    expect(tpl.statusCode).toBe(201);
+    expect(tpl.json().items.map((i: { title: string }) => i.title)).toEqual([
+      'Install edge protection',
+      'Builder sign-off',
+    ]);
+    const second = await s.pm.browser.post(`${s.base}/action-plans`, {
+      title: 'Level 4 edge protection',
+      templateId: tpl.json().id,
+    });
+    expect(second.statusCode).toBe(201);
+    expect(second.json().plan).toMatchObject({ numberLabel: 'AP-0002', itemCount: 2 });
+    expect((await s.pm.browser.get(`${s.base}/action-plan-templates`)).json().data).toHaveLength(1);
+
+    const cancelled = await s.pm.browser.patch(
+      `${s.base}/action-plans/${second.json().plan.id}`,
+      { status: 'cancelled' },
+      { 'if-match': etagOf(second) },
+    );
+    expect(cancelled.json().plan.status).toBe('cancelled');
+    const addToCancelled = await s.pm.browser.post(
+      `${s.base}/action-plans/${second.json().plan.id}/items`,
+      { title: 'Too late' },
+    );
+    expect(addToCancelled.json().code).toBe('action_plan.cancelled');
+  });
+
+  it('links a plan to an observation on the project and refuses one from elsewhere', async () => {
+    const s = await setup();
+    const obs = (
+      await s.pm.browser.post(`${s.base}/observations`, {
+        type: 'quality',
+        description: 'Ramp finish below spec',
+      })
+    ).json();
+    const ok = await s.pm.browser.post(`${s.base}/action-plans`, {
+      title: 'Fix ramp',
+      sourceType: 'observation',
+      sourceId: obs.id,
+      items: [{ title: 'Grind and reseal' }],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().plan).toMatchObject({ sourceType: 'observation', sourceId: obs.id });
+    const bad = await s.pm.browser.post(`${s.base}/action-plans`, {
+      title: 'Nope',
+      sourceType: 'observation',
+      sourceId: encodeId('observation', uuidv7()),
+    });
+    expect(bad.statusCode).toBe(422);
+  });
+});

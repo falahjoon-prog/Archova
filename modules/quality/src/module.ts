@@ -8,6 +8,7 @@ import {
   type SyncCommand,
   type SyncSource,
 } from '@archova/kernel';
+import { createActionPlanService } from './application/action-plans';
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
 import { createObservationService } from './application/observations';
@@ -241,9 +242,10 @@ export function syncPieces(inspections: InspectionService) {
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {
   const inspections = createInspectionService(deps);
   const observations = createObservationService(deps);
+  const actionPlans = createActionPlanService(deps);
   return {
     definition: defineModule({ name: 'quality', permissions: QUALITY_PERMISSIONS }),
-    routes: qualityRoutes(services.database, inspections, observations),
+    routes: qualityRoutes(services.database, inspections, observations, actionPlans),
     api: {
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),

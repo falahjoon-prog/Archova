@@ -360,6 +360,13 @@ export const PROBLEM_CODES = {
   'observation.not_allowed': 403,
   'observation.reason_required': 422,
   'observation.assignee_not_on_project': 422,
+  // quality: action plans
+  'action_plan.not_found': 404,
+  'action_plan.item_not_found': 404,
+  'action_plan_template.not_found': 404,
+  'action_plan.not_allowed': 403,
+  'action_plan.cancelled': 409,
+  'action_plan.assignee_not_on_project': 422,
   // safety: SWMS register
   'swms.not_found': 404,
   'swms.invalid_transition': 409,
