@@ -785,6 +785,14 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const ReviewBudgetWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewBudgetWithNovaBody = z.object({
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.BudgetReviewTurnSchema).max(10).optional(),
+}).strict();
 export const TranscribeSpeechParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2745,6 +2753,10 @@ export const GetBudgetSnapshotParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "snapshotId": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetReviewChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const ListProjectBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -4854,6 +4866,18 @@ export const operations = {
     params: NegotiateQuoteParams,
     query: null,
     body: NegotiateQuoteBody,
+  },
+  reviewBudgetWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewBudgetWithNovaParams,
+    query: null,
+    body: ReviewBudgetWithNovaBody,
   },
   transcribeSpeech: {
     method: 'POST',
@@ -9179,6 +9203,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetBudgetSnapshotParams,
+    query: null,
+    body: null,
+  },
+  getBudgetReviewChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/review-checks',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetReviewChecksParams,
     query: null,
     body: null,
   },

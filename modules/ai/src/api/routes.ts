@@ -21,6 +21,7 @@ import type {
 } from '../application/contract-review';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
+import type { BudgetReviewService } from '../application/budget-review';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
@@ -291,6 +292,7 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  budgetReviews: BudgetReviewService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
   speech: SpeechService,
@@ -649,6 +651,29 @@ export function aiRoutes(
           counterExGst: r.counterExGst,
           counterReason: r.counterReason,
           draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    reviewBudgetWithNova: async (input) => {
+      const r = await budgetReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          points: r.points,
+          options: r.options,
+          draftReason: r.draftReason,
           notes: r.notes,
           history: r.history,
           disclaimer: r.disclaimer,

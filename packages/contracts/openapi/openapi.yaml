@@ -3434,6 +3434,45 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: reviewBudgetWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.budget.read
+      summary: Nova explains the budget checks and suggests what to do about each one.
+      description: |
+        Code finds the problems (`GET .../budget/review-checks`) and works out every amount; Nova explains them,
+        helps the person choose between ways to deal with each (`options`, each pointing at a finding) and, when
+        asked, drafts a reason for an adjustment. Code removes any point or option about a finding that doesn't
+        exist and any dollar figure the checks don't hold (`notes` says what it removed). She is shown cost codes
+        and amounts only: never margin lines, companies, people or notes. The server keeps no conversation; pass
+        `history` from the last answer with the next question. Nothing is saved or changed: every option is for the
+        person to carry out. She is an AI assistant, not an accountant (`disclaimer`). Costs half a Nova credit.
+        Builder staff who can read the budget only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/BudgetReviewTurn' }
+      responses:
+        '200':
+          description: Nova's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetReviewAdvice' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11778,6 +11817,26 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetSnapshot' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/review-checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetReviewChecks
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Lines committed or spent past their budget, close to it, unbudgeted or changed a lot (found by code, not a model).
+      description: |
+        The checks Nova explains on the budget page. Margin lines are never included, so the totals here leave
+        margin out too.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16384,6 +16443,51 @@ components:
       properties:
         role: { type: string, enum: [estimator, nova] }
         text: { type: string, minLength: 1, maxLength: 1500 }
+    BudgetReviewTurn:
+      type: object
+      additionalProperties: false
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    BudgetReviewAdvice:
+      type: object
+      required: [runId, reply, points, options, draftReason, notes, history, disclaimer]
+      properties:
+        runId: { type: string }
+        reply: { type: string }
+        points:
+          type: array
+          items:
+            type: object
+            required: [findingId, text]
+            properties:
+              findingId: { type: [string, 'null'] }
+              text: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            required: [findingId, kind, text]
+            properties:
+              findingId: { type: [string, 'null'] }
+              kind:
+                type: string
+                enum:
+                  [
+                    adjust_budget,
+                    reallocate,
+                    review_commitment,
+                    check_costs,
+                    raise_variation,
+                    get_forecast,
+                    no_action,
+                  ]
+              text: { type: string }
+        draftReason: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/BudgetReviewTurn' } }
+        disclaimer: { type: string }
     QuoteNegotiationAdvice:
       type: object
       required:
@@ -21482,6 +21586,38 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/BudgetAdjustment' }
+    BudgetFinding:
+      type: object
+      required: [id, kind, severity, lineId, code, codeDescription, summary, figures]
+      properties:
+        id: { type: string }
+        kind:
+          { type: string, enum: [over_committed, over_spent, unbudgeted, near_limit, large_change] }
+        severity: { type: string, enum: [high, medium] }
+        lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        summary: { type: string }
+        figures:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetReviewChecks:
+      type: object
+      required: [hasBudget, status, lineCount, totals, findings]
+      properties:
+        hasBudget: { type: boolean }
+        status: { type: string, enum: [draft, locked] }
+        lineCount: { type: integer }
+        totals:
+          type: object
+          required: [revised, committed, actual]
+          properties:
+            revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            committed: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            actual: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetFinding' }
     ProjectBudgetAdjustment:
       type: object
       required: [id, amount, reason, createdAt, lineId, code, codeDescription]

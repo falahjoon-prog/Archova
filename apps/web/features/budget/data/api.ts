@@ -9,6 +9,10 @@ export type Budget = S['Budget'];
 export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
 export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
+export type BudgetReviewChecks = S['BudgetReviewChecks'];
+export type BudgetFinding = S['BudgetFinding'];
+export type BudgetReviewAdvice = S['BudgetReviewAdvice'];
+export type BudgetReviewTurn = S['BudgetReviewTurn'];
 export type CostCode = S['CostCode'];
 export type AddBudgetLine = S['AddBudgetLineRequest'];
 export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
@@ -71,6 +75,19 @@ export function createBudgetApi(orgId: string) {
         await api.DELETE(`${P}/budget/lines/{lineId}`, {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
         }),
+      );
+    },
+    async reviewChecks(projectId: string): Promise<BudgetReviewChecks> {
+      return unwrap(
+        await api.GET(`${P}/budget/review-checks`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async askNova(
+      projectId: string,
+      body: { question: string; history: BudgetReviewTurn[] },
+    ): Promise<BudgetReviewAdvice> {
+      return unwrap(
+        await api.POST(`${P}/ai/budget-reviews`, { params: { path: { orgId, projectId } }, body }),
       );
     },
     async projectAdjustments(projectId: string): Promise<ProjectBudgetAdjustment[]> {
