@@ -565,6 +565,10 @@ export const ResendTransmittalLinkParams = z.object({
   "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
   "recipientId": z.string().regex(new RegExp("^trr_[0-9A-Za-z]{26}$")),
 });
+export const GetDocumentRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const OpenTransmittalAccessBody = s.OpenInductionAccessRequestSchema;
 export const DownloadTransmittalAccessItemBody = s.DownloadTransmittalItemRequestSchema;
 export const GetAiSettingsParams = z.object({
@@ -4583,6 +4587,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ResendTransmittalLinkParams,
+    query: null,
+    body: null,
+  },
+  getDocumentRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/document-register',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: null,
+    params: GetDocumentRegisterParams,
     query: null,
     body: null,
   },

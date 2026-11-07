@@ -2390,6 +2390,26 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TransmittalRecipient' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/document-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDocumentRegister
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.manage
+      summary: |
+        The document control register: every drawing sheet and document with its current revision, who was sent
+        which revision, and acknowledgement status. `flags` are Nova's rule-based findings (outstanding
+        acknowledgements, superseded revisions still in use, distribution gaps); no model is called.
+      responses:
+        '200':
+          description: One row per sheet or document, in sheet/document number order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentRegister' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/transmittal-access:
     post:
       operationId: openTransmittalAccess
@@ -18571,6 +18591,79 @@ components:
           items: { $ref: '#/components/schemas/MarkupShape' }
         locationConfirmed:
           { type: boolean, description: "true confirms a carried-forward markup's location" }
+    RegisterRecipientStatus:
+      type: string
+      enum: [acknowledged, cc, pending, outstanding, overdue, stale]
+      description: |
+        `stale`: last sent an earlier revision than the current one. `cc` recipients are not asked to acknowledge.
+    RegisterFlagKind:
+      type: string
+      enum: [ack_overdue, ack_outstanding, superseded_in_use, distribution_gap, not_distributed]
+    RegisterFlag:
+      type: object
+      required: [kind, severity, message, count]
+      properties:
+        kind: { $ref: '#/components/schemas/RegisterFlagKind' }
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        count: { type: integer, description: 'Recipients affected' }
+    RegisterRecipient:
+      type: object
+      required:
+        [
+          email,
+          name,
+          companyId,
+          role,
+          status,
+          rev,
+          revisionId,
+          transmittalId,
+          transmittalNumber,
+          sentAt,
+          openedAt,
+          downloadedAt,
+          acknowledgedAt,
+        ]
+      properties:
+        email: { type: string }
+        name: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+        role: { type: string, enum: [to, cc] }
+        status: { $ref: '#/components/schemas/RegisterRecipientStatus' }
+        rev: { type: string, description: 'The revision they were last sent' }
+        revisionId: { type: string }
+        transmittalId: { type: string }
+        transmittalNumber: { type: integer }
+        sentAt: { type: string, format: date-time }
+        openedAt: { type: [string, 'null'], format: date-time }
+        downloadedAt: { type: [string, 'null'], format: date-time }
+        acknowledgedAt: { type: [string, 'null'], format: date-time }
+    DocumentRegisterRow:
+      type: object
+      required:
+        [kind, id, number, title, discipline, currentRevisionId, currentRev, recipients, flags]
+      properties:
+        kind: { type: string, enum: [drawing, document] }
+        id: { type: string, description: 'Sheet or document id' }
+        number: { type: [string, 'null'] }
+        title: { type: string }
+        discipline: { type: [string, 'null'] }
+        currentRevisionId: { type: [string, 'null'] }
+        currentRev: { type: [string, 'null'] }
+        recipients:
+          type: array
+          items: { $ref: '#/components/schemas/RegisterRecipient' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/RegisterFlag' }
+    DocumentRegister:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentRegisterRow' }
     TransmittalPurpose:
       type: string
       enum: [for_information, for_review, for_construction, for_tender, other]
