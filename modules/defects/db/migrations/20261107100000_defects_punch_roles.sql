@@ -11,6 +11,3 @@ alter table defects.defects
 alter table defects.defects no force row level security;
 update defects.defects set assignee_user_ids = array[assignee_user_id] where assignee_user_id is not null;
 alter table defects.defects force row level security;
-
-create index defects_final_approver on defects.defects (org_id, final_approver_user_id)
-  where final_approver_user_id is not null and deleted_at is null;
