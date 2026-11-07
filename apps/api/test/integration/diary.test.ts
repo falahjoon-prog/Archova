@@ -402,8 +402,11 @@ describe('site diary (product/05)', () => {
     });
     const yesterday = addDays(today(), -1);
     const older = addDays(today(), -3);
-    for (const date of [today(), yesterday, older])
-      await s.sm.browser.post(`${eq}/${created.json().id}/logs`, { date, hours: 4 });
+    expect(created.statusCode).toBe(201);
+    for (const date of [today(), yesterday, older]) {
+      const log = await s.sm.browser.post(`${eq}/${created.json().id}/logs`, { date, hours: '4' });
+      expect(log.statusCode).toBe(201);
+    }
     const range = `from=${addDays(today(), -7)}&to=${today()}`;
 
     // Equipment worked on two past days and nobody filed a log; today isn't over, so it isn't listed.
