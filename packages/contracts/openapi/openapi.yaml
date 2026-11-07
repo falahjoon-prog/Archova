@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: conversations
   - name: bim
   - name: defects
   - name: financials
@@ -1388,6 +1389,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DownloadLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectPhotos
+      tags: [files]
+      x-module: files
+      summary: The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+      description: Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+      parameters:
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 30, default: 12 },
+          }
+      responses:
+        '200':
+          description: Recent photos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProjectPhoto' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/folders:
     parameters:
@@ -3403,6 +3433,45 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: reviewBudgetWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.budget.read
+      summary: Nova explains the budget checks and suggests what to do about each one.
+      description: |
+        Code finds the problems (`GET .../budget/review-checks`) and works out every amount; Nova explains them,
+        helps the person choose between ways to deal with each (`options`, each pointing at a finding) and, when
+        asked, drafts a reason for an adjustment. Code removes any point or option about a finding that doesn't
+        exist and any dollar figure the checks don't hold (`notes` says what it removed). She is shown cost codes
+        and amounts only: never margin lines, companies, people or notes. The server keeps no conversation; pass
+        `history` from the last answer with the next question. Nothing is saved or changed: every option is for the
+        person to carry out. She is an AI assistant, not an accountant (`disclaimer`). Costs half a Nova credit.
+        Builder staff who can read the budget only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/BudgetReviewTurn' }
+      responses:
+        '200':
+          description: Nova's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetReviewAdvice' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions:
     parameters:
@@ -6454,6 +6523,90 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.read
+      summary: The project team's conversations, most recent activity first, each with its latest message.
+      description: Project team only; outside users (subcontractors, owners) get 403.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createConversation
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.create
+      summary: Start a conversation with a subject and a first message.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateConversationRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.read
+      summary: One conversation with its messages, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ConversationId'
+    post:
+      operationId: postConversationMessage
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.messages.post
+      summary: Add a message to a conversation.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostConversationMessageRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -11519,6 +11672,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetLine' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/import:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: importBudgetLines
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Fill a draft budget from spreadsheet rows, all or nothing. New cost codes are created from the row's description.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportBudgetLinesRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportBudgetLinesResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11573,6 +11750,67 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetVsForecast' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getLaborProductivity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Timesheet hours against the production plan for each cost code, with rows flagged where the crew is slower than planned.
+      description: |
+        One row per cost code that has a production plan or booked hours. Timesheet hours come from submitted, approved
+        or exported timesheets (break taken off); hours with no cost code are reported as `unallocatedHours`. Earned
+        hours are percent complete times budgeted hours. A row is flagged when the actual production rate is below the
+        budgeted rate. `divisionId` keeps one top-level code and everything under it; `subJobId` keeps a code and its
+        children. Staff only.
+      parameters:
+        - {
+            name: divisionId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: subJobId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaborProductivity' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    put:
+      operationId: setCostCodeProduction
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Set the production plan for a cost code, or update the quantity in place to date.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostCodeProduction' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCodeProductionSaved' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11591,6 +11829,98 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBudgetSnapshots
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Budget snapshots, newest first. Margin lines are left out without the margin permission.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshotList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Freeze the budget's lines and amounts as they stand now. Snapshots are never changed or deleted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBudgetSnapshotRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/snapshots/{snapshotId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetSnapshotId'
+    get:
+      operationId: getBudgetSnapshot
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: One budget snapshot with its frozen lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/review-checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetReviewChecks
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Lines committed or spent past their budget, close to it, unbudgeted or changed a lot (found by code, not a model).
+      description: |
+        The checks Nova explains on the budget page. Margin lines are never included, so the totals here leave
+        margin out too.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectBudgetAdjustments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Every budget revision on the project, newest first, for the Budget Modifications report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectBudgetAdjustmentList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
     parameters:
@@ -12962,6 +13292,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -12982,6 +13317,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    BudgetSnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
     BudgetLineId:
       name: lineId
       in: path
@@ -13361,7 +13701,7 @@ components:
         overdue: { type: integer }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, variance, overBudgetCodes]
+      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -13375,6 +13715,11 @@ components:
         hasBudget: { type: boolean }
         revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        spent:
+          {
+            allOf: [{ $ref: '#/components/schemas/FinancialsSignedMoney' }],
+            description: 'Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures.',
+          }
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
@@ -13386,6 +13731,8 @@ components:
           name,
           number,
           status,
+          phase,
+          siteLocation,
           rfis,
           defects,
           submittals,
@@ -13401,6 +13748,8 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { type: string }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
@@ -15159,6 +15508,10 @@ components:
     ProjectStatus:
       type: string
       enum: [tender, active, on_hold, closed, archived]
+    ProjectPhase:
+      type: string
+      enum: [planning, design, tender, pre_construction, construction, handover, defects_liability]
+      description: Where the project is in its life. Separate from `status`, which says whether it is live.
     Address:
       type: object
       additionalProperties: false
@@ -15222,6 +15575,7 @@ components:
         name: { type: string }
         number: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { type: [string, 'null'], enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null] }
         timezone:
           { type: string, description: 'IANA time zone; local dates and deadlines use it (X32)' }
@@ -15407,6 +15761,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: string, maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { $ref: '#/components/schemas/ProjectPhase' }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }
@@ -15422,6 +15777,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 200 }
         number: { type: [string, 'null'], maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
+        phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }
@@ -15626,7 +15982,10 @@ components:
         title: { type: string }
         body: { type: string }
         entityType:
-          { type: string, enum: [meeting, tender_package, contract, incident, compliance_document] }
+          {
+            type: string,
+            enum: [meeting, tender_package, contract, incident, compliance_document, conversation],
+          }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }
@@ -16192,6 +16551,51 @@ components:
       properties:
         role: { type: string, enum: [estimator, nova] }
         text: { type: string, minLength: 1, maxLength: 1500 }
+    BudgetReviewTurn:
+      type: object
+      additionalProperties: false
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    BudgetReviewAdvice:
+      type: object
+      required: [runId, reply, points, options, draftReason, notes, history, disclaimer]
+      properties:
+        runId: { type: string }
+        reply: { type: string }
+        points:
+          type: array
+          items:
+            type: object
+            required: [findingId, text]
+            properties:
+              findingId: { type: [string, 'null'] }
+              text: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            required: [findingId, kind, text]
+            properties:
+              findingId: { type: [string, 'null'] }
+              kind:
+                type: string
+                enum:
+                  [
+                    adjust_budget,
+                    reallocate,
+                    review_commitment,
+                    check_costs,
+                    raise_variation,
+                    get_forecast,
+                    no_action,
+                  ]
+              text: { type: string }
+        draftReason: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/BudgetReviewTurn' } }
+        disclaimer: { type: string }
     QuoteNegotiationAdvice:
       type: object
       required:
@@ -17115,6 +17519,13 @@ components:
         status: { type: string, enum: [scanning, ready, infected, failed] }
         capture: { oneOf: [{ $ref: '#/components/schemas/Capture' }, { type: 'null' }] }
         createdAt: { type: string, format: date-time }
+    ProjectPhoto:
+      type: object
+      required: [file, url, expiresAt]
+      properties:
+        file: { $ref: '#/components/schemas/FileObject' }
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
     DownloadLink:
       type: object
       required: [url, expiresAt]
@@ -18630,6 +19041,86 @@ components:
         responses:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    ConversationMessage:
+      type: object
+      required: [id, authorId, authorName, body, mentionedUserIds, createdAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        authorName: { type: string }
+        body: { type: string }
+        mentionedUserIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+    ConversationSummary:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          subject,
+          messageCount,
+          createdById,
+          createdByName,
+          lastMessage,
+          lastMessageAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        subject: { type: string }
+        messageCount: { type: integer }
+        createdById: { type: string }
+        createdByName: { type: string }
+        lastMessage: { $ref: '#/components/schemas/ConversationMessage' }
+        lastMessageAt: { type: string, format: date-time }
+    ConversationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationSummary' }
+        nextCursor: { type: [string, 'null'] }
+    ConversationDetail:
+      type: object
+      required:
+        [id, projectId, subject, messageCount, createdById, createdByName, createdAt, messages]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        subject: { type: string }
+        messageCount: { type: integer }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationMessage' }
+    CreateConversationRequest:
+      type: object
+      additionalProperties: false
+      required: [subject, body]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        mentions:
+          type: array
+          maxItems: 20
+          description: Project team members to notify. Each must be an active, non-external member of the project.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    PostConversationMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        mentions:
+          type: array
+          maxItems: 20
+          description: Project team members to notify. Each must be an active, non-external member of the project.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
@@ -20946,6 +21437,32 @@ components:
         description: { type: string, maxLength: 300 }
         original: { $ref: '#/components/schemas/FinancialsMoney' }
         isMargin: { type: boolean }
+    ImportBudgetLinesRequest:
+      type: object
+      additionalProperties: false
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [code, original]
+            properties:
+              code: { type: string, minLength: 1, maxLength: 30 }
+              codeDescription: { type: string, maxLength: 200 }
+              description: { type: string, maxLength: 300 }
+              original: { type: string, maxLength: 20 }
+              isMargin: { type: boolean }
+    ImportBudgetLinesResult:
+      allOf:
+        - $ref: '#/components/schemas/Budget'
+        - type: object
+          required: [imported]
+          properties:
+            imported: { type: integer }
     UpdateBudgetLineRequest:
       type: object
       additionalProperties: false
@@ -21005,6 +21522,97 @@ components:
           items: { $ref: '#/components/schemas/BudgetVsForecastRow' }
         unallocated: { $ref: '#/components/schemas/BudgetVsForecastRow' }
         totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+    CostCodeProduction:
+      type: object
+      required: [uom, budgetedHours, budgetedQuantity, quantityComplete]
+      properties:
+        uom:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 20,
+            description: 'Unit of measure, e.g. m2, lm, each.',
+          }
+        budgetedHours: { type: number, minimum: 0, maximum: 9999999999 }
+        budgetedQuantity: { type: number, minimum: 0, maximum: 999999999999 }
+        quantityComplete: { type: number, minimum: 0, maximum: 999999999999 }
+    CostCodeProductionSaved:
+      allOf:
+        - $ref: '#/components/schemas/CostCodeProduction'
+        - type: object
+          required: [costCodeId]
+          properties:
+            costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    LaborProductivityRow:
+      type: object
+      required:
+        - costCodeId
+        - code
+        - description
+        - divisionId
+        - parentId
+        - uom
+        - budgetedHours
+        - timesheetHours
+        - pctHoursUsed
+        - pctComplete
+        - earnedHours
+        - budgetedQuantity
+        - quantityComplete
+        - budgetedRate
+        - actualRate
+        - flagged
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        divisionId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        uom: { type: [string, 'null'] }
+        budgetedHours: { type: [number, 'null'] }
+        timesheetHours: { type: number }
+        pctHoursUsed: { type: [number, 'null'], description: 'Fraction, 1 = 100%.' }
+        pctComplete: { type: [number, 'null'], description: 'Fraction, 1 = 100%.' }
+        earnedHours: { type: [number, 'null'] }
+        budgetedQuantity: { type: [number, 'null'] }
+        quantityComplete: { type: [number, 'null'] }
+        budgetedRate: { type: [number, 'null'], description: Units per hour the plan allows. }
+        actualRate:
+          {
+            type: [number, 'null'],
+            description: Units per hour achieved; null until hours are booked.,
+          }
+        flagged: { type: boolean }
+    LaborProductivity:
+      type: object
+      required: [rows, totals, unallocatedHours, codes]
+      properties:
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/LaborProductivityRow' }
+        totals:
+          type: object
+          required:
+            [budgetedHours, timesheetHours, earnedHours, pctHoursUsed, efficiency, flaggedRows]
+          properties:
+            budgetedHours: { type: number }
+            timesheetHours: { type: number }
+            earnedHours: { type: number }
+            pctHoursUsed: { type: [number, 'null'] }
+            efficiency: { type: [number, 'null'], description: Earned over booked hours. }
+            flaggedRows: { type: integer }
+        unallocatedHours: { type: number, description: Timesheet hours with no cost code. }
+        codes:
+          type: array
+          description: Every cost code on the project, for the division and sub-job filters.
+          items:
+            type: object
+            required: [id, code, description, parentId]
+            properties:
+              id: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              description: { type: string }
+              parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     BudgetAdjustment:
       type: object
       required: [id, amount, reason, createdAt]
@@ -21018,6 +21626,80 @@ components:
           }
         reason: { type: string }
         createdAt: { type: string, format: date-time }
+    BudgetSnapshotLine:
+      type: object
+      required:
+        [
+          costCodeId,
+          code,
+          codeDescription,
+          description,
+          original,
+          approvedChanges,
+          revised,
+          isMargin,
+        ]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        description: { type: string }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        isMargin: { type: boolean }
+    BudgetSnapshot:
+      type: object
+      required: [id, name, note, takenAt, lines, totals]
+      properties:
+        id: { type: string, pattern: '^bsn_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        note: { type: [string, 'null'] }
+        takenAt: { type: string, format: date-time }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshotLine' }
+        totals:
+          type: object
+          required: [original, approvedChanges, revised]
+          properties:
+            original: { $ref: '#/components/schemas/FinancialsMoney' }
+            approvedChanges:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+            revised:
+              {
+                type: string,
+                pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+                description: Signed decimal AUD ex GST.,
+              }
+    BudgetSnapshotList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetSnapshot' }
+    CreateBudgetSnapshotRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        note: { type: string, maxLength: 1000 }
     BudgetAdjustmentList:
       type: object
       required: [data]
@@ -21025,6 +21707,56 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/BudgetAdjustment' }
+    BudgetFinding:
+      type: object
+      required: [id, kind, severity, lineId, code, codeDescription, summary, figures]
+      properties:
+        id: { type: string }
+        kind:
+          { type: string, enum: [over_committed, over_spent, unbudgeted, near_limit, large_change] }
+        severity: { type: string, enum: [high, medium] }
+        lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        summary: { type: string }
+        figures:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetReviewChecks:
+      type: object
+      required: [hasBudget, status, lineCount, totals, findings]
+      properties:
+        hasBudget: { type: boolean }
+        status: { type: string, enum: [draft, locked] }
+        lineCount: { type: integer }
+        totals:
+          type: object
+          required: [revised, committed, actual]
+          properties:
+            revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            committed: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            actual: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetFinding' }
+    ProjectBudgetAdjustment:
+      type: object
+      required: [id, amount, reason, createdAt, lineId, code, codeDescription]
+      properties:
+        id: { type: string, pattern: '^bad_[0-9A-Za-z]{26}$' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+        lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+    ProjectBudgetAdjustmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectBudgetAdjustment' }
     FinancialsSignedMoney:
       type: string
       pattern: '^-?\d{1,16}(\.\d{1,2})?$'

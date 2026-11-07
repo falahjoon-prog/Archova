@@ -62,6 +62,7 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/correspondence/new`,
@@ -150,6 +151,7 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   offline: () => '/offline',
+  deleteAccount: () => '/delete-account',
   bidBoard: () => '/bid-board',
   tenders: (projectId: string) => `/project/${enc(projectId)}/tenders`,
   tender: (projectId: string, packageId: string) =>

@@ -8,6 +8,7 @@ export * from './induction-ask/prompt';
 export * from './translation/prompt';
 export * from './qa-rewrite/prompt';
 export * from './qa-rerank/prompt';
+export * from './budget-review/prompt';
 export * from './diary-summary/prompt';
 export * from './diary-weekly/prompt';
 export * from './insights-discuss/prompt';

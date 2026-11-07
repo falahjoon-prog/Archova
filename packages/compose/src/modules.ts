@@ -71,6 +71,7 @@ import {
   CORRESPONDENCE_PERMISSIONS,
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
+import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -80,6 +81,7 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
+  CONVERSATIONS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -267,6 +269,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  const conversations = createConversationsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -307,6 +314,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
+    // workforce is built later; the report only calls this at request time.
+    timesheetMinutes: (scope, projectId) =>
+      workforce.api.timesheetMinutesByCostCode(scope, projectId),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -393,6 +403,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     projectInsights: (scope, projectId) => reportingApi!.projectInsights(scope, projectId),
     meetingForMinutes: (scope, projectId, meetingId) =>
@@ -513,6 +524,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
@@ -552,6 +564,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,

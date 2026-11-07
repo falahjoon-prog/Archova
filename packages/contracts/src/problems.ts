@@ -200,6 +200,8 @@ export const PROBLEM_CODES = {
   'bim.model_not_found': 404,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
+  // conversations
+  'conversation.not_found': 404,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -335,6 +337,7 @@ export const PROBLEM_CODES = {
   'financials.budget.locked': 409,
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
+  'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,
   'financials.commitment.not_found': 404,

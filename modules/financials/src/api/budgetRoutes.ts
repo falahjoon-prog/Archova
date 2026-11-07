@@ -11,11 +11,12 @@ import type {
   BudgetAdjustmentRow,
   BudgetLineView,
   BudgetRow,
+  BudgetSnapshotRow,
   BudgetService,
   CostCodeRow,
 } from '../application/budget';
 import { fromCents, isMoney } from '../domain/money';
-import { isSignedMoney, revisedOf, totalsOf } from '../domain/budget';
+import { isSignedMoney, revisedOf, snapshotTotals, totalsOf } from '../domain/budget';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -72,6 +73,24 @@ const toAdjustmentDto = (a: BudgetAdjustmentRow) => ({
   amount: a.amount,
   reason: a.reason,
   createdAt: a.createdAt.toISOString(),
+});
+
+const toSnapshotDto = (r: BudgetSnapshotRow) => ({
+  id: encodeId('budgetSnapshot', r.id),
+  name: r.name,
+  note: r.note,
+  takenAt: r.takenAt.toISOString(),
+  lines: r.lines.map((l) => ({
+    costCodeId: encodeId('costCode', l.costCodeId),
+    code: l.code,
+    codeDescription: l.codeDescription,
+    description: l.description,
+    original: l.original,
+    approvedChanges: l.approvedChanges,
+    revised: l.revised,
+    isMargin: l.isMargin,
+  })),
+  totals: snapshotTotals(r.lines),
 });
 
 export function budgetRoutes(database: Database, budget: BudgetService) {
@@ -165,6 +184,22 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
       await tx(input, (s) => budget.deleteLine(s, project(input.params), line(input.params)));
       return { status: 204 };
     },
+    importBudgetLines: async (input) => {
+      const r = await tx(input, (s) =>
+        budget.importLines(
+          s,
+          project(input.params),
+          input.body.rows.map((x) => ({
+            code: x.code,
+            ...(x.codeDescription ? { codeDescription: x.codeDescription } : {}),
+            ...(x.description ? { description: x.description } : {}),
+            original: x.original,
+            ...(x.isMargin ? { isMargin: true } : {}),
+          })),
+        ),
+      );
+      return { status: 201, body: { imported: r.imported, ...toBudgetDto(r) } };
+    },
     lockBudget: async (input) => ({
       status: 200,
       body: toBudgetDto(await tx(input, (s) => budget.lockBudget(s, project(input.params)))),
@@ -214,6 +249,60 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
         },
       };
     },
+    listBudgetSnapshots: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => budget.listSnapshots(s, project(input.params)))).map(
+          toSnapshotDto,
+        ),
+      },
+    }),
+    createBudgetSnapshot: async (input) => ({
+      status: 201,
+      body: toSnapshotDto(
+        await tx(input, (s) =>
+          budget.createSnapshot(s, project(input.params), {
+            name: input.body.name,
+            ...(input.body.note ? { note: input.body.note } : {}),
+          }),
+        ),
+      ),
+    }),
+    getBudgetSnapshot: async (input) => ({
+      status: 200,
+      body: toSnapshotDto(
+        await read(input, (s) =>
+          budget.getSnapshot(
+            s,
+            project(input.params),
+            ref('budgetSnapshot', input.params.snapshotId, 'snapshotId'),
+          ),
+        ),
+      ),
+    }),
+    getBudgetReviewChecks: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.reviewFacts(s, project(input.params));
+        return {
+          ...r,
+          findings: r.findings.map((f) => ({ ...f, lineId: encodeId('budgetLine', f.lineId) })),
+        };
+      }),
+    }),
+    listProjectBudgetAdjustments: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) => budget.listProjectAdjustments(s, project(input.params)))
+        ).map((r) => ({
+          ...toAdjustmentDto(r.adjustment),
+          lineId: encodeId('budgetLine', r.adjustment.budgetLineId),
+          code: r.code,
+          codeDescription: r.codeDescription,
+        })),
+      },
+    }),
     listBudgetAdjustments: async (input) => ({
       status: 200,
       body: {

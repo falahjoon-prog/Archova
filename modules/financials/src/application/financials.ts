@@ -74,6 +74,11 @@ export interface FinancialsDeps {
   now?: () => Date;
   /** Signs each sealed record. Without one, records are sealed by hash only (marked unsigned). */
   signer?: EvidenceSigner;
+  /** Worked minutes per cost code (workforce timesheets), for labor productivity. Read lazily at request time. */
+  timesheetMinutes: (
+    scope: TenantScope,
+    projectId: string,
+  ) => Promise<{ costCodeId: string | null; minutes: number }[]>;
 }
 
 /** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */

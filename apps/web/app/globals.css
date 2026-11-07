@@ -760,6 +760,56 @@ main:focus {
 .project-nav__label {
   flex: 1;
 }
+.project-nav__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.project-nav__row > .project-nav__link {
+  flex: 1;
+  min-width: 0;
+}
+/* The star sits at the row's end; it shows on hover or focus, and stays visible once a tool is starred. */
+.project-nav__add,
+.project-nav__star {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+.project-nav__add {
+  inset-inline-end: 32px;
+  text-decoration: none;
+}
+.project-nav__row:hover .project-nav__add,
+.project-nav__row:hover .project-nav__star,
+.project-nav__add:focus-visible,
+.project-nav__star:focus-visible,
+.project-nav__star[aria-pressed='true'] {
+  opacity: 1;
+}
+.project-nav__star[aria-pressed='true'] {
+  color: var(--c-warning-text, var(--c-action-primary));
+}
+.project-nav__star[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+@media (hover: none) {
+  .project-nav__add,
+  .project-nav__star {
+    opacity: 1;
+  }
+}
 /* Collapsible groups (sidebar and project page tool grid) */
 .cgroup__header {
   display: flex;
@@ -874,7 +924,9 @@ main:focus {
     flex-direction: row;
   }
   .project-nav__group-label,
-  .project-nav .cgroup__header {
+  .project-nav .cgroup__header,
+  .project-nav__add,
+  .project-nav__star {
     display: none;
   }
   /* The horizontal strip shows every tool; collapsing only applies to the stacked sidebar. */
@@ -932,6 +984,9 @@ main:focus {
 }
 .row--muted > * {
   color: var(--c-text-secondary);
+}
+.row--flagged > * {
+  background: color-mix(in srgb, var(--c-status-danger) 8%, var(--c-surface));
 }
 .file-input {
   font: inherit;
@@ -2021,6 +2076,44 @@ fieldset.worker-card > legend {
 .link-item > span {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* Project home photos */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .photo-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.photo-grid__tile {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.photo-grid__tile img,
+.photo-grid__full {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-grid__full {
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
 }
 
 /* Key dates and delay register */
@@ -3280,4 +3373,109 @@ fieldset.worker-card > legend {
 .insights__form .ac-field,
 .insights__form textarea {
   width: 100%;
+}
+
+/* Project home: conversations card */
+.conversations__list,
+.conversations__thread {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.conversations__list > li + li,
+.conversations__thread > li + li {
+  border-top: 1px solid var(--c-border-divider);
+}
+.conversations__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.conversations__item:hover {
+  background: var(--c-surface-sunken, var(--c-bg));
+}
+.conversations__item:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.conversations__message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.conversations__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--c-action-primary);
+  color: var(--c-surface);
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+.conversations__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.conversations__who {
+  font-weight: 600;
+}
+.conversations__subject {
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.conversations__preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+.conversations__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Portfolio charts */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+.chart-grid > * {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .chart-grid__wide {
+    grid-column: 1 / -1;
+  }
+}
+.conversations__all {
+  margin: var(--space-3) 0 0;
+}
+.conversations__list--page {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
 }

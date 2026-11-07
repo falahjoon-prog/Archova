@@ -52,6 +52,9 @@ beforeAll(async () => {
       quoteForNegotiation: async () => {
         throw new Error('not used');
       },
+      budgetReviewFacts: async () => {
+        throw new Error('not used');
+      },
       openRfisOnDrawing: async () => [],
       provider: t.ai,
     },

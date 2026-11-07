@@ -42,7 +42,10 @@ export async function createPkce(randomBytes: (n: number) => Uint8Array, sha256:
   return { verifier, challenge, method: 'S256' as const };
 }
 
-export function authorizeUrl(appOrigin: string, p: { challenge: string; state: string }) {
+export function authorizeUrl(
+  appOrigin: string,
+  p: { challenge: string; state: string; prompt?: 'login' },
+) {
   const qs = new URLSearchParams({
     response_type: 'code',
     client_id: MOBILE_CLIENT_ID,
@@ -50,6 +53,7 @@ export function authorizeUrl(appOrigin: string, p: { challenge: string; state: s
     code_challenge: p.challenge,
     code_challenge_method: 'S256',
     state: p.state,
+    ...(p.prompt ? { prompt: p.prompt } : {}),
   });
   return `${appOrigin}/v1/oauth/authorize?${qs.toString()}`;
 }

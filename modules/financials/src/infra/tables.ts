@@ -331,6 +331,29 @@ export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   createdBy: uuid('created_by'),
 });
 
+export interface SnapshotLine {
+  costCodeId: string;
+  code: string;
+  codeDescription: string;
+  description: string;
+  original: string;
+  approvedChanges: string;
+  revised: string;
+  isMargin: boolean;
+}
+
+export const budgetSnapshots = financialsSchema.table('budget_snapshots', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetId: uuid('budget_id').notNull(),
+  name: text('name').notNull(),
+  note: text('note'),
+  lines: jsonb('lines').$type<SnapshotLine[]>().notNull(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  takenBy: uuid('taken_by'),
+});
+
 export const forecastAdjustments = financialsSchema.table('forecast_adjustments', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -473,4 +496,19 @@ export const retentionReleases = financialsSchema.table('retention_releases', {
   note: text('note'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   recordedBy: uuid('recorded_by'),
+});
+
+export const costCodeProduction = financialsSchema.table('cost_code_production', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  uom: text('uom').notNull(),
+  budgetedHours: numeric('budgeted_hours', { precision: 12, scale: 2 }).notNull(),
+  budgetedQuantity: numeric('budgeted_quantity', { precision: 14, scale: 2 }).notNull(),
+  quantityComplete: numeric('quantity_complete', { precision: 14, scale: 2 })
+    .notNull()
+    .default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
 });
