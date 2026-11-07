@@ -6393,6 +6393,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * My digital Safety ID badge for this project.
+         * @description The caller's own badge: name, company, photo (a short-lived link), emergency contact, QR code value, the
+         *     white card and licences they have recorded (last four characters only, never "verified"), and the site
+         *     inductions they have completed on this project. Nobody else's record is reachable from this call.
+         */
+        get: operations["getMySafetyBadge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear my emergency contact. */
+        put: operations["setMyEmergencyContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or clear my badge photo.
+         * @description The file must be one you uploaded and that has passed scanning. `fileId: null` removes the photo.
+         */
+        put: operations["setMyBadgePhoto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out": {
         parameters: {
             query?: never;
@@ -16285,6 +16353,50 @@ export interface components {
             /** @enum {string} */
             status: "active" | "inactive";
             version: number;
+        };
+        EmergencyContact: {
+            name: string;
+            relationship: string | null;
+            phone: string;
+        };
+        SetEmergencyContactRequest: {
+            /** @description The person to call in an emergency, or null to clear it. */
+            contact: {
+                name: string;
+                relationship?: string | null;
+                phone: string;
+            } | null;
+        };
+        SetBadgePhotoRequest: {
+            /** Format: uuid */
+            fileId: string | null;
+        };
+        SafetyBadge: {
+            workerId: string;
+            fullName: string;
+            companyName: string | null;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            /** @description The text the badge QR encodes. It identifies the badge only; reading anything behind it needs a sign-in. */
+            qrValue: string;
+            /** @description Short-lived link; fetch a new badge when it expires. */
+            photoUrl: string | null;
+            emergencyContact: components["schemas"]["EmergencyContact"] | null;
+            credentials: {
+                kind: string;
+                numberLast4: string;
+                /** Format: date */
+                expiresOn: string | null;
+                /** @enum {string} */
+                status: "recorded" | "sighted";
+            }[];
+            inductions: {
+                title: string;
+                /** Format: date-time */
+                completedAt: string;
+                /** Format: date */
+                expiresOn: string | null;
+            }[];
         };
         WorkerList: {
             data: components["schemas"]["Worker"][];
@@ -28309,6 +28421,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMySafetyBadge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEmergencyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyBadgePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBadgePhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
                 };
             };
             default: components["responses"]["Problem"];
