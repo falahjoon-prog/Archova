@@ -1,5 +1,6 @@
 // Public interface of @archova/mod-files.
-import { defineModule, type KernelServices } from '@archova/kernel';
+import { decodeId } from '@archova/domain';
+import { AppError, defineModule, type KernelServices, type SyncCommand } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { createFilesService } from './application/files-service';
 import { filesRoutes } from './api/routes';
@@ -46,6 +47,36 @@ export function createFilesModule(
   },
 ) {
   const service = createFilesService({ ...deps, logger: services.logger });
+  const invalid = (path: string) =>
+    new AppError('validation_failed', 'That change is not valid.', [
+      { path, message: 'Expected an id' },
+    ]);
+  /**
+   * `photos.create`: a plain site photo (not a defect's) after its file has uploaded. The phone holds it until it has
+   * the file id. The file itself is the record, so this checks it and completes its capture details (idempotent).
+   */
+  const createPhotoCommand: SyncCommand = {
+    name: 'photos.create',
+    module: 'photos',
+    async run(scope, m) {
+      const projectId =
+        typeof m.payload.projectId === 'string' ? decodeId('project', m.payload.projectId) : null;
+      if (!projectId) throw invalid('payload/projectId');
+      const fileId =
+        typeof m.payload.fileId === 'string' ? decodeId('file', m.payload.fileId) : null;
+      if (!fileId) throw invalid('payload/fileId');
+      const file = await service.registerPhoto(scope, {
+        projectId,
+        fileId,
+        capture: m.payload.capture,
+      });
+      return { version: file.version };
+    },
+    async current() {
+      // The photo is the file and the phone never edits it, so there is no copy to show on a conflict.
+      return null;
+    },
+  };
   return {
     definition: defineModule({ name: 'files' }),
     routes: filesRoutes(services.database, service),
@@ -58,6 +89,8 @@ export function createFilesModule(
       downloadUrl: service.downloadUrl,
       /** Signed template and overview URL for a drawing's tile pyramid (mobile 03 §3.3). */
       signTiles: deps.tiles.sign,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: [createPhotoCommand],
     },
   };
 }

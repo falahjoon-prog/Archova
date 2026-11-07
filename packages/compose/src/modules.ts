@@ -502,6 +502,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...quality.api.syncCommands,
       ...safety.api.syncCommands,
       ...documents.api.syncCommands,
+      ...files.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
   });
