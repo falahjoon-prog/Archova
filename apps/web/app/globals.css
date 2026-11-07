@@ -3440,3 +3440,76 @@ fieldset.worker-card > legend {
 .rc-label--sub {
   fill: var(--c-text-secondary);
 }
+
+/* Related items panel (any record's page) */
+.related-items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.related-items > li + li {
+  border-top: 1px solid var(--c-border-divider);
+}
+.related-items__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.related-items__icon {
+  flex: none;
+  color: var(--c-text-muted, currentColor);
+}
+.related-items__text {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.related-items__title {
+  overflow-wrap: anywhere;
+}
+.related-items__ref {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.related-items__note {
+  overflow-wrap: anywhere;
+}
+.related-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 14rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.related-pick__item {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.related-pick__item:hover {
+  background: var(--c-surface-sunken, var(--c-bg));
+}
+.related-pick__item[aria-pressed='true'] {
+  border-color: var(--c-focus-ring);
+  box-shadow: inset 0 0 0 1px var(--c-focus-ring);
+}
+.related-pick__item:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}

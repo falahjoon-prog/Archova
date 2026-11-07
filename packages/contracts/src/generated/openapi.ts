@@ -4906,6 +4906,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/related-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Everything linked to one record, from either end, newest first.
+         * @description Records the caller cannot open in their own tool are not described; they are only counted in `hidden`. 404 when the record itself is missing or not visible to the caller.
+         */
+        get: operations["listRelatedItems"];
+        put?: never;
+        /**
+         * Link two records on the project. Linking the same pair twice returns the existing link.
+         * @description The caller must be able to open both records in their own tools.
+         */
+        post: operations["createRelatedItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/related-items/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Records of one type that can be linked, matching some words; only ones the caller can open. */
+        get: operations["searchRelatedItemCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/related-items/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: components["parameters"]["RelatedLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a link. Whoever made it can always remove it; anyone else must be able to open both records. */
+        delete: operations["deleteRelatedItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -13286,6 +13354,68 @@ export interface components {
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
+        /** @enum {string} */
+        LinkEntityType: "rfi" | "defect" | "submittal" | "correspondence" | "document";
+        /**
+         * @description Read as "<from> <reason> <to>"; `related` is symmetric.
+         * @enum {string}
+         */
+        LinkReason: "related" | "caused_by" | "blocked_by" | "responds_to" | "duplicate_of" | "supersedes";
+        LinkRecordRef: {
+            type: components["schemas"]["LinkEntityType"];
+            id: string;
+        };
+        CreateRelatedItemRequest: {
+            from: components["schemas"]["LinkRecordRef"];
+            to: components["schemas"]["LinkRecordRef"];
+            reason: components["schemas"]["LinkReason"];
+            note?: string | null;
+        };
+        RelatedLink: {
+            id: string;
+            projectId: string;
+            from: components["schemas"]["LinkRecordRef"];
+            to: components["schemas"]["LinkRecordRef"];
+            reason: components["schemas"]["LinkReason"];
+            note: string | null;
+            /** @enum {string} */
+            origin: "user" | "nova" | "system";
+            createdById: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RelatedItem: {
+            linkId: string;
+            /**
+             * @description Which end of the link the record being looked at is; `from` reads the reason as written, `to` reads its inverse.
+             * @enum {string}
+             */
+            side: "from" | "to";
+            reason: components["schemas"]["LinkReason"];
+            note: string | null;
+            /** @enum {string} */
+            origin: "user" | "nova" | "system";
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            item: components["schemas"]["RelatedItemSummary"];
+        };
+        RelatedItemSummary: {
+            type: components["schemas"]["LinkEntityType"];
+            id: string;
+            ref: string;
+            title: string;
+            status: string;
+        };
+        RelatedItemList: {
+            data: components["schemas"]["RelatedItem"][];
+            /** @description Links to records the caller cannot open. They are counted, never described. */
+            hidden: number;
+        };
+        RelatedItemCandidateList: {
+            data: components["schemas"]["RelatedItemSummary"][];
+        };
         ConversationMessage: {
             id: string;
             authorId: string;
@@ -17766,6 +17896,7 @@ export interface components {
         CorrespondenceTypeId: string;
         CoordinationIssueId: string;
         ConversationId: string;
+        RelatedLinkId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -25535,6 +25666,114 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ConversationDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRelatedItems: {
+        parameters: {
+            query: {
+                type: components["schemas"]["LinkEntityType"];
+                id: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedItemList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createRelatedItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRelatedItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchRelatedItemCandidates: {
+        parameters: {
+            query: {
+                type: components["schemas"]["LinkEntityType"];
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedItemCandidateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteRelatedItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: components["parameters"]["RelatedLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

@@ -356,6 +356,19 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return attachCurrent(scope, rows);
   }
 
+  /** Related items (`links`): headline details of the documents among `ids` the caller may open. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await c.access.can(scope, 'documents.documents.read', { projectId })))
+      return [];
+    const rows = await visibleAmong(scope, projectId, ids);
+    return rows.map((d) => ({
+      id: d.id,
+      ref: d.docNumber ?? 'Document',
+      title: d.title,
+      status: d.status as string,
+    }));
+  }
+
   /** Global search (`search`): the documents the caller can open that match the words. */
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await c.access.can(scope, 'documents.documents.read', { projectId })))
@@ -374,6 +387,7 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
 
   return {
     searchHits,
+    linkSummaries,
     list,
     detail,
     create,

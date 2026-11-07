@@ -802,6 +802,19 @@ export function createDefectService(deps: DefectsDeps) {
   }
 
   /** Global search (`search`): the defects the caller can see that match the words, newest first. */
+  /** Related items (`links`): headline details of the defects among `ids` the caller may see. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return [];
+    const { rows } = await visibleAmong(scope, projectId, ids);
+    return rows.map((r) => ({
+      id: r.id,
+      ref: defectLabel(r.number),
+      title: r.title,
+      status: r.status as string,
+    }));
+  }
+
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
       return { restricted: true, hits: [] as SearchHit[] };
@@ -819,6 +832,7 @@ export function createDefectService(deps: DefectsDeps) {
 
   return {
     searchHits,
+    linkSummaries,
     list,
     create,
     detail,

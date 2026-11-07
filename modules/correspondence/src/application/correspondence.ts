@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { atLeast } from '@archova/domain/permissions';
 import { localDateOf } from '@archova/time';
@@ -687,6 +687,30 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
   }
 
   /** Global search (`search`): the correspondence the caller can see that matches the words. */
+  /** Related items (`links`): headline details of the correspondence among `ids` the caller may see, by the rule `list` uses. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'correspondence.items.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(items.projectId, projectId),
+      isNull(items.deletedAt),
+      inArray(items.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: items.id,
+        ref: items.numberLabel,
+        title: items.subject,
+        status: items.status,
+      })
+      .from(items)
+      .where(and(...conditions));
+    return rows.map((r) => ({ id: r.id, ref: r.ref, title: r.title, status: r.status as string }));
+  }
+
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'correspondence.items.read', { projectId })))
       return { restricted: true, hits: [] as SearchHit[] };
@@ -704,6 +728,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
 
   return {
     searchHits,
+    linkSummaries,
     templates,
     listTypes,
     projectTypes,

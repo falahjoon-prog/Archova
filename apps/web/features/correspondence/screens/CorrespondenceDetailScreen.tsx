@@ -22,6 +22,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { RelatedItemsPanel } from '@/features/links';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { CorrespondenceStatusPill, TimeBar } from '../components/CorrespondenceChips';
 import { useCorrespondence, useCorrespondenceMutations } from '../hooks/useCorrespondence';
@@ -138,6 +139,7 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
               {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
             </div>
           </Card>
+          <RelatedItemsPanel type="correspondence" id={i.id} />
         </div>
         <Card title="Details">
           <DescriptionList

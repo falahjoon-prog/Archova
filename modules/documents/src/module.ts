@@ -110,6 +110,8 @@ export function createDocumentsModule(
       currentDrawingRevisions: drawings.currentRevisions,
       /** Global search (`search`): documents the caller can open that match some words. */
       searchHits: documents.searchHits,
+      /** Related items (`links`): documents the caller can open among some ids. */
+      linkSummaries: documents.linkSummaries,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
       /** The drawing register and revisions the mobile pull reads (modules/sync). */

@@ -874,6 +874,30 @@ export function createSubmittalService(deps: SubmittalsDeps) {
   }
 
   /** Global search (`search`): the submittals the caller can see that match the words. */
+  /** Related items (`links`): headline details of the submittals among `ids` the caller may see, by the rule `list` uses. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      inArray(submittals.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: submittals.id,
+        ref: submittals.numberLabel,
+        title: submittals.title,
+        status: submittals.status,
+      })
+      .from(submittals)
+      .where(and(...conditions));
+    return rows.map((r) => ({ id: r.id, ref: r.ref, title: r.title, status: r.status as string }));
+  }
+
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
       return { restricted: true, hits: [] as SearchHit[] };
@@ -891,6 +915,7 @@ export function createSubmittalService(deps: SubmittalsDeps) {
 
   return {
     searchHits,
+    linkSummaries,
     list,
     detail,
     create,

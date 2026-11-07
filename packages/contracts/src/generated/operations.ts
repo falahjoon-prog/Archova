@@ -1515,6 +1515,33 @@ export const PostConversationMessageParams = z.object({
   "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
 });
 export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
+export const ListRelatedItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListRelatedItemsQuery = z.object({
+  "type": s.LinkEntityTypeSchema,
+  "id": z.string().max(64),
+});
+export const CreateRelatedItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateRelatedItemBody = s.CreateRelatedItemRequestSchema;
+export const SearchRelatedItemCandidatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SearchRelatedItemCandidatesQuery = z.object({
+  "type": s.LinkEntityTypeSchema,
+  "q": z.string().max(100).optional(),
+  "limit": z.coerce.number().int().min(1).max(20).default(8),
+});
+export const DeleteRelatedItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^rli_[0-9A-Za-z]{26}$")),
+});
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6489,6 +6516,54 @@ export const operations = {
     params: PostConversationMessageParams,
     query: null,
     body: PostConversationMessageBody,
+  },
+  listRelatedItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items',
+    module: "links",
+    auth: "required",
+    permission: "links.links.read",
+    internal: false,
+    contentType: null,
+    params: ListRelatedItemsParams,
+    query: ListRelatedItemsQuery,
+    body: null,
+  },
+  createRelatedItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items',
+    module: "links",
+    auth: "required",
+    permission: "links.links.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateRelatedItemParams,
+    query: null,
+    body: CreateRelatedItemBody,
+  },
+  searchRelatedItemCandidates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items/candidates',
+    module: "links",
+    auth: "required",
+    permission: "links.links.create",
+    internal: false,
+    contentType: null,
+    params: SearchRelatedItemCandidatesParams,
+    query: SearchRelatedItemCandidatesQuery,
+    body: null,
+  },
+  deleteRelatedItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items/{linkId}',
+    module: "links",
+    auth: "required",
+    permission: "links.links.delete",
+    internal: false,
+    contentType: null,
+    params: DeleteRelatedItemParams,
+    query: null,
+    body: null,
   },
   listCorrespondence: {
     method: 'GET',
