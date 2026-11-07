@@ -1142,6 +1142,45 @@ export const ContractSourceRefSchema = z.object({
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
+export const ConversationMessageSchema = z.object({
+  "id": z.string(),
+  "authorId": z.string(),
+  "authorName": z.string(),
+  "body": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
+
+export const ConversationDetailSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "subject": z.string(),
+  "messageCount": z.number().int(),
+  "createdById": z.string(),
+  "createdByName": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "messages": z.array(ConversationMessageSchema),
+});
+export type ConversationDetail = z.infer<typeof ConversationDetailSchema>;
+
+export const ConversationSummarySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "subject": z.string(),
+  "messageCount": z.number().int(),
+  "createdById": z.string(),
+  "createdByName": z.string(),
+  "lastMessage": ConversationMessageSchema,
+  "lastMessageAt": z.string().datetime({ offset: true }),
+});
+export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;
+
+export const ConversationPageSchema = z.object({
+  "data": z.array(ConversationSummarySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ConversationPage = z.infer<typeof ConversationPageSchema>;
+
 export const CoordinationCommentSchema = z.object({
   "id": z.string(),
   "authorId": z.string(),
@@ -1529,6 +1568,12 @@ export const CreateContractRequestSchema = z.object({
 }).strict()).max(500),
 }).strict();
 export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
+
+export const CreateConversationRequestSchema = z.object({
+  "subject": z.string().min(1).max(200),
+  "body": z.string().min(1).max(5000),
+}).strict();
+export type CreateConversationRequest = z.infer<typeof CreateConversationRequestSchema>;
 
 export const CreateCoordinationIssueRequestSchema = z.object({
   "title": z.string().min(1).max(200),
@@ -5366,6 +5411,11 @@ export const PortfolioSchema = z.object({
   "truncated": z.boolean(),
 });
 export type Portfolio = z.infer<typeof PortfolioSchema>;
+
+export const PostConversationMessageRequestSchema = z.object({
+  "body": z.string().min(1).max(5000),
+}).strict();
+export type PostConversationMessageRequest = z.infer<typeof PostConversationMessageRequestSchema>;
 
 export const PrequalAnswersSchema = z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]));
 export type PrequalAnswers = z.infer<typeof PrequalAnswersSchema>;

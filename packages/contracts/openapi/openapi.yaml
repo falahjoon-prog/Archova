@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: conversations
   - name: bim
   - name: defects
   - name: financials
@@ -6415,6 +6416,90 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.read
+      summary: The project team's conversations, most recent activity first, each with its latest message.
+      description: Project team only; outside users (subcontractors, owners) get 403.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createConversation
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.create
+      summary: Start a conversation with a subject and a first message.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateConversationRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.threads.read
+      summary: One conversation with its messages, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ConversationId'
+    post:
+      operationId: postConversationMessage
+      tags: [conversations]
+      x-module: conversations
+      x-permission: conversations.messages.post
+      summary: Add a message to a conversation.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostConversationMessageRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -13039,6 +13124,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -18698,6 +18788,73 @@ components:
         responses:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    ConversationMessage:
+      type: object
+      required: [id, authorId, authorName, body, createdAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        authorName: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    ConversationSummary:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          subject,
+          messageCount,
+          createdById,
+          createdByName,
+          lastMessage,
+          lastMessageAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        subject: { type: string }
+        messageCount: { type: integer }
+        createdById: { type: string }
+        createdByName: { type: string }
+        lastMessage: { $ref: '#/components/schemas/ConversationMessage' }
+        lastMessageAt: { type: string, format: date-time }
+    ConversationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationSummary' }
+        nextCursor: { type: [string, 'null'] }
+    ConversationDetail:
+      type: object
+      required:
+        [id, projectId, subject, messageCount, createdById, createdByName, createdAt, messages]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        subject: { type: string }
+        messageCount: { type: integer }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationMessage' }
+    CreateConversationRequest:
+      type: object
+      additionalProperties: false
+      required: [subject, body]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    PostConversationMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]

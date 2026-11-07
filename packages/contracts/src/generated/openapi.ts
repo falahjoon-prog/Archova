@@ -4810,6 +4810,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The project team's conversations, most recent activity first, each with its latest message.
+         * @description Project team only; outside users (subcontractors, owners) get 403.
+         */
+        get: operations["listConversations"];
+        put?: never;
+        /** Start a conversation with a subject and a first message. */
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        /** One conversation with its messages, oldest first. */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a message to a conversation. */
+        post: operations["postConversationMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -13028,6 +13094,47 @@ export interface components {
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
+        ConversationMessage: {
+            id: string;
+            authorId: string;
+            authorName: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConversationSummary: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            lastMessage: components["schemas"]["ConversationMessage"];
+            /** Format: date-time */
+            lastMessageAt: string;
+        };
+        ConversationPage: {
+            data: components["schemas"]["ConversationSummary"][];
+            nextCursor: string | null;
+        };
+        ConversationDetail: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            messages: components["schemas"]["ConversationMessage"][];
+        };
+        CreateConversationRequest: {
+            subject: string;
+            body: string;
+        };
+        PostConversationMessageRequest: {
+            body: string;
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -17365,6 +17472,7 @@ export interface components {
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
         CoordinationIssueId: string;
+        ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -24989,6 +25097,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceTypeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listConversations: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    postConversationMessage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostConversationMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
             default: components["responses"]["Problem"];
