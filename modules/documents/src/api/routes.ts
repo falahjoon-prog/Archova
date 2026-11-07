@@ -294,6 +294,8 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         d.documents.list(s, project(input.params), {
           ...(q.folderId ? { folderId: id('folder', q.folderId, 'folder.not_found') } : {}),
           ...(q.q ? { q: q.q } : {}),
+          ...(q.createdSince ? { createdSince: new Date(q.createdSince) } : {}),
+          ...(q.tracked === 'true' ? { trackedOnly: true } : {}),
           limit: q.limit,
           ...(q.cursor ? { cursor: q.cursor } : {}),
         }),
@@ -342,6 +344,44 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         body: toDocumentDetail(x),
         headers: { etag: etag(x.document.version) },
       };
+    },
+    deleteDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) => d.documents.remove(s, project(input.params), documentId, expected));
+      return { status: 204, body: undefined };
+    },
+    listDeletedDocuments: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        d.documents.listDeleted(s, project(input.params), {
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toDocumentDto), nextCursor: page.nextCursor },
+      };
+    },
+    restoreDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const x = await tx(input, (s) => d.documents.restore(s, project(input.params), documentId));
+      return {
+        status: 200,
+        body: toDocumentDetail(x),
+        headers: { etag: etag(x.document.version) },
+      };
+    },
+    trackDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      await tx(input, (s) => d.documents.setTracking(s, project(input.params), documentId, true));
+      return { status: 204, body: undefined };
+    },
+    untrackDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      await tx(input, (s) => d.documents.setTracking(s, project(input.params), documentId, false));
+      return { status: 204, body: undefined };
     },
     addDocumentRevision: async (input) => {
       const documentId = id('document', input.params.documentId, 'document.not_found');

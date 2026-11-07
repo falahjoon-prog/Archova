@@ -391,6 +391,8 @@ export const ListDocumentsParams = z.object({
 export const ListDocumentsQuery = z.object({
   "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
   "q": z.string().min(1).max(200).optional(),
+  "createdSince": z.string().datetime({ offset: true }).optional(),
+  "tracked": z.enum(["true"]).optional(),
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
 });
@@ -410,6 +412,34 @@ export const UpdateDocumentParams = z.object({
   "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
 });
 export const UpdateDocumentBody = s.UpdateDocumentRequestSchema;
+export const DeleteDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const ListDeletedDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeletedDocumentsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RestoreDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const TrackDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const UntrackDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
 export const AddDocumentRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4193,6 +4223,66 @@ export const operations = {
     params: UpdateDocumentParams,
     query: null,
     body: UpdateDocumentBody,
+  },
+  deleteDocument: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteDocumentParams,
+    query: null,
+    body: null,
+  },
+  listDeletedDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/bin',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: ListDeletedDocumentsParams,
+    query: ListDeletedDocumentsQuery,
+    body: null,
+  },
+  restoreDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: RestoreDocumentParams,
+    query: null,
+    body: null,
+  },
+  trackDocument: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: TrackDocumentParams,
+    query: null,
+    body: null,
+  },
+  untrackDocument: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: UntrackDocumentParams,
+    query: null,
+    body: null,
   },
   addDocumentRevision: {
     method: 'POST',

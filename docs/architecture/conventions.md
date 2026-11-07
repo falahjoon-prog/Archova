@@ -80,3 +80,12 @@ Envelope defined in [backend-modules.md §4](backend-modules.md#event-bus). Rule
 - Every PR touching a module updates its docs when behaviour changes.
 - Architecture decisions recorded as ADRs in `docs/architecture/adr/NNNN-title.md` (template: [adr/0000-template.md](adr/0000-template.md)).
 - Area docs live in `docs/<area>/` with a `README.md` index and the same header block (Owner, Status, Last updated).
+
+## Recycle bin (soft delete and restore)
+
+A record that people may delete by mistake is soft-deleted, not removed, and can be restored:
+
+- `DELETE /x/{id}` with `If-Match` sets `deleted_at` and `deleted_by`, bumps `version`, and writes a `delete` change-feed row so phones drop it.
+- `GET /x/bin` lists the deleted records the caller could have opened (needs the module's `manage` permission); `POST /x/{id}/restore` clears them, writes an `upsert` change row, and returns the record. Restoring may hit a unique index that now has a live twin: answer 409 with the module's `*.number_taken`-style code.
+- Every list, get and sync read already filters `deleted_at is null`; add the bin as separate endpoints, not a flag on the list.
+- On web, render the bin with `RecycleBin` (`apps/web/shared/layout/RecycleBin.tsx`): pass the module's own columns, rows and `onRestore`. Documents is the first user (`modules/documents`); other modules (commitments) follow the same shape.

@@ -1412,10 +1412,74 @@ export interface paths {
         get: operations["getDocument"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Move the document to the recycle bin. Revisions and files are kept; `restoreDocument` undoes it. */
+        delete: operations["deleteDocument"];
         options?: never;
         head?: never;
         patch: operations["updateDocument"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/bin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The recycle bin, most recently deleted last page first; restore with `restoreDocument`. */
+        get: operations["listDeletedDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a document out of the recycle bin. 409 `document.number_taken` if its number was reused. */
+        post: operations["restoreDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Add the document to the caller's own "Items You Are Tracking". Repeating it is a no-op. */
+        put: operations["trackDocument"];
+        post?: never;
+        /** Remove the document from the caller's tracked items. */
+        delete: operations["untrackDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions": {
@@ -12262,6 +12326,8 @@ export interface components {
             projectId: string;
             parentId: string | null;
             name: string;
+            /** Format: date-time */
+            createdAt: string;
             isPrivate: boolean;
             allowedUserIds: string[];
             allowedCompanyIds: string[];
@@ -12466,6 +12532,13 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /**
+             * Format: date-time
+             * @description Set only on documents in the recycle bin.
+             */
+            deletedAt?: string | null;
+            /** @description Whether the caller tracks it. Absent in the mobile sync pull. */
+            tracked?: boolean;
             version: number;
         };
         DocumentDetail: {
@@ -19956,6 +20029,10 @@ export interface operations {
             query?: {
                 folderId?: string;
                 q?: string;
+                /** @description Only documents registered at or after this instant ("new this week"). */
+                createdSince?: string;
+                /** @description Send `true` for only the documents the caller tracks. */
+                tracked?: "true";
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
             };
@@ -20037,6 +20114,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    deleteDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Moved to the recycle bin */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     updateDocument: {
         parameters: {
             query?: never;
@@ -20066,6 +20169,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeletedDocuments: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of deleted documents in folders the caller can open */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    restoreDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restored */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    trackDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tracked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    untrackDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No longer tracked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

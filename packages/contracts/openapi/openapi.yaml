@@ -1757,6 +1757,14 @@ paths:
       parameters:
         - { name: folderId, in: query, schema: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' } }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - name: createdSince
+          in: query
+          description: Only documents registered at or after this instant ("new this week").
+          schema: { type: string, format: date-time }
+        - name: tracked
+          in: query
+          description: Send `true` for only the documents the caller tracks.
+          schema: { type: string, enum: ['true'] }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
       responses:
@@ -1827,6 +1835,80 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Move the document to the recycle bin. Revisions and files are kept; `restoreDocument` undoes it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Moved to the recycle bin }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/bin:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeletedDocuments
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: The recycle bin, most recently deleted last page first; restore with `restoreDocument`.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of deleted documents in folders the caller can open
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      operationId: restoreDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Take a document out of the recycle bin. 409 `document.number_taken` if its number was reused.
+      responses:
+        '200':
+          description: Restored
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    put:
+      operationId: trackDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Add the document to the caller's own "Items You Are Tracking". Repeating it is a no-op.
+      responses:
+        '204': { description: Tracked }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: untrackDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Remove the document from the caller's tracked items.
+      responses:
+        '204': { description: No longer tracked }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions:
     parameters:
@@ -17461,12 +17543,23 @@ components:
     Folder:
       type: object
       required:
-        [id, projectId, parentId, name, isPrivate, allowedUserIds, allowedCompanyIds, version]
+        [
+          id,
+          projectId,
+          parentId,
+          name,
+          isPrivate,
+          allowedUserIds,
+          allowedCompanyIds,
+          createdAt,
+          version,
+        ]
       properties:
         id: { type: string }
         projectId: { type: string }
         parentId: { type: [string, 'null'] }
         name: { type: string }
+        createdAt: { type: string, format: date-time }
         isPrivate: { type: boolean }
         allowedUserIds:
           type: array
@@ -17803,6 +17896,13 @@ components:
           { oneOf: [{ $ref: '#/components/schemas/DocumentRevision' }, { type: 'null' }] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        deletedAt:
+          type: [string, 'null']
+          format: date-time
+          description: Set only on documents in the recycle bin.
+        tracked:
+          type: boolean
+          description: Whether the caller tracks it. Absent in the mobile sync pull.
         version: { type: integer }
     DocumentDetail:
       type: object

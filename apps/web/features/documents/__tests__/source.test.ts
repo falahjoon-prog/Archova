@@ -31,4 +31,16 @@ describe('documents preview source', () => {
     const certs = await documentsSource.listDocuments('p', 'fld_cert');
     expect(certs.map((d) => d.title)).toEqual(['Construction certificate']);
   });
+
+  it('tracks, deletes to the bin and restores', async () => {
+    await documentsSource.setTracked('p', 'doc_geo', true);
+    expect((await documentsSource.listDocuments('p', null, 'tracked')).map((d) => d.id)).toEqual([
+      'doc_geo',
+    ]);
+    await documentsSource.deleteDocument('p', { id: 'doc_geo', version: 1 });
+    expect(await documentsSource.listDocuments('p', null, 'tracked')).toEqual([]);
+    expect((await documentsSource.listBin('p')).map((d) => d.id)).toEqual(['doc_geo']);
+    await documentsSource.restoreDocument('p', 'doc_geo');
+    expect(await documentsSource.listBin('p')).toEqual([]);
+  });
 });
