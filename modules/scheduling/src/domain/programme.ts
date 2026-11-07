@@ -252,6 +252,16 @@ export const programmeStatus = (pctComplete: number): ProgrammeStatus =>
   pctComplete >= 100 ? 'complete' : pctComplete > 0 ? 'in_progress' : 'not_started';
 
 /** Work that should have started (or finished) before today and has not; same rule as the look-ahead. */
+/** Days past the date the activity should have finished (or started, when it has not begun); 0 when it is not late. */
+export const daysLate = (
+  a: { start: LocalDate; finish: LocalDate; pctComplete: number },
+  today: LocalDate,
+): number => {
+  if (a.finish < today && a.pctComplete < 100) return daysBetween(a.finish, today);
+  if (a.start < today && a.pctComplete === 0) return daysBetween(a.start, today);
+  return 0;
+};
+
 export const isLate = (
   a: { start: LocalDate; finish: LocalDate; pctComplete: number },
   today: LocalDate,

@@ -4,6 +4,8 @@ import { financialsRoutes } from './api/routes';
 import { directCostRoutes } from './api/directCostRoutes';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productivityRoutes } from './api/productivityRoutes';
+import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
@@ -23,6 +25,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const budget = createBudgetService({
     access: deps.access,
     forecastInputs: forecast.inputsByCode,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const productivity = createProductivityService({
+    access: deps.access,
+    timesheetMinutes: deps.timesheetMinutes,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
@@ -51,6 +58,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...financialsRoutes(services.database, service, forecast, commitments, trust, retention),
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
+      ...productivityRoutes(services.database, productivity),
     },
     api: {
       ledgerSource: service.ledgerSource,
@@ -62,8 +70,12 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
+      laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
       budgetSummary: budget.portfolioSummary,
+      /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */
+      budgetReviewFacts: budget.reviewFacts,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
       reporting: reportingSources,
     },
