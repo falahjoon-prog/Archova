@@ -2607,6 +2607,63 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/assist:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: assistNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Ask Nova from any screen, with the screen and record you have open, and let it look things up.
+      description: |
+        The Nova panel's endpoint (ai/07 §3). The client sends the question, the last few turns and what the person has
+        open (`context`). Nova may call read-only lookup tools that modules register (overdue RFIs, budget findings,
+        late programme tasks, open defects, record search). Each lookup runs as the caller through the module's own
+        permission check, so Nova never sees more than the person could open. The answer cites what the lookups
+        returned; `lookups` lists what was looked up. Nothing is changed, saved or sent. Costs a small planning charge
+        plus one answer; nothing is charged for the answer when no lookup finds anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 6
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [role, text]
+                    properties:
+                      role: { type: string, enum: [user, nova] }
+                      text: { type: string, minLength: 1, maxLength: 1500 }
+                context:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    screen: { type: string, maxLength: 60 }
+                    record:
+                      type: object
+                      additionalProperties: false
+                      required: [type, id]
+                      properties:
+                        type: { type: string, minLength: 1, maxLength: 40 }
+                        id: { type: string, minLength: 1, maxLength: 80 }
+                        label: { type: string, maxLength: 120 }
+      responses:
+        '200':
+          description: The answer with what it rests on
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaAssistAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/search:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16179,6 +16236,38 @@ components:
             snippet:
               type: string
               description: The start of the passage, or the stretch around the first query word it contains.
+    NovaAssistAnswer:
+      type: object
+      additionalProperties: false
+      required: [runId, found, answer, citations, lookups]
+      properties:
+        runId: { type: [string, 'null'] }
+        found: { type: boolean }
+        answer: { type: string }
+        citations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [sourceType, sourceId, title, quote]
+            properties:
+              sourceType:
+                {
+                  type: string,
+                  description: 'What the lookup was about: rfi, defect, budget, programme, document, drawing, diary…',
+                }
+              sourceId: { type: string }
+              title: { type: string }
+              quote: { type: string }
+        lookups:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [tool, summary]
+            properties:
+              tool: { type: string }
+              summary: { type: string }
     NovaAnswer:
       type: object
       required: [runId, found, answer, citations, closestMatches]

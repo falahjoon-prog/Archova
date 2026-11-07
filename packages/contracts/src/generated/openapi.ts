@@ -2052,6 +2052,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/assist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova from any screen, with the screen and record you have open, and let it look things up.
+         * @description The Nova panel's endpoint (ai/07 §3). The client sends the question, the last few turns and what the person has
+         *     open (`context`). Nova may call read-only lookup tools that modules register (overdue RFIs, budget findings,
+         *     late programme tasks, open defects, record search). Each lookup runs as the caller through the module's own
+         *     permission check, so Nova never sees more than the person could open. The answer cites what the lookups
+         *     returned; `lookups` lists what was looked up. Nothing is changed, saved or sent. Costs a small planning charge
+         *     plus one answer; nothing is charged for the answer when no lookup finds anything.
+         */
+        post: operations["assistNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/search": {
         parameters: {
             query?: never;
@@ -11462,6 +11490,22 @@ export interface components {
         NovaSearchResult: components["schemas"]["NovaSource"] & {
             /** @description The start of the passage, or the stretch around the first query word it contains. */
             snippet: string;
+        };
+        NovaAssistAnswer: {
+            runId: string | null;
+            found: boolean;
+            answer: string;
+            citations: {
+                /** @description What the lookup was about: rfi, defect, budget, programme, document, drawing, diary… */
+                sourceType: string;
+                sourceId: string;
+                title: string;
+                quote: string;
+            }[];
+            lookups: {
+                tool: string;
+                summary: string;
+            }[];
         };
         NovaAnswer: {
             /** @description For feedback (`air_`); null when no model call was needed. */
@@ -21059,6 +21103,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    assistNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                    history?: {
+                        /** @enum {string} */
+                        role: "user" | "nova";
+                        text: string;
+                    }[];
+                    context?: {
+                        screen?: string;
+                        record?: {
+                            type: string;
+                            id: string;
+                            label?: string;
+                        };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The answer with what it rests on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaAssistAnswer"];
                 };
             };
             default: components["responses"]["Problem"];

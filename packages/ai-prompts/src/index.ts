@@ -27,3 +27,4 @@ export * from './contract-review/prompt';
 export * from './contract-review/ask';
 export * from './contract-review/compare';
 export * from './takeoff-detect/prompt';
+export * from './assist/prompt';

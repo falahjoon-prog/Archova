@@ -13,6 +13,7 @@ import type { DiarySummaryPayload, DiarySummaryService } from '../application/di
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { AssistService } from '../application/assist';
 import type { ContractPlaybookService } from '../application/contract-playbook';
 import type {
   ContractReviewPayload,
@@ -300,6 +301,7 @@ export function aiRoutes(
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
+  assist: AssistService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -368,6 +370,30 @@ export function aiRoutes(
           closestMatches: a.closestMatches.map(toSourceDto),
           nccReferences: a.nccReferences,
           ...(a.nccReferences.length ? { nccNote: NCC_NOTE } : {}),
+        },
+      };
+    },
+    assistNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const b = input.body;
+      const a = await assist.ask(requireTenant(input), projectId, {
+        question: b.question,
+        context: b.context ?? {},
+        history: b.history ?? [],
+      });
+      return {
+        status: 200,
+        body: {
+          runId: a.runId ? encodeId('aiRun', a.runId) : null,
+          found: a.found,
+          answer: a.answer,
+          citations: a.citations.map((c) => ({
+            sourceType: c.type,
+            sourceId: c.id,
+            title: c.title,
+            quote: c.quote,
+          })),
+          lookups: a.lookups,
         },
       };
     },
