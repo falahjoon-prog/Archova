@@ -33,11 +33,10 @@ select kernel.enable_tenant_rls('quality.inspection_signatures');
 
 alter table quality.observations
   add column inspection_id uuid references quality.inspections (id),
-  add column inspection_item_id uuid references quality.inspection_template_items (id),
+  add column inspection_item_id uuid references quality.inspection_template_items (id);
+alter table quality.observations
   add constraint observations_item_needs_inspection
-    check (inspection_item_id is null or inspection_id is not null);
-create index observations_inspection on quality.observations (org_id, inspection_id, inspection_item_id)
-  where inspection_id is not null;
+    check (inspection_item_id is null or inspection_id is not null) not valid;
 
 -- Append-only: one row per answer change, comment, file added or observation raised from a checklist item.
 create table quality.inspection_item_events (
