@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '@archova/query';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { createCommitmentsApi } from '../data/api';
+import { createCommitmentsApi, type InvoicePdfOptions } from '../data/api';
 
 export function useCommitments(projectId: string) {
   const { orgId } = useCurrentOrg();
@@ -50,5 +50,25 @@ export function useLinkCommitmentContract(projectId: string, commitmentId: strin
       source.linkContract(projectId, commitmentId, contractId),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'commitments') }),
+  });
+}
+
+export function useCommitmentInvoice(projectId: string, commitmentId: string, claimId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'commitments', {
+      id: commitmentId,
+      view: 'invoice',
+      claimId,
+    }),
+    queryFn: () => source.invoice(projectId, commitmentId, claimId),
+  });
+}
+
+export function useInvoicePdf(projectId: string, commitmentId: string, claimId: string) {
+  const source = useApi();
+  return useMutation({
+    mutationFn: (o: InvoicePdfOptions) => source.invoicePdf(projectId, commitmentId, claimId, o),
   });
 }
