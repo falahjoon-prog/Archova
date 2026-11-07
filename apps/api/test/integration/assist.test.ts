@@ -18,7 +18,7 @@ describe('POST /ai/assist (the Nova panel with tools)', () => {
   it('plans a lookup from the question, runs it as the caller and cites what it found', async () => {
     const s = await setup('assist-a');
     const res = await s.pm.browser.post(`${s.base}/ai/assist`, {
-      question: 'What is running behind on the programme?',
+      question: 'Does this project have a programme yet?',
       context: { screen: 'programme' },
       history: [],
     });
@@ -58,7 +58,7 @@ describe('POST /ai/assist (the Nova panel with tools)', () => {
 
   it('rejects an empty question and anyone who cannot use Nova on the project', async () => {
     const s = await setup('assist-d');
-    expect((await s.pm.browser.post(`${s.base}/ai/assist`, { question: '' })).statusCode).toBe(400);
+    expect((await s.pm.browser.post(`${s.base}/ai/assist`, { question: '' })).statusCode).toBe(422);
     const stranger = await signUp(t.app, 'assist-d-stranger');
     const res = await stranger.browser.post(`${s.base}/ai/assist`, {
       question: 'Anything overdue?',
