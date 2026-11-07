@@ -6034,6 +6034,33 @@ export const ReadinessPackPdfSchema = z.object({
 });
 export type ReadinessPackPdf = z.infer<typeof ReadinessPackPdfSchema>;
 
+export const RecentViewEntityTypeSchema = z.enum(["rfi", "submittal", "defect", "drawing_sheet", "meeting"]);
+export type RecentViewEntityType = z.infer<typeof RecentViewEntityTypeSchema>;
+
+export const RecentViewSchema = z.object({
+  "entityType": RecentViewEntityTypeSchema,
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "subtitle": z.string(),
+  "viewedAt": z.string().datetime({ offset: true }),
+});
+export type RecentView = z.infer<typeof RecentViewSchema>;
+
+export const RecentViewInputSchema = z.object({
+  "entityType": RecentViewEntityTypeSchema,
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "title": z.string().min(1).max(200),
+  "subtitle": z.string().max(200).optional(),
+});
+export type RecentViewInput = z.infer<typeof RecentViewInputSchema>;
+
+export const RecentViewListSchema = z.object({
+  "data": z.array(RecentViewSchema),
+});
+export type RecentViewList = z.infer<typeof RecentViewListSchema>;
+
 export const RecordAttendanceRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),

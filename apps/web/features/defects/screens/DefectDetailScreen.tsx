@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useState } from 'react';
 import {
   ActivityTimeline,
@@ -206,6 +207,12 @@ function DefectView({ d }: { d: Defect }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="defect"
+        entityId={d.id}
+        projectId={project.projectId}
+        title={`${formatDefectNumber(d.number)} ${d.title}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.defects(org.orgSlug, project.projectId)}>
           Defects

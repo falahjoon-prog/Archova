@@ -590,6 +590,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/recents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The records the caller opened lately, newest first.
+         * @description Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+         */
+        get: operations["listRecentViews"];
+        put?: never;
+        /**
+         * Note that the caller opened a record (idempotent; it moves the record to the top).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. The caller keeps their newest 50 views.
+         */
+        post: operations["recordRecentView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -11495,6 +11522,28 @@ export interface components {
             data: components["schemas"]["Notification"][];
             unreadCount: number;
         };
+        /** @enum {string} */
+        RecentViewEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        RecentViewInput: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        RecentView: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            viewedAt: string;
+        };
+        RecentViewList: {
+            data: components["schemas"]["RecentView"][];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -18775,6 +18824,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Notification"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRecentViews: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                /** @description At most this many rows (default 10, at most 50). */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recent views */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentViewList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRecentView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecentViewInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
