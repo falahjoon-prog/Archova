@@ -18,6 +18,7 @@ import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { formatMoney } from '@/shared/lib/format';
+import { PortfolioCharts } from '../components/PortfolioCharts';
 import { usePortfolio } from '../hooks/useReporting';
 import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
@@ -188,6 +189,7 @@ export function PortfolioScreen() {
           ]}
         />
       ) : null}
+      {data ? <PortfolioCharts portfolio={data} orgSlug={org.orgSlug} /> : null}
       {data?.truncated ? (
         <Alert tone="info" title="Showing the first 200 projects">
           Close out finished projects to bring the rest into view.

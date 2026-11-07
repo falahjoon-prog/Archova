@@ -9555,6 +9555,8 @@ export interface components {
             hasBudget: boolean;
             revised: components["schemas"]["FinancialsSignedMoney"];
             forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Spent to date: subcontract claims received plus direct costs recorded, margin lines left out as for the other figures. */
+            spent: components["schemas"]["FinancialsSignedMoney"];
             variance: components["schemas"]["FinancialsSignedMoney"];
             /** @description Cost codes whose forecast is over their revised budget. */
             overBudgetCodes: number;
@@ -9564,6 +9566,8 @@ export interface components {
             name: string;
             number: string | null;
             status: string;
+            phase: components["schemas"]["ProjectPhase"] | null;
+            siteLocation: components["schemas"]["GeoPoint"] | null;
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
@@ -10683,6 +10687,11 @@ export interface components {
         AuState: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT";
         /** @enum {string} */
         ProjectStatus: "tender" | "active" | "on_hold" | "closed" | "archived";
+        /**
+         * @description Where the project is in its life. Separate from `status`, which says whether it is live.
+         * @enum {string}
+         */
+        ProjectPhase: "planning" | "design" | "tender" | "pre_construction" | "construction" | "handover" | "defects_liability";
         Address: {
             line1?: string;
             line2?: string;
@@ -10719,6 +10728,7 @@ export interface components {
             name: string;
             number: string | null;
             status: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             /** @enum {string|null} */
             state: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
             /** @description IANA time zone; local dates and deadlines use it (X32) */
@@ -10853,6 +10863,7 @@ export interface components {
             name: string;
             number?: string;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"];
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -10867,6 +10878,7 @@ export interface components {
             name?: string;
             number?: string | null;
             status?: components["schemas"]["ProjectStatus"];
+            phase?: components["schemas"]["ProjectPhase"] | null;
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
