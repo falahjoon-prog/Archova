@@ -13291,6 +13291,19 @@ components:
           }
         open: { type: integer }
         overdue: { type: integer }
+    PortfolioProgramme:
+      allOf:
+        - $ref: '#/components/schemas/PortfolioTool'
+        - type: object
+          required: [notStarted, completed, lateDays]
+          properties:
+            notStarted: { type: integer, description: 'Activities at 0% complete.' }
+            completed: { type: integer, description: 'Activities at 100% complete.' }
+            lateDays:
+              {
+                type: integer,
+                description: 'Days late summed over the late activities; divide by `overdue` for the average.',
+              }
     PortfolioBudget:
       type: object
       required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
@@ -13362,7 +13375,7 @@ components:
           }
         programme:
           {
-            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            allOf: [{ $ref: '#/components/schemas/PortfolioProgramme' }],
             description: 'Activities on the newest programme that are not complete; overdue means they should have started or finished before today.',
           }
         budget: { $ref: '#/components/schemas/PortfolioBudget' }

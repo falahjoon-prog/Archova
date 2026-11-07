@@ -9548,6 +9548,14 @@ export interface components {
             open: number;
             overdue: number;
         };
+        PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
+            /** @description Activities at 0% complete. */
+            notStarted: number;
+            /** @description Activities at 100% complete. */
+            completed: number;
+            /** @description Days late summed over the late activities; divide by `overdue` for the average. */
+            lateDays: number;
+        };
         /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
         PortfolioBudget: {
             /** @description True when the caller may not read the budget or forecast; figures are then zero. */
@@ -9578,7 +9586,7 @@ export interface components {
             /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
             incidents: components["schemas"]["PortfolioTool"];
             /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
-            programme: components["schemas"]["PortfolioTool"];
+            programme: components["schemas"]["PortfolioProgramme"];
             budget: components["schemas"]["PortfolioBudget"];
             /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;

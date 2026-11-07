@@ -5240,6 +5240,13 @@ export const PortfolioToolSchema = z.object({
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
 
+export const PortfolioProgrammeSchema = z.intersection(PortfolioToolSchema, z.object({
+  "notStarted": z.number().int(),
+  "completed": z.number().int(),
+  "lateDays": z.number().int(),
+}));
+export type PortfolioProgramme = z.infer<typeof PortfolioProgrammeSchema>;
+
 export const PortfolioBudgetSchema = z.object({
   "restricted": z.boolean(),
   "hasBudget": z.boolean(),
@@ -5264,7 +5271,7 @@ export const PortfolioProjectSchema = z.object({
   "claims": PortfolioToolSchema,
   "variations": PortfolioToolSchema,
   "incidents": PortfolioToolSchema,
-  "programme": PortfolioToolSchema,
+  "programme": PortfolioProgrammeSchema,
   "budget": PortfolioBudgetSchema,
   "attention": z.number().int(),
 });
