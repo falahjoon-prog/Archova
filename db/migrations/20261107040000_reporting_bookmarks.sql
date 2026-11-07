@@ -1,4 +1,4 @@
--- Composed from modules/reporting/db/migrations/20261106230000_reporting_bookmarks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/reporting/db/migrations/20261107040000_reporting_bookmarks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- reporting: a person's saved bookmarks for the "My Work" page. Private to the person who made them (user_id);
 -- a bookmark is only a label and an in-app path, so opening it still goes through the normal permission checks.
 

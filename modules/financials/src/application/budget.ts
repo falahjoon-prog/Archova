@@ -1,21 +1,32 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import { fromCents, toCents } from '../domain/money';
+import { fromCents, isMoney, toCents } from '../domain/money';
 import {
   budgetVsForecast,
   type BvfAdjustment,
   type BvfDirect,
   type BvfSub,
 } from '../domain/budget-vs-forecast';
+import { budgetFindings } from '../domain/budget-review';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
-import { budgetAdjustments, budgetLines, budgets, costCodes } from '../infra/tables';
+import {
+  budgetAdjustments,
+  budgetLines,
+  budgetSnapshots,
+  budgets,
+  commitmentLines,
+  commitments,
+  costCodes,
+  directCosts,
+} from '../infra/tables';
 
 export type CostCodeRow = typeof costCodes.$inferSelect;
 export type BudgetRow = typeof budgets.$inferSelect;
 export type BudgetLineRow = typeof budgetLines.$inferSelect;
 export type BudgetAdjustmentRow = typeof budgetAdjustments.$inferSelect;
+export type BudgetSnapshotRow = typeof budgetSnapshots.$inferSelect;
 
 export interface ForecastInputs {
   subs: BvfSub[];
@@ -283,6 +294,89 @@ export function createBudgetService(
     await scope.tx.delete(budgetLines).where(eq(budgetLines.id, lineId));
   }
 
+  const MAX_IMPORT_ROWS = 500;
+
+  /**
+   * Fills a draft budget from a spreadsheet's rows, all or nothing. A row names a cost code; a code that does not exist
+   * yet is created when the row gives its description. Every problem across the file is reported together, so the
+   * person fixes the sheet once rather than one row per attempt.
+   */
+  async function importLines(
+    scope: TenantScope,
+    projectId: string,
+    rows: {
+      code: string;
+      codeDescription?: string;
+      description?: string;
+      original: string;
+      isMargin?: boolean;
+    }[],
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    const budget = await writableDraft(scope, projectId);
+    if (rows.length === 0)
+      throw new AppError('validation_failed', 'The file has no rows.', [
+        { path: 'rows', message: 'Add at least one row' },
+      ]);
+    if (rows.length > MAX_IMPORT_ROWS)
+      throw new AppError('validation_failed', `Import at most ${MAX_IMPORT_ROWS} rows at a time.`, [
+        { path: 'rows', message: `Too many rows (maximum ${MAX_IMPORT_ROWS})` },
+      ]);
+    const existing = new Map(
+      (await scope.tx.select().from(costCodes).where(eq(costCodes.projectId, projectId))).map(
+        (c) => [c.code, c] as const,
+      ),
+    );
+    const budgeted = new Set(
+      (
+        await scope.tx
+          .select({ id: budgetLines.costCodeId })
+          .from(budgetLines)
+          .where(eq(budgetLines.budgetId, budget.id))
+      ).map((l) => l.id),
+    );
+    const errors: { path: string; message: string }[] = [];
+    const seen = new Set<string>();
+    rows.forEach((r, i) => {
+      const at = (field: string, message: string) =>
+        errors.push({ path: `rows[${i}].${field}`, message });
+      const code = r.code.trim();
+      if (!code || code.length > 30) at('code', 'Give a cost code of up to 30 characters');
+      else if (seen.has(code)) at('code', `${code} appears more than once`);
+      seen.add(code);
+      if (!isMoney(r.original.trim())) at('original', 'Enter a dollar amount like 12500.00');
+      const known = existing.get(code);
+      if (known?.archived) at('code', `${code} is archived`);
+      else if (known && budgeted.has(known.id)) at('code', `${code} already has a budget line`);
+      else if (!known && code && !r.codeDescription?.trim())
+        at('codeDescription', `${code} is new: give its description`);
+      if ((r.codeDescription?.trim().length ?? 0) > 200)
+        at('codeDescription', 'At most 200 characters');
+      if ((r.description?.trim().length ?? 0) > 300) at('description', 'At most 300 characters');
+    });
+    if (errors.length > 0)
+      throw new AppError(
+        'validation_failed',
+        `${errors.length} problem${errors.length === 1 ? '' : 's'} in the file. Nothing was imported.`,
+        errors.slice(0, 50),
+      );
+    for (const r of rows) {
+      const code = r.code.trim();
+      const costCode =
+        existing.get(code) ??
+        (await createCostCode(scope, projectId, { code, description: r.codeDescription!.trim() }));
+      await addLine(scope, projectId, {
+        costCodeId: costCode.id,
+        original: r.original.trim(),
+        ...(r.description?.trim() ? { description: r.description.trim() } : {}),
+        ...(r.isMargin ? { isMargin: true } : {}),
+      });
+    }
+    const showMargin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    return { budget, lines: await viewLines(scope, budget.id, showMargin), imported: rows.length };
+  }
+
   async function lockBudget(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.budget.manage', projectId);
     await requireStaff(scope, projectId);
@@ -358,6 +452,132 @@ export function createBudgetService(
       .orderBy(asc(budgetAdjustments.createdAt), asc(budgetAdjustments.id));
   }
 
+  /** Every revision on the project, newest first, with the cost code each belongs to. Margin lines need the margin permission. */
+  async function listProjectAdjustments(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const margin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    const rows = await scope.tx
+      .select({
+        adjustment: budgetAdjustments,
+        code: costCodes.code,
+        codeDescription: costCodes.description,
+        isMargin: budgetLines.isMargin,
+      })
+      .from(budgetAdjustments)
+      .innerJoin(budgetLines, eq(budgetLines.id, budgetAdjustments.budgetLineId))
+      .innerJoin(costCodes, eq(costCodes.id, budgetLines.costCodeId))
+      .where(eq(budgetAdjustments.projectId, projectId))
+      .orderBy(desc(budgetAdjustments.createdAt), desc(budgetAdjustments.id));
+    return rows.filter((r) => margin || !r.isMargin);
+  }
+
+  // ---- Snapshots ----------------------------------------------------------------------------------------------
+
+  /** Margin lines are hidden from readers without the margin permission, in snapshots as in the live budget. */
+  async function visibleSnapshot(scope: TenantScope, projectId: string, row: BudgetSnapshotRow) {
+    const margin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    return { ...row, lines: row.lines.filter((l) => margin || !l.isMargin) };
+  }
+
+  async function createSnapshot(
+    scope: TenantScope,
+    projectId: string,
+    input: { name: string; note?: string },
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    const name = input.name.trim();
+    if (!name)
+      throw new AppError('validation_failed', 'Give the snapshot a name.', [
+        { path: 'name', message: 'Required' },
+      ]);
+    const budget = await budgetFor(scope, projectId, true);
+    if (!budget) throw new AppError('financials.budget.not_found', 'Start the budget first.');
+    // Take every line, margin included, so a reader with the margin permission sees it all later.
+    const lines = (await viewLines(scope, budget.id, true)).map((v) => ({
+      costCodeId: v.line.costCodeId,
+      code: v.code,
+      codeDescription: v.codeDescription,
+      description: v.line.description,
+      original: v.line.original,
+      approvedChanges: v.line.approvedChanges,
+      revised: revisedOf(v.line),
+      isMargin: v.line.isMargin,
+    }));
+    const [row] = await scope.tx
+      .insert(budgetSnapshots)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        budgetId: budget.id,
+        name,
+        note: input.note?.trim() || null,
+        lines,
+        takenAt: now(),
+        takenBy: scope.ctx.userId,
+      })
+      .returning();
+    return visibleSnapshot(scope, projectId, row!);
+  }
+
+  async function listSnapshots(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(budgetSnapshots)
+      .where(eq(budgetSnapshots.projectId, projectId))
+      .orderBy(desc(budgetSnapshots.takenAt), desc(budgetSnapshots.id));
+    return Promise.all(rows.map((r) => visibleSnapshot(scope, projectId, r)));
+  }
+
+  async function getSnapshot(scope: TenantScope, projectId: string, snapshotId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(budgetSnapshots)
+      .where(and(eq(budgetSnapshots.id, snapshotId), eq(budgetSnapshots.projectId, projectId)))
+      .limit(1);
+    if (!row) throw new AppError('financials.budget.snapshot_not_found');
+    return visibleSnapshot(scope, projectId, row);
+  }
+
+  /**
+   * What Nova and the checks panel work from: the code-found findings and the totals they sit in. Margin never
+   * appears, even for a caller who may see it elsewhere, because it would otherwise reach a prompt and an answer.
+   */
+  async function reviewFacts(scope: TenantScope, projectId: string) {
+    const { budget, lines } = await getBudget(scope, projectId);
+    const shown = lines.filter((l) => !l.line.isMargin);
+    const sum = (pick: (l: BudgetLineRow) => string) =>
+      fromCents(shown.reduce((n, l) => n + signedCents(pick(l.line)), 0));
+    return {
+      hasBudget: budget !== null,
+      status: budget?.status ?? ('draft' as const),
+      lineCount: shown.length,
+      totals: {
+        revised: fromCents(shown.reduce((n, l) => n + signedCents(revisedOf(l.line)), 0)),
+        committed: sum((l) => l.committed),
+        actual: sum((l) => l.actual),
+      },
+      findings: budgetFindings(
+        shown.map((l) => ({
+          id: l.line.id,
+          code: l.code,
+          codeDescription: l.codeDescription,
+          original: l.line.original,
+          approvedChanges: l.line.approvedChanges,
+          committed: l.line.committed,
+          actual: l.line.actual,
+          isMargin: false,
+        })),
+      ),
+    };
+  }
+
   async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.forecast.read', projectId);
     const { budget, lines } = await getBudget(scope, projectId);
@@ -413,8 +633,142 @@ export function createBudgetService(
     };
   }
 
+  /**
+   * The cost report: every visible budget line with what is approved, what is waiting for approval and what has been
+   * spent without a commitment, and the projected cost those add up to. Pending is the lines of submitted commitments.
+   * Margin lines follow the same rule as the budget itself.
+   */
+  async function costReport(scope: TenantScope, projectId: string) {
+    const { budget, lines } = await getBudget(scope, projectId);
+    if (!budget) return { hasBudget: false, status: 'draft' as const, lines: [] };
+    const pendingRows = await scope.tx
+      .select({ lineId: commitmentLines.budgetLineId, amount: commitmentLines.amount })
+      .from(commitmentLines)
+      .innerJoin(commitments, eq(commitments.id, commitmentLines.commitmentId))
+      .where(and(eq(commitments.projectId, projectId), eq(commitments.status, 'submitted')));
+    const pending = new Map<string, number>();
+    for (const r of pendingRows)
+      pending.set(r.lineId, (pending.get(r.lineId) ?? 0) + signedCents(r.amount));
+    return {
+      hasBudget: true,
+      status: budget.status,
+      lines: lines.map((l) => {
+        const revised = signedCents(revisedOf(l.line));
+        const approved = signedCents(l.line.committed);
+        const pend = pending.get(l.line.id) ?? 0;
+        const nonCommitted = signedCents(l.line.actual);
+        const projected = approved + pend + nonCommitted;
+        return {
+          line: l.line,
+          code: l.code,
+          codeDescription: l.codeDescription,
+          original: l.line.original,
+          approvedChanges: l.line.approvedChanges,
+          revised: fromCents(revised),
+          approved: fromCents(approved),
+          pending: fromCents(pend),
+          nonCommitted: fromCents(nonCommitted),
+          projected: fromCents(projected),
+          variance: fromCents(revised - projected),
+        };
+      }),
+    };
+  }
+
+  /** The source items behind one figure on the cost report, grouped under the contract or order they came from. */
+  async function costReportItems(
+    scope: TenantScope,
+    projectId: string,
+    lineId: string,
+    column: 'approved' | 'pending' | 'direct',
+  ) {
+    const { lines } = await getBudget(scope, projectId);
+    const view = lines.find((l) => l.line.id === lineId);
+    if (!view) throw new AppError('financials.budget.line_not_found');
+    const code = `${view.code} - ${view.codeDescription}`;
+    if (column === 'direct') {
+      const rows = await scope.tx
+        .select()
+        .from(directCosts)
+        .where(
+          and(
+            eq(directCosts.projectId, projectId),
+            eq(directCosts.budgetLineId, lineId),
+            eq(directCosts.status, 'recorded'),
+          ),
+        )
+        .orderBy(asc(directCosts.number));
+      const total = rows.reduce((n, r) => n + signedCents(r.amount), 0);
+      return {
+        code,
+        total: fromCents(total),
+        groups: rows.length
+          ? [
+              {
+                kind: 'direct_costs' as const,
+                sourceId: null as string | null,
+                label: 'Direct costs',
+                total: fromCents(total),
+                items: rows.map((r) => ({
+                  number: r.number,
+                  description: r.description,
+                  amount: r.amount,
+                })),
+              },
+            ]
+          : [],
+      };
+    }
+    const rows = await scope.tx
+      .select({ c: commitments, l: commitmentLines })
+      .from(commitmentLines)
+      .innerJoin(commitments, eq(commitments.id, commitmentLines.commitmentId))
+      .where(
+        and(
+          eq(commitments.projectId, projectId),
+          eq(commitmentLines.budgetLineId, lineId),
+          eq(commitments.status, column === 'approved' ? 'approved' : 'submitted'),
+        ),
+      )
+      .orderBy(asc(commitments.number), asc(commitmentLines.sort));
+    const groups = new Map<
+      string,
+      {
+        kind: 'subcontract' | 'purchase_order';
+        sourceId: string | null;
+        label: string;
+        cents: number;
+        items: { number: number; description: string; amount: string }[];
+      }
+    >();
+    for (const { c, l } of rows) {
+      let g = groups.get(c.id);
+      if (!g) {
+        g = {
+          kind: c.kind,
+          sourceId: c.id,
+          label: `${c.kind === 'subcontract' ? 'SC' : 'PO'}-${c.number} - ${c.title}`,
+          cents: 0,
+          items: [],
+        };
+        groups.set(c.id, g);
+      }
+      g.cents += signedCents(l.amount);
+      g.items.push({ number: g.items.length + 1, description: l.description, amount: l.amount });
+    }
+    const list = [...groups.values()];
+    return {
+      code,
+      total: fromCents(list.reduce((n, g) => n + g.cents, 0)),
+      groups: list.map(({ cents, ...g }) => ({ ...g, total: fromCents(cents) })),
+    };
+  }
+
   return {
+    costReport,
+    costReportItems,
     budgetVsForecastFor,
+    reviewFacts,
     portfolioSummary,
     listCostCodes,
     createCostCode,
@@ -425,8 +779,13 @@ export function createBudgetService(
     updateLine,
     deleteLine,
     lockBudget,
+    importLines,
     adjustLine,
     listAdjustments,
+    listProjectAdjustments,
+    createSnapshot,
+    listSnapshots,
+    getSnapshot,
   };
 }
 

@@ -4,6 +4,7 @@ import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
 import { defectTagSuite } from './suites/defect-tag';
+import { budgetReviewSuite } from './suites/budget-review';
 import { diarySummarySuite } from './suites/diary-summary';
 import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
@@ -16,6 +17,7 @@ import { inductionDraftSuite } from './suites/induction-draft';
 import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { laborProductivitySuite } from './suites/labor-productivity';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
@@ -37,6 +39,7 @@ export const SUITES: readonly AnySuite[] = [
   inductionRefreshSuite,
   inductionAskSuite,
   translationSuite,
+  budgetReviewSuite,
   diarySummarySuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
@@ -50,6 +53,7 @@ export const SUITES: readonly AnySuite[] = [
   importMappingSuite,
   quoteReadSuite,
   quoteNegotiateSuite,
+  laborProductivitySuite,
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,

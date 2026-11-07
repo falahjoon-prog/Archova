@@ -23,7 +23,8 @@ export type SessionStatus = 'loading' | 'signed_in' | 'signed_out';
 
 interface SessionContextValue {
   status: SessionStatus;
-  signIn: () => Promise<SignInResult>;
+  /** `fresh` makes the person enter their password again, for actions that need a recent sign-in. */
+  signIn: (opts?: { fresh?: boolean }) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   /** Called when the API rejects the refresh token (401 after refresh). */
   markSignedOut: () => void;
@@ -46,14 +47,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async () => {
-    const result = await signInWithPkce({
-      appOrigin: appConfig.appOrigin,
-      randomBytes,
-      sha256,
-      openAuthSession: (url, redirectUri) => WebBrowser.openAuthSessionAsync(url, redirectUri),
-      exchangeCode: session.exchangeCode,
-    });
+  const signIn = useCallback(async (opts?: { fresh?: boolean }) => {
+    const result = await signInWithPkce(
+      {
+        appOrigin: appConfig.appOrigin,
+        randomBytes,
+        sha256,
+        openAuthSession: (url, redirectUri) => WebBrowser.openAuthSessionAsync(url, redirectUri),
+        exchangeCode: session.exchangeCode,
+      },
+      opts?.fresh ? { prompt: 'login' } : {},
+    );
     if (result.status === 'signed_in') setStatus('signed_in');
     return result;
   }, []);

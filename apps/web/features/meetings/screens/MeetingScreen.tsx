@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useState } from 'react';
 import {
   Alert,
@@ -50,6 +51,13 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="meeting"
+        entityId={m.id}
+        projectId={project.projectId}
+        title={m.title}
+        subtitle={`${m.seriesName}, meeting ${m.number}`}
+      />
       <p className="breadcrumb">
         <Link className="link" href={webRoutes.meetings(org.orgSlug, project.projectId)}>
           Meetings

@@ -35,4 +35,6 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'standard',
     orgRoles: ['member'],
   },
+  // No orgRoles: org owners and admins only (they hold every org permission). The log names who did what.
+  { key: 'reporting.audit.read', scope: 'org', tool: null, level: 'admin' },
 ];

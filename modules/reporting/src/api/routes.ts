@@ -8,6 +8,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { MyWorkService } from '../application/mywork';
+import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
 import type { RiskService } from '../application/risk';
 import type { ReadinessService } from '../application/readiness';
@@ -20,6 +21,7 @@ export function reportingRoutes(
   risk: RiskService,
   readiness: ReadinessService,
   myWork: MyWorkService,
+  audit: AuditService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -50,6 +52,10 @@ export function reportingRoutes(
       await tx(input, (s) => myWork.removeBookmark(s, bookmarkId(input.params)));
       return { status: 204 };
     },
+    listAuditLog: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => audit.list(s, input.query ?? {})),
+    }),
     getPortfolio: async (input) => ({
       status: 200,
       body: await read(input, (s) =>

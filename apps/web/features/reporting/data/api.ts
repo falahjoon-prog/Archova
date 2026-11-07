@@ -1,10 +1,13 @@
 // Reporting module: the portfolio dashboard and the report builder.
 import { unwrap } from '@archova/api-client';
 import { api } from '@/shared/lib/api';
+import { startOfLocalDay } from '../lib/types';
 import type {
   Bookmark,
   BookmarkInput,
   MyWork,
+  AuditFilters,
+  AuditLogPage,
   Portfolio,
   ReadinessPack,
   Report,
@@ -40,6 +43,23 @@ export function createReportingApi(orgId: string) {
       unwrap(
         await api.DELETE('/v1/orgs/{orgId}/my-work/bookmarks/{bookmarkId}', {
           params: { path: { orgId, bookmarkId } },
+        }),
+      );
+    },
+    async auditLog(filters: AuditFilters, cursor: string | undefined): Promise<AuditLogPage> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/audit-log', {
+          params: {
+            path,
+            query: {
+              limit: 50,
+              ...(filters.projectId ? { projectId: filters.projectId } : {}),
+              ...(filters.module ? { module: filters.module } : {}),
+              ...(startOfLocalDay(filters.from) ? { from: startOfLocalDay(filters.from) } : {}),
+              ...(startOfLocalDay(filters.to, 1) ? { to: startOfLocalDay(filters.to, 1) } : {}),
+              ...(cursor ? { cursor } : {}),
+            },
+          },
         }),
       );
     },

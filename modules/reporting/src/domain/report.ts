@@ -88,6 +88,14 @@ export interface ToolCounts {
   overdue: number;
 }
 
+/** Programme activities, with the split the schedule insights need on top of open and late. */
+export interface ProgrammeCounts extends ToolCounts {
+  notStarted: number;
+  completed: number;
+  /** Days late summed over the late activities, so the average is this over `overdue`. */
+  lateDays: number;
+}
+
 export interface ProjectCounts {
   rfis: ToolCounts;
   defects: ToolCounts;
@@ -95,7 +103,7 @@ export interface ProjectCounts {
   claims: ToolCounts;
   variations: ToolCounts;
   incidents: ToolCounts;
-  programme: ToolCounts;
+  programme: ProgrammeCounts;
 }
 
 /**

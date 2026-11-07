@@ -10,6 +10,8 @@ export type MyWorkItem = S['MyWorkItem'];
 export type Bookmark = S['Bookmark'];
 export type BookmarkInput = S['BookmarkInput'];
 export type ReadinessPack = S['ReadinessPack'];
+export type AuditLogPage = S['AuditLogPage'];
+export type AuditEvent = S['AuditEvent'];
 export type Report = S['Report'];
 export type ReportConfig = S['ReportConfig'];
 export type ReportInput = S['ReportInput'];
@@ -103,3 +105,38 @@ export function toCsv(result: Pick<ReportResult, 'columns' | 'rows'>): string {
 export const cellValue = cellText;
 
 export { ITEM_LABELS } from './itemLabels';
+
+/** Modules that write audit events, for the filter. Unknown modules still show in the list. */
+export const AUDIT_MODULE_LABELS: Record<string, string> = {
+  platform: 'Projects and members',
+  rfis: 'RFIs',
+  defects: 'Defects',
+  submittals: 'Submittals',
+  documents: 'Documents and drawings',
+  correspondence: 'Correspondence',
+  financials: 'Financials',
+  safety: 'Safety',
+  workforce: 'Workforce',
+  scheduling: 'Programme',
+  precon: 'Tendering',
+  integrations: 'Integrations',
+};
+
+export interface AuditFilters {
+  projectId: string;
+  module: string;
+  /** `YYYY-MM-DD` in the viewer's time zone. */
+  from: string;
+  to: string;
+}
+
+export const EMPTY_AUDIT_FILTERS: AuditFilters = { projectId: '', module: '', from: '', to: '' };
+
+/** Start of a viewer-local day as an instant. `addDays` 1 gives the exclusive end of a "to" day. */
+export function startOfLocalDay(date: string, addDays = 0): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
+  const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return undefined;
+  d.setDate(d.getDate() + addDays);
+  return d.toISOString();
+}

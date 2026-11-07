@@ -51,6 +51,7 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createRecentsModule } from '@archova/mod-recents';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -67,6 +68,7 @@ import {
   CORRESPONDENCE_PERMISSIONS,
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
+import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -76,6 +78,7 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
+  CONVERSATIONS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -263,6 +266,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  const conversations = createConversationsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -298,11 +306,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
+    // workforce is built later; the report only calls this at request time.
+    timesheetMinutes: (scope, projectId) =>
+      workforce.api.timesheetMinutesByCostCode(scope, projectId),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -385,8 +397,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     quotePackage: (scope, projectId, packageId) =>
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
+    laborFacts: (scope, projectId, costCodeId) =>
+      financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),
@@ -442,6 +457,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
+    identity: identity.api,
     platform: platform.api,
     access: access.api,
     rfis: rfis.api,
@@ -489,6 +505,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...quality.api.syncCommands,
       ...safety.api.syncCommands,
       ...documents.api.syncCommands,
+      ...files.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
   });
@@ -505,11 +522,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
     bim,
     notifications,
+    recents,
     financials,
     quality,
     precon,
@@ -544,11 +563,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     correspondence,
+    conversations,
     defects,
     meetings,
     ownerportal,
     bim,
     notifications,
+    recents,
     financials,
     quality,
     precon,
