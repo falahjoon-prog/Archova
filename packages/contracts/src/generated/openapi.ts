@@ -14862,6 +14862,14 @@ export interface components {
             finalApproverUserId: string | null;
             /** @description Told about changes but not assigned. */
             distributionUserIds: string[];
+            /** @description Stand-in who may close, reject and reopen in place of the final approver between the two dates. */
+            approverDelegateUserId: string | null;
+            /** Format: date */
+            approverDelegateFrom: string | null;
+            /** Format: date */
+            approverDelegateUntil: string | null;
+            /** @description Closing needs a note or a photo. */
+            requireCloseEvidence: boolean;
             /** Format: date */
             dueDate: string | null;
             /** @description Open or disputed and past its due date in the project's time zone */
@@ -14895,6 +14903,8 @@ export interface components {
             note: string | null;
             fileIds: string[];
             actorId: string | null;
+            /** @description The final approver a stand-in acted for, when they did. */
+            onBehalfOf: string | null;
             /** Format: date-time */
             at: string;
         };
@@ -15725,6 +15735,12 @@ export interface components {
             managerUserId?: components["schemas"]["UserRef"];
             finalApproverUserId?: components["schemas"]["UserRef"];
             distributionUserIds?: components["schemas"]["UserRef"][];
+            approverDelegateUserId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            approverDelegateFrom?: string;
+            /** Format: date */
+            approverDelegateUntil?: string;
+            requireCloseEvidence?: boolean;
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
@@ -15744,6 +15760,12 @@ export interface components {
             managerUserId?: components["schemas"]["UserRef"] | null;
             finalApproverUserId?: components["schemas"]["UserRef"] | null;
             distributionUserIds?: components["schemas"]["UserRef"][];
+            approverDelegateUserId?: components["schemas"]["UserRef"] | null;
+            /** Format: date */
+            approverDelegateFrom?: string | null;
+            /** Format: date */
+            approverDelegateUntil?: string | null;
+            requireCloseEvidence?: boolean;
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];

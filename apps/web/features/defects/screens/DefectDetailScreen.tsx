@@ -290,6 +290,17 @@ function DefectView({ d }: { d: Defect }) {
                   { label: 'Trade', value: d.trade || '—' },
                   { label: 'Punch item manager', value: personOrDash(d.managerUserId) },
                   { label: 'Final approver', value: personOrDash(d.finalApproverUserId) },
+                  ...(d.approverDelegateUserId
+                    ? [
+                        {
+                          label: 'Stand-in',
+                          value: `${dir.personName(d.approverDelegateUserId)}${d.approverDelegateFrom || d.approverDelegateUntil ? `, ${d.approverDelegateFrom ?? 'now'} to ${d.approverDelegateUntil ?? 'further notice'}` : ''}`,
+                        },
+                      ]
+                    : []),
+                  ...(d.requireCloseEvidence
+                    ? [{ label: 'To close', value: 'A note or photo is required' }]
+                    : []),
                   {
                     label: 'Assignees',
                     value: d.assigneeUserIds.length
@@ -333,7 +344,7 @@ function DefectView({ d }: { d: Defect }) {
             label="Defect history"
             entries={d.events.map((e) => ({
               id: e.id,
-              actor: e.by,
+              actor: e.onBehalfOf ? `${e.by} (for ${e.onBehalfOf})` : e.by,
               action: e.fromStatus
                 ? `moved it to ${STATUS_LABELS[e.toStatus]}`
                 : 'raised the defect',

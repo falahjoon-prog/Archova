@@ -268,6 +268,7 @@ export const PROBLEM_CODES = {
   'defect.not_allowed': 403,
   'defect.reason_required': 422,
   'defect.photo_required': 422,
+  'defect.evidence_required': 422,
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
