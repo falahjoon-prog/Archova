@@ -24,6 +24,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { RelatedItemsPanel } from '@/features/links';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { CorrespondenceStatusPill, TimeBar } from '../components/CorrespondenceChips';
 import { useCorrespondence, useCorrespondenceMutations } from '../hooks/useCorrespondence';
@@ -192,19 +193,20 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
             </Card>
           </div>
         ) : (
-          <Card title="Related items">
-            {i.related.length === 0 ? (
-              <p className="u-muted u-m-0">Nothing is linked to this item yet.</p>
-            ) : (
-              <ul className="stack u-m-0">
-                {i.related.map((r) => (
-                  <li key={`${r.kind}-${r.id}`}>
-                    <span className="u-caption">{r.kind}</span> · {r.label || r.id}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          <div className="stack-lg">
+            <RelatedItemsPanel type="correspondence" id={i.id} />
+            {i.related.length > 0 ? (
+              <Card title="Referenced in this item">
+                <ul className="stack u-m-0">
+                  {i.related.map((r) => (
+                    <li key={`${r.kind}-${r.id}`}>
+                      <span className="u-caption">{r.kind}</span> · {r.label || r.id}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+          </div>
         )}
       </Tabs>
 

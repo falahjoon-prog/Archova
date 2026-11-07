@@ -193,6 +193,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       portfolioCounts: service.portfolioCounts,
       /** Global search (`search`): defects the caller can see that match some words. */
       searchHits: service.searchHits,
+      /** Related items (`links`): defects the caller can see among some ids. */
+      linkSummaries: service.linkSummaries,
       reportRows: service.reportRows,
       /** Nova Ask: issued defects with their history notes, to index (one defect when `only` is given). Called by `ai` only. */
       aiSources: service.aiSources,

@@ -25,6 +25,7 @@ import { locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { RelatedItemsPanel } from '@/features/links';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
 import { READY_NEEDS_PHOTO } from '../data/source';
 import { useDefect, useDefectMutations, useDefectsSource } from '../hooks/useDefects';
@@ -289,6 +290,7 @@ function DefectView({ d }: { d: Defect }) {
               <p className="u-muted u-m-0">No photos.</p>
             )}
           </Card>
+          {live ? <RelatedItemsPanel type="defect" id={d.id} /> : null}
         </div>
         <Card title="History">
           <ActivityTimeline

@@ -26,6 +26,8 @@ export function createSubmittalsModule(
       portfolioCounts: service.portfolioCounts,
       /** Global search (`search`): submittals the caller can see that match some words. */
       searchHits: service.searchHits,
+      /** Related items (`links`): submittals the caller can see among some ids. */
+      linkSummaries: service.linkSummaries,
       reportRows: service.reportRows,
       /** Programme links (`scheduling`): details of the submittals among some ids that the caller can see. */
       summariesByIds: service.summariesByIds,

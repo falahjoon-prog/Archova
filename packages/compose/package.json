@@ -18,6 +18,7 @@
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-bim": "workspace:*",
     "@archova/mod-conversations": "workspace:*",
+    "@archova/mod-links": "workspace:*",
     "@archova/mod-correspondence": "workspace:*",
     "@archova/mod-defects": "workspace:*",
     "@archova/mod-meetings": "workspace:*",

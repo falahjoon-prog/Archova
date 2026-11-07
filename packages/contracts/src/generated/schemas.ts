@@ -2237,6 +2237,26 @@ export const CreateQuoteRequestSchema = z.object({
 }).strict();
 export type CreateQuoteRequest = z.infer<typeof CreateQuoteRequestSchema>;
 
+export const LinkEntityTypeSchema = z.enum(["rfi", "defect", "submittal", "correspondence", "document"]);
+export type LinkEntityType = z.infer<typeof LinkEntityTypeSchema>;
+
+export const LinkRecordRefSchema = z.object({
+  "type": LinkEntityTypeSchema,
+  "id": z.string(),
+});
+export type LinkRecordRef = z.infer<typeof LinkRecordRefSchema>;
+
+export const LinkReasonSchema = z.enum(["related", "caused_by", "blocked_by", "responds_to", "duplicate_of", "supersedes"]);
+export type LinkReason = z.infer<typeof LinkReasonSchema>;
+
+export const CreateRelatedItemRequestSchema = z.object({
+  "from": LinkRecordRefSchema,
+  "to": LinkRecordRefSchema,
+  "reason": LinkReasonSchema,
+  "note": z.string().max(300).nullable().optional(),
+});
+export type CreateRelatedItemRequest = z.infer<typeof CreateRelatedItemRequestSchema>;
+
 export const RfiPinInputSchema = z.object({
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
   "x": z.number().min(0).max(1).optional(),
@@ -6085,6 +6105,52 @@ export const RejectTimesheetRequestSchema = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
 export type RejectTimesheetRequest = z.infer<typeof RejectTimesheetRequestSchema>;
+
+export const RelatedItemSummarySchema = z.object({
+  "type": LinkEntityTypeSchema,
+  "id": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+});
+export type RelatedItemSummary = z.infer<typeof RelatedItemSummarySchema>;
+
+export const RelatedItemSchema = z.object({
+  "linkId": z.string(),
+  "side": z.enum(["from", "to"]),
+  "reason": LinkReasonSchema,
+  "note": z.string().nullable(),
+  "origin": z.enum(["user", "nova", "system"]),
+  "createdById": z.string(),
+  "createdByName": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "item": RelatedItemSummarySchema,
+});
+export type RelatedItem = z.infer<typeof RelatedItemSchema>;
+
+export const RelatedItemCandidateListSchema = z.object({
+  "data": z.array(RelatedItemSummarySchema),
+});
+export type RelatedItemCandidateList = z.infer<typeof RelatedItemCandidateListSchema>;
+
+export const RelatedItemListSchema = z.object({
+  "data": z.array(RelatedItemSchema),
+  "hidden": z.number().int(),
+});
+export type RelatedItemList = z.infer<typeof RelatedItemListSchema>;
+
+export const RelatedLinkSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "from": LinkRecordRefSchema,
+  "to": LinkRecordRefSchema,
+  "reason": LinkReasonSchema,
+  "note": z.string().nullable(),
+  "origin": z.enum(["user", "nova", "system"]),
+  "createdById": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type RelatedLink = z.infer<typeof RelatedLinkSchema>;
 
 export const RemoveProjectMemberRequestSchema = z.object({
   "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),

@@ -17,6 +17,7 @@ import {
 import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { RelatedItemsPanel } from '@/features/links';
 import { OnProgramme } from '@/features/schedule';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -173,6 +174,7 @@ function Detail({ d }: { d: SubmittalDetail }) {
             />
           </Card>
           <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
+          <RelatedItemsPanel type="submittal" id={s.id} />
         </div>
       </div>
 

@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: links
   - name: bim
   - name: defects
   - name: financials
@@ -6574,6 +6575,96 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listRelatedItems
+      tags: [links]
+      x-module: links
+      x-permission: links.links.read
+      summary: Everything linked to one record, from either end, newest first.
+      description: >
+        Records the caller cannot open in their own tool are not described; they are only counted in `hidden`.
+        404 when the record itself is missing or not visible to the caller.
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { $ref: '#/components/schemas/LinkEntityType' },
+          }
+        - { name: id, in: query, required: true, schema: { type: string, maxLength: 64 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedItemList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createRelatedItem
+      tags: [links]
+      x-module: links
+      x-permission: links.links.create
+      summary: Link two records on the project. Linking the same pair twice returns the existing link.
+      description: The caller must be able to open both records in their own tools.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRelatedItemRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items/candidates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: searchRelatedItemCandidates
+      tags: [links]
+      x-module: links
+      x-permission: links.links.create
+      summary: Records of one type that can be linked, matching some words; only ones the caller can open.
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { $ref: '#/components/schemas/LinkEntityType' },
+          }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 8 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedItemCandidateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RelatedLinkId'
+    delete:
+      operationId: deleteRelatedItem
+      tags: [links]
+      x-module: links
+      x-permission: links.links.delete
+      summary: Remove a link. Whoever made it can always remove it; anyone else must be able to open both records.
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -13423,6 +13514,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
+    RelatedLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rli_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -19143,6 +19239,82 @@ components:
         responses:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    LinkEntityType:
+      type: string
+      enum: [rfi, defect, submittal, correspondence, document]
+    LinkReason:
+      type: string
+      enum: [related, caused_by, blocked_by, responds_to, duplicate_of, supersedes]
+      description: Read as "<from> <reason> <to>"; `related` is symmetric.
+    LinkRecordRef:
+      type: object
+      required: [type, id]
+      properties:
+        type: { $ref: '#/components/schemas/LinkEntityType' }
+        id: { type: string }
+    CreateRelatedItemRequest:
+      type: object
+      required: [from, to, reason]
+      properties:
+        from: { $ref: '#/components/schemas/LinkRecordRef' }
+        to: { $ref: '#/components/schemas/LinkRecordRef' }
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'], maxLength: 300 }
+    RelatedLink:
+      type: object
+      required: [id, projectId, from, to, reason, note, origin, createdById, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        from: { $ref: '#/components/schemas/LinkRecordRef' }
+        to: { $ref: '#/components/schemas/LinkRecordRef' }
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'] }
+        origin: { type: string, enum: [user, nova, system] }
+        createdById: { type: string }
+        createdAt: { type: string, format: date-time }
+    RelatedItem:
+      type: object
+      required: [linkId, side, reason, note, origin, createdById, createdByName, createdAt, item]
+      properties:
+        linkId: { type: string }
+        side:
+          type: string
+          enum: [from, to]
+          description: Which end of the link the record being looked at is; `from` reads the reason as written, `to` reads its inverse.
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'] }
+        origin: { type: string, enum: [user, nova, system] }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        item: { $ref: '#/components/schemas/RelatedItemSummary' }
+    RelatedItemSummary:
+      type: object
+      required: [type, id, ref, title, status]
+      properties:
+        type: { $ref: '#/components/schemas/LinkEntityType' }
+        id: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+    RelatedItemList:
+      type: object
+      required: [data, hidden]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RelatedItem' }
+        hidden:
+          type: integer
+          description: Links to records the caller cannot open. They are counted, never described.
+    RelatedItemCandidateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RelatedItemSummary' }
     ConversationMessage:
       type: object
       required: [id, authorId, authorName, body, mentionedUserIds, createdAt]

@@ -68,6 +68,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { LINKS_PERMISSIONS, createLinksModule } from '@archova/mod-links';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -78,6 +79,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  LINKS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -484,6 +486,22 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  const links = createLinksModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    // One source per record type a link can join; a new tool joins by adding its type here (see `LINK_ENTITY_TYPES`).
+    sources: {
+      rfi: { summaries: rfis.api.summariesByIds, searchHits: rfis.api.searchHits },
+      defect: { summaries: defects.api.linkSummaries, searchHits: defects.api.searchHits },
+      submittal: { summaries: submittals.api.linkSummaries, searchHits: submittals.api.searchHits },
+      correspondence: {
+        summaries: correspondence.api.linkSummaries,
+        searchHits: correspondence.api.searchHits,
+      },
+      document: { summaries: documents.api.linkSummaries, searchHits: documents.api.searchHits },
+    },
+  });
+
   const sync = createSyncModule(services, {
     access: access.api,
     sources: [
@@ -519,6 +537,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    links,
     defects,
     meetings,
     ownerportal,
@@ -559,6 +578,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    links,
     defects,
     meetings,
     ownerportal,
