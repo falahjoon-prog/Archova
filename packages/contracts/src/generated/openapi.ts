@@ -8638,6 +8638,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every budget revision on the project, newest first, for the Budget Modifications report. */
+        get: operations["listProjectBudgetAdjustments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments": {
         parameters: {
             query?: never;
@@ -14740,6 +14760,19 @@ export interface components {
         };
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
+        };
+        ProjectBudgetAdjustment: {
+            id: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
+            lineId: string;
+            code: string;
+            codeDescription: string;
+        };
+        ProjectBudgetAdjustmentList: {
+            data: components["schemas"]["ProjectBudgetAdjustment"][];
         };
         /** @description Decimal AUD ex GST, negative allowed. */
         FinancialsSignedMoney: string;
@@ -31676,6 +31709,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectBudgetAdjustments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBudgetAdjustmentList"];
                 };
             };
             default: components["responses"]["Problem"];

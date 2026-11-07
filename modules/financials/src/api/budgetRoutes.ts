@@ -280,6 +280,19 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
         ),
       ),
     }),
+    listProjectBudgetAdjustments: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) => budget.listProjectAdjustments(s, project(input.params)))
+        ).map((r) => ({
+          ...toAdjustmentDto(r.adjustment),
+          lineId: encodeId('budgetLine', r.adjustment.budgetLineId),
+          code: r.code,
+          codeDescription: r.codeDescription,
+        })),
+      },
+    }),
     listBudgetAdjustments: async (input) => ({
       status: 200,
       body: {

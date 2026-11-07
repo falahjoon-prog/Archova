@@ -448,6 +448,26 @@ export function createBudgetService(
       .orderBy(asc(budgetAdjustments.createdAt), asc(budgetAdjustments.id));
   }
 
+  /** Every revision on the project, newest first, with the cost code each belongs to. Margin lines need the margin permission. */
+  async function listProjectAdjustments(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const margin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    const rows = await scope.tx
+      .select({
+        adjustment: budgetAdjustments,
+        code: costCodes.code,
+        codeDescription: costCodes.description,
+        isMargin: budgetLines.isMargin,
+      })
+      .from(budgetAdjustments)
+      .innerJoin(budgetLines, eq(budgetLines.id, budgetAdjustments.budgetLineId))
+      .innerJoin(costCodes, eq(costCodes.id, budgetLines.costCodeId))
+      .where(eq(budgetAdjustments.projectId, projectId))
+      .orderBy(desc(budgetAdjustments.createdAt), desc(budgetAdjustments.id));
+    return rows.filter((r) => margin || !r.isMargin);
+  }
+
   // ---- Snapshots ----------------------------------------------------------------------------------------------
 
   /** Margin lines are hidden from readers without the margin permission, in snapshots as in the live budget. */
@@ -591,6 +611,7 @@ export function createBudgetService(
     importLines,
     adjustLine,
     listAdjustments,
+    listProjectAdjustments,
     createSnapshot,
     listSnapshots,
     getSnapshot,

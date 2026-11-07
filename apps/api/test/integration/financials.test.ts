@@ -1001,6 +1001,11 @@ describe('Budget and cost codes', () => {
     const history = (await s.pm.browser.get(`${s.base}/budget/lines/${l1.id}/adjustments`)).json();
     expect(history.data.map((a: { amount: string }) => a.amount)).toEqual(['2500.75', '-500.00']);
 
+    // The project-wide list carries the cost code, newest first.
+    const all = (await s.pm.browser.get(`${s.base}/budget/adjustments`)).json();
+    expect(all.data.map((a: { amount: string }) => a.amount)).toEqual(['-500.00', '2500.75']);
+    expect(all.data[0]).toMatchObject({ lineId: l1.id, code: expect.any(String) });
+
     const after = (await s.pm.browser.get(`${s.base}/budget`)).json();
     expect(after.totals).toMatchObject({
       original: '59000.00',

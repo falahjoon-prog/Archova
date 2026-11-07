@@ -11778,6 +11778,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetSnapshot' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectBudgetAdjustments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Every budget revision on the project, newest first, for the Budget Modifications report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectBudgetAdjustmentList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -21465,6 +21482,24 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/BudgetAdjustment' }
+    ProjectBudgetAdjustment:
+      type: object
+      required: [id, amount, reason, createdAt, lineId, code, codeDescription]
+      properties:
+        id: { type: string, pattern: '^bad_[0-9A-Za-z]{26}$' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+        lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+    ProjectBudgetAdjustmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectBudgetAdjustment' }
     FinancialsSignedMoney:
       type: string
       pattern: '^-?\d{1,16}(\.\d{1,2})?$'

@@ -116,6 +116,32 @@ describe('BudgetScreen', () => {
     expect(fake.callsTo('POST', `${P}/budget/lines/{lineId}/adjustments`)).toHaveLength(0);
   });
 
+  it('shows the buyout summary and the budget modifications from the Reports tab', async () => {
+    fake.on('GET', `${P}/budget`, () =>
+      budget({ lines: [line({ revised: '50000.00', committed: '20000.00' })] }),
+    );
+    fake.on('GET', `${P}/budget/adjustments`, () => ({
+      data: [
+        {
+          id: 'bad_1',
+          amount: '-500.00',
+          reason: 'Scope removed',
+          createdAt: '2026-11-02T00:00:00Z',
+          lineId: 'bln_1',
+          code: '03-100',
+          codeDescription: 'Concrete',
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Reports' }));
+    expect(await screen.findByText('Part bought out')).toBeTruthy();
+    expect(screen.getByText('40%')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Budget modifications' }));
+    expect(await screen.findByText('Scope removed')).toBeTruthy();
+  });
+
   it('adds a cost code from the Cost codes tab', async () => {
     fake.on('GET', `${P}/budget`, () => budget());
     fake.on('POST', `${P}/cost-codes`, () => ({

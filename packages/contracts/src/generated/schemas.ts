@@ -5552,6 +5552,22 @@ export const ProjectSchema = z.object({
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
+export const ProjectBudgetAdjustmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^bad_[0-9A-Za-z]{26}$")),
+  "amount": FinancialsSignedMoneySchema,
+  "reason": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+});
+export type ProjectBudgetAdjustment = z.infer<typeof ProjectBudgetAdjustmentSchema>;
+
+export const ProjectBudgetAdjustmentListSchema = z.object({
+  "data": z.array(ProjectBudgetAdjustmentSchema),
+});
+export type ProjectBudgetAdjustmentList = z.infer<typeof ProjectBudgetAdjustmentListSchema>;
+
 export const ProjectMemberSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
