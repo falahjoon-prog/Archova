@@ -371,7 +371,7 @@ export function createEnvelopeService(deps: EsignDeps) {
     envelopeId: string,
     expectedVersion: number,
   ): Promise<{ loaded: Loaded; mail: Outbound[] }> {
-    const l = await core.load(scope, envelopeId, projectId);
+    const l = await core.load(scope, envelopeId, projectId, true);
     if (l.env.status !== 'draft')
       throw new AppError('esign.invalid_state', 'This envelope has already been sent.');
     if (l.env.version !== expectedVersion) throw versionConflict();
@@ -401,6 +401,7 @@ export function createEnvelopeService(deps: EsignDeps) {
       .returning();
     if (!row) throw versionConflict();
     const sent = await core.load(scope, envelopeId);
+    await core.retain(scope, sent, t);
     const due = toNotify(sent.recips.map(stateOf), sent.env.signingOrder);
     const mail = await core.issueLinks(
       scope,
@@ -424,7 +425,7 @@ export function createEnvelopeService(deps: EsignDeps) {
     envelopeId: string,
     reason: string,
   ) {
-    const l = await core.load(scope, envelopeId, projectId);
+    const l = await core.load(scope, envelopeId, projectId, true);
     if (l.env.status !== 'sent')
       throw new AppError('esign.invalid_state', 'Only a sent envelope can be voided.');
     const t = now();
@@ -456,7 +457,7 @@ export function createEnvelopeService(deps: EsignDeps) {
 
   /** Emails everyone whose turn it is and who hasn't acted, with a fresh link each. At most hourly per person. */
   async function remind(scope: TenantScope, projectId: string, envelopeId: string) {
-    const l = await core.expireIfDue(scope, await core.load(scope, envelopeId, projectId));
+    const l = await core.expireIfDue(scope, await core.load(scope, envelopeId, projectId, true));
     if (l.env.status !== 'sent')
       throw new AppError('esign.invalid_state', 'Only a sent envelope can be reminded.');
     const waiting = l.recips.filter(
@@ -485,7 +486,7 @@ export function createEnvelopeService(deps: EsignDeps) {
     envelopeId: string,
     recipientId: string,
   ) {
-    const l = await core.expireIfDue(scope, await core.load(scope, envelopeId, projectId));
+    const l = await core.expireIfDue(scope, await core.load(scope, envelopeId, projectId, true));
     if (l.env.status !== 'sent')
       throw new AppError('esign.invalid_state', 'This envelope is not waiting for signatures.');
     if (!l.env.allowPaper)
@@ -531,8 +532,16 @@ export function createEnvelopeService(deps: EsignDeps) {
     if (l.env.status === 'completed') {
       const n = await core.names(scope, l.env);
       const bytes = await core.renderDocument(scope, l, doc, n.timezone);
-      if (doc.signedSha256 && createHash('sha256').update(bytes).digest('hex') !== doc.signedSha256)
+      if (
+        doc.signedSha256 &&
+        createHash('sha256').update(bytes).digest('hex') !== doc.signedSha256
+      ) {
         deps.logger?.error({ envelopeId: l.env.id, documentId: doc.id }, 'signed pdf hash changed');
+        throw new AppError(
+          'esign.invalid_state',
+          "This signed copy failed its integrity check, so it can't be released. Contact support.",
+        );
+      }
       return { filename: `${base} (signed).pdf`, bytes, signed: true };
     }
     const { bytes } = await deps.files.readFileBytes(scope, doc.fileId, MAX_PDF_BYTES, {

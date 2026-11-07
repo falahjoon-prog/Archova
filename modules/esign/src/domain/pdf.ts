@@ -3,6 +3,31 @@
 // pinned to the completion time), so the hash recorded at completion can be checked again on every download.
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 
+/**
+ * A drawn signature is untrusted input that ends up inside the sealed PDF, so it is checked before it is stored:
+ * a real PNG header, sane dimensions (a decompression bomb is mostly a huge IHDR), and a trial embed in a scratch
+ * PDF. Returns a message when it is not acceptable.
+ */
+export async function verifyDrawnSignature(dataUrl: string): Promise<string | null> {
+  const bad = 'The drawn signature is invalid. Clear it and draw it again.';
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) return bad;
+  const bytes = Buffer.from(dataUrl.slice(comma + 1), 'base64');
+  if (bytes.length < 33 || bytes.length > 110_000 || bytes.toString('latin1', 12, 16) !== 'IHDR')
+    return bad;
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  if (width < 1 || height < 1 || width > 2000 || height > 1000 || width * height > 1_500_000)
+    return bad;
+  try {
+    const scratch = await PDFDocument.create();
+    await scratch.embedPng(bytes);
+  } catch {
+    return bad;
+  }
+  return null;
+}
+
 export interface SignerRecord {
   name: string;
   email: string;
@@ -77,16 +102,26 @@ async function drawSignature(
   s: SignerRecord,
   box: { x: number; y: number; w: number; h: number },
 ) {
+  let drawn = false;
   if (s.signatureKind === 'drawn' && s.signatureValue) {
-    const b64 = s.signatureValue.slice(s.signatureValue.indexOf(',') + 1);
-    const img = await pdf.embedPng(Buffer.from(b64, 'base64'));
-    const scale = Math.min(box.w / img.width, box.h / img.height);
-    page.drawImage(img, {
-      x: box.x,
-      y: box.y,
-      width: img.width * scale,
-      height: img.height * scale,
-    });
+    try {
+      const b64 = s.signatureValue.slice(s.signatureValue.indexOf(',') + 1);
+      const img = await pdf.embedPng(Buffer.from(b64, 'base64'));
+      const scale = Math.min(box.w / img.width, box.h / img.height);
+      page.drawImage(img, {
+        x: box.x,
+        y: box.y,
+        width: img.width * scale,
+        height: img.height * scale,
+      });
+      drawn = true;
+    } catch {
+      // Never let one signature strand the envelope: fall back to the signer's name below.
+    }
+  }
+  if (drawn) return;
+  if (s.signatureKind === 'drawn' && s.signatureValue) {
+    page.drawText(pdfSafe(s.name), { x: box.x, y: box.y + box.h * 0.2, size: 12, font });
   } else if (s.signatureKind === 'typed' && s.signatureValue) {
     const text = pdfSafe(s.signatureValue);
     const size = Math.max(8, Math.min(box.h * 0.7, (box.w / Math.max(text.length, 1)) * 1.9, 26));

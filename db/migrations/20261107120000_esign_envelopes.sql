@@ -123,4 +123,132 @@ create table esign.events (
 create index events_envelope on esign.events (envelope_id, at);
 select kernel.enable_tenant_rls('esign.events');
 
+-- ---------------------------------------------------------------------------------------------------------------
+-- Evidence rules, enforced by the database so no code path (or a later bug) can rewrite what was signed.
+--  * esign.events is append-only.
+--  * Once an envelope leaves draft, its content (subject, message, options, source, expiry), its documents and its
+--    placed fields are frozen; only the recorded hashes can be filled in once.
+--  * A recipient's identity and routing never change, and a signature, decline or delegation can't be edited,
+--    undone or deleted.
+--  * Terminal envelope states are final.
+-- ---------------------------------------------------------------------------------------------------------------
+create function esign.forbid_change() returns trigger language plpgsql as $$
+begin
+  raise exception 'esign: % is append-only', tg_table_name using errcode = '55000';
+end $$;
+create trigger events_append_only before update or delete on esign.events
+  for each row execute function esign.forbid_change();
+
+create function esign.freeze_envelope() returns trigger language plpgsql as $$
+begin
+  if old.status <> 'draft' then
+    if (new.org_id, new.project_id, new.source_type, new.source_id, new.subject, new.message, new.signing_order,
+        new.allow_paper, new.allow_delegate, new.expires_days, new.reminder_days, new.expires_at, new.sent_at,
+        new.sent_by, new.created_at, new.created_by)
+       is distinct from
+       (old.org_id, old.project_id, old.source_type, old.source_id, old.subject, old.message, old.signing_order,
+        old.allow_paper, old.allow_delegate, old.expires_days, old.reminder_days, old.expires_at, old.sent_at,
+        old.sent_by, old.created_at, old.created_by) then
+      raise exception 'esign: a sent envelope can not be edited' using errcode = '55000';
+    end if;
+    if new.deleted_at is distinct from old.deleted_at then
+      raise exception 'esign: a sent envelope can not be deleted' using errcode = '55000';
+    end if;
+    if old.status <> 'sent' and new.status <> old.status then
+      raise exception 'esign: envelope is already %', old.status using errcode = '55000';
+    end if;
+    if new.completed_at is distinct from old.completed_at and old.completed_at is not null then
+      raise exception 'esign: completion time can not change' using errcode = '55000';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger envelopes_freeze before update on esign.envelopes
+  for each row execute function esign.freeze_envelope();
+
+create function esign.envelope_is_draft(eid uuid) returns bool language sql stable as $$
+  select coalesce((select status = 'draft' from esign.envelopes where id = eid), true)
+$$;
+
+create function esign.freeze_documents() returns trigger language plpgsql as $$
+begin
+  if tg_op = 'INSERT' then
+    if not esign.envelope_is_draft(new.envelope_id) then
+      raise exception 'esign: documents can not change after sending' using errcode = '55000';
+    end if;
+    return new;
+  elsif tg_op = 'DELETE' then
+    if not esign.envelope_is_draft(old.envelope_id) then
+      raise exception 'esign: documents can not change after sending' using errcode = '55000';
+    end if;
+    return old;
+  end if;
+  if (new.id, new.org_id, new.envelope_id, new.file_id, new.name, new.position)
+     is distinct from (old.id, old.org_id, old.envelope_id, old.file_id, old.name, old.position) then
+    raise exception 'esign: documents can not change' using errcode = '55000';
+  end if;
+  if new.sha256 is distinct from old.sha256 and not esign.envelope_is_draft(old.envelope_id) then
+    raise exception 'esign: the document hash is fixed at sending' using errcode = '55000';
+  end if;
+  if old.signed_sha256 is not null and new.signed_sha256 is distinct from old.signed_sha256 then
+    raise exception 'esign: the signed hash is write-once' using errcode = '55000';
+  end if;
+  return new;
+end $$;
+create trigger documents_freeze before insert or update or delete on esign.documents
+  for each row execute function esign.freeze_documents();
+
+create function esign.freeze_fields() returns trigger language plpgsql as $$
+begin
+  if not esign.envelope_is_draft(coalesce(new.envelope_id, old.envelope_id)) then
+    raise exception 'esign: placed fields can not change after sending' using errcode = '55000';
+  end if;
+  return coalesce(new, old);
+end $$;
+create trigger fields_freeze before insert or update or delete on esign.fields
+  for each row execute function esign.freeze_fields();
+
+create function esign.freeze_recipients() returns trigger language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    if not esign.envelope_is_draft(old.envelope_id) then
+      raise exception 'esign: recipients can not be removed after sending' using errcode = '55000';
+    end if;
+    return old;
+  end if;
+  if tg_op = 'INSERT' then
+    -- After sending, the only new recipient is whoever a signer handed signing to.
+    if not esign.envelope_is_draft(new.envelope_id) and new.delegated_from is null then
+      raise exception 'esign: recipients can not be added after sending' using errcode = '55000';
+    end if;
+    return new;
+  end if;
+  if esign.envelope_is_draft(old.envelope_id) then
+    return new;
+  end if;
+  if (new.id, new.org_id, new.envelope_id, new.name, new.email, new.role, new.routing_order, new.custom_subject,
+      new.custom_message, new.language, new.delegated_from)
+     is distinct from
+     (old.id, old.org_id, old.envelope_id, old.name, old.email, old.role, old.routing_order, old.custom_subject,
+      old.custom_message, old.language, old.delegated_from) then
+    raise exception 'esign: a recipient can not be changed after sending' using errcode = '55000';
+  end if;
+  -- A signature, decline or delegation is final; only the link in the completion email may still be set.
+  if old.status in ('signed', 'declined', 'delegated')
+     and (to_jsonb(new) - 'copy_link_id') is distinct from (to_jsonb(old) - 'copy_link_id') then
+    raise exception 'esign: recipient is already %', old.status using errcode = '55000';
+  end if;
+  return new;
+end $$;
+create trigger recipients_freeze before insert or update or delete on esign.recipients
+  for each row execute function esign.freeze_recipients();
+
+-- Kept for 10 years (project records) or longer under a legal hold. The period counts from sending and again from
+-- completion (extend-only); the exact period is pending Grace's review (compliance/07).
+select kernel.enable_retention_guard('esign.envelopes');
+select kernel.enable_retention_guard('esign.documents');
+select kernel.enable_retention_guard('esign.recipients');
+select kernel.enable_retention_guard('esign.fields');
+select kernel.enable_retention_guard('esign.events');
+
 select kernel.grant_module_schema('esign');

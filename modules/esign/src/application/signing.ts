@@ -16,6 +16,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import { checkSignature, isEmail, isTurn, oneLine } from '../domain/envelope';
+import { verifyDrawnSignature } from '../domain/pdf';
 import { envelopes, recipients } from '../infra/tables';
 import {
   ESIGN_ENTITY,
@@ -278,7 +279,10 @@ export function createSigningService(deps: EsignDeps, envelopesSvc: EnvelopeServ
 
   /** Loads the envelope and checks the recipient can act on it right now. */
   async function actor(scope: TenantScope, link: AccessLink) {
-    const l = await core.expireIfDue(scope, await core.load(scope, link.entityId, link.projectId!));
+    const l = await core.expireIfDue(
+      scope,
+      await core.load(scope, link.entityId, link.projectId!, true),
+    );
     const me = await recipientOf(scope, link, l);
     if (l.env.status !== 'sent') throw invalid();
     if (me.role !== 'needs_to_sign' || (me.status !== 'sent' && me.status !== 'viewed'))
@@ -295,9 +299,14 @@ export function createSigningService(deps: EsignDeps, envelopesSvc: EnvelopeServ
   ) {
     const r = await resolve(cookie, facts, { write: true, action: 'sign' });
     const checked = checkSignature(input.signatureKind, input.signature);
-    if (!checked.ok)
-      throw new AppError('validation_failed', checked.message, [
-        { path: 'signature', message: checked.message },
+    const refused = checked.ok
+      ? input.signatureKind === 'drawn'
+        ? await verifyDrawnSignature(checked.value)
+        : null
+      : checked.message;
+    if (!checked.ok || refused)
+      throw new AppError('validation_failed', refused ?? 'Invalid signature', [
+        { path: 'signature', message: refused ?? 'Invalid signature' },
       ]);
     return database.withTenantTx(r.ctx, async (scope) => {
       const { l, me } = await actor(scope, r.link);

@@ -291,3 +291,117 @@ describe('e-signature envelopes', () => {
     });
   });
 });
+
+describe('e-signature evidence and concurrency', () => {
+  const pngWith = (w: number, h: number, junk = true) => {
+    const head = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const ihdr = Buffer.alloc(25);
+    ihdr.writeUInt32BE(13, 0);
+    ihdr.write('IHDR', 4, 'latin1');
+    ihdr.writeUInt32BE(w, 8);
+    ihdr.writeUInt32BE(h, 12);
+    ihdr[16] = 8;
+    ihdr[17] = 6;
+    return `data:image/png;base64,${Buffer.concat([head, ihdr, junk ? Buffer.alloc(40, 7) : Buffer.alloc(0)]).toString('base64')}`;
+  };
+
+  it('refuses a corrupt or oversized drawn signature and the envelope can still be signed', async () => {
+    const { pm, base, fileId } = await setup();
+    const created = await pm.browser.post(base, draft(fileId));
+    const env = created.json();
+    await pm.browser.post(`${base}/${env.id}/send`, undefined, {
+      'if-match': created.headers.etag as string,
+    });
+    const g = new Browser(t.app);
+    await g.post('/v1/esign-access', { token: tokenIn('jo@client.example.com') });
+    for (const signature of [pngWith(100, 50), pngWith(60000, 60000), pngWith(0, 0)]) {
+      const r = await g.post('/v1/esign-access/sign', {
+        ...SIG,
+        signatureKind: 'drawn',
+        signature,
+      });
+      expect(r.statusCode).toBe(422);
+    }
+    expect((await g.post('/v1/esign-access/sign', SIG)).statusCode).toBe(200);
+    expect((await pm.browser.get(`${base}/${env.id}`)).json().status).toBe('completed');
+  });
+
+  it('never completes an envelope that was voided at the same moment', async () => {
+    for (let n = 0; n < 4; n++) {
+      const { pm, base, fileId } = await setup();
+      const created = await pm.browser.post(base, draft(fileId));
+      const env = created.json();
+      await pm.browser.post(`${base}/${env.id}/send`, undefined, {
+        'if-match': created.headers.etag as string,
+      });
+      const g = new Browser(t.app);
+      await g.post('/v1/esign-access', { token: tokenIn('jo@client.example.com') });
+      await Promise.all([
+        g.post('/v1/esign-access/sign', SIG),
+        pm.browser.post(`${base}/${env.id}/void`, { reason: 'race' }),
+      ]);
+      const end = (await pm.browser.get(`${base}/${env.id}`)).json();
+      const types = end.events.map((e: { type: string }) => e.type);
+      expect(['completed', 'voided']).toContain(end.status);
+      // Exactly one outcome: a voided envelope has no completion or signed hash, and vice versa.
+      if (end.status === 'voided') {
+        expect(types).not.toContain('completed');
+        expect(end.documents[0].signedSha256).toBeNull();
+      } else {
+        expect(types).not.toContain('voided');
+        expect(end.documents[0].signedSha256).toMatch(/^[0-9a-f]{64}$/);
+      }
+    }
+  });
+
+  it('is enforced append-only by the database', async () => {
+    const { pm, org, base, fileId } = await setup();
+    const created = await pm.browser.post(base, draft(fileId));
+    const env = created.json();
+    await pm.browser.post(`${base}/${env.id}/send`, undefined, {
+      'if-match': created.headers.etag as string,
+    });
+    const g = new Browser(t.app);
+    await g.post('/v1/esign-access', { token: tokenIn('jo@client.example.com') });
+    await g.post('/v1/esign-access/sign', SIG);
+    const { decodeId } = await import('@archova/domain');
+    const orgId = decodeId('org', org.id)!;
+    const eid = decodeId('envelope', env.id)!;
+    const attempt = async (sqlText: string) => {
+      const c = await t.adminDb.pool.connect();
+      try {
+        await c.query('begin');
+        await c.query(`select set_config('app.org_id', $1, true)`, [orgId]);
+        await c.query(sqlText, [eid]);
+        await c.query('commit');
+        return 'allowed';
+      } catch (e) {
+        await c.query('rollback');
+        return (e as Error).message;
+      } finally {
+        c.release();
+      }
+    };
+    expect(await attempt(`update esign.events set type = 'x' where envelope_id = $1`)).toMatch(
+      /append-only/,
+    );
+    expect(await attempt(`delete from esign.events where envelope_id = $1`)).toMatch(/append-only/);
+    expect(await attempt(`update esign.envelopes set subject = 'changed' where id = $1`)).toMatch(
+      /can not be edited/,
+    );
+    expect(
+      await attempt(
+        `update esign.recipients set signature_value = 'forged' where envelope_id = $1`,
+      ),
+    ).toMatch(/already signed/);
+    expect(
+      await attempt(`update esign.recipients set status = 'pending' where envelope_id = $1`),
+    ).toMatch(/already signed/);
+    expect(
+      await attempt(`update esign.documents set signed_sha256 = 'x' where envelope_id = $1`),
+    ).toMatch(/write-once/);
+    expect(await attempt(`delete from esign.documents where envelope_id = $1`)).toMatch(
+      /can not change after sending/,
+    );
+  });
+});

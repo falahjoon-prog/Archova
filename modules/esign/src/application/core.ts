@@ -7,6 +7,8 @@ import { encodeId, uuidv7 } from '@archova/domain';
 import {
   AppError,
   createAccessLink,
+  recordRetention,
+  recordRetentionBatch,
   revokeAccessLink,
   type Database,
   type Entitlements,
@@ -90,12 +92,18 @@ export const stateOf = (r: RecipientRow): RecipientState => ({
 export function createEsignCore(deps: EsignDeps) {
   const now = deps.now ?? (() => new Date());
 
-  async function load(scope: TenantScope, envelopeId: string, projectId?: string): Promise<Loaded> {
-    const [env] = await scope.tx
-      .select()
-      .from(envelopes)
-      .where(eq(envelopes.id, envelopeId))
-      .limit(1);
+  /**
+   * Loads an envelope with everything under it. `lock` takes the envelope row `FOR UPDATE` first, so concurrent
+   * sign, decline, void and paper requests on one envelope run one after another and each sees the last one's result.
+   */
+  async function load(
+    scope: TenantScope,
+    envelopeId: string,
+    projectId?: string,
+    lock = false,
+  ): Promise<Loaded> {
+    const base = scope.tx.select().from(envelopes).where(eq(envelopes.id, envelopeId)).limit(1);
+    const [env] = await (lock ? base.for('update') : base);
     if (!env || env.deletedAt || (projectId && env.projectId !== projectId)) throw notFound();
     const [docs, recips, flds, evs] = await Promise.all([
       scope.tx
@@ -265,6 +273,32 @@ export function createEsignCore(deps: EsignDeps) {
     return out;
   }
 
+  /** Tags the envelope and what sits under it for retention; re-tagging only ever extends the period. */
+  async function retain(scope: TenantScope, l: Loaded, anchor: Date) {
+    const recordType = (t: string) => `esign.${t}`;
+    await recordRetention(scope, {
+      recordType: recordType('envelopes'),
+      recordId: l.env.id,
+      projectId: l.env.projectId,
+      category: 'project_records_10y',
+      anchor,
+    });
+    await recordRetentionBatch(
+      scope,
+      recordType('documents'),
+      'project_records_10y',
+      anchor,
+      l.docs.map((d) => ({ recordId: d.id, projectId: l.env.projectId })),
+    );
+    await recordRetentionBatch(
+      scope,
+      recordType('recipients'),
+      'project_records_10y',
+      anchor,
+      l.recips.map((r) => ({ recordId: r.id, projectId: l.env.projectId })),
+    );
+  }
+
   /** Revokes every live link on an envelope (void, decline, expiry). */
   async function revokeAll(scope: TenantScope, recips: readonly RecipientRow[]) {
     for (const r of recips)
@@ -337,7 +371,7 @@ export function createEsignCore(deps: EsignDeps) {
     envelopeId: string,
     actor?: string | null,
   ): Promise<Outbound[]> {
-    const l = await load(scope, envelopeId);
+    const l = await load(scope, envelopeId, undefined, true);
     if (l.env.status !== 'sent') return [];
     const states = l.recips.map(stateOf);
     if (isComplete(states)) {
@@ -351,10 +385,14 @@ export function createEsignCore(deps: EsignDeps) {
           .set({ signedSha256: createHash('sha256').update(pdf).digest('hex') })
           .where(eq(documents.id, d.id));
       }
-      await scope.tx
+      const [closed] = await scope.tx
         .update(envelopes)
         .set({ status: 'completed', completedAt: t, version: l.env.version + 1, updatedAt: t })
-        .where(eq(envelopes.id, envelopeId));
+        .where(and(eq(envelopes.id, envelopeId), eq(envelopes.status, 'sent')))
+        .returning({ id: envelopes.id });
+      // Voided, declined or expired in the meantime: nothing to complete.
+      if (!closed) return [];
+      await retain(scope, finished, t);
       await record(scope, envelopeId, 'completed');
       scope.events.add({
         type: 'esign.envelope.completed.v1',
@@ -406,6 +444,7 @@ export function createEsignCore(deps: EsignDeps) {
     issueLinks,
     revokeAll,
     renderDocument,
+    retain,
     advance,
     expireIfDue,
     recentlyMailed,
