@@ -1,12 +1,14 @@
 import { encodeId } from '@archova/domain';
 import type {
+  CorrespondenceAccess,
   CorrespondenceDetail,
+  CorrespondenceHistoryEntry,
   CorrespondenceItem,
   CorrespondenceResponse,
   CorrespondenceTemplate,
   CorrespondenceType,
 } from '@archova/contracts';
-import type { ItemView, ResponseRow, TypeRow } from '../application/correspondence';
+import type { HistoryRow, ItemView, ResponseRow, TypeRow } from '../application/correspondence';
 import type { TypeTemplate } from '../domain/templates';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -27,6 +29,7 @@ export const toTypeDto = (t: TypeRow): CorrespondenceType => ({
   timeBarDays: t.timeBarDays,
   subjectTemplate: t.subjectTemplate,
   bodyTemplate: t.bodyTemplate,
+  fields: t.fields,
   archived: t.archivedAt !== null,
   version: t.version,
 });
@@ -53,6 +56,8 @@ export const toItemDto = (i: ItemView): CorrespondenceItem => ({
   sentInTime: i.sentInTime,
   fileIds: i.fileIds.map((f) => encodeId('file', f)),
   related: i.related,
+  isPrivate: i.isPrivate,
+  fieldValues: i.fieldValues,
   sentAt: isoOrNull(i.sentAt),
   sentBy: userOrNull(i.sentBy),
   contentHash: i.contentHash,
@@ -76,7 +81,25 @@ const toResponse = (r: ResponseRow): CorrespondenceResponse => ({
 export const toDetail = (d: {
   item: ItemView;
   responses: ResponseRow[];
+  canManageAccess?: boolean;
 }): CorrespondenceDetail => ({
   item: toItemDto(d.item),
   responses: d.responses.map(toResponse),
+  canManageAccess: d.canManageAccess ?? false,
+});
+
+export const toAccessDto = (a: {
+  isPrivate: boolean;
+  userIds: string[];
+}): CorrespondenceAccess => ({
+  isPrivate: a.isPrivate,
+  userIds: a.userIds.map((u) => encodeId('user', u)),
+});
+
+export const toHistoryDto = (h: HistoryRow): CorrespondenceHistoryEntry => ({
+  id: encodeId('correspondenceHistory', h.id),
+  at: h.at.toISOString(),
+  byUser: userOrNull(h.byUser),
+  action: h.action as CorrespondenceHistoryEntry['action'],
+  changes: h.changes as CorrespondenceHistoryEntry['changes'],
 });

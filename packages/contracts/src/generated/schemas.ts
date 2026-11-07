@@ -1319,6 +1319,12 @@ export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
 export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
 export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
 
+export const CorrespondenceAccessSchema = z.object({
+  "isPrivate": z.boolean(),
+  "userIds": z.array(UserRefSchema),
+});
+export type CorrespondenceAccess = z.infer<typeof CorrespondenceAccessSchema>;
+
 export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
 export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
 
@@ -1328,6 +1334,9 @@ export const CorrespondenceRelatedSchema = z.object({
   "label": z.string().max(120).optional(),
 }).strict();
 export type CorrespondenceRelated = z.infer<typeof CorrespondenceRelatedSchema>;
+
+export const CorrespondenceFieldValuesSchema = z.record(z.string(), z.union([z.string().max(1000), z.number(), z.boolean(), z.null()]));
+export type CorrespondenceFieldValues = z.infer<typeof CorrespondenceFieldValuesSchema>;
 
 export const CorrespondenceItemSchema = z.object({
   "id": z.string(),
@@ -1351,6 +1360,8 @@ export const CorrespondenceItemSchema = z.object({
   "sentInTime": z.boolean().nullable(),
   "fileIds": z.array(z.string()),
   "related": z.array(CorrespondenceRelatedSchema),
+  "isPrivate": z.boolean(),
+  "fieldValues": CorrespondenceFieldValuesSchema,
   "sentAt": z.string().datetime({ offset: true }).nullable(),
   "sentBy": z.string().nullable(),
   "contentHash": z.string().nullable(),
@@ -1374,10 +1385,37 @@ export const CorrespondenceResponseSchema = z.object({
 export type CorrespondenceResponse = z.infer<typeof CorrespondenceResponseSchema>;
 
 export const CorrespondenceDetailSchema = z.object({
+  "canManageAccess": z.boolean(),
   "item": CorrespondenceItemSchema,
   "responses": z.array(CorrespondenceResponseSchema),
 });
 export type CorrespondenceDetail = z.infer<typeof CorrespondenceDetailSchema>;
+
+export const CorrespondenceFieldDefinitionSchema = z.object({
+  "key": z.string().regex(new RegExp("^[a-z][a-zA-Z0-9]{0,29}$")),
+  "label": z.string().min(1).max(60),
+  "kind": z.enum(["text", "date", "number", "yesNo"]),
+  "required": z.boolean(),
+}).strict();
+export type CorrespondenceFieldDefinition = z.infer<typeof CorrespondenceFieldDefinitionSchema>;
+
+export const CorrespondenceHistoryEntrySchema = z.object({
+  "id": z.string(),
+  "at": z.string().datetime({ offset: true }),
+  "byUser": z.string().nullable(),
+  "action": z.enum(["created", "edited", "sent", "responded", "closed", "voided", "access_changed"]),
+  "changes": z.array(z.object({
+  "field": z.string(),
+  "from": z.record(z.string(), z.unknown()),
+  "to": z.record(z.string(), z.unknown()),
+})),
+});
+export type CorrespondenceHistoryEntry = z.infer<typeof CorrespondenceHistoryEntrySchema>;
+
+export const CorrespondenceHistorySchema = z.object({
+  "data": z.array(CorrespondenceHistoryEntrySchema),
+});
+export type CorrespondenceHistory = z.infer<typeof CorrespondenceHistorySchema>;
 
 export const CorrespondencePageSchema = z.object({
   "data": z.array(CorrespondenceItemSchema),
@@ -1411,6 +1449,7 @@ export const CorrespondenceTypeSchema = z.object({
   "timeBarDays": z.number().int().nullable(),
   "subjectTemplate": z.string(),
   "bodyTemplate": z.string(),
+  "fields": z.array(CorrespondenceFieldDefinitionSchema).max(12),
   "archived": z.boolean(),
   "version": z.number().int(),
 });
@@ -1693,6 +1732,8 @@ export const CreateCorrespondenceRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "fileIds": z.array(FileRefSchema).max(50).optional(),
   "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+  "isPrivate": z.boolean().optional(),
+  "fieldValues": CorrespondenceFieldValuesSchema.optional(),
 }).strict();
 export type CreateCorrespondenceRequest = z.infer<typeof CreateCorrespondenceRequestSchema>;
 
@@ -1707,6 +1748,7 @@ export const CreateCorrespondenceTypeRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "subjectTemplate": z.string().max(300).optional(),
   "bodyTemplate": z.string().max(20000).optional(),
+  "fields": z.array(CorrespondenceFieldDefinitionSchema).max(12).optional(),
 }).strict();
 export type CreateCorrespondenceTypeRequest = z.infer<typeof CreateCorrespondenceTypeRequestSchema>;
 
@@ -6547,6 +6589,12 @@ export const SetAllowancesRequestSchema = z.object({
 }).strict();
 export type SetAllowancesRequest = z.infer<typeof SetAllowancesRequestSchema>;
 
+export const SetCorrespondenceAccessRequestSchema = z.object({
+  "isPrivate": z.boolean(),
+  "userIds": z.array(UserRefSchema).max(100),
+}).strict();
+export type SetCorrespondenceAccessRequest = z.infer<typeof SetCorrespondenceAccessRequestSchema>;
+
 export const SetMeetingAttendeesRequestSchema = z.object({
   "attendees": z.array(z.intersection(MeetingPersonSchema, z.object({
   "attendance": MeetingAttendanceSchema.optional(),
@@ -7322,6 +7370,8 @@ export const UpdateCorrespondenceRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "fileIds": z.array(FileRefSchema).max(50).optional(),
   "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+  "isPrivate": z.boolean().optional(),
+  "fieldValues": CorrespondenceFieldValuesSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceRequest = z.infer<typeof UpdateCorrespondenceRequestSchema>;
 
@@ -7335,6 +7385,7 @@ export const UpdateCorrespondenceTypeRequestSchema = z.object({
   "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
   "subjectTemplate": z.string().max(300).optional(),
   "bodyTemplate": z.string().max(20000).optional(),
+  "fields": z.array(CorrespondenceFieldDefinitionSchema).max(12).optional(),
   "archived": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceTypeRequest = z.infer<typeof UpdateCorrespondenceTypeRequestSchema>;

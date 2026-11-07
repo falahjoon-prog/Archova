@@ -4973,6 +4973,54 @@ export interface paths {
         patch: operations["updateCorrespondence"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** Whether the item is private and who is listed to open it. Author and admins only. */
+        get: operations["getCorrespondenceAccess"];
+        /**
+         * Make the item private or not, and replace the list of people who may open it.
+         * @description Author and admins only, at any stage except void. A private item is seen only by its author, admins and the
+         *     people listed here, and only once it has been sent. Listed people must be on the project. The change is
+         *     recorded in the item's history.
+         */
+        put: operations["setCorrespondenceAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** Who did what to the item and when, oldest first. */
+        get: operations["listCorrespondenceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send": {
         parameters: {
             query?: never;
@@ -13253,8 +13301,23 @@ export interface components {
             subjectTemplate: string;
             /** @description Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}} */
             bodyTemplate: string;
+            /** @description Extra details items of this type ask for, in order */
+            fields: components["schemas"]["CorrespondenceFieldDefinition"][];
             archived: boolean;
             version: number;
+        };
+        CorrespondenceFieldDefinition: {
+            /** @description Stable name the value is stored under */
+            key: string;
+            label: string;
+            /** @enum {string} */
+            kind: "text" | "date" | "number" | "yesNo";
+            /** @description Must be filled before the item is sent */
+            required: boolean;
+        };
+        /** @description Values by field key. A date is YYYY-MM-DD; null clears a value. */
+        CorrespondenceFieldValues: {
+            [key: string]: string | number | boolean | null;
         };
         CorrespondenceTypeList: {
             data: components["schemas"]["CorrespondenceType"][];
@@ -13270,6 +13333,7 @@ export interface components {
             timeBarDays?: number | null;
             subjectTemplate?: string;
             bodyTemplate?: string;
+            fields?: components["schemas"]["CorrespondenceFieldDefinition"][];
         };
         UpdateCorrespondenceTypeRequest: {
             name?: string;
@@ -13281,6 +13345,7 @@ export interface components {
             timeBarDays?: number | null;
             subjectTemplate?: string;
             bodyTemplate?: string;
+            fields?: components["schemas"]["CorrespondenceFieldDefinition"][];
             archived?: boolean;
         };
         CorrespondenceRelated: {
@@ -13329,6 +13394,9 @@ export interface components {
             sentInTime: boolean | null;
             fileIds: string[];
             related: components["schemas"]["CorrespondenceRelated"][];
+            /** @description Seen only by the author, admins and the people listed on the item */
+            isPrivate: boolean;
+            fieldValues: components["schemas"]["CorrespondenceFieldValues"];
             /** Format: date-time */
             sentAt: string | null;
             sentBy: string | null;
@@ -13354,6 +13422,8 @@ export interface components {
             sentAt: string;
         };
         CorrespondenceDetail: {
+            /** @description The caller can change the private flag and the list (author or admin) */
+            canManageAccess: boolean;
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
@@ -13403,6 +13473,32 @@ export interface components {
             /** @description Project team members to notify. Each must be an active, non-external member of the project. */
             mentions?: string[];
         };
+        CorrespondenceAccess: {
+            isPrivate: boolean;
+            userIds: components["schemas"]["UserRef"][];
+        };
+        SetCorrespondenceAccessRequest: {
+            isPrivate: boolean;
+            userIds: components["schemas"]["UserRef"][];
+        };
+        CorrespondenceHistoryEntry: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            byUser: string | null;
+            /** @enum {string} */
+            action: "created" | "edited" | "sent" | "responded" | "closed" | "voided" | "access_changed";
+            changes: {
+                field: string;
+                /** @description The earlier value; long text is cut at 300 characters */
+                from: unknown;
+                /** @description The new value; long text is cut at 300 characters */
+                to: unknown;
+            }[];
+        };
+        CorrespondenceHistory: {
+            data: components["schemas"]["CorrespondenceHistoryEntry"][];
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -13421,6 +13517,8 @@ export interface components {
             timeBarDays?: number | null;
             fileIds?: components["schemas"]["FileRef"][];
             related?: components["schemas"]["CorrespondenceRelated"][];
+            isPrivate?: boolean;
+            fieldValues?: components["schemas"]["CorrespondenceFieldValues"];
         };
         UpdateCorrespondenceRequest: {
             subject?: string;
@@ -13435,6 +13533,8 @@ export interface components {
             timeBarDays?: number | null;
             fileIds?: components["schemas"]["FileRef"][];
             related?: components["schemas"]["CorrespondenceRelated"][];
+            isPrivate?: boolean;
+            fieldValues?: components["schemas"]["CorrespondenceFieldValues"];
         };
         RespondCorrespondenceRequest: {
             body: string;
@@ -25794,6 +25894,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCorrespondenceAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setCorrespondenceAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCorrespondenceAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceHistory"];
                 };
             };
             default: components["responses"]["Problem"];

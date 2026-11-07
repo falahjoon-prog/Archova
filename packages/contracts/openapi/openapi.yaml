@@ -6672,6 +6672,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: getCorrespondenceAccess
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Whether the item is private and who is listed to open it. Author and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setCorrespondenceAccess
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Make the item private or not, and replace the list of people who may open it.
+      description: |
+        Author and admins only, at any stage except void. A private item is seen only by its author, admins and the
+        people listed here, and only once it has been sent. Listed people must be on the project. The change is
+        recorded in the item's history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCorrespondenceAccessRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: listCorrespondenceHistory
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Who did what to the item and when, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceHistory' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18975,6 +19033,7 @@ components:
           timeBarDays,
           subjectTemplate,
           bodyTemplate,
+          fields,
           archived,
           version,
         ]
@@ -18995,8 +19054,34 @@ components:
             type: string,
             description: 'Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}}',
           }
+        fields:
+          type: array
+          maxItems: 12
+          description: Extra details items of this type ask for, in order
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
         archived: { type: boolean }
         version: { type: integer }
+    CorrespondenceFieldDefinition:
+      type: object
+      additionalProperties: false
+      required: [key, label, kind, required]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z][a-zA-Z0-9]{0,29}$'
+          description: Stable name the value is stored under
+        label: { type: string, minLength: 1, maxLength: 60 }
+        kind: { type: string, enum: [text, date, number, yesNo] }
+        required: { type: boolean, description: Must be filled before the item is sent }
+    CorrespondenceFieldValues:
+      type: object
+      description: Values by field key. A date is YYYY-MM-DD; null clears a value.
+      additionalProperties:
+        oneOf:
+          - { type: string, maxLength: 1000 }
+          - { type: number }
+          - { type: boolean }
+          - { type: 'null' }
     CorrespondenceTypeList:
       type: object
       required: [data]
@@ -19018,6 +19103,10 @@ components:
         timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
         subjectTemplate: { type: string, maxLength: 300 }
         bodyTemplate: { type: string, maxLength: 20000 }
+        fields:
+          type: array
+          maxItems: 12
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
     UpdateCorrespondenceTypeRequest:
       type: object
       additionalProperties: false
@@ -19032,6 +19121,10 @@ components:
         timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
         subjectTemplate: { type: string, maxLength: 300 }
         bodyTemplate: { type: string, maxLength: 20000 }
+        fields:
+          type: array
+          maxItems: 12
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
         archived: { type: boolean }
     CorrespondenceRelated:
       type: object
@@ -19066,6 +19159,8 @@ components:
           sentInTime,
           fileIds,
           related,
+          isPrivate,
+          fieldValues,
           sentAt,
           sentBy,
           contentHash,
@@ -19113,6 +19208,10 @@ components:
         related:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate:
+          type: boolean
+          description: Seen only by the author, admins and the people listed on the item
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
         sentAt: { type: [string, 'null'], format: date-time }
         sentBy: { type: [string, 'null'] }
         contentHash:
@@ -19137,8 +19236,11 @@ components:
         sentAt: { type: string, format: date-time }
     CorrespondenceDetail:
       type: object
-      required: [item, responses]
+      required: [item, responses, canManageAccess]
       properties:
+        canManageAccess:
+          type: boolean
+          description: The caller can change the private flag and the list (author or admin)
         item: { $ref: '#/components/schemas/CorrespondenceItem' }
         responses:
           type: array
@@ -19223,6 +19325,50 @@ components:
           maxItems: 20
           description: Project team members to notify. Each must be an active, non-external member of the project.
           items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    CorrespondenceAccess:
+      type: object
+      required: [isPrivate, userIds]
+      properties:
+        isPrivate: { type: boolean }
+        userIds:
+          type: array
+          items: { $ref: '#/components/schemas/UserRef' }
+    SetCorrespondenceAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [isPrivate, userIds]
+      properties:
+        isPrivate: { type: boolean }
+        userIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/UserRef' }
+    CorrespondenceHistoryEntry:
+      type: object
+      required: [id, at, byUser, action, changes]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        byUser: { type: [string, 'null'] }
+        action:
+          type: string
+          enum: [created, edited, sent, responded, closed, voided, access_changed]
+        changes:
+          type: array
+          items:
+            type: object
+            required: [field, from, to]
+            properties:
+              field: { type: string }
+              from: { description: 'The earlier value; long text is cut at 300 characters' }
+              to: { description: 'The new value; long text is cut at 300 characters' }
+    CorrespondenceHistory:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceHistoryEntry' }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
@@ -19256,6 +19402,8 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate: { type: boolean }
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
     UpdateCorrespondenceRequest:
       type: object
       additionalProperties: false
@@ -19280,6 +19428,8 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate: { type: boolean }
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
     RespondCorrespondenceRequest:
       type: object
       additionalProperties: false

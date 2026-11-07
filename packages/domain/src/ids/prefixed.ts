@@ -60,6 +60,7 @@ export const ID_PREFIXES = {
   correspondenceType: 'cty',
   correspondence: 'cor',
   correspondenceResponse: 'crr',
+  correspondenceHistory: 'cch',
   conversation: 'cnv',
   conversationMessage: 'cnm',
   bimModel: 'bmd',
