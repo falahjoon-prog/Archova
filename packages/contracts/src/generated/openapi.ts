@@ -8639,6 +8639,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The labor productivity report as CSV text, for the same filters. */
+        get: operations["exportLaborProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 100 quantity-in-place entries for a cost code, newest first. */
+        get: operations["listCostCodeQuantityLog"];
+        put?: never;
+        /** Log quantity put in place for a day. It adds to the cost code's quantity in place; a negative entry corrects and needs a note. */
+        post: operations["logCostCodeQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests why a cost code is behind plan and discusses it. Nothing is changed.
+         * @description Nova reads one cost code's labor productivity figures and recent quantity entries and suggests causes to check on
+         *     site and questions to ask. The server keeps no conversation: pass `history` from the last answer back with the next
+         *     `question`. Every figure in Nova's words is checked against the report. Staff only. Uses AI credits.
+         */
+        post: operations["explainLaborProductivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production": {
         parameters: {
             query?: never;
@@ -9875,6 +9942,14 @@ export interface components {
             open: number;
             overdue: number;
         };
+        PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
+            /** @description Activities at 0% complete. */
+            notStarted: number;
+            /** @description Activities at 100% complete. */
+            completed: number;
+            /** @description Days late summed over the late activities; divide by `overdue` for the average. */
+            lateDays: number;
+        };
         /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
         PortfolioBudget: {
             /** @description True when the caller may not read the budget or forecast; figures are then zero. */
@@ -9905,7 +9980,7 @@ export interface components {
             /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
             incidents: components["schemas"]["PortfolioTool"];
             /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
-            programme: components["schemas"]["PortfolioTool"];
+            programme: components["schemas"]["PortfolioProgramme"];
             budget: components["schemas"]["PortfolioBudget"];
             /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;
@@ -14829,10 +14904,55 @@ export interface components {
             uom: string;
             budgetedHours: number;
             budgetedQuantity: number;
+            /** @description Opening quantity in place; leave out to keep the running total. Progress is logged with the quantity log. */
+            quantityComplete?: number;
+        };
+        CostCodeProductionSaved: {
+            costCodeId: string;
+            uom: string;
+            budgetedHours: number;
+            budgetedQuantity: number;
             quantityComplete: number;
         };
-        CostCodeProductionSaved: components["schemas"]["CostCodeProduction"] & {
+        ProductionLogEntry: {
+            id: string;
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LogQuantityRequest: {
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            note?: string;
+        };
+        LaborTurn: {
+            /** @enum {string} */
+            role: "user" | "nova";
+            text: string;
+        };
+        ExplainLaborProductivityRequest: {
             costCodeId: string;
+            question?: string;
+            history?: components["schemas"]["LaborTurn"][];
+        };
+        LaborProductivityExplanation: {
+            runId: string;
+            reply: string;
+            causes: {
+                title: string;
+                why: string;
+                check: string;
+                /** @enum {string} */
+                likelihood: "likely" | "possible";
+            }[];
+            questions: string[];
+            notes: string[];
+            history: components["schemas"]["LaborTurn"][];
+            disclaimer: string;
         };
         LaborProductivityRow: {
             costCodeId: string;
@@ -31852,6 +31972,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LaborProductivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    exportLaborProductivity: {
+        parameters: {
+            query?: {
+                divisionId?: string;
+                subJobId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file name, CSV text and row count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        filename: string;
+                        csv: string;
+                        count: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCostCodeQuantityLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProductionLogEntry"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logCostCodeQuantity: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                costCodeId: components["parameters"]["CostCodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogQuantityRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entry: components["schemas"]["ProductionLogEntry"];
+                        quantityComplete: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    explainLaborProductivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainLaborProductivityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaborProductivityExplanation"];
                 };
             };
             default: components["responses"]["Problem"];

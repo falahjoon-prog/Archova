@@ -128,5 +128,15 @@ const cell = (v: string | number | null) => {
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 
+/** Saves CSV text as a file through the browser. */
+export function downloadCsv(name: string, csv: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export const toCsv = (header: string[], rows: (string | number | null)[][]) =>
   [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';

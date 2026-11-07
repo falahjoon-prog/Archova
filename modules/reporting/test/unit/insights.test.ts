@@ -13,7 +13,7 @@ const counts = (
     claims: pick('claims'),
     variations: pick('variations'),
     incidents: pick('incidents'),
-    programme: pick('programme'),
+    programme: { ...pick('programme'), notStarted: 0, completed: 0, lateDays: 0 },
   };
 };
 const budget = (over = {}) => ({

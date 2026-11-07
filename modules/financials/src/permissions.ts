@@ -47,5 +47,7 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
   },
   // Direct costs post to the budget, so they sit on the budget tool (admin-only by default).
   { key: 'financials.direct_costs.read', scope: 'project', tool: 'budget', level: 'standard' },
+  // Site supervisors log quantity in place against the production plan; the plan itself needs budget.manage.
+  { key: 'financials.production.log', scope: 'project', tool: 'budget', level: 'standard' },
   { key: 'financials.direct_costs.manage', scope: 'project', tool: 'budget', level: 'standard' },
 ];

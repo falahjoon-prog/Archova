@@ -196,6 +196,11 @@ export function projectToolGroups(
       label: 'Budget',
       icon: BudgetIcon,
     },
+    canRead('commitments') && {
+      href: webRoutes.commitments(orgSlug, projectId),
+      label: 'Commitments',
+      icon: BudgetIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',

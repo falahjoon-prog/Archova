@@ -3479,3 +3479,60 @@ fieldset.worker-card > legend {
   border-radius: var(--radius-md);
   background: var(--c-surface);
 }
+
+/* Budget root cause analysis: flow chart of where a variance comes from. */
+.rc-scroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.rc-svg {
+  display: block;
+  max-inline-size: none;
+}
+.rc-total {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rc-text--over {
+  color: var(--c-status-danger);
+}
+.rc-node--over {
+  fill: var(--c-status-danger);
+  stroke: var(--c-status-danger);
+}
+.rc-node--under {
+  fill: var(--c-status-success);
+  stroke: var(--c-status-success);
+}
+.rc-link {
+  fill: none;
+  opacity: 0.28;
+}
+.rc-node {
+  stroke: none;
+}
+.rc-node--sel {
+  stroke: var(--c-text);
+  stroke-width: 2;
+}
+.rc-node-g[role='button'] {
+  cursor: pointer;
+}
+.rc-node-g:focus-visible {
+  outline: 2px solid var(--c-text);
+  outline-offset: 2px;
+}
+.rc-dim {
+  opacity: 0.18;
+}
+.rc-label {
+  fill: var(--c-text);
+  font-size: 12px;
+}
+.rc-label--sub {
+  fill: var(--c-text-secondary);
+}

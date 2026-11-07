@@ -16,6 +16,20 @@ const ref = (kind: IdKind, value: string, path: string) => {
   return uuid;
 };
 
+const toEntry = (e: {
+  id: string;
+  loggedOn: string;
+  quantity: string;
+  note: string | null;
+  createdAt: Date;
+}) => ({
+  id: encodeId('productionLogEntry', e.id),
+  loggedOn: e.loggedOn,
+  quantity: Number(e.quantity),
+  note: e.note,
+  createdAt: e.createdAt.toISOString(),
+});
+
 export function productivityRoutes(database: Database, productivity: ProductivityService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -57,6 +71,46 @@ export function productivityRoutes(database: Database, productivity: Productivit
         },
       };
     },
+    exportLaborProductivity: async (input) => {
+      const q = input.query ?? {};
+      return {
+        status: 200,
+        body: await read(input, (s) =>
+          productivity.exportCsv(s, project(input.params), {
+            ...(q.divisionId ? { divisionId: ref('costCode', q.divisionId, 'divisionId') } : {}),
+            ...(q.subJobId ? { subJobId: ref('costCode', q.subJobId, 'subJobId') } : {}),
+          }),
+        ),
+      };
+    },
+    logCostCodeQuantity: async (input) => {
+      const r = await tx(input, (s) =>
+        productivity.logQuantity(
+          s,
+          project(input.params),
+          ref('costCode', input.params.costCodeId, 'costCodeId'),
+          input.body,
+        ),
+      );
+      return {
+        status: 201,
+        body: { entry: toEntry(r.entry), quantityComplete: r.quantityComplete },
+      };
+    },
+    listCostCodeQuantityLog: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            productivity.listLog(
+              s,
+              project(input.params),
+              ref('costCode', input.params.costCodeId, 'costCodeId'),
+            ),
+          )
+        ).map(toEntry),
+      },
+    }),
     setCostCodeProduction: async (input) => ({
       status: 200,
       body: await (async () => {

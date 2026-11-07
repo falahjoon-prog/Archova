@@ -3,6 +3,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import {
   PROJECT_LIMIT,
   type BudgetSummary,
+  type ProgrammeCounts,
   type ReportSource,
   type SourceRow,
   type ToolCounts,
@@ -23,7 +24,7 @@ export interface ReportingDeps {
   claims: Tool;
   variations: Tool;
   incidents: Tool;
-  programme: Tool;
+  programme: Tool<ProgrammeCounts>;
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
@@ -91,8 +92,8 @@ export interface ReportingDeps {
   };
 }
 
-interface Tool {
-  portfolioCounts(scope: TenantScope, projectId: string): Promise<ToolCounts>;
+interface Tool<C extends ToolCounts = ToolCounts> {
+  portfolioCounts(scope: TenantScope, projectId: string): Promise<C>;
   reportRows(
     scope: TenantScope,
     projectId: string,
