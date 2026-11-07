@@ -80,3 +80,29 @@ describe('ProjectNav favourites', () => {
     expect(screen.queryByRole('button', { name: /^Star / })).toBeNull();
   });
 });
+
+describe('ProjectNav quick-add', () => {
+  it('shows a plus link to the create form for tools that have one', () => {
+    render(
+      <ProjectNav
+        projectName="P"
+        groups={[
+          {
+            items: [
+              {
+                href: '/p/rfis',
+                label: 'RFIs',
+                icon: RfisIcon,
+                createHref: '/p/rfis/new',
+                createLabel: 'New RFI',
+              },
+              { href: '/p/drawings', label: 'Drawings', icon: DrawingsIcon },
+            ],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'New RFI' }).getAttribute('href')).toBe('/p/rfis/new');
+    expect(screen.queryByRole('link', { name: /^New Drawings/ })).toBeNull();
+  });
+});

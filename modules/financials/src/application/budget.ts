@@ -2,13 +2,14 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import { fromCents, toCents } from '../domain/money';
+import { fromCents, isMoney, toCents } from '../domain/money';
 import {
   budgetVsForecast,
   type BvfAdjustment,
   type BvfDirect,
   type BvfSub,
 } from '../domain/budget-vs-forecast';
+import { budgetFindings } from '../domain/budget-review';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
 import {
   budgetAdjustments,
@@ -290,6 +291,89 @@ export function createBudgetService(
     await scope.tx.delete(budgetLines).where(eq(budgetLines.id, lineId));
   }
 
+  const MAX_IMPORT_ROWS = 500;
+
+  /**
+   * Fills a draft budget from a spreadsheet's rows, all or nothing. A row names a cost code; a code that does not exist
+   * yet is created when the row gives its description. Every problem across the file is reported together, so the
+   * person fixes the sheet once rather than one row per attempt.
+   */
+  async function importLines(
+    scope: TenantScope,
+    projectId: string,
+    rows: {
+      code: string;
+      codeDescription?: string;
+      description?: string;
+      original: string;
+      isMargin?: boolean;
+    }[],
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    const budget = await writableDraft(scope, projectId);
+    if (rows.length === 0)
+      throw new AppError('validation_failed', 'The file has no rows.', [
+        { path: 'rows', message: 'Add at least one row' },
+      ]);
+    if (rows.length > MAX_IMPORT_ROWS)
+      throw new AppError('validation_failed', `Import at most ${MAX_IMPORT_ROWS} rows at a time.`, [
+        { path: 'rows', message: `Too many rows (maximum ${MAX_IMPORT_ROWS})` },
+      ]);
+    const existing = new Map(
+      (await scope.tx.select().from(costCodes).where(eq(costCodes.projectId, projectId))).map(
+        (c) => [c.code, c] as const,
+      ),
+    );
+    const budgeted = new Set(
+      (
+        await scope.tx
+          .select({ id: budgetLines.costCodeId })
+          .from(budgetLines)
+          .where(eq(budgetLines.budgetId, budget.id))
+      ).map((l) => l.id),
+    );
+    const errors: { path: string; message: string }[] = [];
+    const seen = new Set<string>();
+    rows.forEach((r, i) => {
+      const at = (field: string, message: string) =>
+        errors.push({ path: `rows[${i}].${field}`, message });
+      const code = r.code.trim();
+      if (!code || code.length > 30) at('code', 'Give a cost code of up to 30 characters');
+      else if (seen.has(code)) at('code', `${code} appears more than once`);
+      seen.add(code);
+      if (!isMoney(r.original.trim())) at('original', 'Enter a dollar amount like 12500.00');
+      const known = existing.get(code);
+      if (known?.archived) at('code', `${code} is archived`);
+      else if (known && budgeted.has(known.id)) at('code', `${code} already has a budget line`);
+      else if (!known && code && !r.codeDescription?.trim())
+        at('codeDescription', `${code} is new: give its description`);
+      if ((r.codeDescription?.trim().length ?? 0) > 200)
+        at('codeDescription', 'At most 200 characters');
+      if ((r.description?.trim().length ?? 0) > 300) at('description', 'At most 300 characters');
+    });
+    if (errors.length > 0)
+      throw new AppError(
+        'validation_failed',
+        `${errors.length} problem${errors.length === 1 ? '' : 's'} in the file. Nothing was imported.`,
+        errors.slice(0, 50),
+      );
+    for (const r of rows) {
+      const code = r.code.trim();
+      const costCode =
+        existing.get(code) ??
+        (await createCostCode(scope, projectId, { code, description: r.codeDescription!.trim() }));
+      await addLine(scope, projectId, {
+        costCodeId: costCode.id,
+        original: r.original.trim(),
+        ...(r.description?.trim() ? { description: r.description.trim() } : {}),
+        ...(r.isMargin ? { isMargin: true } : {}),
+      });
+    }
+    const showMargin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    return { budget, lines: await viewLines(scope, budget.id, showMargin), imported: rows.length };
+  }
+
   async function lockBudget(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.budget.manage', projectId);
     await requireStaff(scope, projectId);
@@ -365,6 +449,26 @@ export function createBudgetService(
       .orderBy(asc(budgetAdjustments.createdAt), asc(budgetAdjustments.id));
   }
 
+  /** Every revision on the project, newest first, with the cost code each belongs to. Margin lines need the margin permission. */
+  async function listProjectAdjustments(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.budget.read', projectId);
+    await requireStaff(scope, projectId);
+    const margin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    const rows = await scope.tx
+      .select({
+        adjustment: budgetAdjustments,
+        code: costCodes.code,
+        codeDescription: costCodes.description,
+        isMargin: budgetLines.isMargin,
+      })
+      .from(budgetAdjustments)
+      .innerJoin(budgetLines, eq(budgetLines.id, budgetAdjustments.budgetLineId))
+      .innerJoin(costCodes, eq(costCodes.id, budgetLines.costCodeId))
+      .where(eq(budgetAdjustments.projectId, projectId))
+      .orderBy(desc(budgetAdjustments.createdAt), desc(budgetAdjustments.id));
+    return rows.filter((r) => margin || !r.isMargin);
+  }
+
   // ---- Snapshots ----------------------------------------------------------------------------------------------
 
   /** Margin lines are hidden from readers without the margin permission, in snapshots as in the live budget. */
@@ -438,6 +542,39 @@ export function createBudgetService(
     return visibleSnapshot(scope, projectId, row);
   }
 
+  /**
+   * What Nova and the checks panel work from: the code-found findings and the totals they sit in. Margin never
+   * appears, even for a caller who may see it elsewhere, because it would otherwise reach a prompt and an answer.
+   */
+  async function reviewFacts(scope: TenantScope, projectId: string) {
+    const { budget, lines } = await getBudget(scope, projectId);
+    const shown = lines.filter((l) => !l.line.isMargin);
+    const sum = (pick: (l: BudgetLineRow) => string) =>
+      fromCents(shown.reduce((n, l) => n + signedCents(pick(l.line)), 0));
+    return {
+      hasBudget: budget !== null,
+      status: budget?.status ?? ('draft' as const),
+      lineCount: shown.length,
+      totals: {
+        revised: fromCents(shown.reduce((n, l) => n + signedCents(revisedOf(l.line)), 0)),
+        committed: sum((l) => l.committed),
+        actual: sum((l) => l.actual),
+      },
+      findings: budgetFindings(
+        shown.map((l) => ({
+          id: l.line.id,
+          code: l.code,
+          codeDescription: l.codeDescription,
+          original: l.line.original,
+          approvedChanges: l.line.approvedChanges,
+          committed: l.line.committed,
+          actual: l.line.actual,
+          isMargin: false,
+        })),
+      ),
+    };
+  }
+
   async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.forecast.read', projectId);
     const { budget, lines } = await getBudget(scope, projectId);
@@ -495,6 +632,7 @@ export function createBudgetService(
 
   return {
     budgetVsForecastFor,
+    reviewFacts,
     portfolioSummary,
     listCostCodes,
     createCostCode,
@@ -505,8 +643,10 @@ export function createBudgetService(
     updateLine,
     deleteLine,
     lockBudget,
+    importLines,
     adjustLine,
     listAdjustments,
+    listProjectAdjustments,
     createSnapshot,
     listSnapshots,
     getSnapshot,

@@ -8,6 +8,11 @@ type S = components['schemas'];
 export type Budget = S['Budget'];
 export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
+export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
+export type BudgetReviewChecks = S['BudgetReviewChecks'];
+export type BudgetFinding = S['BudgetFinding'];
+export type BudgetReviewAdvice = S['BudgetReviewAdvice'];
+export type BudgetReviewTurn = S['BudgetReviewTurn'];
 export type CostCode = S['CostCode'];
 export type AddBudgetLine = S['AddBudgetLineRequest'];
 export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
@@ -15,6 +20,7 @@ export type AdjustBudgetLine = S['AdjustBudgetLineRequest'];
 export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
 export type BudgetSnapshot = S['BudgetSnapshot'];
+export type ImportBudgetLinesRequest = S['ImportBudgetLinesRequest'];
 export type DirectCost = S['DirectCost'];
 export type DirectCostList = S['DirectCostList'];
 export type LaborProductivity = S['LaborProductivity'];
@@ -71,6 +77,25 @@ export function createBudgetApi(orgId: string) {
         }),
       );
     },
+    async reviewChecks(projectId: string): Promise<BudgetReviewChecks> {
+      return unwrap(
+        await api.GET(`${P}/budget/review-checks`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async askNova(
+      projectId: string,
+      body: { question: string; history: BudgetReviewTurn[] },
+    ): Promise<BudgetReviewAdvice> {
+      return unwrap(
+        await api.POST(`${P}/ai/budget-reviews`, { params: { path: { orgId, projectId } }, body }),
+      );
+    },
+    async projectAdjustments(projectId: string): Promise<ProjectBudgetAdjustment[]> {
+      const r = unwrap(
+        await api.GET(`${P}/budget/adjustments`, { params: { path: { orgId, projectId } } }),
+      );
+      return r.data;
+    },
     async adjustments(projectId: string, lineId: string): Promise<BudgetAdjustment[]> {
       return unwrap(
         await api.GET(`${P}/budget/lines/{lineId}/adjustments`, {
@@ -124,6 +149,14 @@ export function createBudgetApi(orgId: string) {
         await api.POST(`${P}/direct-costs/{directCostId}/void`, {
           params: { path: { orgId, projectId, directCostId }, header: idempotencyKey() },
           body: { note },
+        }),
+      );
+    },
+    async importLines(projectId: string, body: ImportBudgetLinesRequest) {
+      return unwrap(
+        await api.POST(`${P}/budget/lines/import`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
         }),
       );
     },

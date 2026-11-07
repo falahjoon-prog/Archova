@@ -298,3 +298,33 @@ export function SiteMap({
     </div>
   );
 }
+
+export interface TonedBar {
+  label: string;
+  value: number;
+  tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+}
+
+/** One bar per category on a shared scale, coloured by tone, with the count at the end of each bar. */
+export function ToneBars({ bars, ariaLabel }: { bars: readonly TonedBar[]; ariaLabel: string }) {
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  return (
+    <ul className="ac-tonebars" aria-label={ariaLabel}>
+      {bars.map((b) => (
+        <li key={b.label} className="ac-tonebars__item">
+          <span className="ac-tonebars__label">{b.label}</span>
+          <span className="ac-bars__track" aria-hidden="true">
+            <span
+              className="ac-bars__bar ac-tonebars__bar"
+              style={{
+                width: `${(b.value / max) * 100}%`,
+                background: `var(--c-status-${b.tone})`,
+              }}
+            />
+          </span>
+          <span className="ac-tonebars__value">{b.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}

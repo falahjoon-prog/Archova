@@ -4,6 +4,7 @@ import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
 import { defectTagSuite } from './suites/defect-tag';
+import { budgetReviewSuite } from './suites/budget-review';
 import { diarySummarySuite } from './suites/diary-summary';
 import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
@@ -37,6 +38,7 @@ export const SUITES: readonly AnySuite[] = [
   inductionRefreshSuite,
   inductionAskSuite,
   translationSuite,
+  budgetReviewSuite,
   diarySummarySuite,
   diaryWeeklySuite,
   meetingMinutesSuite,

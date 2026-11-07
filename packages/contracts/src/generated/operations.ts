@@ -796,6 +796,14 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const ReviewBudgetWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewBudgetWithNovaBody = z.object({
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.BudgetReviewTurnSchema).max(10).optional(),
+}).strict();
 export const TranscribeSpeechParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1494,6 +1502,30 @@ export const ListProjectCorrespondenceTypesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListConversationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListConversationsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateConversationBody = s.CreateConversationRequestSchema;
+export const GetConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2681,6 +2713,11 @@ export const AddBudgetLineParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddBudgetLineBody = s.AddBudgetLineRequestSchema;
+export const ImportBudgetLinesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportBudgetLinesBody = s.ImportBudgetLinesRequestSchema;
 export const UpdateBudgetLineParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2727,6 +2764,14 @@ export const GetBudgetSnapshotParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "snapshotId": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetReviewChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectBudgetAdjustmentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const ListBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -4857,6 +4902,18 @@ export const operations = {
     query: null,
     body: NegotiateQuoteBody,
   },
+  reviewBudgetWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewBudgetWithNovaParams,
+    query: null,
+    body: ReviewBudgetWithNovaBody,
+  },
   transcribeSpeech: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions',
@@ -6395,6 +6452,54 @@ export const operations = {
     params: ListProjectCorrespondenceTypesParams,
     query: null,
     body: null,
+  },
+  listConversations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: ListConversationsParams,
+    query: ListConversationsQuery,
+    body: null,
+  },
+  createConversation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateConversationParams,
+    query: null,
+    body: CreateConversationBody,
+  },
+  getConversation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: GetConversationParams,
+    query: null,
+    body: null,
+  },
+  postConversationMessage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.messages.post",
+    internal: false,
+    contentType: "application/json",
+    params: PostConversationMessageParams,
+    query: null,
+    body: PostConversationMessageBody,
   },
   listCorrespondence: {
     method: 'GET',
@@ -9016,6 +9121,18 @@ export const operations = {
     query: null,
     body: AddBudgetLineBody,
   },
+  importBudgetLines: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ImportBudgetLinesParams,
+    query: null,
+    body: ImportBudgetLinesBody,
+  },
   updateBudgetLine: {
     method: 'PATCH',
     path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}',
@@ -9121,6 +9238,30 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetBudgetSnapshotParams,
+    query: null,
+    body: null,
+  },
+  getBudgetReviewChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/review-checks',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetReviewChecksParams,
+    query: null,
+    body: null,
+  },
+  listProjectBudgetAdjustments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectBudgetAdjustmentsParams,
     query: null,
     body: null,
   },

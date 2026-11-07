@@ -770,6 +770,7 @@ main:focus {
   min-width: 0;
 }
 /* The star sits at the row's end; it shows on hover or focus, and stays visible once a tool is starred. */
+.project-nav__add,
 .project-nav__star {
   position: absolute;
   inset-inline-end: var(--space-1);
@@ -786,7 +787,13 @@ main:focus {
   cursor: pointer;
   opacity: 0;
 }
+.project-nav__add {
+  inset-inline-end: 32px;
+  text-decoration: none;
+}
+.project-nav__row:hover .project-nav__add,
 .project-nav__row:hover .project-nav__star,
+.project-nav__add:focus-visible,
 .project-nav__star:focus-visible,
 .project-nav__star[aria-pressed='true'] {
   opacity: 1;
@@ -798,6 +805,7 @@ main:focus {
   fill: currentColor;
 }
 @media (hover: none) {
+  .project-nav__add,
   .project-nav__star {
     opacity: 1;
   }
@@ -917,6 +925,7 @@ main:focus {
   }
   .project-nav__group-label,
   .project-nav .cgroup__header,
+  .project-nav__add,
   .project-nav__star {
     display: none;
   }
@@ -3270,6 +3279,85 @@ fieldset.worker-card > legend {
   flex: 1 1 16rem;
 }
 
+/* Project home: conversations card */
+.conversations__list,
+.conversations__thread {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.conversations__list > li + li,
+.conversations__thread > li + li {
+  border-top: 1px solid var(--c-border-divider);
+}
+.conversations__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.conversations__item:hover {
+  background: var(--c-surface-sunken, var(--c-bg));
+}
+.conversations__item:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.conversations__message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.conversations__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--c-action-primary);
+  color: var(--c-surface);
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+.conversations__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.conversations__who {
+  font-weight: 600;
+}
+.conversations__subject {
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.conversations__preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+.conversations__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Portfolio charts */
 .chart-grid {
   display: grid;
@@ -3286,4 +3374,12 @@ fieldset.worker-card > legend {
   .chart-grid__wide {
     grid-column: 1 / -1;
   }
+}
+.conversations__all {
+  margin: var(--space-3) 0 0;
+}
+.conversations__list--page {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
 }
