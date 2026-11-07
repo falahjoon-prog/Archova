@@ -11,6 +11,7 @@ import {
 import { SignOutButton } from '@/features/auth';
 import { BrandingStyle, useBranding, useLogoUrl } from '@/features/branding';
 import { InboxLink } from '@/features/notifications';
+import { SearchLink } from '@/features/search';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -66,6 +67,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                     items: [
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                      ...(membership.role === 'owner' || membership.role === 'admin'
+                        ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]
+                        : []),
                     ],
                   },
                   {
@@ -122,6 +126,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           ]}
           actions={
             <>
+              <SearchLink />
               <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />

@@ -73,6 +73,22 @@ describe('RfiNewScreen', () => {
     expect(screen.queryByText('Drafted RFI')).toBeNull();
   });
 
+  it('creates a draft RFI straight from a Nova draft, without submitting it (F3)', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiNewScreen />);
+    await enterText(
+      user,
+      await screen.findByLabelText('What did you find on site?'),
+      'Slab edge at grid C is 20 mm proud.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Draft with Nova' }));
+    expect(await screen.findByText('Drafted RFI')).toBeTruthy();
+    expect(nav.pushed).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Create draft RFI' }));
+    await waitFor(() => expect(nav.pushed).toHaveLength(1));
+    expect(nav.pushed[0]).toMatch(/^\/acme\/projects\/prj_test\/rfis\/rfi_/);
+  });
+
   it('defaults the due date to 5 business days and blocks submit until required fields are set', async () => {
     const user = userEvent.setup();
     await renderNewRfi();

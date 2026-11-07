@@ -8,6 +8,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
@@ -872,7 +873,24 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     };
   }
 
+  /** Global search (`search`): the submittals the caller can see that match the words. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: r.numberLabel,
+        title: r.title,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     list,
     detail,
     create,

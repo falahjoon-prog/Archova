@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLate, programmeStatus } from '../../src/domain/programme';
+import { daysLate, isLate, programmeStatus } from '../../src/domain/programme';
 
 const a = (start: string, finish: string, pctComplete: number) => ({ start, finish, pctComplete });
 
@@ -12,6 +12,17 @@ describe('isLate', () => {
     expect(isLate(a('2026-10-01', '2026-11-20', 40), '2026-11-05')).toBe(false);
     expect(isLate(a('2026-11-10', '2026-11-20', 0), '2026-11-05')).toBe(false);
     expect(isLate(a('2026-10-01', '2026-11-01', 100), '2026-11-05')).toBe(false);
+  });
+});
+
+describe('daysLate', () => {
+  it('counts from the finish date, or the start date when work has not begun', () => {
+    expect(daysLate(a('2026-10-01', '2026-11-01', 60), '2026-11-05')).toBe(4);
+    expect(daysLate(a('2026-11-01', '2026-11-20', 0), '2026-11-05')).toBe(4);
+  });
+  it('is zero when not late or complete', () => {
+    expect(daysLate(a('2026-10-01', '2026-11-20', 40), '2026-11-05')).toBe(0);
+    expect(daysLate(a('2026-10-01', '2026-11-01', 100), '2026-11-05')).toBe(0);
   });
 });
 

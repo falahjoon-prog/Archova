@@ -11,6 +11,7 @@ import {
   ItemHeader,
   SkeletonRows,
   StatusPill,
+  Tabs,
   TextField,
   Textarea,
 } from '@archova/ui';
@@ -18,6 +19,7 @@ import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useProjectPermissions } from '@/features/projects';
+import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -51,6 +53,8 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
   const perms = useProjectPermissions(org.orgId, project.projectId);
   const m = useCorrespondenceMutations(project.projectId);
   const [voiding, setVoiding] = useState(false);
+  const [params, setParams] = useUrlState(['tab'] as const);
+  const tab = params.tab === 'related' ? 'related' : 'general';
   const i = d.item;
   const isAdmin =
     perms.data?.orgRole === 'admin' ||
@@ -116,56 +120,93 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
         </Alert>
       ) : null}
 
-      <div className="detail-grid">
-        <div className="stack-lg">
-          {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
-          <Card title="Responses">
-            <div className="stack">
-              {d.responses.length === 0 ? (
-                <p className="u-muted u-m-0">No responses yet.</p>
-              ) : (
-                d.responses.map((r) => (
-                  <article key={r.id} className="stack" aria-label="Response">
-                    <p className="u-caption u-m-0">
-                      {dir.personName(r.authorId)}
-                      {r.authorCompanyId ? ` · ${dir.companyName(r.authorCompanyId)}` : ''} ·{' '}
-                      {formatInstant(r.sentAt, project.timezone)}
-                    </p>
-                    <p className="u-m-0 u-prewrap">{r.body}</p>
-                  </article>
-                ))
-              )}
-              {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
+      <Tabs
+        label="Correspondence sections"
+        value={tab}
+        onValueChange={(t) => setParams({ tab: t === 'general' ? null : t })}
+        tabs={[
+          { id: 'general', label: 'General' },
+          { id: 'related', label: 'Related items', count: i.related.length },
+        ]}
+      >
+        {tab === 'general' ? (
+          <div className="detail-grid">
+            <div className="stack-lg">
+              {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
+              <Card title="Responses">
+                <div className="stack">
+                  {d.responses.length === 0 ? (
+                    <p className="u-muted u-m-0">No responses yet.</p>
+                  ) : (
+                    d.responses.map((r) => (
+                      <article key={r.id} className="stack" aria-label="Response">
+                        <p className="u-caption u-m-0">
+                          {dir.personName(r.authorId)}
+                          {r.authorCompanyId
+                            ? ` · ${dir.companyName(r.authorCompanyId)}`
+                            : ''} · {formatInstant(r.sentAt, project.timezone)}
+                        </p>
+                        <p className="u-m-0 u-prewrap">{r.body}</p>
+                      </article>
+                    ))
+                  )}
+                  {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
+                </div>
+              </Card>
             </div>
+            <Card title="General information">
+              <DescriptionList
+                items={[
+                  { label: 'Number', value: <span className="u-mono">{i.numberLabel}</span> },
+                  { label: 'Status', value: <CorrespondenceStatusPill status={i.status} /> },
+                  { label: 'Subject', value: i.subject || '—' },
+                  { label: 'Type', value: i.typeName },
+                  {
+                    label: 'Created',
+                    value: `${dir.personName(i.createdBy)}, ${formatInstant(i.createdAt, project.timezone)}`,
+                  },
+                  {
+                    label: 'Received from',
+                    value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—',
+                  },
+                  {
+                    label: 'Distribution',
+                    value: i.toCompanyIds.length
+                      ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
+                      : '—',
+                  },
+                  {
+                    label: 'Issued on',
+                    value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
+                  },
+                  {
+                    label: 'Event date',
+                    value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
+                  },
+                  {
+                    label: 'Response due',
+                    value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
+                  },
+                ]}
+              />
+            </Card>
+          </div>
+        ) : (
+          <Card title="Related items">
+            {i.related.length === 0 ? (
+              <p className="u-muted u-m-0">Nothing is linked to this item yet.</p>
+            ) : (
+              <ul className="stack u-m-0">
+                {i.related.map((r) => (
+                  <li key={`${r.kind}-${r.id}`}>
+                    <span className="u-caption">{r.kind}</span> · {r.label || r.id}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
-        </div>
-        <Card title="Details">
-          <DescriptionList
-            items={[
-              { label: 'Type', value: i.typeName },
-              { label: 'From', value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—' },
-              {
-                label: 'To',
-                value: i.toCompanyIds.length
-                  ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
-                  : '—',
-              },
-              {
-                label: 'Sent',
-                value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
-              },
-              {
-                label: 'Event date',
-                value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
-              },
-              {
-                label: 'Response due',
-                value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
-              },
-            ]}
-          />
-        </Card>
-      </div>
+        )}
+      </Tabs>
 
       <VoidDialog
         open={voiding}

@@ -6,6 +6,18 @@ export type AuState = (typeof AU_STATES)[number];
 export const PROJECT_STATUSES = ['tender', 'active', 'on_hold', 'closed', 'archived'] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
+/** Where a project is in its life, in order. Separate from `status`, which says whether it is live. */
+export const PROJECT_PHASES = [
+  'planning',
+  'design',
+  'tender',
+  'pre_construction',
+  'construction',
+  'handover',
+  'defects_liability',
+] as const;
+export type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
 export const COMPANY_TYPES = [
   'builder',
   'subcontractor',
@@ -25,7 +37,7 @@ export type OrgKind = (typeof ORG_KINDS)[number];
  * Modules that are part of every plan. Licensed modules come from `billing` entitlements. `sync` carries the
  * mobile offline store; each scope it pulls and each command it pushes is licensed by its own module (john, 2 Oct).
  */
-// `integrations` is core: imports are part of every plan (integrations/07).
+// `integrations` is core: imports are part of every plan (integrations/07). `conversations` is core: the Project home card.
 export const CORE_MODULES = [
   'platform',
   'access',
@@ -33,6 +45,7 @@ export const CORE_MODULES = [
   'identity',
   'sync',
   'integrations',
+  'conversations',
 ] as const;
 
 /**

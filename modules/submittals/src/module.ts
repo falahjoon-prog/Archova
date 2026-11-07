@@ -24,6 +24,8 @@ export function createSubmittalsModule(
       dueForMeeting: service.dueForMeeting,
       /** Portfolio dashboard and report builder (`reporting`): counts and flat rows of the submittals the caller can see. */
       portfolioCounts: service.portfolioCounts,
+      /** Global search (`search`): submittals the caller can see that match some words. */
+      searchHits: service.searchHits,
       reportRows: service.reportRows,
       /** Programme links (`scheduling`): details of the submittals among some ids that the caller can see. */
       summariesByIds: service.summariesByIds,

@@ -20,6 +20,7 @@ import {
   type TileProps,
 } from '@/features/dashboard';
 import { formatMoney } from '@/shared/lib/format';
+import { PortfolioCharts } from './components/PortfolioCharts';
 import type { Portfolio, PortfolioBudget, PortfolioProject, PortfolioTool } from './lib/types';
 
 /** The Portfolio's tiles: one stat per module, a Big Number for any metric, and the projects table. */
@@ -256,6 +257,24 @@ registerTile({
   size: { w: 12, h: 8 },
   min: { w: 6, h: 4 },
   render: ProjectsTable,
+});
+
+registerTile({
+  type: 'portfolio_charts',
+  title: 'Phase, map and budget charts',
+  description: 'Projects by phase, where they are on the map, and budget against forecast.',
+  category: 'health_status',
+  surfaces: ['portfolio'],
+  size: { w: 12, h: 7 },
+  min: { w: 6, h: 5 },
+  render: ({ ctx }) => {
+    const data = portfolio(ctx);
+    return data ? (
+      <PortfolioCharts portfolio={data} orgSlug={ctx.orgSlug} />
+    ) : (
+      <SkeletonRows label="Loading…" />
+    );
+  },
 });
 
 /** What the library previews show. */

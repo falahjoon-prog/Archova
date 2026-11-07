@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Checkbox, PageHeader } from '@archova/ui';
+import { Alert, Checkbox, PageHeader, SkeletonRows, Tabs } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useBranding, useSaveBranding } from '@/features/branding';
 import { DashboardEditor, type Tile, type TileContext } from '@/features/dashboard';
+import { StatusReport } from '../components/StatusReport';
 import { usePortfolio } from '../hooks/useReporting';
 import { SAMPLE_PORTFOLIO } from '../tiles';
 
@@ -23,6 +24,14 @@ function defaultLayout(widgets: readonly string[]): Tile[] {
     tiles.push({ id: key, type: `stat_${key}`, x: col, y: row, w: 3, h: 2 });
     col += 3;
   }
+  tiles.push({
+    id: 'charts',
+    type: 'portfolio_charts',
+    x: 0,
+    y: tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0),
+    w: 12,
+    h: 7,
+  });
   if (widgets.includes('project_table')) {
     const y = tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0);
     tiles.push({ id: 'project_table', type: 'projects_table', x: 0, y, w: 12, h: 8 });
@@ -47,6 +56,7 @@ const DEFAULT_WIDGETS = [
 export function PortfolioScreen() {
   const org = useCurrentOrg();
   const [includeClosed, setIncludeClosed] = useState(false);
+  const [view, setView] = useState('overview');
   const portfolio = usePortfolio(includeClosed);
   const branding = useBranding().data;
   const save = useSaveBranding();
@@ -73,24 +83,42 @@ export function PortfolioScreen() {
           Close out finished projects to bring the rest into view.
         </Alert>
       ) : null}
-      <DashboardEditor
-        surface="portfolio"
-        tiles={tiles}
-        ctx={ctx}
-        sampleCtx={sampleCtx}
-        canEdit={(org.role === 'owner' || org.role === 'admin') && !!branding}
-        saving={save.isPending}
-        error={save.error}
-        onSave={(next) => save.mutateAsync({ patch: { dashboardLayout: next } })}
-        onReset={() => save.mutateAsync({ patch: { dashboardLayout: null } })}
-        toolbarExtra={
-          <Checkbox
-            label="Include closed and archived projects"
-            checked={includeClosed}
-            onChange={(e) => setIncludeClosed(e.target.checked)}
+      <Tabs
+        label="Portfolio views"
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'status', label: 'Status report' },
+        ]}
+        value={view}
+        onValueChange={setView}
+      >
+        {view === 'status' ? (
+          portfolio.data ? (
+            <StatusReport portfolio={portfolio.data} />
+          ) : (
+            <SkeletonRows label="Loading the status report…" />
+          )
+        ) : (
+          <DashboardEditor
+            surface="portfolio"
+            tiles={tiles}
+            ctx={ctx}
+            sampleCtx={sampleCtx}
+            canEdit={(org.role === 'owner' || org.role === 'admin') && !!branding}
+            saving={save.isPending}
+            error={save.error}
+            onSave={(next) => save.mutateAsync({ patch: { dashboardLayout: next } })}
+            onReset={() => save.mutateAsync({ patch: { dashboardLayout: null } })}
+            toolbarExtra={
+              <Checkbox
+                label="Include closed and archived projects"
+                checked={includeClosed}
+                onChange={(e) => setIncludeClosed(e.target.checked)}
+              />
+            }
           />
-        }
-      />
+        )}
+      </Tabs>
     </div>
   );
 }

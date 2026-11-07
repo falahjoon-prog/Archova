@@ -20,7 +20,7 @@ const counts = (r: [number, number], d: [number, number], s: [number, number]): 
   claims: tool(0, 0),
   variations: tool(0, 0),
   incidents: tool(0, 0),
-  programme: tool(0, 0),
+  programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
 });
 
 describe('columns and config', () => {
@@ -119,6 +119,7 @@ describe('budget against forecast', () => {
     hasBudget: true,
     revisedCents: revised,
     forecastFinalCents: forecast,
+    spentCents: 0,
     varianceCents: revised - forecast,
     overBudgetCodes: over,
   });
@@ -131,6 +132,7 @@ describe('budget against forecast', () => {
       hasBudget: true,
       revised: '10000.50',
       forecastFinal: '12000.00',
+      spent: '0.00',
       variance: '-1999.50',
       overBudgetCodes: 2,
     });

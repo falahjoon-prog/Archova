@@ -40,6 +40,12 @@ export function MeScreen() {
         onPress={() => router.push(mobileRoutes.offline())}
         testID="offline-data-link"
       />
+      <ListItem
+        title="Delete account"
+        subtitle="Permanently remove your account and this phone's data"
+        onPress={() => router.push(mobileRoutes.deleteAccount())}
+        testID="delete-account-link"
+      />
       <Button
         label="Sign out"
         variant="danger"
