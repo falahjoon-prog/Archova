@@ -2863,6 +2863,51 @@ export const VoidDirectCostParams = z.object({
   "directCostId": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
 });
 export const VoidDirectCostBody = s.VoidDirectCostRequestSchema;
+export const ListTmTicketsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTmTicketBody = s.TmTicketRequestSchema;
+export const SuggestTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestTmTicketQuery = z.object({
+  "date": z.string().date(),
+});
+export const GetTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTmTicketBody = s.TmTicketRequestSchema;
+export const SignTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const SignTmTicketBody = s.SignTmTicketRequestSchema;
+export const VoidTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const VoidTmTicketBody = s.VoidTmTicketRequestSchema;
+export const ConvertTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const ConvertTmTicketBody = s.ConvertTmTicketRequestSchema;
 export const ListCommitmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9488,6 +9533,102 @@ export const operations = {
     params: VoidDirectCostParams,
     query: null,
     body: VoidDirectCostBody,
+  },
+  listTmTickets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: ListTmTicketsParams,
+    query: null,
+    body: null,
+  },
+  createTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTmTicketParams,
+    query: null,
+    body: CreateTmTicketBody,
+  },
+  suggestTmTicket: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: null,
+    params: SuggestTmTicketParams,
+    query: SuggestTmTicketQuery,
+    body: null,
+  },
+  getTmTicket: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: GetTmTicketParams,
+    query: null,
+    body: null,
+  },
+  updateTmTicket: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTmTicketParams,
+    query: null,
+    body: UpdateTmTicketBody,
+  },
+  signTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.sign",
+    internal: false,
+    contentType: "application/json",
+    params: SignTmTicketParams,
+    query: null,
+    body: SignTmTicketBody,
+  },
+  voidTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidTmTicketParams,
+    query: null,
+    body: VoidTmTicketBody,
+  },
+  convertTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.convert",
+    internal: false,
+    contentType: "application/json",
+    params: ConvertTmTicketParams,
+    query: null,
+    body: ConvertTmTicketBody,
   },
   listCommitments: {
     method: 'GET',

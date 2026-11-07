@@ -9039,6 +9039,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** T&M (daywork) tickets, newest first, with the total of those not voided (ex GST). */
+        get: operations["listTmTickets"];
+        put?: never;
+        /** Raise a T&M ticket for labour, equipment and material used on site. Lines can come from Nova's draft. */
+        post: operations["createTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's draft lines for a day, from timesheets and equipment logs not already on a ticket. Unpriced; a person reviews before creating. */
+        get: operations["suggestTmTicket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        /** One T&M ticket with its lines and signatures. */
+        get: operations["getTmTicket"];
+        /** Replace a draft ticket. Refused from the first signature. */
+        put: operations["updateTmTicket"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign as the contractor or the principal's representative. The two must be different people; the second signature makes the ticket signed. */
+        post: operations["signTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a ticket that has not been converted, with a reason. */
+        post: operations["voidTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert a signed ticket, once, into direct costs on a budget line or a draft variation on a contract. */
+        post: operations["convertTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
         parameters: {
             query?: never;
@@ -15395,6 +15521,106 @@ export interface components {
         VoidDirectCostRequest: {
             note: string;
         };
+        /** @enum {string} */
+        TmKind: "labour" | "equipment" | "material";
+        /** @enum {string} */
+        TmSourceType: "timesheet_line" | "equipment_log";
+        TmTicketLine: {
+            kind: components["schemas"]["TmKind"];
+            description: string;
+            quantity: string;
+            unit: string;
+            rate: components["schemas"]["FinancialsMoney"];
+            amount: components["schemas"]["FinancialsMoney"];
+            sourceType: components["schemas"]["TmSourceType"] | null;
+            /** Format: uuid */
+            sourceId: string | null;
+        };
+        TmTicketSignoff: {
+            /** @enum {string} */
+            role: "contractor" | "principal_rep";
+            signerName: string;
+            signerPosition: string | null;
+            contentHash: string;
+            /** Format: date-time */
+            signedAt: string;
+        };
+        TmTicket: {
+            id: string;
+            number: number;
+            title: string;
+            description: string | null;
+            /** Format: date */
+            workDate: string;
+            location: string | null;
+            contractor: string | null;
+            instructedBy: string | null;
+            /** @enum {string} */
+            origin: "manual" | "nova";
+            /** @enum {string} */
+            status: "draft" | "part_signed" | "signed" | "converted" | "void";
+            total: components["schemas"]["FinancialsMoney"];
+            /** @enum {string|null} */
+            convertedTo: "direct_cost" | "variation" | null;
+            /** Format: date-time */
+            convertedAt: string | null;
+            variationId: string | null;
+            voidReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TmTicketDetail: components["schemas"]["TmTicket"] & {
+            lines: components["schemas"]["TmTicketLine"][];
+            signoffs: components["schemas"]["TmTicketSignoff"][];
+        };
+        TmTicketList: {
+            data: components["schemas"]["TmTicket"][];
+            total: components["schemas"]["FinancialsMoney"];
+            awaitingSignature: number;
+            unconverted: number;
+        };
+        TmTicketLineRequest: {
+            kind: components["schemas"]["TmKind"];
+            description: string;
+            quantity: string;
+            unit: string;
+            rate: components["schemas"]["FinancialsMoney"];
+            sourceType?: components["schemas"]["TmSourceType"];
+            /** Format: uuid */
+            sourceId?: string;
+        };
+        TmTicketRequest: {
+            title: string;
+            description?: string;
+            /** Format: date */
+            workDate: string;
+            location?: string;
+            contractor?: string;
+            instructedBy?: string;
+            /** @enum {string} */
+            origin?: "manual" | "nova";
+            lines: components["schemas"]["TmTicketLineRequest"][];
+        };
+        TmTicketSuggestion: {
+            /** Format: date */
+            date: string;
+            lines: components["schemas"]["TmTicketLineRequest"][];
+        };
+        SignTmTicketRequest: {
+            /** @enum {string} */
+            role: "contractor" | "principal_rep";
+            signerName: string;
+            signerPosition?: string;
+        };
+        VoidTmTicketRequest: {
+            note: string;
+        };
+        ConvertTmTicketRequest: {
+            /** @enum {string} */
+            to: "direct_cost" | "variation";
+            budgetLineId?: string;
+            contractId?: string;
+        };
         CommitmentList: {
             data: components["schemas"]["Commitment"][];
         };
@@ -17881,6 +18107,7 @@ export interface components {
         ForecastAdjustmentId: string;
         VariationId: string;
         DirectCostId: string;
+        TmTicketId: string;
         CommitmentId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
@@ -32632,6 +32859,235 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTmTickets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestTmTicket: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTmTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    convertTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
                 };
             };
             default: components["responses"]["Problem"];

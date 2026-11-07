@@ -313,6 +313,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
+    dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an

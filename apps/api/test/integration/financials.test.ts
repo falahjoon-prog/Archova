@@ -1692,6 +1692,173 @@ describe('Direct costs', () => {
   });
 });
 
+describe('T&M tickets', () => {
+  it('drafts from the day, freezes at signing, needs two people, converts once, and is staff only', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const principal = await signUp(t.app, 'fin-tm-super');
+    await addMember(
+      s.pm.browser,
+      s.orgId,
+      s.base.split('/').pop()!,
+      principal.email,
+      'Superintendent',
+      'Client Rep Co',
+    );
+    const cc = (await post('cost-codes', { code: '08', description: 'Daywork' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
+    const body = {
+      title: 'Extra excavation at grid C',
+      workDate: '2026-11-03',
+      location: 'Level 2',
+      contractor: 'Acme Civil',
+      instructedBy: 'S. Lee (Superintendent)',
+      lines: [
+        {
+          kind: 'labour',
+          description: 'Dan, labourer',
+          quantity: '8.00',
+          unit: 'hr',
+          rate: '85.00',
+        },
+        {
+          kind: 'equipment',
+          description: '5t excavator',
+          quantity: '4.50',
+          unit: 'hr',
+          rate: '140.00',
+        },
+        {
+          kind: 'material',
+          description: 'Road base',
+          quantity: '12.00',
+          unit: 'm3',
+          rate: '60.50',
+        },
+      ],
+    };
+
+    // Nova's draft is empty here (no timesheets), and a future day is refused.
+    expect((await get('tm-tickets/suggestion?date=2026-11-03')).json().lines).toEqual([]);
+    expect((await get('tm-tickets/suggestion?date=2999-01-01')).statusCode).toBe(422);
+
+    // Bad input.
+    expect((await post('tm-tickets', { ...body, lines: [] })).statusCode).toBe(422);
+    expect((await post('tm-tickets', { ...body, workDate: '2999-01-01' })).statusCode).toBe(422);
+    expect(
+      (await post('tm-tickets', { ...body, lines: [{ ...body.lines[0], quantity: '0' }] }))
+        .statusCode,
+    ).toBe(422);
+
+    const created = await post('tm-tickets', body);
+    expect(created.statusCode).toBe(201);
+    const t1 = created.json();
+    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '1970.00' });
+    expect(t1.lines.map((l: { amount: string }) => l.amount)).toEqual([
+      '680.00',
+      '630.00',
+      '726.00',
+    ]);
+
+    // A draft can be edited; unsigned tickets cannot be converted.
+    const edited = await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, {
+      ...body,
+      title: 'Extra excavation C',
+    });
+    expect(edited.json().title).toBe('Extra excavation C');
+    const convertEarly = await post(`tm-tickets/${t1.id}/convert`, {
+      to: 'direct_cost',
+      budgetLineId: line.id,
+    });
+    expect(convertEarly.json().code).toBe('financials.tm_ticket.bad_state');
+
+    // First signature freezes the ticket; the same person cannot sign twice or in the other role.
+    const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
+      role: 'contractor',
+      signerName: 'Pat Manager',
+    });
+    expect(sign1.json()).toMatchObject({ status: 'part_signed' });
+    expect(sign1.json().signoffs[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
+    expect((await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, body)).json().code).toBe(
+      'financials.tm_ticket.bad_state',
+    );
+    expect(
+      (
+        await post(`tm-tickets/${t1.id}/sign`, { role: 'principal_rep', signerName: 'Pat Manager' })
+      ).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+
+    const sign2 = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+      signerPosition: 'Superintendent',
+    });
+    expect(sign2.json()).toMatchObject({ status: 'signed' });
+    // The superintendent can sign but not convert.
+    expect(
+      (
+        await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/convert`, {
+          to: 'direct_cost',
+          budgetLineId: line.id,
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    // Converting to direct costs posts one per kind to the budget line, once.
+    const conv = await post(`tm-tickets/${t1.id}/convert`, {
+      to: 'direct_cost',
+      budgetLineId: line.id,
+    });
+    expect(conv.json()).toMatchObject({ status: 'converted', convertedTo: 'direct_cost' });
+    const dcs = (await get('direct-costs')).json();
+    expect(dcs.total).toBe('1970.00');
+    expect(dcs.data.map((d: { category: string }) => d.category).sort()).toEqual([
+      'labour',
+      'materials',
+      'plant',
+    ]);
+    expect(
+      (await post(`tm-tickets/${t1.id}/convert`, { to: 'direct_cost', budgetLineId: line.id }))
+        .statusCode,
+    ).toBe(409);
+    expect((await post(`tm-tickets/${t1.id}/void`, { note: 'oops' })).statusCode).toBe(409);
+
+    // A second ticket becomes a draft variation on a contract; voiding needs a reason.
+    const contract = (await post('contracts', contractBody())).json().contract;
+    const t2 = (await post('tm-tickets', body)).json();
+    expect(t2.number).toBe(2);
+    await post(`tm-tickets/${t2.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' });
+    await principal.browser.post(`${s.base}/tm-tickets/${t2.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+    });
+    const asVar = await post(`tm-tickets/${t2.id}/convert`, {
+      to: 'variation',
+      contractId: contract.id,
+    });
+    expect(asVar.json()).toMatchObject({ status: 'converted', convertedTo: 'variation' });
+    expect(asVar.json().variationId).toMatch(/^var_/);
+    const vars = (await get(`contracts/${contract.id}/variations`)).json();
+    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '1970.00' });
+
+    const t3 = (await post('tm-tickets', body)).json();
+    expect((await post(`tm-tickets/${t3.id}/void`, { note: '' })).statusCode).toBe(422);
+    expect((await post(`tm-tickets/${t3.id}/void`, { note: 'Raised twice' })).json().status).toBe(
+      'void',
+    );
+
+    const list = (await get('tm-tickets')).json();
+    expect(list.data.map((d: { number: number }) => d.number)).toEqual([3, 2, 1]);
+    expect(list.total).toBe('3940.00');
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/tm-tickets`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/tm-tickets`, body)).statusCode).toBe(403);
+  });
+});
+
 describe('Labor productivity', () => {
   it('keeps a production plan, logs quantity by day, reports and exports it, and talks to Nova', async () => {
     const s = await setup('NSW');

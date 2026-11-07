@@ -133,6 +133,7 @@ export const ID_PREFIXES = {
   budgetLine: 'bln',
   commitment: 'cmt',
   directCost: 'dcs',
+  tmTicket: 'tmt',
   productionLogEntry: 'pgl',
   budgetAdjustment: 'bad',
   budgetSnapshot: 'bsn',

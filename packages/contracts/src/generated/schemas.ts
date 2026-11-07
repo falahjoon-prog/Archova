@@ -1269,6 +1269,13 @@ export const ConversationPageSchema = z.object({
 });
 export type ConversationPage = z.infer<typeof ConversationPageSchema>;
 
+export const ConvertTmTicketRequestSchema = z.object({
+  "to": z.enum(["direct_cost", "variation"]),
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")).optional(),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type ConvertTmTicketRequest = z.infer<typeof ConvertTmTicketRequestSchema>;
+
 export const CoordinationCommentSchema = z.object({
   "id": z.string(),
   "authorId": z.string(),
@@ -6634,6 +6641,13 @@ export const SignInductionRequestSchema = z.object({
 }).strict();
 export type SignInductionRequest = z.infer<typeof SignInductionRequestSchema>;
 
+export const SignTmTicketRequestSchema = z.object({
+  "role": z.enum(["contractor", "principal_rep"]),
+  "signerName": z.string().min(1).max(200),
+  "signerPosition": z.string().min(1).max(200).optional(),
+}).strict();
+export type SignTmTicketRequest = z.infer<typeof SignTmTicketRequestSchema>;
+
 export const SignupRequestSchema = z.object({
   "email": EmailSchema,
   "password": PasswordSchema,
@@ -7139,6 +7153,96 @@ export const TimesheetListSchema = z.object({
   "data": z.array(TimesheetSchema),
 });
 export type TimesheetList = z.infer<typeof TimesheetListSchema>;
+
+export const TmKindSchema = z.enum(["labour", "equipment", "material"]);
+export type TmKind = z.infer<typeof TmKindSchema>;
+
+export const TmSourceTypeSchema = z.enum(["timesheet_line", "equipment_log"]);
+export type TmSourceType = z.infer<typeof TmSourceTypeSchema>;
+
+export const TmTicketSchema = z.object({
+  "id": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "workDate": z.string().date(),
+  "location": z.string().nullable(),
+  "contractor": z.string().nullable(),
+  "instructedBy": z.string().nullable(),
+  "origin": z.enum(["manual", "nova"]),
+  "status": z.enum(["draft", "part_signed", "signed", "converted", "void"]),
+  "total": FinancialsMoneySchema,
+  "convertedTo": z.enum(["direct_cost", "variation"]).nullable(),
+  "convertedAt": z.string().datetime({ offset: true }).nullable(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).nullable(),
+  "voidReason": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type TmTicket = z.infer<typeof TmTicketSchema>;
+
+export const TmTicketLineSchema = z.object({
+  "kind": TmKindSchema,
+  "description": z.string(),
+  "quantity": z.string(),
+  "unit": z.string(),
+  "rate": FinancialsMoneySchema,
+  "amount": FinancialsMoneySchema,
+  "sourceType": z.union([TmSourceTypeSchema, z.null()]),
+  "sourceId": z.string().nullable(),
+});
+export type TmTicketLine = z.infer<typeof TmTicketLineSchema>;
+
+export const TmTicketSignoffSchema = z.object({
+  "role": z.enum(["contractor", "principal_rep"]),
+  "signerName": z.string(),
+  "signerPosition": z.string().nullable(),
+  "contentHash": z.string(),
+  "signedAt": z.string().datetime({ offset: true }),
+});
+export type TmTicketSignoff = z.infer<typeof TmTicketSignoffSchema>;
+
+export const TmTicketDetailSchema = z.intersection(TmTicketSchema, z.object({
+  "lines": z.array(TmTicketLineSchema),
+  "signoffs": z.array(TmTicketSignoffSchema),
+}));
+export type TmTicketDetail = z.infer<typeof TmTicketDetailSchema>;
+
+export const TmTicketLineRequestSchema = z.object({
+  "kind": TmKindSchema,
+  "description": z.string().min(1).max(300),
+  "quantity": z.string().regex(new RegExp("^\\\\d{1,8}(\\\\.\\\\d{1,2})?$")),
+  "unit": z.string().min(1).max(20),
+  "rate": FinancialsMoneySchema,
+  "sourceType": TmSourceTypeSchema.optional(),
+  "sourceId": z.string().optional(),
+}).strict();
+export type TmTicketLineRequest = z.infer<typeof TmTicketLineRequestSchema>;
+
+export const TmTicketListSchema = z.object({
+  "data": z.array(TmTicketSchema),
+  "total": FinancialsMoneySchema,
+  "awaitingSignature": z.number().int(),
+  "unconverted": z.number().int(),
+});
+export type TmTicketList = z.infer<typeof TmTicketListSchema>;
+
+export const TmTicketRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(5000).optional(),
+  "workDate": z.string().date(),
+  "location": z.string().min(1).max(200).optional(),
+  "contractor": z.string().min(1).max(200).optional(),
+  "instructedBy": z.string().min(1).max(200).optional(),
+  "origin": z.enum(["manual", "nova"]).optional(),
+  "lines": z.array(TmTicketLineRequestSchema).min(1).max(200),
+}).strict();
+export type TmTicketRequest = z.infer<typeof TmTicketRequestSchema>;
+
+export const TmTicketSuggestionSchema = z.object({
+  "date": z.string().date(),
+  "lines": z.array(TmTicketLineRequestSchema),
+});
+export type TmTicketSuggestion = z.infer<typeof TmTicketSuggestionSchema>;
 
 export const TokenRequestSchema = z.object({
   "grant_type": z.enum(["authorization_code", "refresh_token"]),
@@ -7799,6 +7903,11 @@ export const VoidDirectCostRequestSchema = z.object({
   "note": z.string().min(1).max(5000),
 }).strict();
 export type VoidDirectCostRequest = z.infer<typeof VoidDirectCostRequestSchema>;
+
+export const VoidTmTicketRequestSchema = z.object({
+  "note": z.string().min(1).max(5000),
+}).strict();
+export type VoidTmTicketRequest = z.infer<typeof VoidTmTicketRequestSchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),
