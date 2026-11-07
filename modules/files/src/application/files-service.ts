@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, like, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
@@ -27,6 +27,9 @@ const FILE_STATUS = {
   unscannable: 'failed',
   pending: 'scanning',
 } as const satisfies Record<ScanVerdict, FileRow['status']>;
+
+/** Modules whose images show in the project photo gallery. Safety, workforce and other restricted records are left out. */
+export const PHOTO_MODULES = ['photos', 'diary', 'defects', 'quality', 'rfis'] as const;
 
 /** No scan result after this long fails closed (security-licensing/09 §4). */
 const SCAN_TIMEOUT_MS = 15 * 60_000;
@@ -354,7 +357,40 @@ export function createFilesService({
     return { file: f, bytes };
   }
 
-  return { createUpload, complete, get, downloadUrl, readBytes };
+  /**
+   * The newest ready photos on a project, for the project home gallery. Only modules whose photos are meant for the
+   * whole project team feed it (`PHOTO_MODULES`); incident and induction photos stay inside their own records.
+   * Newest by capture time, falling back to upload time. Each photo comes with a short-lived download link.
+   */
+  async function listProjectPhotos(scope: TenantScope, projectId: string, limit: number) {
+    await authorise(scope, projectId, 'read');
+    const rows = await scope.tx
+      .select()
+      .from(fileObjects)
+      .where(
+        and(
+          eq(fileObjects.projectId, projectId),
+          eq(fileObjects.status, 'ready'),
+          like(fileObjects.mime, 'image/%'),
+          inArray(fileObjects.module, [...PHOTO_MODULES]),
+          isNull(fileObjects.deletedAt),
+        ),
+      )
+      .orderBy(desc(sql`coalesce(${fileObjects.takenAt}, ${fileObjects.createdAt})`))
+      .limit(Math.min(Math.max(limit, 1), 30));
+    return Promise.all(
+      rows.map(async (f) => ({
+        file: f,
+        url: await store.presignGet(f.storageKey, {
+          contentDisposition: contentDisposition(f.filename),
+          expiresInS: DOWNLOAD_URL_TTL_S,
+        }),
+        expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000),
+      })),
+    );
+  }
+
+  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

@@ -1146,6 +1146,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+         * @description Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+         */
+        get: operations["listProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -12021,6 +12044,12 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ProjectPhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         DownloadLink: {
             url: string;
             /** Format: date-time */
@@ -19169,6 +19198,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectPhotos: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProjectPhoto"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];
