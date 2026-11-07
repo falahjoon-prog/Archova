@@ -10,6 +10,7 @@ import {
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
+import type { InsightsDiscussService } from '../application/insights-discuss';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
@@ -287,6 +288,7 @@ export function aiRoutes(
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
   diaryWeekly: DiaryWeeklyService,
+  insightsDiscuss: InsightsDiscussService,
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
@@ -781,6 +783,27 @@ export function aiRoutes(
         input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
+    },
+    discussProjectInsight: async (input) => {
+      const r = await insightsDiscuss.discuss(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          question: input.body.question,
+          insightId: input.body.insightId ?? null,
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: r.runId ? encodeId('aiRun', r.runId) : null,
+          grounded: r.grounded,
+          answer: r.answer,
+          suggestions: r.suggestions,
+          reviewRequired: true,
+        },
+      };
     },
     draftMinutesWithNova: async (input) => {
       const meetingId = decodeId('meeting', input.params.meetingId);

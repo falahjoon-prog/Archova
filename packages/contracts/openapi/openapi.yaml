@@ -4046,6 +4046,74 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SearchResults' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectInsights
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Ranked notes for the project home - budget risk, overdue items and programme slip.
+      description: |
+        The Insights card on the project home. Reads this one project's counts, budget forecast and programme slip as
+        the caller (a tool the caller cannot read adds nothing) and returns the notes worth a look, worst first. Every
+        sentence and figure comes from fixed rules, not a model; Nova only discusses them (`discussProjectInsight`)
+        and never changes data. An empty list means nothing needs attention. Staff only.
+      responses:
+        '200':
+          description: The notes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insights/discuss:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: discussProjectInsight
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Ask Nova a follow-up about the project home insights (read-only).
+      description: |
+        Nova answers from the project's current insight figures only (the same notes `getProjectInsights` returns,
+        read as the caller). It can explain a note, compare notes, suggest what to look at first and propose options,
+        but it only suggests: it never changes any record, and every suggestion is for a person to review and carry
+        out. A sentence whose figures are not in the notes is dropped; when nothing is left, `grounded` is false and
+        the answer says Nova cannot answer from the figures. `insightId` focuses the question on one note. Costs one
+        Nova credit when the model is called; nothing when the project has no notes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 1000 }
+                insightId: { $ref: '#/components/schemas/InsightKind' }
+                history:
+                  type: array
+                  description: The earlier turns of this conversation, oldest first; the server keeps none.
+                  maxItems: 8
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [role, text]
+                    properties:
+                      role: { type: string, enum: [user, nova] }
+                      text: { type: string, minLength: 1, maxLength: 1500 }
+      responses:
+        '200':
+          description: Nova's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InsightDiscussion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13495,6 +13563,43 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    InsightKind:
+      type: string
+      enum: [budget, programme, rfis, defects, submittals, variations, claims, incidents]
+    ProjectInsight:
+      type: object
+      required: [id, kind, severity, title, detail, facts]
+      properties:
+        id: { $ref: '#/components/schemas/InsightKind' }
+        kind: { $ref: '#/components/schemas/InsightKind' }
+        severity: { type: string, enum: [high, medium, low] }
+        title: { type: string }
+        detail: { type: string }
+        facts:
+          type: array
+          items: { type: string }
+    ProjectInsights:
+      type: object
+      required: [projectId, projectName, insights]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        insights:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectInsight' }
+    InsightDiscussion:
+      type: object
+      required: [runId, grounded, answer, suggestions, reviewRequired]
+      properties:
+        runId: { type: [string, 'null'] }
+        grounded: { type: boolean }
+        answer: { type: string }
+        suggestions:
+          type: array
+          description: Options Nova proposes, for a person to review. Nothing here has been done.
+          items: { type: string }
+        reviewRequired:
+          { type: boolean, description: 'Always true: Nova only suggests, a person decides.' }
     SearchResults:
       type: object
       required: [query, results, truncated]

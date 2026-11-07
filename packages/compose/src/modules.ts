@@ -59,7 +59,11 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
-import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import {
+  REPORTING_PERMISSIONS,
+  createReportingModule,
+  type ReportingModule,
+} from '@archova/mod-reporting';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
@@ -328,6 +332,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  // reporting is created after ai too (it reads workforce, safety and financials); Nova's insights follow-up reads it lazily.
+  let reportingApi: ReportingModule['api'] | null = null;
   const precon = createPreconModule(services, { platform: platform.api });
 
   const estimating = createEstimatingModule(services, {
@@ -388,6 +394,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
+    projectInsights: (scope, projectId) => reportingApi!.projectInsights(scope, projectId),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
@@ -458,6 +465,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     financials: financials.api,
     scheduling: scheduling.api,
   });
+  reportingApi = reporting.api;
 
   const search = createSearchModule({
     database: services.database as Database,

@@ -908,6 +908,22 @@ export const SearchOrgQuery = z.object({
   "q": z.string().min(1).max(200),
   "perType": z.coerce.number().int().min(1).max(25).default(8),
 });
+export const GetProjectInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DiscussProjectInsightParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DiscussProjectInsightBody = z.object({
+  "question": z.string().min(1).max(1000),
+  "insightId": s.InsightKindSchema.optional(),
+  "history": z.array(z.object({
+  "role": z.enum(["user", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict()).max(8).optional(),
+}).strict();
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5026,6 +5042,30 @@ export const operations = {
     params: SearchOrgParams,
     query: SearchOrgQuery,
     body: null,
+  },
+  getProjectInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insights',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectInsightsParams,
+    query: null,
+    body: null,
+  },
+  discussProjectInsight: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insights/discuss',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: DiscussProjectInsightParams,
+    query: null,
+    body: DiscussProjectInsightBody,
   },
   getLateSopaClaimRisk: {
     method: 'GET',

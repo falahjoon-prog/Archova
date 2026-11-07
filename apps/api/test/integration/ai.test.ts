@@ -40,6 +40,7 @@ beforeAll(async () => {
       getPreviousDrawingRevision: async () => null,
       getMarkup: async () => ({ shapes: [] }),
       dayForSummary: async () => null,
+      projectInsights: async () => ({ insights: [] }),
       meetingForMinutes: async () => {
         throw new Error('not used');
       },

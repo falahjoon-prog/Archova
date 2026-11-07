@@ -41,6 +41,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
+  // Project home insights follow-up: a few notes in, a short grounded answer out; about a daily diary summary. Priya to confirm.
+  'insights.discuss': 0.5,
   'defect.tag': 0.1,
   // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
   'safety.hazard_scan': 0.25,

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { InsightsCard } from '@/features/insights';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
@@ -87,6 +88,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           timeZone={p.timezone}
           permissions={permissions.data as EffectivePermissions | undefined}
         />
+        <InsightsCard projectId={projectId} />
         <section aria-labelledby="tools-heading" className="stack">
           <div className="tool-sections__bar">
             <h2 id="tools-heading" className="panel-heading">

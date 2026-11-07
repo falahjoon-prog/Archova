@@ -3873,6 +3873,18 @@ export const InductionVersionSchema = z.intersection(InductionVersionSummarySche
 }));
 export type InductionVersion = z.infer<typeof InductionVersionSchema>;
 
+export const InsightDiscussionSchema = z.object({
+  "runId": z.string().nullable(),
+  "grounded": z.boolean(),
+  "answer": z.string(),
+  "suggestions": z.array(z.string()),
+  "reviewRequired": z.boolean(),
+});
+export type InsightDiscussion = z.infer<typeof InsightDiscussionSchema>;
+
+export const InsightKindSchema = z.enum(["budget", "programme", "rfis", "defects", "submittals", "variations", "claims", "incidents"]);
+export type InsightKind = z.infer<typeof InsightKindSchema>;
+
 export const InspectionStatusSchema = z.enum(["scheduled", "in_progress", "submitted", "closed"]);
 export type InspectionStatus = z.infer<typeof InspectionStatusSchema>;
 
@@ -5387,6 +5399,23 @@ export const ProjectSchema = z.object({
   "version": z.number().int(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
+
+export const ProjectInsightSchema = z.object({
+  "id": InsightKindSchema,
+  "kind": InsightKindSchema,
+  "severity": z.enum(["high", "medium", "low"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "facts": z.array(z.string()),
+});
+export type ProjectInsight = z.infer<typeof ProjectInsightSchema>;
+
+export const ProjectInsightsSchema = z.object({
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "insights": z.array(ProjectInsightSchema),
+});
+export type ProjectInsights = z.infer<typeof ProjectInsightsSchema>;
 
 export const ProjectMemberSchema = z.object({
   "id": z.string(),
