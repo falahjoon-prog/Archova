@@ -369,6 +369,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // permits: project permits and approvals register
+  'permit.not_found': 404,
+  'permit.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,

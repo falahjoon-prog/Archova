@@ -5,6 +5,7 @@ import {
   type KernelServices,
   type MessageSender,
   type RouteTable,
+  type TenantScope,
 } from '@archova/kernel';
 import {
   AI_PERMISSIONS,
@@ -30,6 +31,7 @@ import {
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
+import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -91,6 +93,7 @@ export const MODULE_PERMISSIONS = [
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
+  PERMITS_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -338,6 +341,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   qualityApi = quality.api;
 
+  // Wallet licences are read lazily: workforce is built later.
+  let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
+    null;
+  const permits = createPermitsModule(services, {
+    platform: platform.api,
+    files: files.api,
+    licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
+  });
+
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
   const precon = createPreconModule(services, { platform: platform.api });
@@ -453,6 +465,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       logger: services.logger,
     },
   });
+  lapsedLicences = workforce.api.lapsedLicences;
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
@@ -533,6 +546,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quality,
     precon,
     safety,
+    permits,
     estimating,
     integrations,
     diary,
@@ -574,6 +588,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quality,
     precon,
     safety,
+    permits,
     estimating,
     integrations,
     sync,

@@ -2167,6 +2167,22 @@ export const CreateOwnerProgressUpdateRequestSchema = z.object({
 }).strict();
 export type CreateOwnerProgressUpdateRequest = z.infer<typeof CreateOwnerProgressUpdateRequestSchema>;
 
+export const PermitKindSchema = z.enum(["building_permit", "development_approval", "construction_certificate", "occupation_certificate", "council_approval", "planning_permit", "environmental_permit", "road_occupancy", "traffic_management", "crane_hoist", "demolition", "hot_work", "trade_licence", "other"]);
+export type PermitKind = z.infer<typeof PermitKindSchema>;
+
+export const CreatePermitRequestSchema = z.object({
+  "kind": PermitKindSchema,
+  "title": z.string().min(1).max(300),
+  "issuingAuthority": z.string().max(200).nullable().optional(),
+  "referenceNumber": z.string().max(100).nullable().optional(),
+  "holderCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "issuedOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+  "notes": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict();
+export type CreatePermitRequest = z.infer<typeof CreatePermitRequestSchema>;
+
 export const PrequalQuestionSchema = z.object({
   "id": z.string().regex(new RegExp("^[a-z0-9][a-z0-9_-]{0,39}$")),
   "section": z.string().max(100),
@@ -4774,7 +4790,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "permit"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -5518,6 +5534,95 @@ export const PermissionTemplateSchema = z.object({
   "version": z.number().int(),
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
+
+export const PermitLifecycleSchema = z.enum(["active", "renewal_in_progress", "closed"]);
+export type PermitLifecycle = z.infer<typeof PermitLifecycleSchema>;
+
+export const PermitStatusSchema = z.enum(["active", "expiring_soon", "expired", "renewal_in_progress", "closed"]);
+export type PermitStatus = z.infer<typeof PermitStatusSchema>;
+
+export const PermitSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "kind": PermitKindSchema,
+  "title": z.string(),
+  "issuingAuthority": z.string().nullable(),
+  "referenceNumber": z.string().nullable(),
+  "holderCompanyId": z.string().nullable(),
+  "issuedOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "lifecycle": PermitLifecycleSchema,
+  "status": PermitStatusSchema,
+  "daysToExpiry": z.number().int().nullable(),
+  "renewalStartedOn": z.string().date().nullable(),
+  "notes": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Permit = z.infer<typeof PermitSchema>;
+
+export const PermitEventSchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "fromLifecycle": z.union([PermitLifecycleSchema, z.null()]),
+  "toLifecycle": PermitLifecycleSchema,
+  "expiresOn": z.string().date().nullable(),
+  "note": z.string().nullable(),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type PermitEvent = z.infer<typeof PermitEventSchema>;
+
+export const PermitDetailSchema = z.object({
+  "permit": PermitSchema,
+  "events": z.array(PermitEventSchema),
+});
+export type PermitDetail = z.infer<typeof PermitDetailSchema>;
+
+export const PermitFlagSchema = z.object({
+  "kind": z.enum(["expiring", "expired", "expired_while_renewing", "missing_required", "worker_licence_lapsed"]),
+  "severity": z.enum(["info", "warn", "high"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "permitId": z.string().nullable(),
+  "permitKind": z.union([PermitKindSchema, z.null()]),
+  "expiresOn": z.string().date().nullable(),
+  "daysLeft": z.number().int().nullable(),
+});
+export type PermitFlag = z.infer<typeof PermitFlagSchema>;
+
+export const PermitFlagListSchema = z.object({
+  "data": z.array(PermitFlagSchema),
+});
+export type PermitFlagList = z.infer<typeof PermitFlagListSchema>;
+
+export const PermitPageSchema = z.object({
+  "data": z.array(PermitSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type PermitPage = z.infer<typeof PermitPageSchema>;
+
+export const PermitRequirementSchema = z.object({
+  "kind": PermitKindSchema,
+  "leadDays": z.number().int().min(1).max(365),
+});
+export type PermitRequirement = z.infer<typeof PermitRequirementSchema>;
+
+export const PermitRequirementListSchema = z.object({
+  "data": z.array(PermitRequirementSchema),
+});
+export type PermitRequirementList = z.infer<typeof PermitRequirementListSchema>;
+
+export const PermitTransitionRequestSchema = z.object({
+  "action": z.enum(["startRenewal", "markRenewed", "close", "reopen"]),
+  "newExpiresOn": z.string().date().nullable().optional(),
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export type PermitTransitionRequest = z.infer<typeof PermitTransitionRequestSchema>;
 
 export const PortfolioTotalsSchema = z.object({
   "projects": z.number().int(),
@@ -6647,6 +6752,11 @@ export const SetMeetingAttendeesRequestSchema = z.object({
 }).strict();
 export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
 
+export const SetPermitRequirementsRequestSchema = z.object({
+  "items": z.array(PermitRequirementSchema).max(20),
+}).strict();
+export type SetPermitRequirementsRequest = z.infer<typeof SetPermitRequirementsRequestSchema>;
+
 export const SetVariationCostCodeRequestSchema = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
 }).strict();
@@ -7709,6 +7819,19 @@ export const UpdateOwnerProgressUpdateRequestSchema = z.object({
   "milestones": z.array(OwnerMilestoneSchema).max(50).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateOwnerProgressUpdateRequest = z.infer<typeof UpdateOwnerProgressUpdateRequestSchema>;
+
+export const UpdatePermitRequestSchema = z.object({
+  "kind": PermitKindSchema.optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "issuingAuthority": z.string().max(200).nullable().optional(),
+  "referenceNumber": z.string().max(100).nullable().optional(),
+  "holderCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "issuedOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+  "notes": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdatePermitRequest = z.infer<typeof UpdatePermitRequestSchema>;
 
 export const UpdatePrequalTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

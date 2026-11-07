@@ -68,6 +68,7 @@ export {
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,
+  FileBadge as PermitsIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   Boxes as CoordinationIcon,

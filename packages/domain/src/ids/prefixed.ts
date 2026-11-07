@@ -122,6 +122,8 @@ export const ID_PREFIXES = {
   incident: 'inx',
   incidentAction: 'iac',
   incidentEvent: 'ive',
+  permit: 'pmt',
+  permitEvent: 'pme',
   incidentPerson: 'ipp',
   contract: 'cnt',
   sovItem: 'sov',
