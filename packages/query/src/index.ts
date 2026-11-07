@@ -9,6 +9,11 @@ export const queryKeys = {
   entitlements: (orgId: string) => ['orgs', orgId, 'entitlements'] as const,
   featureFlags: (orgId: string) => ['orgs', orgId, 'feature-flags'] as const,
   projects: (orgId: string) => ['orgs', orgId, 'projects'] as const,
+  /** The caller's "my tasks" rollup; every status shares this prefix so one invalidation refreshes them. */
+  myTasks: (orgId: string, status?: 'open' | 'done') =>
+    status
+      ? (['orgs', orgId, 'my-tasks', status] as const)
+      : (['orgs', orgId, 'my-tasks'] as const),
   project: (orgId: string, projectId: string) => ['orgs', orgId, 'projects', projectId] as const,
   projectMembers: (orgId: string, projectId: string) =>
     ['orgs', orgId, 'projects', projectId, 'members'] as const,

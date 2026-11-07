@@ -1498,6 +1498,31 @@ export const ListProjectCorrespondenceTypesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListMyTasksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListMyTasksQuery = z.object({
+  "status": z.enum(["open", "done"]).default("open"),
+});
+export const ListProjectTasksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectTasksQuery = z.object({
+  "status": z.enum(["open", "done", "cancelled", "all"]).default("open"),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).optional(),
+});
+export const CreateTaskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTaskBody = s.CreateTaskRequestSchema;
+export const UpdateTaskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "taskId": z.string().regex(new RegExp("^tsk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTaskBody = s.UpdateTaskRequestSchema;
 export const ListConversationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6472,6 +6497,54 @@ export const operations = {
     params: ListProjectCorrespondenceTypesParams,
     query: null,
     body: null,
+  },
+  listMyTasks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/my-tasks',
+    module: "tasks",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListMyTasksParams,
+    query: ListMyTasksQuery,
+    body: null,
+  },
+  listProjectTasks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tasks',
+    module: "tasks",
+    auth: "required",
+    permission: "tasks.tasks.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectTasksParams,
+    query: ListProjectTasksQuery,
+    body: null,
+  },
+  createTask: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tasks',
+    module: "tasks",
+    auth: "required",
+    permission: "tasks.tasks.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTaskParams,
+    query: null,
+    body: CreateTaskBody,
+  },
+  updateTask: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tasks/{taskId}',
+    module: "tasks",
+    auth: "required",
+    permission: "tasks.tasks.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTaskParams,
+    query: null,
+    body: UpdateTaskBody,
   },
   listConversations: {
     method: 'GET',

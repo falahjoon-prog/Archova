@@ -30,6 +30,8 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
       reopenForReview: swms.reopenForReview,
       /** Whether a SWMS is on the project, for observations that link to one. Called by `quality` only. */
       exists: swms.exists,
+      /** Open corrective actions assigned to a person across projects, for the "my tasks" rollup (`tasks`). */
+      openActionsForUser: incidents.openActionsForUser,
     },
   };
 }

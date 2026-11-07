@@ -13,6 +13,8 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  /** The caller's own to-do list across projects. */
+  myTasks: (orgSlug: string) => `/${enc(orgSlug)}/my-tasks`,
   /** Global search; `q` pre-fills the box. */
   search: (orgSlug: string, q?: string) =>
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,

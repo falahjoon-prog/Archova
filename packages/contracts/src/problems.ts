@@ -202,6 +202,10 @@ export const PROBLEM_CODES = {
   'bim.invalid_transition': 409,
   // conversations
   'conversation.not_found': 404,
+  // tasks
+  'task.not_found': 404,
+  'task.not_yours': 403,
+  'task.assignee_not_on_project': 422,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,

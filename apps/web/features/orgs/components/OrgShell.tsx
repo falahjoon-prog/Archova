@@ -60,6 +60,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
             ...(membership.kind === 'member'
+              ? [{ href: webRoutes.myTasks(orgSlug), label: 'My tasks' }]
+              : []),
+            ...(membership.kind === 'member'
               ? [
                   {
                     label: 'Portfolio',

@@ -2404,6 +2404,15 @@ export const CreateTakeoffMeasurementRequestSchema = z.object({
 }).strict();
 export type CreateTakeoffMeasurementRequest = z.infer<typeof CreateTakeoffMeasurementRequestSchema>;
 
+export const CreateTaskRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(5000).optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).optional(),
+  "dueDate": z.string().date().optional(),
+  "priority": z.enum(["low", "medium", "high"]).optional(),
+}).strict();
+export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
+
 export const ScopeLineSchema = z.object({
   "key": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")),
   "description": z.string().min(1).max(500),
@@ -4719,6 +4728,46 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
+
+export const MyTaskSchema = z.object({
+  "key": z.string(),
+  "source": z.enum(["task", "meeting_action", "incident_action"]),
+  "id": z.string(),
+  "parentId": z.string().nullable(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "title": z.string(),
+  "ref": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "bucket": z.enum(["overdue", "today", "week", "later", "none"]),
+  "priority": z.enum(["low", "medium", "high"]).nullable(),
+  "status": z.enum(["open", "done", "cancelled"]),
+});
+export type MyTask = z.infer<typeof MyTaskSchema>;
+
+export const MyTasksDigestRowSchema = z.object({
+  "key": z.string(),
+  "title": z.string(),
+  "projectName": z.string(),
+  "dueDate": z.string().date().nullable(),
+  "bucket": z.enum(["overdue", "today", "week", "later", "none"]),
+});
+export type MyTasksDigestRow = z.infer<typeof MyTasksDigestRowSchema>;
+
+export const MyTasksDigestSchema = z.object({
+  "overdue": z.number().int(),
+  "dueToday": z.number().int(),
+  "dueThisWeek": z.number().int(),
+  "focus": z.array(MyTasksDigestRowSchema),
+  "summary": z.string(),
+});
+export type MyTasksDigest = z.infer<typeof MyTasksDigestSchema>;
+
+export const MyTasksSchema = z.object({
+  "data": z.array(MyTaskSchema),
+  "digest": MyTasksDigestSchema,
+});
+export type MyTasks = z.infer<typeof MyTasksSchema>;
 
 export const NccReferenceSchema = z.object({
   "provisionKey": z.string(),
@@ -7050,6 +7099,30 @@ export const TakeoffMeasurementPageSchema = z.object({
 });
 export type TakeoffMeasurementPage = z.infer<typeof TakeoffMeasurementPageSchema>;
 
+export const TaskSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "assigneeId": z.string().nullable(),
+  "assigneeName": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "priority": z.enum(["low", "medium", "high"]),
+  "status": z.enum(["open", "done", "cancelled"]),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdById": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Task = z.infer<typeof TaskSchema>;
+
+export const TaskListSchema = z.object({
+  "data": z.array(TaskSchema),
+});
+export type TaskList = z.infer<typeof TaskListSchema>;
+
 export const TenderAccessSchema = z.object({
   "package": z.object({
   "number": z.string(),
@@ -7719,6 +7792,16 @@ export const UpdateTakeoffMeasurementRequestSchema = z.object({
   "scopeKey": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")).nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateTakeoffMeasurementRequest = z.infer<typeof UpdateTakeoffMeasurementRequestSchema>;
+
+export const UpdateTaskRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "description": z.string().max(5000).nullable().optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "priority": z.enum(["low", "medium", "high"]).optional(),
+  "status": z.enum(["open", "done", "cancelled"]).optional(),
+}).strict();
+export type UpdateTaskRequest = z.infer<typeof UpdateTaskRequestSchema>;
 
 export const UpdateTenderPackageRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

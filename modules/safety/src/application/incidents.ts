@@ -851,7 +851,36 @@ export function createIncidentService(deps: SafetyDeps) {
     }));
   }
 
+  /** Open corrective actions assigned to a person across projects, for the "my tasks" rollup (`tasks`). */
+  async function openActionsForUser(scope: TenantScope, userId: string) {
+    const rows = await scope.tx
+      .select({ action: incidentActions, incident: incidents })
+      .from(incidentActions)
+      .innerJoin(incidents, eq(incidentActions.incidentId, incidents.id))
+      .where(
+        and(
+          eq(incidentActions.assigneeUserId, userId),
+          eq(incidentActions.status, 'open'),
+          isNull(incidents.deletedAt),
+          sql`${incidents.status} <> 'closed'`,
+        ),
+      )
+      .orderBy(sql`${incidentActions.dueDate} asc nulls last`, asc(incidentActions.id))
+      .limit(500);
+    return rows.map((r) => ({
+      id: r.action.id,
+      projectId: r.action.projectId,
+      incidentId: r.incident.id,
+      incidentNumber: r.incident.number,
+      incidentTitle: r.incident.title,
+      number: r.action.number,
+      title: r.action.title,
+      dueDate: r.action.dueDate,
+    }));
+  }
+
   return {
+    openActionsForUser,
     list,
     create,
     detail,

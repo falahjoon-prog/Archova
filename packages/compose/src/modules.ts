@@ -68,6 +68,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { TASKS_PERMISSIONS, createTasksModule } from '@archova/mod-tasks';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -78,6 +79,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  TASKS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -506,6 +508,34 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     accessState: platform.api.getProjectAccessState,
   });
 
+  // "My tasks" reads the action items that already live in other modules; add a source here to roll one up.
+  const tasks = createTasksModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    sources: [
+      async (scope, userId) =>
+        (await meetings.api.openActionsForUser(scope, userId)).map((a) => ({
+          source: 'meeting_action' as const,
+          id: a.id,
+          parentId: a.meetingId,
+          projectId: a.projectId,
+          title: a.body,
+          ref: `${a.meetingTitle} · ${a.itemNo}`,
+          dueDate: a.dueDate,
+        })),
+      async (scope, userId) =>
+        (await safety.api.openActionsForUser(scope, userId)).map((a) => ({
+          source: 'incident_action' as const,
+          id: a.id,
+          parentId: a.incidentId,
+          projectId: a.projectId,
+          title: a.title,
+          ref: `INC-${a.incidentNumber} · ${a.number}`,
+          dueDate: a.dueDate,
+        })),
+    ],
+  });
+
   const all = [
     identity,
     platform,
@@ -519,6 +549,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    tasks,
     defects,
     meetings,
     ownerportal,
@@ -559,6 +590,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    tasks,
     defects,
     meetings,
     ownerportal,
