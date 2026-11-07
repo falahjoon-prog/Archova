@@ -6,6 +6,8 @@ import { createTimesheetService } from './application/timesheet';
 import { createEquipmentService } from './application/equipment';
 import { createRosterService } from './application/roster';
 import { createBadgeService } from './application/badge';
+import { createClearanceService } from './application/clearance';
+import type { ClearanceSwms } from './domain/clearance';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -19,6 +21,12 @@ export function createWorkforceModule(
     hooks?: InductionHooks;
     /** Access links (X45): what the link flow needs beyond the attendance and induction services. */
     links: Omit<InductionLinkDeps, 'database' | 'attendance' | 'inductions'>;
+    /** Site clearance: the SWMS a worker's company works under, read from `safety`. */
+    clearanceSwms?: (
+      scope: Parameters<ComplianceSource>[0],
+      projectId: string,
+      worker: { companyId: string | null; userId: string | null },
+    ) => Promise<ClearanceSwms[]>;
   },
 ) {
   // The induction rules join the X54 compliance interface ahead of any sources passed in.
@@ -36,6 +44,14 @@ export function createWorkforceModule(
     attendance,
     platform: deps.platform,
     files: deps.files,
+  });
+  const clearance = createClearanceService({
+    attendance,
+    platform: deps.platform,
+    files: deps.files,
+    inductionSource: inductions.gateSource,
+    ...(deps.clearanceSwms ? { swms: deps.clearanceSwms } : {}),
+    ...(deps.now ? { now: deps.now } : {}),
   });
   const roster = createRosterService({
     access: deps.access,
@@ -84,6 +100,7 @@ export function createWorkforceModule(
       equipment,
       sheets,
       badge,
+      clearance,
       {
         logger: services.logger,
         ...deps.hooks,
