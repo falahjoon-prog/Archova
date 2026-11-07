@@ -3383,3 +3383,22 @@ fieldset.worker-card > legend {
   border-radius: var(--radius-md);
   background: var(--c-surface);
 }
+
+/* Project home hero photo */
+.project-hero {
+  position: relative;
+  margin: 0;
+}
+.project-hero__img {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-divider);
+}
+.project-hero__remove {
+  position: absolute;
+  inset-block-end: var(--space-3);
+  inset-inline-end: var(--space-3);
+}

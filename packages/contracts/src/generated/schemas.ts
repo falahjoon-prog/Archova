@@ -5592,6 +5592,33 @@ export const ProblemSchema = z.object({
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
+export const RichRunSchema = z.object({
+  "text": z.string().max(2000),
+  "bold": z.boolean().optional(),
+  "italic": z.boolean().optional(),
+  "underline": z.boolean().optional(),
+  "colour": z.enum(["slate", "red", "green", "blue"]).optional(),
+}).strict();
+export type RichRun = z.infer<typeof RichRunSchema>;
+
+export const RichBlockSchema = z.object({
+  "type": z.enum(["paragraph", "bullet_list", "ordered_list"]),
+  "align": z.enum(["left", "center", "right"]).optional(),
+  "lines": z.array(z.array(RichRunSchema).max(50)).max(100),
+}).strict();
+export type RichBlock = z.infer<typeof RichBlockSchema>;
+
+export const RichDocSchema = z.object({
+  "blocks": z.array(RichBlockSchema).max(200),
+}).strict();
+export type RichDoc = z.infer<typeof RichDocSchema>;
+
+export const ProjectStatusTileSchema = z.object({
+  "title": z.string().min(1).max(80).nullable(),
+  "doc": RichDocSchema,
+}).strict();
+export type ProjectStatusTile = z.infer<typeof ProjectStatusTileSchema>;
+
 export const ProjectSchema = z.object({
   "id": z.string(),
   "orgId": z.string(),
@@ -5599,6 +5626,8 @@ export const ProjectSchema = z.object({
   "number": z.string().nullable(),
   "status": ProjectStatusSchema,
   "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
+  "heroFileId": z.string().nullable().optional(),
+  "statusTile": z.union([ProjectStatusTileSchema, z.null()]).optional(),
   "state": z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]).nullable(),
   "timezone": z.string(),
   "address": z.union([AddressSchema, z.null()]),
@@ -7549,6 +7578,8 @@ export const UpdateProjectRequestSchema = z.object({
   "number": z.string().max(50).nullable().optional(),
   "status": ProjectStatusSchema.optional(),
   "phase": z.union([ProjectPhaseSchema, z.null()]).optional(),
+  "heroFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "statusTile": z.union([ProjectStatusTileSchema, z.null()]).optional(),
   "state": AuStateSchema.optional(),
   "timezone": z.string().max(64).optional(),
   "address": AddressSchema.optional(),

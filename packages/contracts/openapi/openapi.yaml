@@ -15420,6 +15420,53 @@ components:
       type: string
       enum: [planning, design, tender, pre_construction, construction, handover, defects_liability]
       description: Where the project is in its life. Separate from `status`, which says whether it is live.
+    RichRun:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text: { type: string, maxLength: 2000 }
+        bold: { type: boolean }
+        italic: { type: boolean }
+        underline: { type: boolean }
+        colour: { type: string, enum: [slate, red, green, blue] }
+    RichBlock:
+      type: object
+      additionalProperties: false
+      required: [type, lines]
+      properties:
+        type: { type: string, enum: [paragraph, bullet_list, ordered_list] }
+        align: { type: string, enum: [left, center, right] }
+        lines:
+          type: array
+          maxItems: 100
+          items:
+            type: array
+            maxItems: 50
+            items: { $ref: '#/components/schemas/RichRun' }
+    RichDoc:
+      type: object
+      additionalProperties: false
+      required: [blocks]
+      description: Free-written formatted text as data, not HTML. At most 8000 characters in all.
+      properties:
+        blocks:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/RichBlock' }
+    ProjectStatusTile:
+      type: object
+      additionalProperties: false
+      required: [title, doc]
+      properties:
+        title:
+          {
+            type: [string, 'null'],
+            minLength: 1,
+            maxLength: 80,
+            description: 'Custom tile title; null shows "Project description".',
+          }
+        doc: { $ref: '#/components/schemas/RichDoc' }
     Address:
       type: object
       additionalProperties: false
@@ -15484,6 +15531,13 @@ components:
         number: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ProjectStatus' }
         phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        heroFileId:
+          {
+            type: [string, 'null'],
+            description: 'A project photo shown at the top of the project home.',
+          }
+        statusTile:
+          { oneOf: [{ $ref: '#/components/schemas/ProjectStatusTile' }, { type: 'null' }] }
         state: { type: [string, 'null'], enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null] }
         timezone:
           { type: string, description: 'IANA time zone; local dates and deadlines use it (X32)' }
@@ -15686,6 +15740,9 @@ components:
         number: { type: [string, 'null'], maxLength: 50 }
         status: { $ref: '#/components/schemas/ProjectStatus' }
         phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        heroFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        statusTile:
+          { oneOf: [{ $ref: '#/components/schemas/ProjectStatusTile' }, { type: 'null' }] }
         state: { $ref: '#/components/schemas/AuState' }
         timezone: { type: string, maxLength: 64 }
         address: { $ref: '#/components/schemas/Address' }

@@ -34,6 +34,11 @@ export const toProjectDto = (p: typeof projects.$inferSelect): Project => ({
   number: p.number,
   status: p.status,
   phase: p.phase,
+  heroFileId: p.heroFileId ? encodeId('file', p.heroFileId) : null,
+  statusTile:
+    p.statusDoc && typeof p.statusDoc === 'object'
+      ? { title: p.statusTitle, doc: p.statusDoc as NonNullable<Project['statusTile']>['doc'] }
+      : null,
   state: p.state,
   timezone: p.timezone,
   address: p.address,
