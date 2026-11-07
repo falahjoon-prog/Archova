@@ -3440,3 +3440,198 @@ fieldset.worker-card > legend {
 .rc-label--sub {
   fill: var(--c-text-secondary);
 }
+
+/* Project action plan */
+.plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+.plan__nova-title {
+  margin: 0;
+  font-size: var(--font-md);
+}
+.plan__flags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-phase {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.plan-phase__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.plan-phase__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1 1 14rem;
+  text-align: left;
+}
+.plan-phase__bar {
+  width: 8rem;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--c-border-divider);
+  overflow: hidden;
+}
+.plan-phase__bar span {
+  display: block;
+  height: 100%;
+  background: var(--c-status-success);
+}
+.plan-phase__empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+}
+.plan-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--c-border-divider);
+}
+.plan-item {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.plan-item--selected {
+  background: var(--c-bg);
+}
+.plan-item__main,
+.plan-item__due,
+.plan-item__parties,
+.plan-item__types,
+.plan-item__status {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plan-item__title {
+  text-align: left;
+  justify-content: flex-start;
+}
+.plan-item__blocked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--c-status-danger);
+}
+.plan-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.plan-add > :first-child {
+  flex: 1 1 16rem;
+}
+.plan-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  min-width: 0;
+}
+.plan-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.plan-panel__title {
+  margin: 0;
+  font-size: var(--font-lg);
+  overflow-wrap: anywhere;
+}
+.plan-panel__h {
+  margin: 0;
+  font-size: var(--font-md);
+}
+.plan-panel__blocked {
+  margin: 0;
+  color: var(--c-text-secondary);
+}
+.plan-panel__types {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.plan-party {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-sm);
+}
+.plan-party__people,
+.plan-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-links li,
+.plan-party__people li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (min-width: 768px) {
+  .plan-item {
+    grid-template-columns: 3rem minmax(0, 2fr) 9rem minmax(0, 1.2fr) minmax(0, 1fr) 9rem;
+  }
+  .plan-item__main,
+  .plan-item__due,
+  .plan-item__parties,
+  .plan-item__types,
+  .plan-item__status {
+    grid-column: auto;
+  }
+}
+@media (min-width: 1280px) {
+  .plan:has(.plan-panel) {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+  .plan-panel {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+  }
+}

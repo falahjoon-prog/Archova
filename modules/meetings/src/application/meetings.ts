@@ -18,7 +18,13 @@ import type {
   UpdateMeetingSeriesRequest,
 } from '@archova/contracts';
 import { localDateOf, type LocalDate } from '@archova/time';
-import { AppError, nextNumber, versionConflict, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  nextNumber,
+  versionConflict,
+  type SearchHit,
+  type TenantScope,
+} from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
@@ -1331,7 +1337,26 @@ export function createMeetingService(deps: MeetingsDeps) {
     };
   }
 
+  /** Meetings matching the words, for linking from a project action plan item (`projectplan`). */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'meetings.meetings.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const needle = q.toLowerCase();
+    const { data } = await list(scope, projectId);
+    const hits = data
+      .filter((m) => !needle || m.title.toLowerCase().includes(needle))
+      .slice(0, limit)
+      .map<SearchHit>((m) => ({
+        id: decodeId('meeting', m.id) ?? m.id,
+        ref: `${m.seriesName} #${m.number}`,
+        title: m.title,
+        status: m.status,
+      }));
+    return { restricted: false, hits };
+  }
+
   return {
+    searchHits,
     listSeries,
     createSeries,
     updateSeries,

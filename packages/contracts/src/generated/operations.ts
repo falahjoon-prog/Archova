@@ -2971,6 +2971,83 @@ export const VoidClaimEvidenceServiceParams = z.object({
 export const VoidClaimEvidenceServiceBody = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
+export const GetProjectPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const StartProjectPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetProjectPlanInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlanPhaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlanPhaseBody = s.CreatePlanPhaseRequestSchema;
+export const UpdatePlanPhaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "phaseId": z.string().regex(new RegExp("^ppx_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePlanPhaseBody = s.UpdatePlanPhaseRequestSchema;
+export const DeletePlanPhaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "phaseId": z.string().regex(new RegExp("^ppx_[0-9A-Za-z]{26}$")),
+});
+export const DraftPlanPhaseSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "phaseId": z.string().regex(new RegExp("^ppx_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "phaseId": z.string().regex(new RegExp("^ppx_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlanItemBody = s.CreatePlanItemRequestSchema;
+export const UpdatePlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pli_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePlanItemBody = s.UpdatePlanItemRequestSchema;
+export const DeletePlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pli_[0-9A-Za-z]{26}$")),
+});
+export const ClearPlanHoldParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pli_[0-9A-Za-z]{26}$")),
+});
+export const ClearPlanHoldBody = s.ClearPlanHoldRequestSchema;
+export const ListPlanLinkOptionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pli_[0-9A-Za-z]{26}$")),
+});
+export const ListPlanLinkOptionsQuery = z.object({
+  "type": s.PlanLinkTypeSchema,
+  "q": z.string().min(1).max(100).optional(),
+});
+export const CreatePlanRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pli_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlanRequestBody = s.CreatePlanRequestRequestSchema;
+export const FulfilPlanRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "requestId": z.string().regex(new RegExp("^prq_[0-9A-Za-z]{26}$")),
+});
+export const FulfilPlanRequestBody = s.FulfilPlanRequestRequestSchema;
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9692,6 +9769,174 @@ export const operations = {
     params: VoidClaimEvidenceServiceParams,
     query: null,
     body: VoidClaimEvidenceServiceBody,
+  },
+  getProjectPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectPlanParams,
+    query: null,
+    body: null,
+  },
+  startProjectPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: null,
+    params: StartProjectPlanParams,
+    query: null,
+    body: null,
+  },
+  getProjectPlanInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/insights',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectPlanInsightsParams,
+    query: null,
+    body: null,
+  },
+  createPlanPhase: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlanPhaseParams,
+    query: null,
+    body: CreatePlanPhaseBody,
+  },
+  updatePlanPhase: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePlanPhaseParams,
+    query: null,
+    body: UpdatePlanPhaseBody,
+  },
+  deletePlanPhase: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: null,
+    params: DeletePlanPhaseParams,
+    query: null,
+    body: null,
+  },
+  draftPlanPhaseSummary: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/summary',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.read",
+    internal: false,
+    contentType: null,
+    params: DraftPlanPhaseSummaryParams,
+    query: null,
+    body: null,
+  },
+  createPlanItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/items',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlanItemParams,
+    query: null,
+    body: CreatePlanItemBody,
+  },
+  updatePlanItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePlanItemParams,
+    query: null,
+    body: UpdatePlanItemBody,
+  },
+  deletePlanItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: null,
+    params: DeletePlanItemParams,
+    query: null,
+    body: null,
+  },
+  clearPlanHold: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/clear-hold',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.holds.clear",
+    internal: false,
+    contentType: "application/json",
+    params: ClearPlanHoldParams,
+    query: null,
+    body: ClearPlanHoldBody,
+  },
+  listPlanLinkOptions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/link-options',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.read",
+    internal: false,
+    contentType: null,
+    params: ListPlanLinkOptionsParams,
+    query: ListPlanLinkOptionsQuery,
+    body: null,
+  },
+  createPlanRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/requests',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlanRequestParams,
+    query: null,
+    body: CreatePlanRequestBody,
+  },
+  fulfilPlanRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/project-plan/requests/{requestId}/fulfil',
+    module: "projectplan",
+    auth: "required",
+    permission: "projectplan.plan.read",
+    internal: false,
+    contentType: "application/json",
+    params: FulfilPlanRequestParams,
+    query: null,
+    body: FulfilPlanRequestBody,
   },
   listMeetingSeries: {
     method: 'GET',

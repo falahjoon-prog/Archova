@@ -247,6 +247,8 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     api: {
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
+      /** Inspections matching the words, for linking from a project action plan item (`projectplan`). */
+      inspectionHits: inspections.searchHits,
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (
         scope: TenantScope,

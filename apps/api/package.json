@@ -34,6 +34,7 @@
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-meetings": "workspace:*",
+    "@archova/mod-projectplan": "workspace:*",
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/mod-precon": "workspace:*",

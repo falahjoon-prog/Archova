@@ -45,6 +45,7 @@ tags:
   - name: workforce
   - name: scheduling
   - name: meetings
+  - name: project-plan
   - name: ownerportal
   - name: notifications
   - name: reporting
@@ -12657,6 +12658,283 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectPlan
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.read
+      summary: The project's action plan, with its phases and items in order. Each linked record carries its current status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: startProjectPlan
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Start the plan from the standard building lifecycle (feasibility to close-out). Only a project with no plan yet can start one.
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectPlanInsights
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.read
+      summary: What Nova flags on the plan, without a model call. Overdue and at-risk items, hold points holding up later work, and records that probably match an item that has no link yet.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlanInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/phases:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createPlanPhase
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Add a phase to the end of the plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlanPhaseRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanPhaseId'
+    patch:
+      operationId: updatePlanPhase
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Rename a phase or move it. Phase and item numbers follow the new order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePlanPhaseRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deletePlanPhase
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Remove an empty phase.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanPhaseId'
+    post:
+      operationId: draftPlanPhaseSummary
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.read
+      summary: A short progress paragraph for the owner's report, drafted from the phase's items. It states facts only and changes nothing.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanPhaseSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanPhaseId'
+    post:
+      operationId: createPlanItem
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Add an item to the end of the phase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlanItemRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanItemId'
+    patch:
+      operationId: updatePlanItem
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Edit an item, set its status, assign its parties or link records. An item cannot be completed while an earlier hold point is uncleared, and a hold point is completed only by clearing it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePlanItemRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deletePlanItem
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Remove an item.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/clear-hold:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanItemId'
+    post:
+      operationId: clearPlanHold
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.holds.clear
+      summary: Clear a hold point. The item is completed with who cleared it and when. It cannot be cleared while an earlier hold point is uncleared.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClearPlanHoldRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/link-options:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanItemId'
+    get:
+      operationId: listPlanLinkOptions
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.read
+      summary: Records of one kind the caller can open, to link to the item. Best matches to the item's title come first.
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { $ref: '#/components/schemas/PlanLinkType' },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanLinkOptionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/requests:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanItemId'
+    post:
+      operationId: createPlanRequest
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.write
+      summary: Ask the assignee for an attachment or photos. They are notified in the app.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlanRequestRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/project-plan/requests/{requestId}/fulfil:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PlanRequestId'
+    post:
+      operationId: fulfilPlanRequest
+      tags: [project-plan]
+      x-module: projectplan
+      x-permission: projectplan.plan.read
+      summary: Answer a request with uploaded files. The person it was assigned to, or someone who manages the plan, can answer it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FulfilPlanRequestRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPlan' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -13579,6 +13857,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^dxp_[0-9A-Za-z]{26}$' }
+    PlanPhaseId:
+      name: phaseId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ppx_[0-9A-Za-z]{26}$' }
+    PlanItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pli_[0-9A-Za-z]{26}$' }
+    PlanRequestId:
+      name: requestId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^prq_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -16038,7 +16331,16 @@ components:
         entityType:
           {
             type: string,
-            enum: [meeting, tender_package, contract, incident, compliance_document, conversation],
+            enum:
+              [
+                meeting,
+                tender_package,
+                contract,
+                incident,
+                compliance_document,
+                conversation,
+                project_plan_item,
+              ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
@@ -17595,6 +17897,328 @@ components:
         title: { type: string }
         docNumber: { type: [string, 'null'] }
         rev: { type: string }
+    PlanItemType:
+      type: string
+      enum:
+        [
+          document,
+          checklist,
+          inspection,
+          meeting,
+          signed_document,
+          application,
+          notification,
+          hold_point,
+        ]
+    PlanItemStatus:
+      type: string
+      enum: [not_started, in_progress, complete]
+    PlanLinkType:
+      type: string
+      enum:
+        [
+          rfi,
+          submittal,
+          inspection,
+          meeting,
+          drawing,
+          document,
+          correspondence,
+          defect,
+          esign_envelope,
+        ]
+    PlanPartyKind:
+      type: string
+      enum: [internal, third_party]
+    PlanParty:
+      type: object
+      required: [kind, companyId, userIds, label, confirmed]
+      properties:
+        kind: { $ref: '#/components/schemas/PlanPartyKind' }
+        companyId: { type: [string, 'null'] }
+        userIds: { type: array, items: { type: string } }
+        label: { type: string }
+        confirmed: { type: boolean, description: The party has signed off its part. }
+    PlanPartyInput:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { $ref: '#/components/schemas/PlanPartyKind' }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        userIds: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/UserRef' } }
+        label: { type: string, maxLength: 200 }
+        confirmed: { type: boolean }
+    PlanReference:
+      type: object
+      additionalProperties: false
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: [string, 'null'], format: uri, maxLength: 2000 }
+        fileId: { oneOf: [{ $ref: '#/components/schemas/FileRef' }, { type: 'null' }] }
+    PlanLink:
+      type: object
+      required: [type, id, ref, label, status]
+      properties:
+        type: { $ref: '#/components/schemas/PlanLinkType' }
+        id: { type: string }
+        ref: { type: string, description: 'Reference such as RFI-012.' }
+        label: { type: string }
+        status:
+          {
+            type: [string, 'null'],
+            description: The record's status now,
+            or null when it can't be read.,
+          }
+    PlanLinkInput:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: { $ref: '#/components/schemas/PlanLinkType' }
+        id: { type: string, pattern: '^[a-z]{3}_[0-9A-Za-z]{26}$' }
+        label: { type: string, maxLength: 300 }
+    PlanBlocker:
+      type: object
+      required: [itemId, number, title]
+      properties:
+        itemId: { type: string }
+        number: { type: string }
+        title: { type: string }
+    PlanRequest:
+      type: object
+      required: [id, kind, message, assigneeUserId, status, fileIds, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [attachment, photo] }
+        message: { type: string }
+        assigneeUserId: { type: [string, 'null'] }
+        status: { type: string, enum: [open, fulfilled, cancelled] }
+        fileIds: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    PlanItem:
+      type: object
+      required:
+        [
+          id,
+          phaseId,
+          number,
+          position,
+          title,
+          outcome,
+          types,
+          dueDate,
+          status,
+          isOverdue,
+          blockedBy,
+          parties,
+          references,
+          links,
+          requests,
+          note,
+          completedAt,
+          holdCleared,
+          holdClearedAt,
+          holdNote,
+          canClearHold,
+        ]
+      properties:
+        id: { type: string }
+        phaseId: { type: string }
+        number: { type: string, description: '2.1' }
+        position: { type: integer }
+        title: { type: string }
+        outcome: { type: string }
+        types: { type: array, items: { $ref: '#/components/schemas/PlanItemType' } }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/PlanItemStatus' }
+        isOverdue: { type: boolean }
+        blockedBy:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/PlanBlocker' },
+            description: Uncleared hold points that stop this item being completed.,
+          }
+        parties: { type: array, items: { $ref: '#/components/schemas/PlanParty' } }
+        references: { type: array, items: { $ref: '#/components/schemas/PlanReference' } }
+        links: { type: array, items: { $ref: '#/components/schemas/PlanLink' } }
+        requests: { type: array, items: { $ref: '#/components/schemas/PlanRequest' } }
+        note: { type: [string, 'null'] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        holdCleared: { type: boolean }
+        holdClearedAt: { type: [string, 'null'], format: date-time }
+        holdNote: { type: [string, 'null'] }
+        canClearHold: { type: boolean, description: 'A hold point the caller may clear now.' }
+    PlanPhase:
+      type: object
+      required: [id, number, title, doneCount, items]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        doneCount: { type: integer }
+        items: { type: array, items: { $ref: '#/components/schemas/PlanItem' } }
+    ProjectPlan:
+      type: object
+      required: [started, phases, canManage, canClearHolds]
+      properties:
+        started: { type: boolean }
+        phases: { type: array, items: { $ref: '#/components/schemas/PlanPhase' } }
+        canManage: { type: boolean }
+        canClearHolds: { type: boolean }
+    CreatePlanPhaseRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+    UpdatePlanPhaseRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        position: { type: integer, minimum: 1 }
+    CreatePlanItemRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        outcome: { type: string, maxLength: 1000 }
+        types:
+          {
+            type: array,
+            maxItems: 8,
+            uniqueItems: true,
+            items: { $ref: '#/components/schemas/PlanItemType' },
+          }
+        dueDate: { type: string, format: date }
+        parties:
+          { type: array, maxItems: 6, items: { $ref: '#/components/schemas/PlanPartyInput' } }
+        references:
+          { type: array, maxItems: 20, items: { $ref: '#/components/schemas/PlanReference' } }
+        links: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/PlanLinkInput' } }
+    UpdatePlanItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        outcome: { type: string, maxLength: 1000 }
+        types:
+          {
+            type: array,
+            maxItems: 8,
+            uniqueItems: true,
+            items: { $ref: '#/components/schemas/PlanItemType' },
+          }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/PlanItemStatus' }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        parties:
+          { type: array, maxItems: 6, items: { $ref: '#/components/schemas/PlanPartyInput' } }
+        references:
+          { type: array, maxItems: 20, items: { $ref: '#/components/schemas/PlanReference' } }
+        links: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/PlanLinkInput' } }
+        phaseId:
+          {
+            type: string,
+            pattern: '^ppx_[0-9A-Za-z]{26}$',
+            description: Move the item to the end of another phase.,
+          }
+    ClearPlanHoldRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 2000 }
+    CreatePlanRequestRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [attachment, photo] }
+        message: { type: string, maxLength: 2000 }
+        assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+    FulfilPlanRequestRequest:
+      type: object
+      additionalProperties: false
+      required: [fileIds]
+      properties:
+        fileIds:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 20,
+            items: { $ref: '#/components/schemas/FileRef' },
+          }
+    PlanLinkOption:
+      type: object
+      required: [type, id, ref, title, status, score]
+      properties:
+        type: { $ref: '#/components/schemas/PlanLinkType' }
+        id: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        score: { type: number, description: '0 to 1, how closely the title matches the item.' }
+    PlanLinkOptionList:
+      type: object
+      required: [data, restricted]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PlanLinkOption' } }
+        restricted: { type: boolean, description: The caller can't read that kind of record. }
+    PlanSuggestedLink:
+      type: object
+      required: [itemId, number, itemTitle, link, score]
+      properties:
+        itemId: { type: string }
+        number: { type: string }
+        itemTitle: { type: string }
+        link: { $ref: '#/components/schemas/PlanLinkOption' }
+        score: { type: number }
+    ProjectPlanInsights:
+      type: object
+      required: [overdue, atRisk, blockedByHold, suggestedLinks]
+      properties:
+        overdue:
+          type: array
+          items:
+            type: object
+            required: [itemId, number, title, daysLate]
+            properties:
+              itemId: { type: string }
+              number: { type: string }
+              title: { type: string }
+              daysLate: { type: integer }
+        atRisk:
+          type: array
+          items:
+            type: object
+            required: [itemId, number, title, daysLeft]
+            properties:
+              itemId: { type: string }
+              number: { type: string }
+              title: { type: string }
+              daysLeft: { type: integer }
+        blockedByHold:
+          type: array
+          items:
+            type: object
+            required: [holdItemId, number, title, blockedCount]
+            properties:
+              holdItemId: { type: string }
+              number: { type: string }
+              title: { type: string }
+              blockedCount: { type: integer }
+        suggestedLinks: { type: array, items: { $ref: '#/components/schemas/PlanSuggestedLink' } }
+    PlanPhaseSummary:
+      type: object
+      required: [phaseId, text]
+      properties:
+        phaseId: { type: string }
+        text: { type: string }
     FileRef:
       type: string
       pattern: '^fil_[0-9A-Za-z]{26}$'

@@ -54,6 +54,7 @@ export type ProjectTool =
   | 'programme'
   | 'defects'
   | 'meetings'
+  | 'project-plan'
   | 'inductions'
   | 'attendance'
   | 'roster'
