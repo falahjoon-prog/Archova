@@ -20,6 +20,7 @@ const budget = (over = {}) => ({
   restricted: false,
   hasBudget: true,
   revisedCents: 420_000_000,
+  spentCents: 0,
   forecastFinalCents: 420_000_000,
   varianceCents: 0,
   overBudgetCodes: 0,
