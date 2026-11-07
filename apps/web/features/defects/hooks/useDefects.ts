@@ -82,8 +82,11 @@ export function useDefectMutations() {
       onSuccess: settle,
     }),
     withReason: useMutation({
-      mutationFn: (v: { id: string; action: 'reject' | 'dispute' | 'void'; reason: string }) =>
-        defectsSource.withReason(projectId, v.id, v.action, v.reason, actor),
+      mutationFn: (v: {
+        id: string;
+        action: 'reject' | 'dispute' | 'void' | 'reopen';
+        reason: string;
+      }) => defectsSource.withReason(projectId, v.id, v.action, v.reason, actor),
       onSuccess: settle,
     }),
     issue: useMutation({

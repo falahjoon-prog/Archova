@@ -17,6 +17,7 @@ export const actionLabel: Record<DefectAction, string> = {
   dispute: 'Not ours',
   reassign: 'Reassign',
   void: 'Void',
+  reopen: 'Reopen',
 };
 
 export const stageLabel: Record<DefectStage, string> = {

@@ -21138,7 +21138,7 @@ components:
       enum: [pre_pc, pc, dlp]
     DefectAction:
       type: string
-      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void]
+      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void, reopen]
     DefectSource:
       type: string
       enum: [manual, inspection, ai_suggested]
@@ -21160,6 +21160,10 @@ components:
           pin,
           assigneeCompanyId,
           assigneeUserId,
+          assigneeUserIds,
+          managerUserId,
+          finalApproverUserId,
+          distributionUserIds,
           dueDate,
           isOverdue,
           raisedByCompanyId,
@@ -21189,7 +21193,20 @@ components:
         pin:
           oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
         assigneeCompanyId: { type: [string, 'null'] }
-        assigneeUserId: { type: [string, 'null'] }
+        assigneeUserId:
+          { type: [string, 'null'], description: 'The first assignee (kept for older clients).' }
+        assigneeUserIds:
+          type: array
+          description: Everyone the punch item is assigned to, in the assigned company.
+          items: { type: string }
+        managerUserId: { type: [string, 'null'], description: 'Punch Item Manager.' }
+        finalApproverUserId:
+          type: [string, 'null']
+          description: When set, only this person closes, rejects or reopens the item.
+        distributionUserIds:
+          type: array
+          description: Told about changes but not assigned.
+          items: { type: string }
         dueDate: { type: [string, 'null'], format: date }
         isOverdue:
           {
@@ -22549,6 +22566,16 @@ components:
         stage: { $ref: '#/components/schemas/DefectStage' }
         assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
         assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        assigneeUserIds:
+          type: array
+          maxItems: 25
+          items: { $ref: '#/components/schemas/UserRef' }
+        managerUserId: { $ref: '#/components/schemas/UserRef' }
+        finalApproverUserId: { $ref: '#/components/schemas/UserRef' }
+        distributionUserIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
         aiSuggestionId:
@@ -22569,6 +22596,16 @@ components:
         assigneeCompanyId:
           { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
         assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        assigneeUserIds:
+          type: array
+          maxItems: 25
+          items: { $ref: '#/components/schemas/UserRef' }
+        managerUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        finalApproverUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        distributionUserIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
         dueDate: { type: [string, 'null'], format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
     DefectTransitionRequest:
@@ -22581,7 +22618,7 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
-          description: Required for reject, dispute and void. A reject reason is shown to the subcontractor.
+          description: Required for reject, dispute, reopen and void. A reject reason is shown to the subcontractor.
         fileIds:
           type: array
           maxItems: 20

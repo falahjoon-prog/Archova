@@ -1712,6 +1712,10 @@ export const CreateDefectRequestSchema = z.object({
   "stage": DefectStageSchema.optional(),
   "assigneeCompanyId": CompanyRefSchema.optional(),
   "assigneeUserId": UserRefSchema.optional(),
+  "assigneeUserIds": z.array(UserRefSchema).max(25).optional(),
+  "managerUserId": UserRefSchema.optional(),
+  "finalApproverUserId": UserRefSchema.optional(),
+  "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
   "dueDate": z.string().date().optional(),
   "pin": DrawingPinSchema,
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
@@ -2513,7 +2517,7 @@ export type DefectStatus = z.infer<typeof DefectStatusSchema>;
 export const DefectSourceSchema = z.enum(["manual", "inspection", "ai_suggested"]);
 export type DefectSource = z.infer<typeof DefectSourceSchema>;
 
-export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void"]);
+export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void", "reopen"]);
 export type DefectAction = z.infer<typeof DefectActionSchema>;
 
 export const DefectSchema = z.object({
@@ -2531,6 +2535,10 @@ export const DefectSchema = z.object({
   "pin": z.union([DrawingPinSchema, z.null()]),
   "assigneeCompanyId": z.string().nullable(),
   "assigneeUserId": z.string().nullable(),
+  "assigneeUserIds": z.array(z.string()),
+  "managerUserId": z.string().nullable(),
+  "finalApproverUserId": z.string().nullable(),
+  "distributionUserIds": z.array(z.string()),
   "dueDate": z.string().date().nullable(),
   "isOverdue": z.boolean(),
   "raisedByCompanyId": z.string().nullable(),
@@ -7326,6 +7334,10 @@ export const UpdateDefectRequestSchema = z.object({
   "stage": DefectStageSchema.optional(),
   "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
   "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "assigneeUserIds": z.array(UserRefSchema).max(25).optional(),
+  "managerUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "finalApproverUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
   "dueDate": z.string().date().nullable().optional(),
   "pin": DrawingPinSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });

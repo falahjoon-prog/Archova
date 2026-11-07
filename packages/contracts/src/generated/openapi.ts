@@ -14600,7 +14600,7 @@ export interface components {
          */
         DefectStage: "pre_pc" | "pc" | "dlp";
         /** @enum {string} */
-        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void";
+        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void" | "reopen";
         /** @enum {string} */
         DefectSource: "manual" | "inspection" | "ai_suggested";
         Defect: {
@@ -14618,7 +14618,16 @@ export interface components {
             stage: components["schemas"]["DefectStage"];
             pin: components["schemas"]["DrawingPin"] | null;
             assigneeCompanyId: string | null;
+            /** @description The first assignee (kept for older clients). */
             assigneeUserId: string | null;
+            /** @description Everyone the punch item is assigned to, in the assigned company. */
+            assigneeUserIds: string[];
+            /** @description Punch Item Manager. */
+            managerUserId: string | null;
+            /** @description When set, only this person closes, rejects or reopens the item. */
+            finalApproverUserId: string | null;
+            /** @description Told about changes but not assigned. */
+            distributionUserIds: string[];
             /** Format: date */
             dueDate: string | null;
             /** @description Open or disputed and past its due date in the project's time zone */
@@ -15443,6 +15452,10 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
             assigneeUserId?: components["schemas"]["UserRef"];
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"];
+            finalApproverUserId?: components["schemas"]["UserRef"];
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
@@ -15458,13 +15471,17 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
             assigneeUserId?: components["schemas"]["UserRef"] | null;
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"] | null;
+            finalApproverUserId?: components["schemas"]["UserRef"] | null;
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];
         };
         DefectTransitionRequest: {
             action: components["schemas"]["DefectAction"];
-            /** @description Required for reject, dispute and void. A reject reason is shown to the subcontractor. */
+            /** @description Required for reject, dispute, reopen and void. A reject reason is shown to the subcontractor. */
             reason?: string;
             /** @description Photos for this step. Marking ready for review needs at least one (DEF-AC5). */
             fileIds?: components["schemas"]["FileRef"][];
