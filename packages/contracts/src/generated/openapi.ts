@@ -1314,6 +1314,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/site-captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's 360 site captures, the most recently captured first. */
+        get: operations["listSiteCaptures"];
+        put?: never;
+        /**
+         * Embed a 360 tour in the project by its share link.
+         * @description The link must be an https share link from Matterport, Kuula or Ricoh Tours; anything else is a 422. Archova
+         *     keeps the link, not the imagery, so the tour stays in the provider's account and follows its sharing settings.
+         */
+        post: operations["createSiteCapture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a capture from the project. The tour itself is untouched in the provider's account. */
+        delete: operations["deleteSiteCapture"];
+        options?: never;
+        head?: never;
+        /** Change a capture's title, date, area, note or link, or the RFI or issue it relates to. */
+        patch: operations["updateSiteCapture"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues": {
         parameters: {
             query?: never;
@@ -2255,6 +2302,84 @@ export interface paths {
          *     the manager reports one from the incidents screen if it warrants it.
          */
         post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova about a view from a 360 site capture.
+         * @description The person takes a still from a 360 tour (a screenshot of the view), uploads it to the project and asks Nova
+         *     about it. Nova reads that still, not the live embedded tour, and lists what looks like a defect, missing
+         *     fire-stopping or incomplete work. Each observation has a category, one or two plain sentences saying what the
+         *     still shows, and a confidence. An observation is for a person to check against the plans: Nova does not say a
+         *     rule was broken, does not cite legislation, does not describe people and raises no issue. Wording that judges
+         *     is dropped (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The observations are kept as `open` for a person to confirm or dismiss. Costs a quarter
+         *     of a Nova credit. The still is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanCaptureViewWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What Nova noticed in this project's 360 capture stills, newest first. */
+        get: operations["listCaptureObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss something Nova noticed in a capture view.
+         * @description A person looks at the view and decides. `confirmed` means it is real; `dismissed` means it isn't (the still is
+         *     distorted, it was already dealt with). An observation is decided once; deciding it again is
+         *     `ai.capture_observation.already_reviewed`. Confirming raises no issue: the person raises a coordination issue
+         *     from the capture if it warrants it.
+         */
+        post: operations["reviewCaptureObservation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11407,7 +11532,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "site_capture" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -12080,6 +12205,36 @@ export interface components {
             unsupportedNumbers: string[];
             disclaimer: string;
         };
+        CaptureObservation: {
+            /** @description The observation (`aco_`) */
+            id: string;
+            /** @description The still it was noticed in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the still shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaCaptureScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`acs_`); its observations share it */
+            scanId: string;
+            observations: components["schemas"]["CaptureObservation"][];
+            /** @description The still was too dark, blurred, distorted or distant to judge, or isn't a building interior. */
+            stillUnclear: boolean;
+            /** @description Observations left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
         HazardPattern: {
             category: string;
             label: string;
@@ -12357,6 +12512,54 @@ export interface components {
             pageFrom: number;
             pageTo: number;
             revision: string | null;
+        };
+        SiteCapture: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** @enum {string} */
+            provider: "matterport" | "kuula" | "ricoh";
+            /** @description The share link as the tour is embedded. */
+            url: string;
+            /**
+             * Format: date
+             * @description The day the capture shows.
+             */
+            capturedOn: string;
+            /** @description Where on site */
+            area: string;
+            note: string;
+            rfiId: string | null;
+            /** @description The coordination issue it relates to (`cis_`). */
+            issueId: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SiteCaptureList: {
+            data: components["schemas"]["SiteCapture"][];
+        };
+        CreateSiteCaptureRequest: {
+            title: string;
+            url: string;
+            /** Format: date */
+            capturedOn: string;
+            area?: string;
+            note?: string;
+            rfiId?: string;
+            issueId?: string;
+        };
+        UpdateSiteCaptureRequest: {
+            title?: string;
+            url?: string;
+            /** Format: date */
+            capturedOn?: string;
+            area?: string;
+            note?: string;
+            rfiId?: string | null;
+            issueId?: string | null;
         };
         /** @enum {string} */
         BimDiscipline: "architectural" | "structural" | "mechanical" | "electrical" | "hydraulic" | "fire" | "civil" | "other";
@@ -17764,6 +17967,7 @@ export interface components {
         SubmittalId: string;
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
+        SiteCaptureId: string;
         CoordinationIssueId: string;
         ConversationId: string;
         CorrespondenceId: string;
@@ -19915,6 +20119,117 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listSiteCaptures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCaptureList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSiteCapture: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSiteCaptureRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapture"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteSiteCapture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateSiteCapture: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSiteCaptureRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapture"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCoordinationIssues: {
         parameters: {
             query?: {
@@ -21420,6 +21735,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    scanCaptureViewWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    still: {
+                        fileId: string;
+                    };
+                    /** @description Where the view is and what the person is checking. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The observations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaCaptureScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCaptureObservations: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                fileId?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The observations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CaptureObservation"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewCaptureObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided observation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureObservation"];
                 };
             };
             default: components["responses"]["Problem"];

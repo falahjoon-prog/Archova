@@ -198,6 +198,9 @@ export const PROBLEM_CODES = {
   'submittal_step.not_found': 404,
   // bim
   'bim.model_not_found': 404,
+  'bim.capture_not_found': 404,
+  'ai.capture_observation.not_found': 404,
+  'ai.capture_observation.already_reviewed': 409,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
   // conversations
