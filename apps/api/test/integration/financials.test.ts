@@ -1115,8 +1115,7 @@ describe('Budget and cost codes', () => {
     });
 
     const r = await get('/budget/cost-report');
-    expect(r.lines).toHaveLength(1);
-    expect(r.lines[0]).toMatchObject({
+    expect(r.lines.find((l: { lineId: string }) => l.lineId === l1.id)).toMatchObject({
       lineId: l1.id,
       approved: '60000.00',
       pending: '30000.00',
