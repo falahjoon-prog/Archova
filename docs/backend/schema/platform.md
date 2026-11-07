@@ -51,7 +51,7 @@ Own module per [ADR-0005](../../architecture/adr/0005-identity-in-house-module.m
 - `is_external bool` (user has no membership in this org: free collaborator, never a seat)
 - `status text CHECK (active|removed)`, `removed_at`; unique `(project_id, user_id)`
 
-**platform.project_locations** — area tree reused by diary, defects, inspections: `project_id`, `parent_id null`, `name`, `path ltree` (GiST), `sort int`
+**platform.project_locations** — the project's location tree, used by defects, RFIs, inspections, observations and diary lines (`location_id`): `project_id`, `parent_id null`, `kind` (site|building|wing|level|zone|room|area|external), `name`, `code null`, `sort int`, `archived_at null` (archived, never deleted). Paths ("Building A › Level 2 › Unit 201") are computed from the parents, not stored; max depth 8, unique live name per parent. Other modules validate ids through `platform.api.resolveLocations`.
 **platform.cost_codes** — `project_id null` (null = org standard list), `code`, `description`, `parent_id null`
 **platform.custom_field_defs** — `entity_type`, `key`, `label`, `field_type text CHECK (text|number|date|select|multiselect|user|company)`, `options jsonb`, `required bool`, `sort int`
 **platform.saved_views** — `user_id`, `project_id null`, `entity_type`, `name`, `definition jsonb`, `is_shared bool`

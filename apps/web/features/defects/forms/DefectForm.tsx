@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, NovaSuggestion, Select, TextField, Textarea } from '@archova/ui';
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
+import { LocationPicker } from '@/features/locations';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { MOCK_LOCATIONS, locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -254,7 +255,15 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         onChange={(e) => set('title', e.target.value)}
       />
       <div className="form-row">
-        {live ? null : (
+        {live ? (
+          <LocationPicker
+            projectId={project.projectId}
+            value={v.locationId}
+            error={errors.location}
+            suggestFrom={`${v.title} ${v.description}`}
+            onChange={(id) => set('locationId', id)}
+          />
+        ) : (
           <Select
             label="Location"
             value={v.locationId ?? ''}
@@ -327,11 +336,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         />
       </div>
       {live ? (
-        <PinPlacer
-          value={v.drawing}
-          error={errors.location}
-          onChange={(drawing) => set('drawing', drawing)}
-        />
+        <PinPlacer value={v.drawing} onChange={(drawing) => set('drawing', drawing)} />
       ) : null}
       <div className="stack">
         <label className="ac-field__label" htmlFor="defect-photos">
@@ -353,9 +358,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           type="button"
           variant="nova"
           size="sm"
-          disabled={
-            !v.title.trim() || !(live ? v.drawing : v.locationId) || nova.duplicates.isPending
-          }
+          disabled={!v.title.trim() || !(v.drawing || v.locationId) || nova.duplicates.isPending}
           onClick={() =>
             nova.duplicates.mutate({
               title: v.title,

@@ -14,6 +14,7 @@ import {
   OwnerPortalIcon,
   FolderLinksIcon,
   ImportsIcon,
+  LocationsIcon,
   DefectsIcon,
   MeetingsIcon,
   ProgrammeIcon,
@@ -160,6 +161,11 @@ export function projectToolGroups(
       href: webRoutes.delays(orgSlug, projectId),
       label: 'Delay register',
       icon: DelaysIcon,
+    },
+    {
+      href: webRoutes.locations(orgSlug, projectId),
+      label: 'Locations',
+      icon: LocationsIcon,
     },
     canRead('schedule') && {
       href: webRoutes.programme(orgSlug, projectId),
@@ -325,7 +331,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Locations', 'Attendance'],
   },
   {
     id: 'quality-safety',

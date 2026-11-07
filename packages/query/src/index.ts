@@ -49,6 +49,7 @@ export type ProjectTool =
   | 'coordination'
   | 'diary'
   | 'key-dates'
+  | 'locations'
   | 'photos'
   | 'delays'
   | 'programme'

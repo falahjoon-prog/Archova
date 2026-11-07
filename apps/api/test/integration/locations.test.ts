@@ -147,7 +147,10 @@ describe('project locations', () => {
       locationId: l3.id,
     });
     expect(rfi.statusCode, rfi.body).toBe(201);
-    expect(rfi.json().rfi).toMatchObject({ locationId: l3.id, locationPath: 'Building A › Level 3' });
+    expect(rfi.json().rfi).toMatchObject({
+      locationId: l3.id,
+      locationPath: 'Building A › Level 3',
+    });
 
     // A location from another project is refused.
     const wrong = await s.pm.browser.post(`${s.base}/rfis`, {

@@ -26,6 +26,8 @@ const apiDefect = (over: Record<string, unknown> = {}) => ({
   category: 'finish',
   trade: 'Tiling',
   stage: 'pre_pc',
+  locationId: null,
+  locationPath: null,
   pin: { drawingRevisionId: 'drv_a101c', x: 0.4, y: 0.6 },
   assigneeCompanyId: 'cmp_tile',
   assigneeUserId: null,
@@ -173,7 +175,7 @@ describe('defects API source', () => {
     expect(issue.params!.header).toEqual({ 'If-Match': '"1"' });
   });
 
-  it('refuses a defect with no pin before anything is uploaded', async () => {
+  it('refuses a defect with no location and no pin before anything is uploaded', async () => {
     await expect(
       createDefectsApi('org_1').create(
         'prj_1',
@@ -196,6 +198,46 @@ describe('defects API source', () => {
       ),
     ).rejects.toMatchObject({ status: 422 });
     expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('raises a defect on a location from the tree with no pin', async () => {
+    uploadFile.mockResolvedValue({ id: 'fil_before' });
+    fake.on('POST', P, () =>
+      detail(
+        apiDefect({
+          status: 'draft',
+          pin: null,
+          locationId: 'loc_1',
+          locationPath: 'Building A › Level 3',
+        }),
+      ),
+    );
+    const created = await createDefectsApi('org_1').create(
+      'prj_1',
+      {
+        title: 'Cracked tile',
+        description: '',
+        priority: 'low',
+        trade: '',
+        category: null,
+        stage: 'pre_pc',
+        locationId: 'loc_1',
+        drawing: null,
+        assigneeCompanyId: null,
+        assigneeUserId: null,
+        dueDate: null,
+        photos: [],
+      },
+      actor,
+      null,
+    );
+    expect(fake.callsTo('POST', P)[0]!.init.body).toEqual({
+      title: 'Cracked tile',
+      priority: 'low',
+      stage: 'pre_pc',
+      locationId: 'loc_1',
+    });
+    expect(created).toMatchObject({ locationId: 'loc_1', locationPath: 'Building A › Level 3' });
   });
 
   it('marks ready with the after photos on the version it last read', async () => {

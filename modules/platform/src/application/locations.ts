@@ -233,7 +233,11 @@ export function createLocationService(deps: { projects: ProjectService }) {
       throw bad('name', 'A location needs a name.');
     if (input.name !== undefined && clean(input.name).length > 120)
       throw bad('name', 'At most 120 characters.');
-    if (input.code != null && (!input.code.trim() || input.code.trim().length > 30))
+    if (
+      input.code !== null &&
+      input.code !== undefined &&
+      (!input.code.trim() || input.code.trim().length > 30)
+    )
       throw bad('code', 'A code is 1 to 30 characters.');
   }
 

@@ -139,8 +139,16 @@ export function DefectListScreen() {
     {
       id: 'location',
       header: 'Location',
-      sortValue: (d) => locationPath(d.locationId) ?? (live ? pinLabel(d) : d.drawing?.label) ?? '',
-      cell: (d) => locationPath(d.locationId) ?? (live ? pinLabel(d) : d.drawing?.label) ?? '—',
+      sortValue: (d) =>
+        d.locationPath ??
+        locationPath(d.locationId) ??
+        (live ? pinLabel(d) : d.drawing?.label) ??
+        '',
+      cell: (d) =>
+        d.locationPath ??
+        locationPath(d.locationId) ??
+        (live ? pinLabel(d) : d.drawing?.label) ??
+        '—',
     },
     {
       id: 'company',

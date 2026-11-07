@@ -42,6 +42,8 @@ export interface Defect {
   category: string | null;
   stage: DefectStage;
   locationId: string | null;
+  /** "Building A › Level 2 › Unit 201" from the API; preview looks the path up from its mock tree. */
+  locationPath?: string | null;
   /** The pin. From the API, `sheetId` is empty and `label` generic until screens look the sheet up by revision. */
   drawing: { sheetId: string; revisionId: string; label: string; x: number; y: number } | null;
   /** Null while a defect is a draft. */

@@ -72,7 +72,7 @@ const projectUuid = (id: string) => {
 };
 
 const locationUuid = (id: string | null | undefined) => {
-  if (id == null) return null;
+  if (id === null || id === undefined) return null;
   const uuid = decodeId('location', id);
   if (!uuid) throw new AppError('location.not_found');
   return uuid;

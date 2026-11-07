@@ -113,6 +113,8 @@ export function toRfi(
     drawing: r.pin ? { sheetId: '', revisionId: r.pin.drawingRevisionId, label: 'Drawing' } : null,
     specSection: r.specSection,
     location: r.location,
+    locationId: r.locationId,
+    locationPath: r.locationPath,
     fileIds: r.fileIds,
     responses: responses.map((x) => toResponse(x, members)),
     officialResponseId: r.officialResponseId,
@@ -166,12 +168,15 @@ const toReference = (r: ApiCitation, i: number): NovaReference => ({
 const createRefs = (input: RfiInput) => ({
   ...(input.specSection ? { specSection: input.specSection } : {}),
   ...(input.location ? { location: input.location } : {}),
+  ...(input.locationId ? { locationId: input.locationId } : {}),
 });
 
 /** Editing sends null to clear one. */
 const editRefs = (input: RfiInput) => ({
   specSection: input.specSection || null,
   location: input.location || null,
+  // Left out unless the form handled it, so an edit from a screen without the picker keeps the place.
+  ...(input.locationId !== undefined ? { locationId: input.locationId } : {}),
 });
 
 export function createRfisApi(orgId: string): RfisSource {

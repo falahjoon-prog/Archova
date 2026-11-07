@@ -3499,3 +3499,33 @@ fieldset.worker-card > legend {
 .drw-group .ac-table th {
   overflow-wrap: anywhere;
 }
+
+/* Project location tree: indentation comes from the row's depth, spacing from the token scale. */
+.location-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.location-tree__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--c-border-divider);
+}
+.location-tree__row:last-child {
+  border-block-end: 0;
+}
+.location-tree__name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.location-tree__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

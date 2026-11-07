@@ -57,6 +57,9 @@ export interface Rfi {
   } | null;
   specSection: string | null;
   location: string | null;
+  /** A row of the project's location tree, with its full path; absent on preview records. */
+  locationId?: string | null;
+  locationPath?: string | null;
   /** Photos and files on the question itself. */
   fileIds: string[];
   responses: RfiResponse[];
@@ -80,6 +83,7 @@ export interface RfiInput {
   drawing: Rfi['drawing'];
   specSection: string | null;
   location: string | null;
+  locationId?: string | null;
   isPrivate: boolean;
   /** Set when the form was filled from a Nova draft, so the RFI records where it started. */
   nova?: { suggestionId: string; subject: string; question: string };
