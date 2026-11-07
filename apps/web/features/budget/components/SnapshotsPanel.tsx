@@ -11,6 +11,7 @@ import {
   SkeletonRows,
   Textarea,
   TextField,
+  ToggleGroup,
   type DataTableColumn,
 } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -19,6 +20,8 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { BudgetSnapshot } from '../data/api';
 import { useBudget, useCreateSnapshot, useSnapshots } from '../hooks/useBudget';
 import { aud } from '../lib/money';
+import { SnapshotCompare } from './SnapshotCompare';
+import { SnapshotTrend } from './SnapshotTrend';
 
 type SnapLine = BudgetSnapshot['lines'][number];
 
@@ -35,6 +38,7 @@ export function SnapshotsPanel({ canManage }: { canManage: boolean }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<BudgetSnapshot | null>(null);
+  const [view, setView] = useState<'list' | 'compare' | 'trend'>('list');
   const hasBudget = budget.data?.id !== null && budget.data?.id !== undefined;
 
   function save(e: FormEvent) {
@@ -113,9 +117,23 @@ export function SnapshotsPanel({ canManage }: { canManage: boolean }) {
           </form>
         </Card>
       ) : null}
+      <ToggleGroup
+        label="Snapshot view"
+        value={view}
+        onValueChange={setView}
+        options={[
+          { value: 'list', label: 'Snapshots' },
+          { value: 'compare', label: 'Compare' },
+          { value: 'trend', label: 'Over time' },
+        ]}
+      />
       <ErrorAlert error={q.error} title="We couldn't load the snapshots" />
       {q.isPending ? (
         <SkeletonRows label="Loading snapshots…" />
+      ) : q.data && view === 'compare' ? (
+        <SnapshotCompare snapshots={q.data} />
+      ) : q.data && view === 'trend' ? (
+        <SnapshotTrend snapshots={q.data} />
       ) : q.data ? (
         <DataTable
           caption="Budget snapshots"
