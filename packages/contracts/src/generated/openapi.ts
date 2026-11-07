@@ -13405,6 +13405,11 @@ export interface components {
             /** @enum {string|null} */
             side: "assignees" | "builder" | null;
             userIds: string[];
+            /**
+             * Format: date-time
+             * @description When the ball last changed hands (sent, answered, reopened or reassigned); null when nobody holds it.
+             */
+            since: string | null;
         };
         Rfi: {
             id: string;

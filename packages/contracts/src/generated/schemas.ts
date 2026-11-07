@@ -414,6 +414,7 @@ export type AwardedSubcontract = z.infer<typeof AwardedSubcontractSchema>;
 export const BallInCourtSchema = z.object({
   "side": z.enum(["assignees", "builder"]).nullable(),
   "userIds": z.array(z.string()),
+  "since": z.string().datetime({ offset: true }).nullable(),
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
 

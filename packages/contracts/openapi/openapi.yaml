@@ -19256,12 +19256,16 @@ components:
         respondedAt: { type: [string, 'null'], format: date-time }
     BallInCourt:
       type: object
-      required: [side, userIds]
+      required: [side, userIds, since]
       properties:
         side: { type: [string, 'null'], enum: [assignees, builder, null] }
         userIds:
           type: array
           items: { type: string }
+        since:
+          type: [string, 'null']
+          format: date-time
+          description: When the ball last changed hands (sent, answered, reopened or reassigned); null when nobody holds it.
     Rfi:
       type: object
       required:
