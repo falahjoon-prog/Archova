@@ -294,6 +294,13 @@ export const GetFileDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 });
+export const ListProjectPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectPhotosQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(30).default(12),
+});
 export const ListFoldersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1476,6 +1483,30 @@ export const ListProjectCorrespondenceTypesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListConversationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListConversationsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateConversationBody = s.CreateConversationRequestSchema;
+export const GetConversationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
+});
+export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2663,6 +2694,11 @@ export const AddBudgetLineParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddBudgetLineBody = s.AddBudgetLineRequestSchema;
+export const ImportBudgetLinesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportBudgetLinesBody = s.ImportBudgetLinesRequestSchema;
 export const UpdateBudgetLineParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3924,6 +3960,18 @@ export const operations = {
     contentType: null,
     params: GetFileDownloadParams,
     query: null,
+    body: null,
+  },
+  listProjectPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListProjectPhotosParams,
+    query: ListProjectPhotosQuery,
     body: null,
   },
   listFolders: {
@@ -6365,6 +6413,54 @@ export const operations = {
     params: ListProjectCorrespondenceTypesParams,
     query: null,
     body: null,
+  },
+  listConversations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: ListConversationsParams,
+    query: ListConversationsQuery,
+    body: null,
+  },
+  createConversation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateConversationParams,
+    query: null,
+    body: CreateConversationBody,
+  },
+  getConversation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.threads.read",
+    internal: false,
+    contentType: null,
+    params: GetConversationParams,
+    query: null,
+    body: null,
+  },
+  postConversationMessage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages',
+    module: "conversations",
+    auth: "required",
+    permission: "conversations.messages.post",
+    internal: false,
+    contentType: "application/json",
+    params: PostConversationMessageParams,
+    query: null,
+    body: PostConversationMessageBody,
   },
   listCorrespondence: {
     method: 'GET',
@@ -8985,6 +9081,18 @@ export const operations = {
     params: AddBudgetLineParams,
     query: null,
     body: AddBudgetLineBody,
+  },
+  importBudgetLines: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ImportBudgetLinesParams,
+    query: null,
+    body: ImportBudgetLinesBody,
   },
   updateBudgetLine: {
     method: 'PATCH',

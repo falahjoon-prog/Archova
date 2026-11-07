@@ -1146,6 +1146,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The newest photos on the project, from site diaries, defects, inspections, RFIs and direct photo uploads.
+         * @description Newest first by capture time. Needs read access to the project's files. Each photo carries a signed link that works for 5 minutes. Incident and induction photos are never listed here.
+         */
+        get: operations["listProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -4787,6 +4810,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The project team's conversations, most recent activity first, each with its latest message.
+         * @description Project team only; outside users (subcontractors, owners) get 403.
+         */
+        get: operations["listConversations"];
+        put?: never;
+        /** Start a conversation with a subject and a first message. */
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        /** One conversation with its messages, oldest first. */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a message to a conversation. */
+        post: operations["postConversationMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -8371,6 +8460,26 @@ export interface paths {
         put?: never;
         /** Add a line to a draft budget, one per cost code. */
         post: operations["addBudgetLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill a draft budget from spreadsheet rows, all or nothing. New cost codes are created from the row's description. */
+        post: operations["importBudgetLines"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12088,6 +12197,12 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ProjectPhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         DownloadLink: {
             url: string;
             /** Format: date-time */
@@ -13065,6 +13180,47 @@ export interface components {
         CorrespondenceDetail: {
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
+        };
+        ConversationMessage: {
+            id: string;
+            authorId: string;
+            authorName: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConversationSummary: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            lastMessage: components["schemas"]["ConversationMessage"];
+            /** Format: date-time */
+            lastMessageAt: string;
+        };
+        ConversationPage: {
+            data: components["schemas"]["ConversationSummary"][];
+            nextCursor: string | null;
+        };
+        ConversationDetail: {
+            id: string;
+            projectId: string;
+            subject: string;
+            messageCount: number;
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            messages: components["schemas"]["ConversationMessage"][];
+        };
+        CreateConversationRequest: {
+            subject: string;
+            body: string;
+        };
+        PostConversationMessageRequest: {
+            body: string;
         };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
@@ -14511,6 +14667,18 @@ export interface components {
             description?: string;
             original: components["schemas"]["FinancialsMoney"];
             isMargin?: boolean;
+        };
+        ImportBudgetLinesRequest: {
+            rows: {
+                code: string;
+                codeDescription?: string;
+                description?: string;
+                original: string;
+                isMargin?: boolean;
+            }[];
+        };
+        ImportBudgetLinesResult: components["schemas"]["Budget"] & {
+            imported: number;
         };
         UpdateBudgetLineRequest: {
             description?: string;
@@ -17448,6 +17616,7 @@ export interface components {
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
         CoordinationIssueId: string;
+        ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -19281,6 +19450,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectPhotos: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProjectPhoto"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];
@@ -25044,6 +25241,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceTypeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listConversations: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    postConversationMessage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conversationId: components["parameters"]["ConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostConversationMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -31205,6 +31515,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetLine"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    importBudgetLines: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBudgetLinesRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBudgetLinesResult"];
                 };
             };
             default: components["responses"]["Problem"];

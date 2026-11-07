@@ -1040,6 +1040,50 @@ describe('Budget and cost codes', () => {
     );
   });
 
+  it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const rows = [
+      { code: '03-100', codeDescription: 'Concrete', original: '50000.00' },
+      { code: '09-200', codeDescription: 'Painting', original: '8000.50', description: 'Internal' },
+    ];
+    expect((await post('/budget/lines/import', { rows })).statusCode).toBe(404);
+    await post('/budget');
+    await post('/cost-codes', { code: '05-000', description: 'Steel' });
+
+    // One bad row stops the lot, and every problem is listed.
+    const bad = await post('/budget/lines/import', {
+      rows: [
+        rows[0],
+        { code: '11-000', original: '10.00' },
+        { code: '03-100', codeDescription: 'Again', original: '1.00' },
+        { code: '12-000', codeDescription: 'Doors', original: 'abc' },
+      ],
+    });
+    expect(bad.statusCode).toBe(422);
+    expect(bad.json().errors.map((e: { path: string }) => e.path)).toEqual([
+      'rows[1].codeDescription',
+      'rows[2].code',
+      'rows[3].original',
+    ]);
+    expect((await s.pm.browser.get(`${s.base}/budget`)).json().lines).toHaveLength(0);
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(1);
+
+    const ok = await post('/budget/lines/import', {
+      rows: [...rows, { code: '05-000', original: '1000.00', isMargin: true }],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ imported: 3, totals: { original: '59000.50' } });
+    expect((await s.pm.browser.get(`${s.base}/cost-codes`)).json().data).toHaveLength(3);
+    // Importing the same codes again is refused: each already has a line.
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(422);
+    await post('/budget/lock');
+    expect((await post('/budget/lines/import', { rows: [rows[0]] })).statusCode).toBe(409);
+    expect((await s.sub.browser.post(`${s.base}/budget/lines/import`, { rows })).statusCode).toBe(
+      403,
+    );
+  });
+
   it('keeps the budget away from a subcontractor', async () => {
     const s = await setup('QLD');
     await s.pm.browser.post(`${s.base}/budget`);
