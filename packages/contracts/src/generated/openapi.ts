@@ -9776,6 +9776,248 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Envelopes sent for signature on a project, newest first. Filter by the record they were started from. */
+        get: operations["listEsignEnvelopes"];
+        put?: never;
+        /** Start a draft envelope with its documents, recipients and options. Nothing is emailed until it is sent. */
+        post: operations["createEsignEnvelope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        /** One envelope with its recipients' progress and the audit trail. */
+        get: operations["getEsignEnvelope"];
+        put?: never;
+        post?: never;
+        /** Discard a draft. A sent envelope is voided instead. */
+        delete: operations["deleteEsignEnvelope"];
+        options?: never;
+        head?: never;
+        /** Change a draft. Documents, recipients and fields, when given, replace the current lists. */
+        patch: operations["updateEsignEnvelope"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the draft. Each recipient whose turn it is gets an emailed link that needs no account. */
+        post: operations["sendEsignEnvelope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a sent envelope. Every link stops working. */
+        post: operations["voidEsignEnvelope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email everyone who still has to act. Each recipient can be reminded at most once an hour. */
+        post: operations["remindEsignEnvelope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/recipients/{recipientId}/paper-signed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+                recipientId: components["parameters"]["EsignRecipientId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that a recipient signed on paper (only when the envelope allows it). Counts as their signature. */
+        post: operations["confirmEsignPaperSigned"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/documents/{documentId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+                documentId: components["parameters"]["EsignDocumentId"];
+            };
+            cookie?: never;
+        };
+        /** The signed PDF with its certificate of completion once the envelope is complete; the original before that. */
+        get: operations["getEsignDocumentPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/esign-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The envelope behind the current signing session. */
+        get: operations["getEsignAccess"];
+        put?: never;
+        /**
+         * Exchange the link from a signing email for a session on that envelope (web `/sign/[token]`). Marks the recipient as having viewed it.
+         * @description Sets a link-bound cookie (12 hours, this envelope only). An expired, voided or unknown link returns `access_link.invalid` with no detail about the envelope.
+         */
+        post: operations["openEsignAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/esign-access/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The recipient signs (typed or drawn). Records the time, network address and browser. */
+        post: operations["signEsignAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/esign-access/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The recipient declines to sign. The envelope stops and the sender is told. */
+        post: operations["declineEsignAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/esign-access/delegate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pass signing to someone else, when the sender allowed it. The new person gets their own link and this one stops working. */
+        post: operations["delegateEsignAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/esign-access/documents/{documentId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["EsignDocumentId"];
+            };
+            cookie?: never;
+        };
+        /** A document to read before signing; the signed copy once everyone has signed. */
+        get: operations["getEsignAccessDocumentPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -17726,6 +17968,232 @@ export interface components {
             /** @description The language the SWMS was shown in. */
             language?: string;
         };
+        /** @enum {string} */
+        EsignSourceType: "correspondence" | "rfi" | "submittal" | "contract" | "other";
+        /** @enum {string} */
+        EsignEnvelopeStatus: "draft" | "sent" | "completed" | "declined" | "voided" | "expired";
+        /**
+         * @description needs_to_sign must sign; needs_to_view must open the documents; receives_copy only gets the finished copy.
+         * @enum {string}
+         */
+        EsignRecipientRole: "needs_to_sign" | "needs_to_view" | "receives_copy";
+        /** @enum {string} */
+        EsignRecipientStatus: "pending" | "sent" | "viewed" | "signed" | "declined" | "delegated";
+        /** @enum {string} */
+        EsignFieldKind: "signature" | "date_signed";
+        EsignDocument: {
+            id: string;
+            fileId: string;
+            name: string;
+            position: number;
+            sha256: string | null;
+            signedSha256: string | null;
+        };
+        EsignRecipient: {
+            id: string;
+            name: string;
+            email: string;
+            role: components["schemas"]["EsignRecipientRole"];
+            routingOrder: number;
+            status: components["schemas"]["EsignRecipientStatus"];
+            customSubject: string | null;
+            customMessage: string | null;
+            /** @enum {string} */
+            language: "en";
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            viewedAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            signedOnPaper: boolean;
+            declineReason: string | null;
+            delegatedFrom: string | null;
+        };
+        EsignField: {
+            id: string;
+            documentId: string;
+            recipientId: string;
+            kind: components["schemas"]["EsignFieldKind"];
+            page: number;
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+        };
+        EsignEvent: {
+            id: string;
+            recipientId: string | null;
+            type: string;
+            /** Format: date-time */
+            at: string;
+            ip: string | null;
+            data: {
+                [key: string]: unknown;
+            };
+        };
+        EsignEnvelope: {
+            id: string;
+            projectId: string;
+            sourceType: components["schemas"]["EsignSourceType"] | null;
+            sourceId: string | null;
+            subject: string;
+            message: string;
+            status: components["schemas"]["EsignEnvelopeStatus"];
+            signingOrder: boolean;
+            allowPaper: boolean;
+            allowDelegate: boolean;
+            expiresDays: number;
+            reminderDays: number | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidReason: string | null;
+            documents: components["schemas"]["EsignDocument"][];
+            recipients: components["schemas"]["EsignRecipient"][];
+            fields: components["schemas"]["EsignField"][];
+            events: components["schemas"]["EsignEvent"][];
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        EsignEnvelopeSummary: {
+            id: string;
+            subject: string;
+            status: components["schemas"]["EsignEnvelopeStatus"];
+            sourceType: components["schemas"]["EsignSourceType"] | null;
+            sourceId: string | null;
+            recipientCount: number;
+            signedCount: number;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        EsignEnvelopePage: {
+            data: components["schemas"]["EsignEnvelopeSummary"][];
+            nextCursor: string | null;
+        };
+        EsignRecipientInput: {
+            name: string;
+            email: string;
+            role?: components["schemas"]["EsignRecipientRole"];
+            routingOrder?: number;
+            customSubject?: string | null;
+            customMessage?: string | null;
+            /** @enum {string} */
+            language?: "en";
+            userId?: string | null;
+            companyId?: string | null;
+        };
+        EsignFieldInput: {
+            documentFileId: components["schemas"]["FileRef"];
+            recipientEmail: string;
+            kind: components["schemas"]["EsignFieldKind"];
+            page: number;
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+        };
+        EsignOptions: {
+            signingOrder?: boolean;
+            allowPaper?: boolean;
+            allowDelegate?: boolean;
+            expiresDays?: number;
+            reminderDays?: number | null;
+        };
+        CreateEsignEnvelopeRequest: {
+            sourceType?: components["schemas"]["EsignSourceType"];
+            sourceId?: string;
+            subject?: string;
+            message?: string;
+            options?: components["schemas"]["EsignOptions"];
+            documentFileIds?: components["schemas"]["FileRef"][];
+            recipients?: components["schemas"]["EsignRecipientInput"][];
+            fields?: components["schemas"]["EsignFieldInput"][];
+        };
+        UpdateEsignEnvelopeRequest: {
+            subject?: string;
+            message?: string;
+            options?: components["schemas"]["EsignOptions"];
+            documentFileIds?: components["schemas"]["FileRef"][];
+            recipients?: components["schemas"]["EsignRecipientInput"][];
+            fields?: components["schemas"]["EsignFieldInput"][];
+        };
+        VoidEsignEnvelopeRequest: {
+            reason: string;
+        };
+        EsignPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+            signed: boolean;
+        };
+        EsignAccessMe: {
+            recipientId: string;
+            name: string;
+            email: string;
+            role: components["schemas"]["EsignRecipientRole"];
+            status: components["schemas"]["EsignRecipientStatus"];
+            canAct: boolean;
+            /** @description Earlier signers have not finished yet */
+            waiting: boolean;
+            allowPaper: boolean;
+            allowDelegate: boolean;
+        };
+        EsignAccess: {
+            envelope: {
+                subject: string;
+                message: string;
+                fromOrg: string;
+                projectName: string;
+                sentByName: string;
+                status: components["schemas"]["EsignEnvelopeStatus"];
+                /** Format: date-time */
+                expiresAt: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+            };
+            me: components["schemas"]["EsignAccessMe"];
+            documents: {
+                id: string;
+                name: string;
+            }[];
+            fields: components["schemas"]["EsignField"][];
+            signers: {
+                name: string;
+                role: components["schemas"]["EsignRecipientRole"];
+                status: components["schemas"]["EsignRecipientStatus"];
+                routingOrder: number;
+            }[];
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        SignEsignRequest: {
+            /** @enum {string} */
+            signatureKind: "typed" | "drawn";
+            signature: string;
+            /** @description Must be true: the signer agreed to sign electronically */
+            consent: boolean;
+        };
+        DeclineEsignRequest: {
+            reason: string;
+        };
+        DelegateEsignRequest: {
+            name: string;
+            email: string;
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -17812,6 +18280,9 @@ export interface components {
         MeetingId: string;
         MeetingItemId: string;
         MeetingVersion: string;
+        EsignEnvelopeId: string;
+        EsignDocumentId: string;
+        EsignRecipientId: string;
     };
     requestBodies: never;
     headers: {
@@ -33791,6 +34262,427 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEsignEnvelopes: {
+        parameters: {
+            query?: {
+                sourceType?: components["schemas"]["EsignSourceType"];
+                sourceId?: string;
+                status?: components["schemas"]["EsignEnvelopeStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelopePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEsignEnvelopeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEsignEnvelopeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sent envelope */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidEsignEnvelopeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    remindEsignEnvelope: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmEsignPaperSigned: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+                recipientId: components["parameters"]["EsignRecipientId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignEnvelope"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEsignDocumentPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                envelopeId: components["parameters"]["EsignEnvelopeId"];
+                documentId: components["parameters"]["EsignDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEsignAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openEsignAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The envelope as this recipient sees it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signEsignAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignEsignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    declineEsignAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclineEsignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    delegateEsignAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelegateEsignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEsignAccessDocumentPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["EsignDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EsignPdf"];
                 };
             };
             default: components["responses"]["Problem"];

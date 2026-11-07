@@ -68,6 +68,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { ESIGN_PERMISSIONS, createEsignModule } from '@archova/mod-esign';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -94,6 +95,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  ESIGN_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -358,6 +360,19 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  const esign = createEsignModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    messages: opts.messages,
+    entitlements: billing.api.entitlements.forOrg,
+    baseUrl: opts.linkBaseUrl,
+    senderName: async (userId) => {
+      const u = await identity.api.getUser(userId);
+      return u ? `${u.name} (${u.email})` : 'a member of the team';
+    },
+  });
+
   const integrations = createIntegrationsModule(services, {
     platform: platform.api,
     files: files.api,
@@ -529,6 +544,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     estimating,
+    esign,
     integrations,
     diary,
     scheduling,
@@ -569,6 +585,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     estimating,
+    esign,
     integrations,
     sync,
     diary,

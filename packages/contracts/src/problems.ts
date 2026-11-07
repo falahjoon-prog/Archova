@@ -281,6 +281,17 @@ export const PROBLEM_CODES = {
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
   'meeting.live_unavailable': 422,
+  // e-signature envelopes
+  'esign.not_found': 404,
+  'esign.document_not_found': 404,
+  'esign.recipient_not_found': 404,
+  'esign.invalid_state': 409,
+  'esign.incomplete': 422,
+  'esign.not_your_turn': 409,
+  'esign.not_a_pdf': 422,
+  'esign.paper_not_allowed': 403,
+  'esign.delegate_not_allowed': 403,
+  'esign.rate_limited': 429,
   // ownerportal
   'ownerportal.update_not_found': 404,
   'ownerportal.update_published': 409,

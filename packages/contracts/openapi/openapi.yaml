@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: esign
   - name: conversations
   - name: bim
   - name: defects
@@ -13203,6 +13204,311 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEsignEnvelopes
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: Envelopes sent for signature on a project, newest first. Filter by the record they were started from.
+      parameters:
+        - { name: sourceType, in: query, schema: { $ref: '#/components/schemas/EsignSourceType' } }
+        - { name: sourceId, in: query, schema: { type: string, minLength: 1, maxLength: 40 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/EsignEnvelopeStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelopePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Start a draft envelope with its documents, recipients and options. Nothing is emailed until it is sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEsignEnvelopeRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    get:
+      operationId: getEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: One envelope with its recipients' progress and the audit trail.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Change a draft. Documents, recipients and fields, when given, replace the current lists.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEsignEnvelopeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Discard a draft. A sent envelope is voided instead.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/send:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: sendEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      x-rate-limit: 30
+      summary: Send the draft. Each recipient whose turn it is gets an emailed link that needs no account.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: The sent envelope
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: voidEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.void
+      summary: Cancel a sent envelope. Every link stops working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidEsignEnvelopeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/remind:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: remindEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      x-rate-limit: 10
+      summary: Email everyone who still has to act. Each recipient can be reminded at most once an hour.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/recipients/{recipientId}/paper-signed:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+      - $ref: '#/components/parameters/EsignRecipientId'
+    post:
+      operationId: confirmEsignPaperSigned
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      summary: Record that a recipient signed on paper (only when the envelope allows it). Counts as their signature.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/documents/{documentId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+      - $ref: '#/components/parameters/EsignDocumentId'
+    get:
+      operationId: getEsignDocumentPdf
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: The signed PDF with its certificate of completion once the envelope is complete; the original before that.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access:
+    post:
+      operationId: openEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: Exchange the link from a signing email for a session on that envelope (web `/sign/[token]`). Marks the recipient as having viewed it.
+      description: 'Sets a link-bound cookie (12 hours, this envelope only). An expired, voided or unknown link returns `access_link.invalid` with no detail about the envelope.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The envelope as this recipient sees it
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The envelope behind the current signing session.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/sign:
+    post:
+      operationId: signEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The recipient signs (typed or drawn). Records the time, network address and browser.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/decline:
+    post:
+      operationId: declineEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The recipient declines to sign. The envelope stops and the sender is told.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeclineEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/delegate:
+    post:
+      operationId: delegateEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: Pass signing to someone else, when the sender allowed it. The new person gets their own link and this one stops working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelegateEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/documents/{documentId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/EsignDocumentId'
+    get:
+      operationId: getEsignAccessDocumentPdf
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: A document to read before signing; the signed copy once everyone has signed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignPdf' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     TimesheetId:
@@ -13564,6 +13870,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^[1-9][0-9]{0,5}$' }
+    EsignEnvelopeId:
+      name: envelopeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^env_[0-9A-Za-z]{26}$' }
+    EsignDocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^edc_[0-9A-Za-z]{26}$' }
+    EsignRecipientId:
+      name: recipientId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^erc_[0-9A-Za-z]{26}$' }
   headers:
     ETag:
       description: Row version, quoted (`"3"`).
@@ -26189,3 +26510,341 @@ components:
             maxLength: 10,
             description: The language the SWMS was shown in.,
           }
+    EsignSourceType:
+      type: string
+      enum: [correspondence, rfi, submittal, contract, other]
+    EsignEnvelopeStatus:
+      type: string
+      enum: [draft, sent, completed, declined, voided, expired]
+    EsignRecipientRole:
+      type: string
+      description: needs_to_sign must sign; needs_to_view must open the documents; receives_copy only gets the finished copy.
+      enum: [needs_to_sign, needs_to_view, receives_copy]
+    EsignRecipientStatus:
+      type: string
+      enum: [pending, sent, viewed, signed, declined, delegated]
+    EsignFieldKind:
+      type: string
+      enum: [signature, date_signed]
+    EsignDocument:
+      type: object
+      required: [id, fileId, name, position, sha256, signedSha256]
+      properties:
+        id: { type: string }
+        fileId: { type: string }
+        name: { type: string }
+        position: { type: integer }
+        sha256: { type: [string, 'null'] }
+        signedSha256: { type: [string, 'null'] }
+    EsignRecipient:
+      type: object
+      required:
+        [
+          id,
+          name,
+          email,
+          role,
+          routingOrder,
+          status,
+          customSubject,
+          customMessage,
+          language,
+          sentAt,
+          viewedAt,
+          completedAt,
+          signedOnPaper,
+          declineReason,
+          delegatedFrom,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        routingOrder: { type: integer }
+        status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+        customSubject: { type: [string, 'null'] }
+        customMessage: { type: [string, 'null'] }
+        language: { type: string, enum: [en] }
+        sentAt: { type: [string, 'null'], format: date-time }
+        viewedAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        signedOnPaper: { type: boolean }
+        declineReason: { type: [string, 'null'] }
+        delegatedFrom: { type: [string, 'null'] }
+    EsignField:
+      type: object
+      required: [id, documentId, recipientId, kind, page, x, y, w, h]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        recipientId: { type: string }
+        kind: { $ref: '#/components/schemas/EsignFieldKind' }
+        page: { type: integer }
+        x: { type: number }
+        y: { type: number }
+        w: { type: number }
+        h: { type: number }
+    EsignEvent:
+      type: object
+      required: [id, recipientId, type, at, ip, data]
+      properties:
+        id: { type: string }
+        recipientId: { type: [string, 'null'] }
+        type: { type: string }
+        at: { type: string, format: date-time }
+        ip: { type: [string, 'null'] }
+        data: { type: object, additionalProperties: true }
+    EsignEnvelope:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          sourceType,
+          sourceId,
+          subject,
+          message,
+          status,
+          signingOrder,
+          allowPaper,
+          allowDelegate,
+          expiresDays,
+          reminderDays,
+          expiresAt,
+          sentAt,
+          completedAt,
+          voidedAt,
+          voidReason,
+          documents,
+          recipients,
+          fields,
+          events,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/EsignSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        subject: { type: string }
+        message: { type: string }
+        status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+        signingOrder: { type: boolean }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+        expiresDays: { type: integer }
+        reminderDays: { type: [integer, 'null'] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        voidedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/EsignDocument' }
+        recipients:
+          type: array
+          items: { $ref: '#/components/schemas/EsignRecipient' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/EsignField' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/EsignEvent' }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    EsignEnvelopeSummary:
+      type: object
+      required:
+        [
+          id,
+          subject,
+          status,
+          sourceType,
+          sourceId,
+          recipientCount,
+          signedCount,
+          sentAt,
+          expiresAt,
+          completedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        subject: { type: string }
+        status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/EsignSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        recipientCount: { type: integer }
+        signedCount: { type: integer }
+        sentAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    EsignEnvelopePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EsignEnvelopeSummary' }
+        nextCursor: { type: [string, 'null'] }
+    EsignRecipientInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, minLength: 3, maxLength: 254 }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        routingOrder: { type: integer, minimum: 1, maximum: 50 }
+        customSubject: { type: [string, 'null'], maxLength: 100 }
+        customMessage: { type: [string, 'null'], maxLength: 2000 }
+        language: { type: string, enum: [en] }
+        userId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    EsignFieldInput:
+      type: object
+      required: [documentFileId, recipientEmail, kind, page, x, y, w, h]
+      properties:
+        documentFileId: { $ref: '#/components/schemas/FileRef' }
+        recipientEmail: { type: string, maxLength: 254 }
+        kind: { $ref: '#/components/schemas/EsignFieldKind' }
+        page: { type: integer, minimum: 1, maximum: 2000 }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+        w: { type: number, minimum: 0.01, maximum: 1 }
+        h: { type: number, minimum: 0.01, maximum: 1 }
+    EsignOptions:
+      type: object
+      properties:
+        signingOrder: { type: boolean }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+        expiresDays: { type: integer, minimum: 1, maximum: 365 }
+        reminderDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+    CreateEsignEnvelopeRequest:
+      type: object
+      properties:
+        sourceType: { $ref: '#/components/schemas/EsignSourceType' }
+        sourceId: { type: string, minLength: 1, maxLength: 40 }
+        subject: { type: string, maxLength: 100 }
+        message: { type: string, maxLength: 2000 }
+        options: { $ref: '#/components/schemas/EsignOptions' }
+        documentFileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        recipients:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/EsignRecipientInput' }
+        fields:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/EsignFieldInput' }
+    UpdateEsignEnvelopeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        subject: { type: string, maxLength: 100 }
+        message: { type: string, maxLength: 2000 }
+        options: { $ref: '#/components/schemas/EsignOptions' }
+        documentFileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        recipients:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/EsignRecipientInput' }
+        fields:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/EsignFieldInput' }
+    VoidEsignEnvelopeRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    EsignPdf:
+      type: object
+      required: [filename, contentType, dataBase64, signed]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+        signed: { type: boolean }
+    EsignAccessMe:
+      type: object
+      required: [recipientId, name, email, role, status, canAct, waiting, allowPaper, allowDelegate]
+      properties:
+        recipientId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+        canAct: { type: boolean }
+        waiting: { type: boolean, description: 'Earlier signers have not finished yet' }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+    EsignAccess:
+      type: object
+      required: [envelope, me, documents, fields, signers, expiresAt]
+      properties:
+        envelope:
+          type: object
+          required:
+            [subject, message, fromOrg, projectName, sentByName, status, expiresAt, completedAt]
+          properties:
+            subject: { type: string }
+            message: { type: string }
+            fromOrg: { type: string }
+            projectName: { type: string }
+            sentByName: { type: string }
+            status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+            expiresAt: { type: [string, 'null'], format: date-time }
+            completedAt: { type: [string, 'null'], format: date-time }
+        me: { $ref: '#/components/schemas/EsignAccessMe' }
+        documents:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/EsignField' }
+        signers:
+          type: array
+          items:
+            type: object
+            required: [name, role, status, routingOrder]
+            properties:
+              name: { type: string }
+              role: { $ref: '#/components/schemas/EsignRecipientRole' }
+              status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+              routingOrder: { type: integer }
+        expiresAt: { type: string, format: date-time }
+    SignEsignRequest:
+      type: object
+      required: [signatureKind, signature, consent]
+      properties:
+        signatureKind: { type: string, enum: [typed, drawn] }
+        signature: { type: string, minLength: 1, maxLength: 150000 }
+        consent:
+          { type: boolean, description: 'Must be true: the signer agreed to sign electronically' }
+    DeclineEsignRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    DelegateEsignRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, minLength: 3, maxLength: 254 }
