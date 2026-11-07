@@ -760,6 +760,48 @@ main:focus {
 .project-nav__label {
   flex: 1;
 }
+.project-nav__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.project-nav__row > .project-nav__link {
+  flex: 1;
+  min-width: 0;
+}
+/* The star sits at the row's end; it shows on hover or focus, and stays visible once a tool is starred. */
+.project-nav__star {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+.project-nav__row:hover .project-nav__star,
+.project-nav__star:focus-visible,
+.project-nav__star[aria-pressed='true'] {
+  opacity: 1;
+}
+.project-nav__star[aria-pressed='true'] {
+  color: var(--c-warning-text, var(--c-action-primary));
+}
+.project-nav__star[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+@media (hover: none) {
+  .project-nav__star {
+    opacity: 1;
+  }
+}
 /* Collapsible groups (sidebar and project page tool grid) */
 .cgroup__header {
   display: flex;
@@ -874,7 +916,8 @@ main:focus {
     flex-direction: row;
   }
   .project-nav__group-label,
-  .project-nav .cgroup__header {
+  .project-nav .cgroup__header,
+  .project-nav__star {
     display: none;
   }
   /* The horizontal strip shows every tool; collapsing only applies to the stacked sidebar. */

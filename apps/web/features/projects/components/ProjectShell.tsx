@@ -82,7 +82,7 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         companyId: perms?.companyId ?? null,
       }}
     >
-      <ShellFrame projectName={p.name} groups={groups}>
+      <ShellFrame projectName={p.name} groups={groups} favouritesScope={org.user.id}>
         {children}
       </ShellFrame>
     </CurrentProjectProvider>
@@ -343,10 +343,12 @@ const SIDEBAR_KEY = 'archova.sidebar.collapsed';
 function ShellFrame({
   projectName,
   groups,
+  favouritesScope,
   children,
 }: {
   projectName: string;
   groups: ProjectNavGroup[];
+  favouritesScope?: string;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -370,7 +372,7 @@ function ShellFrame({
   return (
     <div className="project-shell" data-collapsed={collapsed}>
       <div className="project-shell__side">
-        <ProjectNav projectName={projectName} groups={groups} />
+        <ProjectNav projectName={projectName} groups={groups} favouritesScope={favouritesScope} />
         <button
           type="button"
           className="project-shell__edge ac-focusable"
