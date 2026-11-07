@@ -1,7 +1,7 @@
 // Public interface of @archova/mod-ai: Nova's gateway (ai/03). Feature modules call `api.runTask`; nothing else in
 // the codebase talks to an AI vendor (X26).
 import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
-import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
+import { AppError, defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createContractPlaybookService } from './application/contract-playbook';
 import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
@@ -34,6 +34,7 @@ import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createLaborProductivityService, type LaborFacts } from './application/labor-productivity';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
 import { createTakeoffDetectService } from './application/takeoff-detect';
@@ -248,6 +249,8 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** financials.api.laborFactsForNova: a cost code's labor productivity figures for Nova's read of it. */
+    laborFacts?: (scope: TenantScope, projectId: string, costCodeId: string) => Promise<LaborFacts>;
     /** diary.api.dayForSummary: one diary day as the caller may read it, or null (F4). */
     dayForSummary: (
       scope: TenantScope,
@@ -462,6 +465,15 @@ export function createAiModule(
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
   });
+  const laborProductivity = createLaborProductivityService({
+    database: services.database,
+    gateway,
+    facts:
+      deps.laborFacts ??
+      (async () => {
+        throw new AppError('not_found', 'Labor productivity is not available here.');
+      }),
+  });
   const budgetReviews = createBudgetReviewService({
     database: services.database,
     gateway,
@@ -533,6 +545,7 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      laborProductivity,
       budgetReviews,
       contractPlaybooks,
       contractReviews,

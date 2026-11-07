@@ -12,6 +12,8 @@ import {
   type CostCodeProduction,
   type CreateCostCode,
   type ImportBudgetLinesRequest,
+  type LaborTurn,
+  type LogQuantity,
   type RecordDirectCost,
   type UpdateBudgetLine,
   type UpdateCostCode,
@@ -195,5 +197,43 @@ export function useSetProduction(projectId: string) {
     mutationFn: (v: { costCodeId: string; body: CostCodeProduction }) =>
       source.setProduction(projectId, v.costCodeId, v.body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useQuantityLog(projectId: string, costCodeId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { quantityLog: costCodeId }),
+    queryFn: () => source.quantityLog(projectId, costCodeId),
+  });
+}
+
+/** Logging quantity moves the code's quantity in place, so the report and its log refresh. */
+export function useLogQuantity(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; body: LogQuantity }) =>
+      source.logQuantity(projectId, v.costCodeId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useExportLaborProductivity(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (filter: { divisionId?: string; subJobId?: string }) =>
+      source.exportLaborProductivity(projectId, filter),
+  });
+}
+
+/** One turn with Nova about a cost code. The server keeps no conversation; the caller passes `history` back. */
+export function useExplainLabor(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; question?: string; history?: LaborTurn[] }) =>
+      source.explainLabor(projectId, v),
   });
 }

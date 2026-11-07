@@ -70,6 +70,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
+      laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
       budgetSummary: budget.portfolioSummary,
       /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */
