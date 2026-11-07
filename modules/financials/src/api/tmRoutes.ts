@@ -65,6 +65,8 @@ const toSignoffDto = (s: TmSignoffRow) => ({
   role: s.role,
   signerName: s.signerName,
   signerPosition: s.signerPosition,
+  hasEvidence: s.evidenceFileId !== null,
+  evidenceFileId: s.evidenceFileId ? encodeId('file', s.evidenceFileId) : null,
   contentHash: s.contentHash,
   signedAt: s.signedAt.toISOString(),
 });
@@ -165,6 +167,11 @@ export function tmTicketRoutes(database: Database, tm: TmTicketsService) {
             role: input.body.role,
             signerName: input.body.signerName,
             ...(input.body.signerPosition ? { signerPosition: input.body.signerPosition } : {}),
+            ...(input.body.evidenceFileId
+              ? { evidenceFileId: ref('file', input.body.evidenceFileId, 'evidenceFileId') }
+              : {}),
+            ip: input.ip ?? undefined,
+            userAgent: input.userAgent ?? undefined,
           }),
         ),
       ),

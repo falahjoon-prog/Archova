@@ -20,6 +20,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  uploadFile,
   type TestContext,
 } from './helpers';
 
@@ -1706,6 +1707,8 @@ describe('T&M tickets', () => {
       'Superintendent',
       'Client Rep Co',
     );
+    const projectId = s.base.split('/').pop()!;
+    const docket = await uploadFile(t, s.pm.browser, s.orgId, projectId, 'docket.pdf');
     const cc = (await post('cost-codes', { code: '08', description: 'Daywork' })).json();
     await post('budget');
     const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
@@ -1790,11 +1793,19 @@ describe('T&M tickets', () => {
       ).json().code,
     ).toBe('financials.tm_ticket.bad_state');
 
+    // The principal's representative needs evidence of the on-site signature.
+    const noEvidence = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+    });
+    expect(noEvidence.statusCode).toBe(422);
     const sign2 = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
       role: 'principal_rep',
       signerName: 'Sam Lee',
       signerPosition: 'Superintendent',
+      evidenceFileId: docket,
     });
+    expect(sign2.json().signoffs[1]).toMatchObject({ hasEvidence: true, evidenceFileId: docket });
     expect(sign2.json()).toMatchObject({ status: 'signed' });
     // The superintendent can sign but not convert.
     expect(
@@ -1805,6 +1816,25 @@ describe('T&M tickets', () => {
         })
       ).statusCode,
     ).toBe(403);
+
+    // The database itself refuses to change a signed ticket, its lines or its sign-offs, whatever the app does.
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    for (const stmt of [
+      sql`update financials.tm_tickets set title = 'changed' where number = 1`,
+      sql`update financials.tm_ticket_lines set rate = 0`,
+      sql`delete from financials.tm_ticket_lines`,
+      sql`update financials.tm_ticket_signoffs set signer_name = 'x'`,
+      sql`delete from financials.tm_ticket_signoffs`,
+      sql`update financials.tm_tickets set status = 'draft' where number = 1`,
+    ])
+      await expect(t.database.withTenantTx(ctx, (sc) => sc.tx.execute(stmt))).rejects.toThrow();
 
     // Converting to direct costs posts one per kind to the budget line, once.
     const conv = await post(`tm-tickets/${t1.id}/convert`, {
@@ -1856,6 +1886,30 @@ describe('T&M tickets', () => {
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/tm-tickets`)).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${s.base}/tm-tickets`, body)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.get(`${s.base}/tm-tickets/suggestion?date=2026-11-03`)).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await s.sub.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+          role: 'contractor',
+          signerName: 'x',
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    // A source id that is not a real timesheet or equipment record is refused.
+    const fake = {
+      ...body.lines[0],
+      sourceType: 'timesheet_line',
+      sourceId: '018f0000-0000-7000-8000-000000000001',
+    };
+    expect((await post('tm-tickets', { ...body, lines: [fake] })).statusCode).toBe(422);
+    // Rates are capped.
+    expect(
+      (await post('tm-tickets', { ...body, lines: [{ ...body.lines[0], rate: '9999999.00' }] }))
+        .statusCode,
+    ).toBe(422);
   });
 });
 

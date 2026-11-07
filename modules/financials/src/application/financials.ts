@@ -83,6 +83,11 @@ export interface FinancialsDeps {
   ) => Promise<{ costCodeId: string | null; minutes: number }[]>;
   /** The day's worked hours and equipment logs (workforce), for drafting T&M tickets. Read lazily at request time. */
   dayActivity: (scope: TenantScope, projectId: string, date: string) => Promise<DayActivity>;
+  /** Files module lookup, for T&M sign-off evidence. */
+  getFile: (
+    scope: TenantScope,
+    fileId: string,
+  ) => Promise<{ projectId: string | null; status: string }>;
 }
 
 /** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */

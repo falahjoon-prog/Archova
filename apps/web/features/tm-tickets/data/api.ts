@@ -3,6 +3,7 @@
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
+import { uploadFile } from '@/shared/lib/uploads';
 
 type S = components['schemas'];
 export type TmTicket = S['TmTicket'];
@@ -44,7 +45,21 @@ export function createTmApi(orgId: string) {
         }),
       );
     },
-    async sign(projectId: string, tmTicketId: string, body: SignTmTicket): Promise<TmTicketDetail> {
+    /** `evidence` is the photo of the docket signed on site; it is uploaded first and attached by id. */
+    async sign(
+      projectId: string,
+      tmTicketId: string,
+      input: Omit<SignTmTicket, 'evidenceFileId'> & { evidence?: File },
+    ): Promise<TmTicketDetail> {
+      const { evidence, ...rest } = input;
+      const body: SignTmTicket = evidence
+        ? {
+            ...rest,
+            evidenceFileId: (
+              await uploadFile(orgId, { file: evidence, projectId, module: 'financials' })
+            ).id,
+          }
+        : rest;
       return unwrap(
         await api.POST(`${P}/tm-tickets/{tmTicketId}/sign`, {
           params: { path: { orgId, projectId, tmTicketId }, header: idempotencyKey() },

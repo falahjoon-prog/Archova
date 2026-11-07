@@ -86,6 +86,7 @@ export function TmTicketDetailCard({
   const contracts = useContracts(project.projectId);
   const [signerName, setSignerName] = useState('');
   const [position, setPosition] = useState('');
+  const [evidence, setEvidence] = useState<File | null>(null);
   const [role, setRole] = useState<'contractor' | 'principal_rep'>('contractor');
   const [target, setTarget] = useState<'direct_cost' | 'variation'>('direct_cost');
   const [budgetLineId, setBudgetLineId] = useState('');
@@ -99,18 +100,28 @@ export function TmTicketDetailCard({
   if (!t) return null;
   const st = STATUS[t.status]!;
   const signedRoles = t.signoffs.map((s) => s.role);
+  const activeRole: 'contractor' | 'principal_rep' = signedRoles.includes(role)
+    ? role === 'contractor'
+      ? 'principal_rep'
+      : 'contractor'
+    : role;
   const open = t.status === 'draft' || t.status === 'part_signed';
 
   function doSign(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!signerName.trim()) return setError('Type the signer’s full name.');
+    if (activeRole === 'principal_rep' && !evidence)
+      return setError(
+        'Attach a photo of the docket signed on site by the principal’s representative.',
+      );
     sign.mutate({
       id,
       body: {
-        role,
+        role: activeRole,
         signerName: signerName.trim(),
         ...(position.trim() ? { signerPosition: position.trim() } : {}),
+        ...(evidence ? { evidence } : {}),
       },
     });
   }
@@ -181,17 +192,23 @@ export function TmTicketDetailCard({
           {t.signoffs.length === 0 ? <p className="u-m-0">Not signed yet.</p> : null}
           {t.signoffs.map((s) => (
             <p key={s.role} className="u-m-0">
-              {ROLE_LABEL[s.role]}: {s.signerName}
+              {ROLE_LABEL[s.role]}: signed on site by {s.signerName}
               {s.signerPosition ? `, ${s.signerPosition}` : ''} ·{' '}
               {formatLocalDate(s.signedAt.slice(0, 10))}
-              <span className="u-caption"> · fingerprint {s.contentHash.slice(0, 12)}</span>
+              <span className="u-caption">
+                {' '}
+                · recorded by builder staff{s.hasEvidence ? ', docket photo attached' : ''} ·
+                fingerprint {s.contentHash.slice(0, 12)}
+              </span>
             </p>
           ))}
           {open && canSign ? (
             <form className="stack-md" onSubmit={doSign} noValidate>
               <p className="u-caption u-m-0">
-                Once signed the lines are locked. The second signature has to come from a different
-                person.
+                Record a signature given on site. Once recorded the lines are locked, and it is
+                logged against you as the person who entered it. The second must be recorded by a
+                different staff member, and the principal’s representative’s needs a photo of the
+                signed docket.
               </p>
               <div className="form-row">
                 <Select
@@ -199,13 +216,7 @@ export function TmTicketDetailCard({
                   options={(['contractor', 'principal_rep'] as const)
                     .filter((r) => !signedRoles.includes(r))
                     .map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
-                  value={
-                    signedRoles.includes(role)
-                      ? role === 'contractor'
-                        ? 'principal_rep'
-                        : 'contractor'
-                      : role
-                  }
+                  value={activeRole}
                   onChange={(e) => setRole(e.target.value as typeof role)}
                 />
                 <TextField
@@ -220,9 +231,20 @@ export function TmTicketDetailCard({
                   onChange={(e) => setPosition(e.target.value)}
                 />
               </div>
+              {activeRole === 'principal_rep' ? (
+                <div>
+                  <label htmlFor="tm-evidence">Photo of the docket signed on site</label>
+                  <input
+                    id="tm-evidence"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => setEvidence(e.target.files?.[0] ?? null)}
+                  />
+                </div>
+              ) : null}
               <div className="row-actions">
                 <Button type="submit" disabled={sign.isPending}>
-                  {sign.isPending ? 'Signing…' : 'Sign ticket'}
+                  {sign.isPending ? 'Signing…' : 'Record signature'}
                 </Button>
               </div>
             </form>

@@ -12377,7 +12377,7 @@ paths:
       tags: [financials]
       x-module: financials
       x-permission: financials.tm_tickets.sign
-      summary: Sign as the contractor or the principal's representative. The two must be different people; the second signature makes the ticket signed.
+      summary: Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -22632,11 +22632,15 @@ components:
         sourceId: { type: [string, 'null'], format: uuid }
     TmTicketSignoff:
       type: object
-      required: [role, signerName, signerPosition, contentHash, signedAt]
+      description: Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature.
+      required:
+        [role, signerName, signerPosition, hasEvidence, evidenceFileId, contentHash, signedAt]
       properties:
         role: { type: string, enum: [contractor, principal_rep] }
         signerName: { type: string }
         signerPosition: { type: [string, 'null'] }
+        hasEvidence: { type: boolean }
+        evidenceFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
         contentHash: { type: string }
         signedAt: { type: string, format: date-time }
     TmTicket:
@@ -22744,6 +22748,10 @@ components:
         role: { type: string, enum: [contractor, principal_rep] }
         signerName: { type: string, minLength: 1, maxLength: 200 }
         signerPosition: { type: string, minLength: 1, maxLength: 200 }
+        evidenceFileId:
+          type: string
+          pattern: '^fil_[0-9A-Za-z]{26}$'
+          description: A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative.
     VoidTmTicketRequest:
       type: object
       additionalProperties: false

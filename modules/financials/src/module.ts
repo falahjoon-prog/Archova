@@ -47,6 +47,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     directCosts,
     createVariation: service.createVariation,
     dayActivity: deps.dayActivity,
+    getFile: deps.getFile,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const reportingSources = createReportingSources({

@@ -42,6 +42,8 @@ describe('T&M ticket maths', () => {
     expect(isQuantity('0.00')).toBe(false);
     expect(isQuantity('1.234')).toBe(false);
     expect(isQuantity('-1')).toBe(false);
+    expect(isQuantity('1000000.00')).toBe(true);
+    expect(isQuantity('1000000.01')).toBe(false);
   });
 });
 

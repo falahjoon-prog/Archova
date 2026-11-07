@@ -108,10 +108,10 @@ describe('TmTicketDetailCard', () => {
       <TmTicketDetailCard id="tmt_1" canManage canSign canConvert onClose={() => {}} />,
     );
     await screen.findByText('T&M-1: Extra excavation');
-    await user.click(screen.getByRole('button', { name: 'Sign ticket' }));
+    await user.click(screen.getByRole('button', { name: 'Record signature' }));
     expect(await screen.findByText('Type the signer’s full name.')).toBeTruthy();
     await enterText(user, screen.getByLabelText(/Full name/), 'Pat Manager');
-    await user.click(screen.getByRole('button', { name: 'Sign ticket' }));
+    await user.click(screen.getByRole('button', { name: 'Record signature' }));
     await waitFor(() =>
       expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)).toHaveLength(1),
     );
@@ -119,6 +119,34 @@ describe('TmTicketDetailCard', () => {
       role: 'contractor',
       signerName: 'Pat Manager',
     });
+  });
+
+  it('asks for a docket photo before recording the principal’s representative', async () => {
+    fake.on('GET', `${P}/tm-tickets/{tmTicketId}`, () =>
+      ticket({
+        status: 'part_signed',
+        signoffs: [
+          {
+            role: 'contractor',
+            signerName: 'Pat',
+            signerPosition: null,
+            hasEvidence: false,
+            evidenceFileId: null,
+            contentHash: 'a'.repeat(64),
+            signedAt: '2026-11-04T00:00:00Z',
+          },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderInProject(
+      <TmTicketDetailCard id="tmt_1" canManage canSign canConvert onClose={() => {}} />,
+    );
+    await screen.findByText(/signed on site by Pat/);
+    await enterText(user, screen.getByLabelText(/Full name/), 'Sam Lee');
+    await user.click(screen.getByRole('button', { name: 'Record signature' }));
+    expect(await screen.findByText(/Attach a photo of the docket/)).toBeTruthy();
+    expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)).toHaveLength(0);
   });
 
   it('offers conversion only when fully signed and the person may convert', async () => {

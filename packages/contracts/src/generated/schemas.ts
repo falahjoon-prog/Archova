@@ -6645,6 +6645,7 @@ export const SignTmTicketRequestSchema = z.object({
   "role": z.enum(["contractor", "principal_rep"]),
   "signerName": z.string().min(1).max(200),
   "signerPosition": z.string().min(1).max(200).optional(),
+  "evidenceFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SignTmTicketRequest = z.infer<typeof SignTmTicketRequestSchema>;
 
@@ -7196,6 +7197,8 @@ export const TmTicketSignoffSchema = z.object({
   "role": z.enum(["contractor", "principal_rep"]),
   "signerName": z.string(),
   "signerPosition": z.string().nullable(),
+  "hasEvidence": z.boolean(),
+  "evidenceFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable(),
   "contentHash": z.string(),
   "signedAt": z.string().datetime({ offset: true }),
 });

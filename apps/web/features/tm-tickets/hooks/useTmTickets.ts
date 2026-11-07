@@ -58,7 +58,10 @@ export function useTmMutations(projectId: string) {
       onSuccess: refresh,
     }),
     sign: useMutation({
-      mutationFn: (v: { id: string; body: SignTmTicket }) => source.sign(projectId, v.id, v.body),
+      mutationFn: (v: {
+        id: string;
+        body: Omit<SignTmTicket, 'evidenceFileId'> & { evidence?: File };
+      }) => source.sign(projectId, v.id, v.body),
       onSuccess: refresh,
     }),
     voidTicket: useMutation({

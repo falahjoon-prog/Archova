@@ -26,7 +26,9 @@ export interface TmLineInput {
 }
 
 const QTY = /^\d{1,8}(\.\d{1,2})?$/;
-export const isQuantity = (v: string) => QTY.test(v) && Number(v) > 0;
+export const MAX_QUANTITY = 1_000_000;
+export const MAX_RATE_CENTS = 100_000_000; // $1,000,000.00 per unit
+export const isQuantity = (v: string) => QTY.test(v) && Number(v) > 0 && Number(v) <= MAX_QUANTITY;
 
 /** quantity x rate in whole cents, rounded half up. */
 export function lineCents(quantity: string, rate: string): number {

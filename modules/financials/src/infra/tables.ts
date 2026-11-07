@@ -482,6 +482,9 @@ export const tmTicketSignoffs = financialsSchema.table('tm_ticket_signoffs', {
   signedBy: uuid('signed_by').notNull(),
   contentHash: text('content_hash').notNull(),
   esignRequestId: uuid('esign_request_id'),
+  evidenceFileId: uuid('evidence_file_id'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
   signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

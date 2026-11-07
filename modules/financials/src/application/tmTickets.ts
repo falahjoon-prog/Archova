@@ -4,6 +4,7 @@ import { AppError, recordRetention, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import {
   contentHash,
+  MAX_RATE_CENTS,
   DIRECT_COST_CATEGORY,
   isQuantity,
   lineCents,
@@ -51,6 +52,11 @@ export interface TmTicketsDeps {
     input: { title: string; description?: string; amount: string },
   ) => Promise<{ variation: { id: string; number: number } }>;
   dayActivity: (scope: TenantScope, projectId: string, date: string) => Promise<DayActivity>;
+  /** Files module: the evidence file must be a ready file on this project. */
+  getFile: (
+    scope: TenantScope,
+    fileId: string,
+  ) => Promise<{ projectId: string | null; status: string }>;
   now?: () => Date;
 }
 
@@ -119,13 +125,48 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
       if (!l.description.trim()) throw bad(`lines.${i}.description`, 'Required');
       if (!l.unit.trim()) throw bad(`lines.${i}.unit`, 'Required');
       if (!isQuantity(l.quantity)) throw bad(`lines.${i}.quantity`, 'Must be more than zero');
-      if (!isMoney(l.rate)) throw bad(`lines.${i}.rate`, 'Invalid amount');
+      if (!isMoney(l.rate) || toCents(l.rate) > MAX_RATE_CENTS)
+        throw bad(`lines.${i}.rate`, 'Invalid amount (up to $1,000,000 a unit)');
       if (Boolean(l.sourceType) !== Boolean(l.sourceId))
         throw bad(`lines.${i}.sourceId`, 'Give both the source type and id, or neither');
     });
   }
 
-  /** A timesheet line or equipment log can sit on one live ticket only. */
+  const lockProject = (scope: TenantScope, projectId: string) =>
+    scope.tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${'tm_tickets:' + projectId}, 0))`,
+    );
+
+  /** Source ids must be real timesheet lines / equipment logs on this project for the ticket's work date. */
+  async function verifySources(
+    scope: TenantScope,
+    projectId: string,
+    workDate: string,
+    lines: TmLineWithSource[],
+  ) {
+    const wanted = lines.filter((l) => l.sourceId);
+    if (wanted.length === 0) return;
+    const day = await deps.dayActivity(scope, projectId, workDate);
+    const ok = new Set([
+      ...day.labour.map((l) => `timesheet_line:${l.timesheetLineId}`),
+      ...day.equipment.map((e) => `equipment_log:${e.equipmentLogId}`),
+    ]);
+    wanted.forEach((l, i) => {
+      if (!ok.has(`${l.sourceType}:${l.sourceId}`))
+        throw new AppError(
+          'validation_failed',
+          'That source record is not on this project for that day.',
+          [
+            {
+              path: `lines.${i}.sourceId`,
+              message: 'Not a timesheet or equipment record for that day',
+            },
+          ],
+        );
+    });
+  }
+
+  /** A timesheet line or equipment log can sit on one live ticket only (the database trigger is the backstop). */
   async function assertSourcesFree(
     scope: TenantScope,
     projectId: string,
@@ -191,10 +232,9 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
   async function createTicket(scope: TenantScope, projectId: string, input: TmTicketInput) {
     await need(scope, 'financials.tm_tickets.manage', projectId);
     validate(input);
+    await lockProject(scope, projectId);
+    await verifySources(scope, projectId, input.workDate, input.lines);
     await assertSourcesFree(scope, projectId, input.lines);
-    await scope.tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${'tm_tickets:' + projectId}, 0))`,
-    );
     const [n] = await scope.tx
       .select({ n: sql<number>`coalesce(max(${tmTickets.number}), 0) + 1` })
       .from(tmTickets)
@@ -247,12 +287,14 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
   ) {
     await need(scope, 'financials.tm_tickets.manage', projectId);
     validate(input);
+    await lockProject(scope, projectId);
     const t = await ticketRow(scope, projectId, id, true);
     if (t.status !== 'draft')
       throw new AppError(
         'financials.tm_ticket.bad_state',
         'A ticket cannot be changed once it has been signed. Void it and raise a new one.',
       );
+    await verifySources(scope, projectId, input.workDate, input.lines);
     await assertSourcesFree(scope, projectId, input.lines, id);
     const rows = buildLines(scope, projectId, id, input.lines);
     await scope.tx.delete(tmTicketLines).where(eq(tmTicketLines.ticketId, id));
@@ -301,7 +343,15 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     scope: TenantScope,
     projectId: string,
     id: string,
-    input: { role: TmRole; signerName: string; signerPosition?: string },
+    input: {
+      role: TmRole;
+      signerName: string;
+      signerPosition?: string;
+      /** A ready file on this project: the photo of the docket signed on site. Required for the principal's rep. */
+      evidenceFileId?: string;
+      ip?: string | undefined;
+      userAgent?: string | undefined;
+    },
   ) {
     await need(scope, 'financials.tm_tickets.sign', projectId);
     if (!input.signerName.trim())
@@ -320,6 +370,19 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         'financials.tm_ticket.bad_state',
         'There is nothing on this ticket to sign.',
       );
+    if (input.role === 'principal_rep' && !input.evidenceFileId)
+      throw new AppError(
+        'validation_failed',
+        'Attach a photo of the docket signed on site by the principal’s representative.',
+        [{ path: 'evidenceFileId', message: 'Required for the principal’s representative' }],
+      );
+    if (input.evidenceFileId) {
+      const f = await deps.getFile(scope, input.evidenceFileId);
+      if (f.projectId !== projectId || f.status !== 'ready')
+        throw new AppError('file.not_in_project', 'Attach a file uploaded to this project.', [
+          { path: 'evidenceFileId', message: 'Not a ready file in this project' },
+        ]);
+    }
     const existing = await signoffsOf(scope, id);
     if (existing.some((s) => s.role === input.role))
       throw new AppError('financials.tm_ticket.bad_state', 'That role has already signed.');
@@ -351,9 +414,28 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         signerPosition: input.signerPosition?.trim() || null,
         signedBy: scope.ctx.userId!,
         contentHash: hash,
+        evidenceFileId: input.evidenceFileId ?? null,
+        ip: input.ip ?? null,
+        userAgent: input.userAgent?.slice(0, 500) ?? null,
         signedAt: now(),
       })
       .returning();
+    await recordRetention(scope, {
+      recordType: 'financials.tm_ticket_signoffs',
+      recordId: signoff!.id,
+      projectId,
+      category: 'financial_7y',
+      anchor: signoff!.signedAt,
+    });
+    if (existing.length === 0)
+      for (const l of lines)
+        await recordRetention(scope, {
+          recordType: 'financials.tm_ticket_lines',
+          recordId: l.id,
+          projectId,
+          category: 'financial_7y',
+          anchor: signoff!.signedAt,
+        });
     const status = statusAfterSigning([...existing.map((s) => s.role), input.role]);
     const [updated] = await scope.tx
       .update(tmTickets)
@@ -430,6 +512,18 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
           : 'Both signatures are needed before a ticket can be converted.',
       );
     const lines = await linesOf(scope, id);
+    // What is about to become money must still be what was signed.
+    const signed = await signoffsOf(scope, id);
+    const hash = contentHash({ ...t, lines });
+    if (
+      totalCents(lines) !== toCents(t.total) ||
+      signed.length !== 2 ||
+      signed.some((s) => s.contentHash !== hash)
+    )
+      throw new AppError(
+        'financials.tm_ticket.bad_state',
+        'This ticket no longer matches what was signed. Void it and raise a new one.',
+      );
     const patch: Partial<typeof tmTickets.$inferInsert> = {
       status: 'converted',
       convertedAt: now(),
@@ -457,7 +551,7 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     } else {
       const v = await deps.createVariation(scope, projectId, target.contractId, {
         title: `Daywork T&M ${t.number}: ${t.title}`.slice(0, 300),
-        description: `From signed T&M ticket ${t.number}, work done ${t.workDate}${
+        description: `From T&M ticket ${t.number} (sign-off recorded by builder staff), work done ${t.workDate}${
           t.location ? ` at ${t.location}` : ''
         }.`,
         amount: t.total,

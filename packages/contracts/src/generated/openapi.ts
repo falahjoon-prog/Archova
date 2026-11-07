@@ -9115,7 +9115,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign as the contractor or the principal's representative. The two must be different people; the second signature makes the ticket signed. */
+        /** Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed. */
         post: operations["signTmTicket"];
         delete?: never;
         options?: never;
@@ -15536,11 +15536,14 @@ export interface components {
             /** Format: uuid */
             sourceId: string | null;
         };
+        /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
         TmTicketSignoff: {
             /** @enum {string} */
             role: "contractor" | "principal_rep";
             signerName: string;
             signerPosition: string | null;
+            hasEvidence: boolean;
+            evidenceFileId: string | null;
             contentHash: string;
             /** Format: date-time */
             signedAt: string;
@@ -15611,6 +15614,8 @@ export interface components {
             role: "contractor" | "principal_rep";
             signerName: string;
             signerPosition?: string;
+            /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
+            evidenceFileId?: string;
         };
         VoidTmTicketRequest: {
             note: string;
