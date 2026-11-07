@@ -3375,3 +3375,11 @@ fieldset.worker-card > legend {
     grid-column: 1 / -1;
   }
 }
+.conversations__all {
+  margin: var(--space-3) 0 0;
+}
+.conversations__list--page {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}

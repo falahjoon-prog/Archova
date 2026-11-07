@@ -17,6 +17,7 @@ import { createProjectIndexService, type SourceRevision } from './application/pr
 import type { DefectSource } from './domain/defect-source';
 import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
+import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
@@ -279,6 +280,8 @@ export function createAiModule(
       packageId: string,
       quoteId: string,
     ) => Promise<QuoteForNegotiation>;
+    /** financials.api.budgetReviewFacts: the code-found budget findings and totals, margin never included (Nova). */
+    budgetReviewFacts: (scope: TenantScope, projectId: string) => Promise<BudgetForReview>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -458,6 +461,12 @@ export function createAiModule(
         throw new AppError('not_found', 'Labor productivity is not available here.');
       }),
   });
+  const budgetReviews = createBudgetReviewService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    budget: deps.budgetReviewFacts,
+  });
   const speech = createSpeechService({
     database: services.database,
     gateway,
@@ -524,6 +533,7 @@ export function createAiModule(
       quoteReads,
       quoteNegotiations,
       laborProductivity,
+      budgetReviews,
       contractPlaybooks,
       contractReviews,
       speech,
@@ -572,6 +582,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova on the project budget: what the checks mean and what to do about them; nothing is changed. */
+      reviewBudget: budgetReviews.review,
       /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
       reviewContract: contractReviews.review,
       /** Nova Esti: items of one kind found on a drawing sheet, as marks to accept or reject; nothing is saved. */

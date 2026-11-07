@@ -2,6 +2,7 @@ import { and, asc, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, decodeCursor, toPage, type TenantScope } from '@archova/kernel';
 import type { IdentityApi } from '@archova/mod-identity';
+import { createNotifications } from '@archova/mod-notifications';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   BODY_MAX,
@@ -9,6 +10,7 @@ import {
   canTakePart,
   cleanBody,
   cleanSubject,
+  previewOf,
 } from '../domain/conversations';
 import { messages, threads } from '../infra/tables';
 
@@ -17,7 +19,7 @@ export type MessageRow = typeof messages.$inferSelect;
 export type Authors = Map<string, string>;
 
 export interface ConversationsDeps {
-  platform: Pick<PlatformApi, 'getProject'>;
+  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership'>;
   identity: Pick<IdentityApi, 'getUsers'>;
   now?: () => Date;
 }
@@ -45,6 +47,53 @@ export function createConversationsService(deps: ConversationsDeps) {
     throw new AppError('validation_failed', `Enter between 1 and ${max} characters.`, [
       { path, message: `Enter between 1 and ${max} characters` },
     ]);
+  }
+
+  /**
+   * People a message tells about: each must be an active, non-external member of the project, and you are never
+   * told about your own message. A bad id fails the whole request so a typo never silently drops someone.
+   */
+  async function resolveMentions(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    const unique = [...new Set(ids)].filter((id) => id !== scope.ctx.userId);
+    for (const id of unique) {
+      const m = await deps.platform.getProjectMembership(scope, projectId, id);
+      if (!m || m.isExternal)
+        throw new AppError(
+          'validation_failed',
+          'You can only mention people on the project team.',
+          [{ path: 'mentions', message: 'Not a member of the project team' }],
+        );
+    }
+    return unique;
+  }
+
+  async function notifyMentions(
+    scope: TenantScope,
+    args: {
+      projectId: string;
+      threadId: string;
+      messageId: string;
+      subject: string;
+      body: string;
+      mentions: readonly string[];
+    },
+  ) {
+    if (args.mentions.length === 0) return;
+    const names = await authorNames([scope.ctx.userId]);
+    const who = names.get(scope.ctx.userId) ?? 'Someone';
+    await createNotifications(
+      scope,
+      args.mentions.map((userId) => ({
+        userId,
+        projectId: args.projectId,
+        kind: 'conversations.mention',
+        entityType: 'conversation' as const,
+        entityId: args.threadId,
+        title: `${who} mentioned you in "${args.subject}"`,
+        body: previewOf(args.body, 200),
+        dedupeKey: `conversations.mention:${args.messageId}`,
+      })),
+    );
   }
 
   async function getThread(scope: TenantScope, projectId: string, id: string) {
@@ -115,12 +164,14 @@ export function createConversationsService(deps: ConversationsDeps) {
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: { subject: string; body: string },
+    input: { subject: string; body: string; mentions?: readonly string[] },
   ) {
     requireTeam(scope);
     await deps.platform.getProject(scope, projectId);
     const subject = cleanSubject(input.subject) ?? badText('subject', SUBJECT_MAX);
     const body = cleanBody(input.body) ?? badText('body', BODY_MAX);
+    const mentions = await resolveMentions(scope, projectId, input.mentions ?? []);
+    const messageId = uuidv7();
     const at = now();
     const threadId = uuidv7();
     await scope.tx.insert(threads).values({
@@ -134,14 +185,16 @@ export function createConversationsService(deps: ConversationsDeps) {
       createdBy: scope.ctx.userId,
     });
     await scope.tx.insert(messages).values({
-      id: uuidv7(),
+      id: messageId,
       orgId: scope.ctx.orgId,
       threadId,
       projectId,
       authorId: scope.ctx.userId,
       body,
+      mentions,
       createdAt: at,
     });
+    await notifyMentions(scope, { projectId, threadId, messageId, subject, body, mentions });
     scope.events.add({
       type: 'conversations.thread.created.v1',
       projectId,
@@ -153,19 +206,35 @@ export function createConversationsService(deps: ConversationsDeps) {
     return detail(scope, projectId, threadId);
   }
 
-  async function post(scope: TenantScope, projectId: string, id: string, input: { body: string }) {
+  async function post(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { body: string; mentions?: readonly string[] },
+  ) {
     requireTeam(scope);
     const thread = await getThread(scope, projectId, id);
     const body = cleanBody(input.body) ?? badText('body', BODY_MAX);
+    const mentions = await resolveMentions(scope, projectId, input.mentions ?? []);
+    const messageId = uuidv7();
     const at = now();
     await scope.tx.insert(messages).values({
-      id: uuidv7(),
+      id: messageId,
       orgId: scope.ctx.orgId,
       threadId: id,
       projectId,
       authorId: scope.ctx.userId,
       body,
+      mentions,
       createdAt: at,
+    });
+    await notifyMentions(scope, {
+      projectId,
+      threadId: id,
+      messageId,
+      subject: thread.subject,
+      body,
+      mentions,
     });
     await scope.tx
       .update(threads)

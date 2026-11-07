@@ -2582,6 +2582,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova explains the budget checks and suggests what to do about each one.
+         * @description Code finds the problems (`GET .../budget/review-checks`) and works out every amount; Nova explains them,
+         *     helps the person choose between ways to deal with each (`options`, each pointing at a finding) and, when
+         *     asked, drafts a reason for an adjustment. Code removes any point or option about a finding that doesn't
+         *     exist and any dollar figure the checks don't hold (`notes` says what it removed). She is shown cost codes
+         *     and amounts only: never margin lines, companies, people or notes. The server keeps no conversation; pass
+         *     `history` from the last answer with the next question. Nothing is saved or changed: every option is for the
+         *     person to carry out. She is an AI assistant, not an accountant (`disclaimer`). Costs half a Nova credit.
+         *     Builder staff who can read the budget only.
+         */
+        post: operations["reviewBudgetWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions": {
         parameters: {
             query?: never;
@@ -8705,6 +8735,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/review-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Lines committed or spent past their budget, close to it, unbudgeted or changed a lot (found by code, not a model).
+         * @description The checks Nova explains on the budget page. Margin lines are never included, so the totals here leave
+         *     margin out too.
+         */
+        get: operations["getBudgetReviewChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every budget revision on the project, newest first, for the Budget Modifications report. */
+        get: operations["listProjectBudgetAdjustments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments": {
         parameters: {
             query?: never;
@@ -11283,7 +11357,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -11621,6 +11695,29 @@ export interface components {
             /** @enum {string} */
             role: "estimator" | "nova";
             text: string;
+        };
+        BudgetReviewTurn: {
+            /** @enum {string} */
+            role: "user" | "nova";
+            text: string;
+        };
+        BudgetReviewAdvice: {
+            runId: string;
+            reply: string;
+            points: {
+                findingId: string | null;
+                text: string;
+            }[];
+            options: {
+                findingId: string | null;
+                /** @enum {string} */
+                kind: "adjust_budget" | "reallocate" | "review_commitment" | "check_costs" | "raise_variation" | "get_forecast" | "no_action";
+                text: string;
+            }[];
+            draftReason: string | null;
+            notes: string[];
+            history: components["schemas"]["BudgetReviewTurn"][];
+            disclaimer: string;
         };
         QuoteNegotiationAdvice: {
             runId: string;
@@ -13186,6 +13283,7 @@ export interface components {
             authorId: string;
             authorName: string;
             body: string;
+            mentionedUserIds: string[];
             /** Format: date-time */
             createdAt: string;
         };
@@ -13218,9 +13316,13 @@ export interface components {
         CreateConversationRequest: {
             subject: string;
             body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
         };
         PostConversationMessageRequest: {
             body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
         };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
@@ -14852,6 +14954,45 @@ export interface components {
         };
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
+        };
+        BudgetFinding: {
+            id: string;
+            /** @enum {string} */
+            kind: "over_committed" | "over_spent" | "unbudgeted" | "near_limit" | "large_change";
+            /** @enum {string} */
+            severity: "high" | "medium";
+            lineId: string;
+            code: string;
+            codeDescription: string;
+            summary: string;
+            figures: {
+                [key: string]: components["schemas"]["FinancialsSignedMoney"];
+            };
+        };
+        BudgetReviewChecks: {
+            hasBudget: boolean;
+            /** @enum {string} */
+            status: "draft" | "locked";
+            lineCount: number;
+            totals: {
+                revised: components["schemas"]["FinancialsSignedMoney"];
+                committed: components["schemas"]["FinancialsSignedMoney"];
+                actual: components["schemas"]["FinancialsSignedMoney"];
+            };
+            findings: components["schemas"]["BudgetFinding"][];
+        };
+        ProjectBudgetAdjustment: {
+            id: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
+            lineId: string;
+            code: string;
+            codeDescription: string;
+        };
+        ProjectBudgetAdjustmentList: {
+            data: components["schemas"]["ProjectBudgetAdjustment"][];
         };
         /** @description Decimal AUD ex GST, negative allowed. */
         FinancialsSignedMoney: string;
@@ -21700,6 +21841,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuoteNegotiationAdvice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewBudgetWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question?: string;
+                    history?: components["schemas"]["BudgetReviewTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetReviewAdvice"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -31908,6 +32080,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetSnapshot"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetReviewChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetReviewChecks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectBudgetAdjustments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBudgetAdjustmentList"];
                 };
             };
             default: components["responses"]["Problem"];

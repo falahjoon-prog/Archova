@@ -22,6 +22,7 @@ import { aud } from '../lib/money';
 import { AdjustDialog } from './AdjustDialog';
 import { ImportDialog } from './ImportDialog';
 import { LineDialog } from './LineDialog';
+import { NovaBudgetPanel } from './NovaBudgetPanel';
 
 /**
  * The project budget. A draft is edited freely; locking freezes the original, and from then on every change is an
@@ -173,6 +174,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
         </Alert>
       ) : null}
       <ErrorAlert error={lock.error ?? deleteLine.error} title="We couldn't update the budget" />
+      <NovaBudgetPanel canManage={canManage} />
       <Card>
         <DescriptionList
           items={[

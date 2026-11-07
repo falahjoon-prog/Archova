@@ -74,6 +74,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
       budgetSummary: budget.portfolioSummary,
+      /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */
+      budgetReviewFacts: budget.reviewFacts,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
       reporting: reportingSources,
     },

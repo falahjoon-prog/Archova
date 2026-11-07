@@ -8,6 +8,7 @@ import {
   createBudgetApi,
   type AddBudgetLine,
   type AdjustBudgetLine,
+  type BudgetReviewTurn,
   type CostCodeProduction,
   type CreateCostCode,
   type ImportBudgetLinesRequest,
@@ -57,6 +58,33 @@ export function useCreateSnapshot(projectId: string) {
   return useMutation({
     mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useReviewChecks(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { reviewChecks: true }),
+    queryFn: () => source.reviewChecks(projectId),
+  });
+}
+
+/** Ask Nova about the budget. Nothing is saved, so there is nothing to refresh afterwards. */
+export function useAskNovaBudget(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (body: { question: string; history: BudgetReviewTurn[] }) =>
+      source.askNova(projectId, body),
+  });
+}
+
+export function useProjectAdjustments(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { projectAdjustments: true }),
+    queryFn: () => source.projectAdjustments(projectId),
   });
 }
 
