@@ -13,6 +13,7 @@ const toMessage = (m: MessageRow, names: Authors): ConversationMessage => ({
   authorId: encodeId('user', m.authorId),
   authorName: nameOf(names, m.authorId),
   body: m.body,
+  mentionedUserIds: m.mentions.map((u) => encodeId('user', u)),
   createdAt: m.createdAt.toISOString(),
 });
 

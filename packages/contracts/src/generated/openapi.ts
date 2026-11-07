@@ -11236,7 +11236,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -13139,6 +13139,7 @@ export interface components {
             authorId: string;
             authorName: string;
             body: string;
+            mentionedUserIds: string[];
             /** Format: date-time */
             createdAt: string;
         };
@@ -13171,9 +13172,13 @@ export interface components {
         CreateConversationRequest: {
             subject: string;
             body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
         };
         PostConversationMessageRequest: {
             body: string;
+            /** @description Project team members to notify. Each must be an active, non-external member of the project. */
+            mentions?: string[];
         };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];

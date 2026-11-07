@@ -15,6 +15,15 @@ const project = (p: { projectId: string }) => {
   if (!id) throw new AppError('project.not_found');
   return id;
 };
+const mentionIds = (ids: readonly string[] | undefined) =>
+  (ids ?? []).map((u) => {
+    const id = decodeId('user', u);
+    if (!id)
+      throw new AppError('validation_failed', 'Invalid id', [
+        { path: 'mentions', message: 'Invalid id' },
+      ]);
+    return id;
+  });
 const threadId = (p: { conversationId: string }) => {
   const id = decodeId('conversation', p.conversationId);
   if (!id) throw new AppError('conversation.not_found');
@@ -45,7 +54,14 @@ export function conversationsRoutes(database: Database, svc: ConversationsServic
     },
     createConversation: async (input) => ({
       status: 201,
-      body: toDetail(await tx(input, (s) => svc.create(s, project(input.params), input.body))),
+      body: toDetail(
+        await tx(input, (s) =>
+          svc.create(s, project(input.params), {
+            ...input.body,
+            mentions: mentionIds(input.body.mentions),
+          }),
+        ),
+      ),
     }),
     getConversation: async (input) => ({
       status: 200,
@@ -57,7 +73,10 @@ export function conversationsRoutes(database: Database, svc: ConversationsServic
       status: 201,
       body: toDetail(
         await tx(input, (s) =>
-          svc.post(s, project(input.params), threadId(input.params), input.body),
+          svc.post(s, project(input.params), threadId(input.params), {
+            ...input.body,
+            mentions: mentionIds(input.body.mentions),
+          }),
         ),
       ),
     }),

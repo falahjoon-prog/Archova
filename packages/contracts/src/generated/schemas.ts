@@ -1147,6 +1147,7 @@ export const ConversationMessageSchema = z.object({
   "authorId": z.string(),
   "authorName": z.string(),
   "body": z.string(),
+  "mentionedUserIds": z.array(z.string()),
   "createdAt": z.string().datetime({ offset: true }),
 });
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
@@ -1572,6 +1573,7 @@ export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
 export const CreateConversationRequestSchema = z.object({
   "subject": z.string().min(1).max(200),
   "body": z.string().min(1).max(5000),
+  "mentions": z.array(z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"))).max(20).optional(),
 }).strict();
 export type CreateConversationRequest = z.infer<typeof CreateConversationRequestSchema>;
 
@@ -4615,7 +4617,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -5430,6 +5432,7 @@ export type Portfolio = z.infer<typeof PortfolioSchema>;
 
 export const PostConversationMessageRequestSchema = z.object({
   "body": z.string().min(1).max(5000),
+  "mentions": z.array(z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"))).max(20).optional(),
 }).strict();
 export type PostConversationMessageRequest = z.infer<typeof PostConversationMessageRequestSchema>;
 

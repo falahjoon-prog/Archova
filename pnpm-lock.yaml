@@ -939,6 +939,9 @@ importers:
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../identity
+      '@archova/mod-notifications':
+        specifier: workspace:*
+        version: link:../notifications
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform

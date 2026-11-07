@@ -8,6 +8,12 @@ const list = vi.fn();
 vi.mock('../data/api', () => ({
   createConversationsApi: () => ({ list, get: vi.fn(), create: vi.fn(), post: vi.fn() }),
 }));
+vi.mock('@/shared/hooks/useUrlState', () => ({
+  useUrlState: () => [{ thread: '' }, () => undefined],
+}));
+vi.mock('@/features/projects', () => ({
+  useProjectMembers: () => ({ data: { data: [] } }),
+}));
 vi.mock('@/features/assistant', () => ({ usePublishAssistantScope: () => undefined }));
 vi.mock('@/shared/providers/CurrentProjectProvider', () => ({
   useCurrentProject: () => ({ projectId: 'prj_1', timezone: 'Australia/Melbourne' }),
@@ -116,5 +122,22 @@ describe('ConversationsScreen', () => {
     expect(await screen.findByText('Subject 1')).toBeTruthy();
     expect(screen.getByText('Subject 2')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+  });
+});
+
+import { insertMention, mentionedIn } from '../lib/mentions';
+
+describe('mentions', () => {
+  const ana = { userId: 'usr_ana', name: 'Ana Costa' };
+  const ben = { userId: 'usr_ben', name: 'Ben Ng' };
+  it('adds @Name on a new word', () => {
+    expect(insertMention('', ana)).toBe('@Ana Costa ');
+    expect(insertMention('Hi', ana)).toBe('Hi @Ana Costa ');
+    expect(insertMention('Hi ', ben)).toBe('Hi @Ben Ng ');
+  });
+  it('only notifies people still named in the text', () => {
+    expect(mentionedIn('Hi @Ana Costa please check', [ana, ben])).toEqual(['usr_ana']);
+    expect(mentionedIn('no names left', [ana, ben])).toEqual([]);
+    expect(mentionedIn('@ana costa and @Ana Costa', [ana])).toEqual(['usr_ana']);
   });
 });

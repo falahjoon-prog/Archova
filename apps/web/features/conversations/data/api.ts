@@ -25,7 +25,7 @@ export function createConversationsApi(orgId: string) {
       ),
     create: async (
       projectId: string,
-      body: { subject: string; body: string },
+      body: { subject: string; body: string; mentions?: string[] },
     ): Promise<ConversationDetail> => {
       await ensureCsrfToken();
       return unwrap(
@@ -38,7 +38,7 @@ export function createConversationsApi(orgId: string) {
     post: async (
       projectId: string,
       conversationId: string,
-      body: string,
+      input: { body: string; mentions?: string[] },
     ): Promise<ConversationDetail> => {
       await ensureCsrfToken();
       return unwrap(
@@ -46,7 +46,7 @@ export function createConversationsApi(orgId: string) {
           '/v1/orgs/{orgId}/projects/{projectId}/conversations/{conversationId}/messages',
           {
             params: { path: { orgId, projectId, conversationId }, header: idempotencyKey() },
-            body: { body },
+            body: input,
           },
         ),
       );

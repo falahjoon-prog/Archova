@@ -20,5 +20,6 @@ export const messages = conversationsSchema.table('messages', {
   projectId: uuid('project_id').notNull(),
   authorId: uuid('author_id').notNull(),
   body: text('body').notNull(),
+  mentions: uuid('mentions').array().notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

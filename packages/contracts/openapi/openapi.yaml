@@ -15818,7 +15818,10 @@ components:
         title: { type: string }
         body: { type: string }
         entityType:
-          { type: string, enum: [meeting, tender_package, contract, incident, compliance_document] }
+          {
+            type: string,
+            enum: [meeting, tender_package, contract, incident, compliance_document, conversation],
+          }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }
@@ -18831,12 +18834,15 @@ components:
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
     ConversationMessage:
       type: object
-      required: [id, authorId, authorName, body, createdAt]
+      required: [id, authorId, authorName, body, mentionedUserIds, createdAt]
       properties:
         id: { type: string }
         authorId: { type: string }
         authorName: { type: string }
         body: { type: string }
+        mentionedUserIds:
+          type: array
+          items: { type: string }
         createdAt: { type: string, format: date-time }
     ConversationSummary:
       type: object
@@ -18890,12 +18896,22 @@ components:
       properties:
         subject: { type: string, minLength: 1, maxLength: 200 }
         body: { type: string, minLength: 1, maxLength: 5000 }
+        mentions:
+          type: array
+          maxItems: 20
+          description: Project team members to notify. Each must be an active, non-external member of the project.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
     PostConversationMessageRequest:
       type: object
       additionalProperties: false
       required: [body]
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
+        mentions:
+          type: array
+          maxItems: 20
+          description: Project team members to notify. Each must be an active, non-external member of the project.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
