@@ -20,6 +20,7 @@ import { toTimesheetDto } from './timesheet-mappers';
 import type { RosterService } from '../application/roster';
 import { toBookingDto, toEquipmentDto, toLogDto } from './equipment-mappers';
 import { toShiftDto } from './roster-mappers';
+import type { BadgeService } from '../application/badge';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
 import {
@@ -47,6 +48,7 @@ import {
   toEntryDto,
   toGateDto,
   toRollCallDto,
+  toSafetyBadgeDto,
   toSessionDto,
   toSignInDto,
   toSiteDto,
@@ -105,6 +107,7 @@ export function workforceRoutes(
   roster: RosterService,
   equip: EquipmentService,
   sheets: TimesheetService,
+  badge: BadgeService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -140,6 +143,33 @@ export function workforceRoutes(
     id('equipmentBooking', p.bookingId, 'workforce_equipment.booking_not_found');
 
   return defineRoutes({
+    getMySafetyBadge: async (input) => ({
+      status: 200,
+      body: toSafetyBadgeDto(await tx(input, (s) => badge.view(s, project(input.params)))),
+      headers: { 'cache-control': 'no-store' },
+    }),
+    setMyEmergencyContact: async (input) => ({
+      status: 200,
+      body: toSafetyBadgeDto(
+        await tx(input, (s) =>
+          badge.setEmergencyContact(s, project(input.params), input.body.contact),
+        ),
+      ),
+      headers: { 'cache-control': 'no-store' },
+    }),
+    setMyBadgePhoto: async (input) => ({
+      status: 200,
+      body: toSafetyBadgeDto(
+        await tx(input, (s) =>
+          badge.setPhoto(
+            s,
+            project(input.params),
+            input.body.fileId ? ref('file', input.body.fileId, 'fileId') : null,
+          ),
+        ),
+      ),
+      headers: { 'cache-control': 'no-store' },
+    }),
     listTimesheets: async (input) => {
       const q = input.query;
       const rows = await read(input, (s) =>

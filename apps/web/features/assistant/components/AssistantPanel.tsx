@@ -13,6 +13,8 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNova, sendAnswerFeedback } from '../data/ask';
 import { actionRedirect } from '../data/actions';
 import { startersFor } from '../data/starters';
+import { errorHelpAnswer, navHelpAnswer } from '../data/help';
+import type { ErrorView } from '@/shared/lib/errors';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import {
@@ -31,6 +33,8 @@ interface Turn {
   answer: NovaAnswer | null;
   shown: string;
   feedback: 'up' | 'down' | null;
+  /** Set when the person asked Nova about an error; the answer explains it and suggests what to do. */
+  error?: ErrorView;
 }
 
 const RECORD_LABELS: Record<string, string> = {
@@ -127,14 +131,16 @@ export function AssistantPanel() {
   const update = (id: number, patch: Partial<Turn>) =>
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = async (id: number, question: string, s: AssistantScope) => {
+  const run = async (id: number, question: string, s: AssistantScope, error?: ErrorView) => {
     const controller = new AbortController();
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
+        (error ? errorHelpAnswer(error) : null) ??
         actionRedirect(question, s) ??
+        navHelpAnswer(question) ??
         (previewDataOnly || !s.projectId
           ? await previewAnswer(
               question,
@@ -156,7 +162,7 @@ export function AssistantPanel() {
     }
   };
 
-  const ask = (question: string) => {
+  const ask = (question: string, error?: ErrorView) => {
     const q = question.trim();
     if (!q || busy || exhausted) return;
     const id = nextId.current++;
@@ -169,11 +175,24 @@ export function AssistantPanel() {
       answer: null,
       shown: '',
       feedback: null,
+      ...(error ? { error } : {}),
     };
     setTurns((ts) => [...ts, turn]);
     setDraft('');
-    void run(id, q, effective);
+    void run(id, q, effective, error);
   };
+
+  // "Ask Nova what to do" on an error alert: explain it and suggest a fix, once per click.
+  const pendingError = panel.pendingError;
+  useEffect(() => {
+    if (!pendingError || busy) return;
+    panel.clearPendingError();
+    ask(
+      `What went wrong${pendingError.status ? ` (error ${pendingError.status})` : ''}, and what should I do?`,
+      pendingError,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingError]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -224,7 +243,7 @@ export function AssistantPanel() {
               turn={t}
               orgSlug={org.orgSlug}
               onStop={() => abort.current?.abort()}
-              onRetry={() => void run(t.id, t.question, t.scope)}
+              onRetry={() => void run(t.id, t.question, t.scope, t.error)}
               onFeedback={(v) => {
                 update(t.id, { feedback: v });
                 // Only answers the API produced can be rated; the preview's are kept on screen.
