@@ -41,6 +41,14 @@ export function createCoordinationApi(orgId: string) {
       const typed = new File([file], file.name, { type: 'model/ifc' });
       return (await uploadFile(orgId, { file: typed, projectId, module: 'bim' })).id;
     },
+    /** Stores the snapshot taken of a drawing when an issue is pinned on it; resolves with its `fileId`. */
+    async uploadSnapshot(projectId: string, snapshot: Blob): Promise<string> {
+      const type = snapshot.type || 'image/png';
+      const file = new File([snapshot], `pin-snapshot.${type === 'image/jpeg' ? 'jpg' : 'png'}`, {
+        type,
+      });
+      return (await uploadFile(orgId, { file, projectId, module: 'bim' })).id;
+    },
     /** The bytes of a stored model file, read from a short-lived signed URL. */
     async downloadModelFile(fileId: string): Promise<Uint8Array> {
       const res = await fetch(await fileDownloadUrl(orgId, fileId));

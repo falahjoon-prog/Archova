@@ -78,6 +78,7 @@ export const issueDto = (i: IssueRow, commentCount: number): CoordinationIssue =
           y: i.pinY,
         }
       : null,
+  sheetId: orNull('drawingSheet', i.sheetId),
   snapshotFileId: orNull('file', i.snapshotFileId),
   resolvedAt: i.resolvedAt ? iso(i.resolvedAt) : null,
   commentCount,

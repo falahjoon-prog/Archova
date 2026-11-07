@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionPlanLabel, addDays, derivePlanStatus } from '../../src/domain/action-plan';
+import { actionPlanLabel, derivePlanStatus } from '../../src/domain/action-plan';
 
 describe('action plan rules', () => {
   it('numbers plans AP-0001', () => expect(actionPlanLabel(7)).toBe('AP-0007'));
@@ -15,10 +15,5 @@ describe('action plan rules', () => {
 
   it('keeps a cancelled plan cancelled whatever its steps do', () => {
     expect(derivePlanStatus('cancelled', [{ status: 'done' }])).toBe('cancelled');
-  });
-
-  it('adds calendar days across month ends', () => {
-    expect(addDays('2026-11-28', 5)).toBe('2026-12-03');
-    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
   });
 });

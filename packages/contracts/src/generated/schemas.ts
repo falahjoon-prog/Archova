@@ -1351,6 +1351,7 @@ export const CoordinationIssueSchema = z.object({
   "location": z.string(),
   "rfiId": z.string().nullable(),
   "pin": z.union([DrawingPinSchema, z.null()]),
+  "sheetId": z.string().nullable(),
   "snapshotFileId": z.string().nullable(),
   "resolvedAt": z.string().datetime({ offset: true }).nullable(),
   "commentCount": z.number().int(),

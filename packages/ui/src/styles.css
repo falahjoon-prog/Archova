@@ -589,6 +589,15 @@
   border-top: 2px solid var(--c-border-divider);
   border-bottom: 0;
 }
+.ac-table tbody .ac-table__group th {
+  height: auto;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  background: var(--c-bg);
+}
 .ac-table__num {
   text-align: right !important;
   font-variant-numeric: tabular-nums;

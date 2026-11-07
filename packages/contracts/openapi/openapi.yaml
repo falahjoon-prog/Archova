@@ -17781,6 +17781,7 @@ components:
           location,
           rfiId,
           pin,
+          sheetId,
           snapshotFileId,
           resolvedAt,
           commentCount,
@@ -17807,6 +17808,8 @@ components:
         pin:
           description: Where on a drawing revision the issue was raised.
           oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
+        sheetId:
+          { type: [string, 'null'], description: The drawing sheet the pinned revision belongs to. }
         snapshotFileId:
           { type: [string, 'null'], description: 'Snapshot of the sheet area, taken when raised.' }
         resolvedAt: { type: [string, 'null'], format: date-time }

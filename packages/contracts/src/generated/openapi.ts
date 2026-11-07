@@ -12466,6 +12466,8 @@ export interface components {
             rfiId: string | null;
             /** @description Where on a drawing revision the issue was raised. */
             pin: components["schemas"]["DrawingPin"] | null;
+            /** @description The drawing sheet the pinned revision belongs to. */
+            sheetId: string | null;
             /** @description Snapshot of the sheet area, taken when raised. */
             snapshotFileId: string | null;
             /** Format: date-time */

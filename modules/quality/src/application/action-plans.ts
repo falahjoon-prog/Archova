@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
-import { localDateOf } from '@archova/time';
+import { addDays, localDateOf } from '@archova/time';
 import { uuidv7 } from '@archova/domain';
 import {
   AppError,
@@ -10,7 +10,6 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import {
-  addDays,
   derivePlanStatus,
   type ActionItemStatus,
   type ActionPlanSourceType,
