@@ -2171,17 +2171,33 @@ export const CreatePrequalificationRequestSchema = z.object({
 }).strict();
 export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificationRequestSchema>;
 
-export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
-export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
-
-export const ProjectPhaseSchema = z.enum(["planning", "design", "tender", "pre_construction", "construction", "handover", "defects_liability"]);
-export type ProjectPhase = z.infer<typeof ProjectPhaseSchema>;
+export const LocationKindSchema = z.enum(["site_office", "gate", "laydown", "parking", "hospital", "other"]);
+export type LocationKind = z.infer<typeof LocationKindSchema>;
 
 export const GeoPointSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
 }).strict();
 export type GeoPoint = z.infer<typeof GeoPointSchema>;
+
+export const CreateProjectLocationRequestSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "kind": LocationKindSchema,
+  "address": z.string().max(300).nullable().optional(),
+  "point": z.union([GeoPointSchema, z.null()]).optional(),
+  "accessNote": z.string().max(2000).nullable().optional(),
+  "contactName": z.string().max(120).nullable().optional(),
+  "contactPhone": z.string().max(40).nullable().optional(),
+  "usedFor": z.array(z.string().min(1).max(40)).max(8).optional(),
+  "isDefault": z.boolean().optional(),
+}).strict();
+export type CreateProjectLocationRequest = z.infer<typeof CreateProjectLocationRequestSchema>;
+
+export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
+
+export const ProjectPhaseSchema = z.enum(["planning", "design", "tender", "pre_construction", "construction", "handover", "defects_liability"]);
+export type ProjectPhase = z.infer<typeof ProjectPhaseSchema>;
 
 export const CreateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -5714,6 +5730,27 @@ export const ProjectBudgetAdjustmentListSchema = z.object({
 });
 export type ProjectBudgetAdjustmentList = z.infer<typeof ProjectBudgetAdjustmentListSchema>;
 
+export const ProjectLocationSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "kind": LocationKindSchema,
+  "address": z.string().nullable(),
+  "point": z.union([GeoPointSchema, z.null()]),
+  "directionsUrl": z.string().nullable(),
+  "accessNote": z.string().nullable(),
+  "contactName": z.string().nullable(),
+  "contactPhone": z.string().nullable(),
+  "usedFor": z.array(z.string()),
+  "isDefault": z.boolean(),
+  "version": z.number().int(),
+});
+export type ProjectLocation = z.infer<typeof ProjectLocationSchema>;
+
+export const ProjectLocationListSchema = z.object({
+  "data": z.array(ProjectLocationSchema),
+});
+export type ProjectLocationList = z.infer<typeof ProjectLocationListSchema>;
+
 export const ProjectMemberSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -7629,6 +7666,19 @@ export const UpdatePrequalificationRequestSchema = z.object({
   "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
 }).strict();
 export type UpdatePrequalificationRequest = z.infer<typeof UpdatePrequalificationRequestSchema>;
+
+export const UpdateProjectLocationRequestSchema = z.object({
+  "name": z.string().min(1).max(120).optional(),
+  "kind": LocationKindSchema.optional(),
+  "address": z.string().max(300).nullable().optional(),
+  "point": z.union([GeoPointSchema, z.null()]).optional(),
+  "accessNote": z.string().max(2000).nullable().optional(),
+  "contactName": z.string().max(120).nullable().optional(),
+  "contactPhone": z.string().max(40).nullable().optional(),
+  "usedFor": z.array(z.string().min(1).max(40)).max(8).optional(),
+  "isDefault": z.boolean().optional(),
+}).strict();
+export type UpdateProjectLocationRequest = z.infer<typeof UpdateProjectLocationRequestSchema>;
 
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
