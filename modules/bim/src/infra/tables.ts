@@ -1,4 +1,4 @@
-import { date, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { date, integer, pgSchema, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const bimSchema = pgSchema('bim');
 
@@ -50,6 +50,11 @@ export const issues = bimSchema.table('issues', {
   elementGuids: text('element_guids').array().notNull().default([]),
   location: text('location').notNull().default(''),
   rfiId: uuid('rfi_id'),
+  drawingRevisionId: uuid('drawing_revision_id'),
+  sheetId: uuid('sheet_id'),
+  pinX: real('pin_x'),
+  pinY: real('pin_y'),
+  snapshotFileId: uuid('snapshot_file_id'),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   ...audit,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),

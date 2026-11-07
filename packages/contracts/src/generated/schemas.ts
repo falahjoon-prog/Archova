@@ -1329,6 +1329,13 @@ export type CoordinationIssueStatus = z.infer<typeof CoordinationIssueStatusSche
 export const CoordinationIssuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export type CoordinationIssuePriority = z.infer<typeof CoordinationIssuePrioritySchema>;
 
+export const DrawingPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+
 export const CoordinationIssueSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -1343,6 +1350,8 @@ export const CoordinationIssueSchema = z.object({
   "elementGuids": z.array(z.string()),
   "location": z.string(),
   "rfiId": z.string().nullable(),
+  "pin": z.union([DrawingPinSchema, z.null()]),
+  "snapshotFileId": z.string().nullable(),
   "resolvedAt": z.string().datetime({ offset: true }).nullable(),
   "commentCount": z.number().int(),
   "version": z.number().int(),
@@ -1749,6 +1758,8 @@ export const CreateCoordinationIssueRequestSchema = z.object({
   "elementGuids": z.array(z.string().max(64)).max(50).optional(),
   "location": z.string().max(200).optional(),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).optional(),
+  "pin": DrawingPinSchema.optional(),
+  "snapshotFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateCoordinationIssueRequest = z.infer<typeof CreateCoordinationIssueRequestSchema>;
 
@@ -1803,13 +1814,6 @@ export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
 
 export const DefectStageSchema = z.enum(["pre_pc", "pc", "dlp"]);
 export type DefectStage = z.infer<typeof DefectStageSchema>;
-
-export const DrawingPinSchema = z.object({
-  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
-  "x": z.number().min(0).max(1),
-  "y": z.number().min(0).max(1),
-}).strict();
-export type DrawingPin = z.infer<typeof DrawingPinSchema>;
 
 export const CreateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300),
@@ -7357,6 +7361,8 @@ export const UpdateCoordinationIssueRequestSchema = z.object({
   "elementGuids": z.array(z.string().max(64)).max(50).optional(),
   "location": z.string().max(200).optional(),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "pin": z.union([DrawingPinSchema, z.null()]).optional(),
+  "snapshotFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable().optional(),
 }).strict();
 export type UpdateCoordinationIssueRequest = z.infer<typeof UpdateCoordinationIssueRequestSchema>;
 

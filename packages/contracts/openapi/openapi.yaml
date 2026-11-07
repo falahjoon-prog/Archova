@@ -1648,6 +1648,12 @@ paths:
             schema: { $ref: '#/components/schemas/CoordinationIssueStatus' },
           }
         - { name: modelId, in: query, schema: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' } }
+        - {
+            name: drawingRevisionId,
+            in: query,
+            description: Only the issues pinned on this drawing revision.,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
       responses:
         '200':
@@ -17774,6 +17780,8 @@ components:
           elementGuids,
           location,
           rfiId,
+          pin,
+          snapshotFileId,
           resolvedAt,
           commentCount,
           version,
@@ -17796,6 +17804,11 @@ components:
           items: { type: string }
         location: { type: string }
         rfiId: { type: [string, 'null'] }
+        pin:
+          description: Where on a drawing revision the issue was raised.
+          oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
+        snapshotFileId:
+          { type: [string, 'null'], description: 'Snapshot of the sheet area, taken when raised.' }
         resolvedAt: { type: [string, 'null'], format: date-time }
         commentCount: { type: integer }
         version: { type: integer }
@@ -17841,6 +17854,8 @@ components:
           items: { type: string, maxLength: 64 }
         location: { type: string, maxLength: 200 }
         rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+        snapshotFileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
     UpdateCoordinationIssueRequest:
       type: object
       additionalProperties: false
@@ -17858,6 +17873,8 @@ components:
           items: { type: string, maxLength: 64 }
         location: { type: string, maxLength: 200 }
         rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        snapshotFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
     AddCoordinationCommentRequest:
       type: object
       additionalProperties: false

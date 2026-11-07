@@ -49,7 +49,12 @@ export function createCoordinationApi(orgId: string) {
     },
     async listIssues(
       projectId: string,
-      q: { status?: CoordinationIssueStatus; modelId?: string; q?: string },
+      q: {
+        status?: CoordinationIssueStatus;
+        modelId?: string;
+        drawingRevisionId?: string;
+        q?: string;
+      },
     ): Promise<CoordinationIssue[]> {
       return unwrap(await api.GET(L, { params: { path: { orgId, projectId }, query: q } })).data;
     },

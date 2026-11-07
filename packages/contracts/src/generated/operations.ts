@@ -360,6 +360,7 @@ export const ListCoordinationIssuesParams = z.object({
 export const ListCoordinationIssuesQuery = z.object({
   "status": s.CoordinationIssueStatusSchema.optional(),
   "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
   "q": z.string().min(1).max(200).optional(),
 });
 export const CreateCoordinationIssueParams = z.object({

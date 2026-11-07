@@ -49,6 +49,7 @@ export function bimRoutes(database: Database, svc: BimService) {
           svc.listIssues(s, project(input.params), {
             ...(q.status ? { status: q.status } : {}),
             ...(q.modelId ? { modelId: q.modelId } : {}),
+            ...(q.drawingRevisionId ? { drawingRevisionId: q.drawingRevisionId } : {}),
             ...(q.q ? { q: q.q } : {}),
           }),
         ),

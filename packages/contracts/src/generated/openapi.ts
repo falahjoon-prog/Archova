@@ -12464,6 +12464,10 @@ export interface components {
             elementGuids: string[];
             location: string;
             rfiId: string | null;
+            /** @description Where on a drawing revision the issue was raised. */
+            pin: components["schemas"]["DrawingPin"] | null;
+            /** @description Snapshot of the sheet area, taken when raised. */
+            snapshotFileId: string | null;
             /** Format: date-time */
             resolvedAt: string | null;
             commentCount: number;
@@ -12498,6 +12502,8 @@ export interface components {
             elementGuids?: string[];
             location?: string;
             rfiId?: string;
+            pin?: components["schemas"]["DrawingPin"];
+            snapshotFileId?: string;
         };
         UpdateCoordinationIssueRequest: {
             title?: string;
@@ -12511,6 +12517,8 @@ export interface components {
             elementGuids?: string[];
             location?: string;
             rfiId?: string | null;
+            pin?: components["schemas"]["DrawingPin"] | null;
+            snapshotFileId?: string | null;
         };
         AddCoordinationCommentRequest: {
             body: string;
@@ -20063,6 +20071,8 @@ export interface operations {
             query?: {
                 status?: components["schemas"]["CoordinationIssueStatus"];
                 modelId?: string;
+                /** @description Only the issues pinned on this drawing revision. */
+                drawingRevisionId?: string;
                 q?: string;
             };
             header?: never;
