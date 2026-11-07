@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
-import { Alert, Button, NovaSuggestion, Select, TextField, Textarea } from '@archova/ui';
+import { Alert, Button, Checkbox, NovaSuggestion, Select, TextField, Textarea } from '@archova/ui';
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -23,6 +23,9 @@ import {
   type DefectStage,
 } from '../lib/types';
 
+const toggle = (list: string[], id: string, on: boolean) =>
+  on ? [...new Set([...list, id])] : list.filter((x) => x !== id);
+
 export const emptyDefectInput = (): DefectInput => ({
   title: '',
   description: '',
@@ -34,6 +37,10 @@ export const emptyDefectInput = (): DefectInput => ({
   drawing: null,
   assigneeCompanyId: null,
   assigneeUserId: null,
+  assigneeUserIds: [],
+  managerUserId: null,
+  finalApproverUserId: null,
+  distributionUserIds: [],
   dueDate: null,
   category: null,
   photos: [],
@@ -290,18 +297,25 @@ export function DefectForm({ busy, error, initial, onSave }: DefectFormProps) {
           onChange={(e) => {
             set('assigneeCompanyId', e.target.value || null);
             set('assigneeUserId', null);
+            set('assigneeUserIds', []);
             // A company with one trade fills it in; Nova's or the person's choice stays.
             const trades = dir.companies.find((c) => c.id === e.target.value)?.trades ?? [];
             if (!v.trade && trades.length === 1) set('trade', trades[0]!);
           }}
         />
         <Select
-          label="Person (optional)"
-          value={v.assigneeUserId ?? ''}
-          placeholder={people.length ? 'Anyone at the company' : 'No people listed'}
-          disabled={!people.length}
-          options={people.map((p) => ({ value: p.id, label: p.name }))}
-          onChange={(e) => set('assigneeUserId', e.target.value || null)}
+          label="Punch item manager"
+          value={v.managerUserId ?? ''}
+          placeholder="Choose a manager"
+          options={dir.people.map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(e) => set('managerUserId', e.target.value || null)}
+        />
+        <Select
+          label="Final approver"
+          value={v.finalApproverUserId ?? ''}
+          placeholder="Anyone who can close"
+          options={dir.people.map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(e) => set('finalApproverUserId', e.target.value || null)}
         />
         <TextField
           label="Due date"
@@ -329,6 +343,38 @@ export function DefectForm({ busy, error, initial, onSave }: DefectFormProps) {
           onChange={(e) => set('priority', e.target.value as DefectPriority)}
         />
       </div>
+      <fieldset className="fieldset">
+        <legend>Assignees</legend>
+        {people.length ? (
+          people.map((p) => (
+            <Checkbox
+              key={p.id}
+              label={p.name}
+              checked={v.assigneeUserIds.includes(p.id)}
+              onChange={(e) => {
+                const ids = toggle(v.assigneeUserIds, p.id, e.target.checked);
+                set('assigneeUserIds', ids);
+                set('assigneeUserId', ids[0] ?? null);
+              }}
+            />
+          ))
+        ) : (
+          <p className="u-muted u-m-0">Choose a company to pick people at it.</p>
+        )}
+      </fieldset>
+      <fieldset className="fieldset">
+        <legend>Distribution members (told about changes, not assigned)</legend>
+        {dir.people.map((p) => (
+          <Checkbox
+            key={p.id}
+            label={p.name}
+            checked={v.distributionUserIds.includes(p.id)}
+            onChange={(e) =>
+              set('distributionUserIds', toggle(v.distributionUserIds, p.id, e.target.checked))
+            }
+          />
+        ))}
+      </fieldset>
       {live ? (
         <PinPlacer
           value={v.drawing}

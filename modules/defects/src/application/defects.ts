@@ -52,6 +52,14 @@ export interface DefectFields {
   stage?: DefectStage;
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
+  /** All assignees (people in the assigned company). When given it wins over `assigneeUserId`. */
+  assigneeUserIds?: string[];
+  /** Punch Item Manager: runs the item on the builder's side. */
+  managerUserId?: string | null;
+  /** Final Approver: the one person who closes, rejects or reopens it. */
+  finalApproverUserId?: string | null;
+  /** Notified of changes but not assigned. */
+  distributionUserIds?: string[];
   dueDate?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
   /** The warranty item a liability-period claim is against; null clears it. */
@@ -101,8 +109,10 @@ export function createDefectService(deps: DefectsDeps) {
       ? sql`(${defects.createdBy} = ${v.userId} or ${defects.raisedByCompanyId} = ${company})`
       : sql`${defects.createdBy} = ${v.userId}`;
     const assigned = company ? sql`${defects.assigneeCompanyId} = ${company}` : sql`false`;
+    const named = sql`(${defects.managerUserId} = ${v.userId} or ${defects.finalApproverUserId} = ${v.userId}
+             or ${v.userId}::uuid = any(${defects.assigneeUserIds}) or ${v.userId}::uuid = any(${defects.distributionUserIds}))`;
     return sql`((${defects.status} = 'draft' and ${defects.createdBy} = ${v.userId})
-             or (${defects.status} <> 'draft' and (${raised} or ${assigned})))`;
+             or (${defects.status} <> 'draft' and (${raised} or ${assigned} or ${named})))`;
   }
 
   async function list(
@@ -234,6 +244,15 @@ export function createDefectService(deps: DefectsDeps) {
       );
   }
 
+  /** A named role holder (manager, approver, distribution member) must be on the project, any company. */
+  async function checkMember(scope: TenantScope, projectId: string, userId: string, path: string) {
+    const m = await deps.platform.getProjectMembership(scope, projectId, userId);
+    if (!m)
+      throw new AppError('defect.assignee_not_on_project', 'The person must be on the project.', [
+        { path, message: 'Not a member of the project' },
+      ]);
+  }
+
   /** Resolves a drawing pin to its revision and sheet; a draft revision is not a place yet. */
   async function resolvePin(
     scope: TenantScope,
@@ -275,6 +294,18 @@ export function createDefectService(deps: DefectsDeps) {
     });
   }
 
+  /** Everyone named on the item except the actor: manager, approver, assignees and the distribution list. */
+  function notifyList(r: DefectRow, actorId: string): string[] {
+    const all = new Set<string>([
+      ...(r.managerUserId ? [r.managerUserId] : []),
+      ...(r.finalApproverUserId ? [r.finalApproverUserId] : []),
+      ...r.assigneeUserIds,
+      ...r.distributionUserIds,
+    ]);
+    all.delete(actorId);
+    return [...all];
+  }
+
   async function changed(scope: TenantScope, r: DefectRow) {
     await scope.recordChange({
       module: 'defects',
@@ -304,9 +335,34 @@ export function createDefectService(deps: DefectsDeps) {
       if (f.assigneeCompanyId) await checkAssigneeCompany(scope, projectId, f.assigneeCompanyId);
       v.assigneeCompanyId = f.assigneeCompanyId;
       // A new company drops the old company's person unless the caller names one.
-      if (f.assigneeUserId === undefined) v.assigneeUserId = null;
+      if (f.assigneeUserId === undefined && f.assigneeUserIds === undefined) {
+        v.assigneeUserId = null;
+        v.assigneeUserIds = [];
+      }
     }
-    if (f.assigneeUserId !== undefined) v.assigneeUserId = f.assigneeUserId;
+    // `assigneeUserId` is the first of `assigneeUserIds`; the two are always written together.
+    if (f.assigneeUserIds !== undefined) {
+      v.assigneeUserIds = [...new Set(f.assigneeUserIds)];
+      v.assigneeUserId = v.assigneeUserIds[0] ?? null;
+    } else if (f.assigneeUserId !== undefined) {
+      v.assigneeUserId = f.assigneeUserId;
+      v.assigneeUserIds = f.assigneeUserId ? [f.assigneeUserId] : [];
+    }
+    if (f.managerUserId !== undefined) {
+      if (f.managerUserId) await checkMember(scope, projectId, f.managerUserId, 'managerUserId');
+      v.managerUserId = f.managerUserId;
+    }
+    if (f.finalApproverUserId !== undefined) {
+      if (f.finalApproverUserId)
+        await checkMember(scope, projectId, f.finalApproverUserId, 'finalApproverUserId');
+      v.finalApproverUserId = f.finalApproverUserId;
+    }
+    if (f.distributionUserIds !== undefined) {
+      const ids = [...new Set(f.distributionUserIds)];
+      for (const [i, id] of ids.entries())
+        await checkMember(scope, projectId, id, `distributionUserIds/${i}`);
+      v.distributionUserIds = ids;
+    }
     if (f.pin) Object.assign(v, await resolvePin(scope, projectId, f.pin));
     if (f.warrantyItemId !== undefined) {
       if (f.warrantyItemId) {
@@ -345,13 +401,8 @@ export function createDefectService(deps: DefectsDeps) {
       throw new AppError('defect.location_required', 'Pin the defect on a drawing.', [
         { path: 'pin', message: 'A drawing pin is required' },
       ]);
-    if (values.assigneeUserId)
-      await checkAssigneeUser(
-        scope,
-        projectId,
-        values.assigneeUserId,
-        values.assigneeCompanyId ?? null,
-      );
+    for (const u of values.assigneeUserIds ?? [])
+      await checkAssigneeUser(scope, projectId, u, values.assigneeCompanyId ?? null);
     // A phone raising a defect offline picked its id already; the same id is what it pulls back.
     const id = input.id ?? uuidv7();
     const number = await nextNumber(scope, projectId, 'defect');
@@ -414,8 +465,8 @@ export function createDefectService(deps: DefectsDeps) {
     const values = await fieldValues(scope, projectId, patch);
     const company =
       'assigneeCompanyId' in values ? (values.assigneeCompanyId ?? null) : defect.assigneeCompanyId;
-    if (values.assigneeUserId)
-      await checkAssigneeUser(scope, projectId, values.assigneeUserId, company);
+    for (const u of values.assigneeUserIds ?? [])
+      await checkAssigneeUser(scope, projectId, u, company);
     // An issued defect always has a company to fix it.
     if (defect.status !== 'draft' && company === null)
       throw new AppError('defect.incomplete', 'An issued defect needs an assigned company.', [
@@ -446,6 +497,8 @@ export function createDefectService(deps: DefectsDeps) {
         ...(patch.assigneeCompanyId !== undefined
           ? { assigneeCompanyId: [defect.assigneeCompanyId, row.assigneeCompanyId] }
           : {}),
+        // Who to tell: the people on the item other than the one who changed it.
+        notify: notifyList(row, scope.ctx.userId),
       },
     });
     return detail(scope, projectId, defectId);
@@ -478,7 +531,10 @@ export function createDefectService(deps: DefectsDeps) {
     if (!result.ok) {
       const messages: Record<typeof result.code, string> = {
         'defect.invalid_transition': `A defect that is ${defect.status} can't be ${verb(input.action)}.`,
-        'defect.not_allowed': `You can't ${input.action} this defect.`,
+        'defect.not_allowed':
+          defect.finalApproverUserId && ['close', 'reject', 'reopen'].includes(input.action)
+            ? 'Only the final approver can do that.'
+            : `You can't ${input.action} this defect.`,
         'defect.reason_required': 'Give a reason.',
         'defect.photo_required': 'Attach an "after" photo before marking it ready.',
       };
@@ -511,6 +567,11 @@ export function createDefectService(deps: DefectsDeps) {
       values.closedBy = scope.ctx.userId;
     }
     if (input.action === 'reject') values.readyForReviewAt = null;
+    if (input.action === 'reopen') {
+      values.readyForReviewAt = null;
+      values.closedAt = null;
+      values.closedBy = null;
+    }
     if (input.action === 'reassign') {
       if (!input.assigneeCompanyId)
         throw new AppError('validation_failed', 'Name the company that takes it now.', [
@@ -547,6 +608,7 @@ export function createDefectService(deps: DefectsDeps) {
         from: defect.status,
         to: row.status,
         assigneeCompanyId: row.assigneeCompanyId,
+        notify: notifyList(row, scope.ctx.userId),
         photoCount: fileIds.length,
       },
     });
@@ -878,6 +940,8 @@ function verb(action: DefectAction): string {
       return 'reassigned';
     case 'void':
       return 'voided';
+    case 'reopen':
+      return 'reopened';
   }
 }
 
