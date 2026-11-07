@@ -760,6 +760,26 @@ export const ClaimEvidenceServiceRecordListSchema = z.object({
 });
 export type ClaimEvidenceServiceRecordList = z.infer<typeof ClaimEvidenceServiceRecordListSchema>;
 
+export const ClaimPaymentSchema = z.object({
+  "id": z.string().regex(new RegExp("^pay_[0-9A-Za-z]{26}$")),
+  "paidOn": z.string().date(),
+  "amount": FinancialsSignedMoneySchema,
+  "reference": z.string(),
+  "source": z.enum(["manual", "xero", "myob"]),
+  "reversesPaymentId": z.string().regex(new RegExp("^pay_[0-9A-Za-z]{26}$")).nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type ClaimPayment = z.infer<typeof ClaimPaymentSchema>;
+
+export const ClaimPaymentsSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "payments": z.array(ClaimPaymentSchema),
+  "amountDue": z.string().nullable(),
+  "paid": FinancialsSignedMoneySchema,
+  "outstanding": z.string().nullable(),
+});
+export type ClaimPayments = z.infer<typeof ClaimPaymentsSchema>;
+
 export const ClaimStatementSchema = z.object({
   "periodEnd": z.string().date(),
   "receivedOn": z.string().date(),
@@ -5991,6 +6011,13 @@ export const RecordClaimEvidenceServiceRequestSchema = z.object({
 }).strict();
 export type RecordClaimEvidenceServiceRequest = z.infer<typeof RecordClaimEvidenceServiceRequestSchema>;
 
+export const RecordClaimPaymentRequestSchema = z.object({
+  "paidOn": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "reference": z.string().min(1).max(100),
+}).strict();
+export type RecordClaimPaymentRequest = z.infer<typeof RecordClaimPaymentRequestSchema>;
+
 export const RecordClaimStatementRequestSchema = z.object({
   "periodEnd": z.string().date(),
   "receivedOn": z.string().date(),
@@ -6191,6 +6218,11 @@ export const RetentionReleaseSchema = z.object({
 })),
 });
 export type RetentionRelease = z.infer<typeof RetentionReleaseSchema>;
+
+export const ReverseClaimPaymentRequestSchema = z.object({
+  "note": z.string().max(100).optional(),
+}).strict();
+export type ReverseClaimPaymentRequest = z.infer<typeof ReverseClaimPaymentRequestSchema>;
 
 export const RevokeRequestSchema = z.object({
   "token": z.string(),

@@ -2905,6 +2905,24 @@ export const IssuePaymentScheduleParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const ListClaimPaymentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const RecordClaimPaymentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const RecordClaimPaymentBody = s.RecordClaimPaymentRequestSchema;
+export const ReverseClaimPaymentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "paymentId": z.string().regex(new RegExp("^pay_[0-9A-Za-z]{26}$")),
+});
+export const ReverseClaimPaymentBody = s.ReverseClaimPaymentRequestSchema;
 export const RecordClaimStatementParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9565,6 +9583,42 @@ export const operations = {
     params: IssuePaymentScheduleParams,
     query: null,
     body: IssuePaymentScheduleBody,
+  },
+  listClaimPayments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimPaymentsParams,
+    query: null,
+    body: null,
+  },
+  recordClaimPayment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.assess",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimPaymentParams,
+    query: null,
+    body: RecordClaimPaymentBody,
+  },
+  reverseClaimPayment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments/{paymentId}/reverse',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.assess",
+    internal: false,
+    contentType: "application/json",
+    params: ReverseClaimPaymentParams,
+    query: null,
+    body: ReverseClaimPaymentBody,
   },
   recordClaimStatement: {
     method: 'PUT',

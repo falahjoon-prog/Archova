@@ -127,6 +127,7 @@ export const ID_PREFIXES = {
   sovItem: 'sov',
   paymentClaim: 'pcl',
   paymentSchedule: 'psc',
+  payment: 'pay',
   variation: 'var',
   costCode: 'ccd',
   budget: 'bud',

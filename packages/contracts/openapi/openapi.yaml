@@ -12428,6 +12428,73 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: listClaimPayments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: Payments made against a claim, with what is due, paid and still owing. A payee sees only their own contracts.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordClaimPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: >
+        Record a payment made against a claim (builder staff). Needs an issued payment schedule. The claim becomes paid
+        once the amount due, including GST, is met.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimPaymentRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments/{paymentId}/reverse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - name: paymentId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^pay_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reverseClaimPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: Undo a payment by recording the same amount back, dated today. A payment can be reversed once.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReverseClaimPaymentRequest' }
+      responses:
+        '200':
+          description: Reversed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -22051,6 +22118,45 @@ components:
         reference: { type: string, minLength: 1, maxLength: 200 }
         note: { type: string, minLength: 1, maxLength: 2000 }
         reversesMovementId: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+    ClaimPayment:
+      type: object
+      required: [id, paidOn, amount, reference, source, reversesPaymentId, recordedAt]
+      properties:
+        id: { type: string, pattern: '^pay_[0-9A-Za-z]{26}$' }
+        paidOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        reference: { type: string }
+        source: { type: string, enum: [manual, xero, myob] }
+        reversesPaymentId: { type: [string, 'null'], pattern: '^pay_[0-9A-Za-z]{26}$' }
+        recordedAt: { type: string, format: date-time }
+    ClaimPayments:
+      type: object
+      required: [claimId, payments, amountDue, paid, outstanding]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        payments:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimPayment' }
+        amountDue:
+          {
+            type: [string, 'null'],
+            description: 'Including GST; null before a payment schedule is issued',
+          }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        outstanding: { type: [string, 'null'] }
+    RecordClaimPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [paidOn, amount, reference]
+      properties:
+        paidOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+    ReverseClaimPaymentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 100 }
     PaymentSummaryClaim:
       type: object
       required:
