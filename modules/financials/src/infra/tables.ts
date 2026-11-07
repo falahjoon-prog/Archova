@@ -404,6 +404,47 @@ export const commitmentLines = financialsSchema.table('commitment_lines', {
   sort: integer('sort').notNull(),
 });
 
+export const commitmentChangeOrders = financialsSchema.table('commitment_change_orders', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  commitmentId: uuid('commitment_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  amount: money('amount').notNull(),
+  status: text('status')
+    .$type<'draft' | 'submitted' | 'approved' | 'rejected'>()
+    .notNull()
+    .default('draft'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  submittedBy: uuid('submitted_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by'),
+  decisionNote: text('decision_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const commitmentPayments = financialsSchema.table('commitment_payments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  commitmentId: uuid('commitment_id').notNull(),
+  number: integer('number').notNull(),
+  amount: money('amount').notNull(),
+  paidOn: date('paid_on').notNull(),
+  reference: text('reference'),
+  status: text('status').$type<'recorded' | 'void'>().notNull().default('recorded'),
+  voidReason: text('void_reason'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
 export const directCosts = financialsSchema.table('direct_costs', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

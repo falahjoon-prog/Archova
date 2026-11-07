@@ -12229,6 +12229,198 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitment-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getCommitmentSummary
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Totals across the project's commitments, change orders and payments for the Commitments totals bar.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: listCommitmentChangeOrders
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Change orders on a commitment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentChangeOrderList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCommitmentChangeOrder
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Raise a draft change order that adds to or reduces an approved commitment, against one budget line. Amount is signed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentChangeOrderRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentChangeOrder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/CommitmentChangeOrderId'
+    post:
+      operationId: submitCommitmentChangeOrder
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Submit a draft change order for approval.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentChangeOrder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/CommitmentChangeOrderId'
+    post:
+      operationId: approveCommitmentChangeOrder
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Approve a submitted change order. Moves the commitment value and the budget line's committed cost.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentChangeOrder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/CommitmentChangeOrderId'
+    post:
+      operationId: rejectCommitmentChangeOrder
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Reject a submitted change order. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentChangeOrder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: listCommitmentPayments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Payments recorded against a commitment.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentPaymentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordCommitmentPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Record a payment to the vendor against an approved commitment. Capped at the commitment value including approved change orders.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordCommitmentPaymentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentPayment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments/{paymentId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/CommitmentPaymentId'
+    post:
+      operationId: voidCommitmentPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Void a recorded payment. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentVoidRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentPayment' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13279,6 +13471,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+    CommitmentChangeOrderId:
+      name: changeOrderId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cco_[0-9A-Za-z]{26}$' }
+    CommitmentPaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cpy_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -22144,6 +22346,93 @@ components:
               budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
               description: { type: string, minLength: 1, maxLength: 300 }
               amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentChangeOrder:
+      type: object
+      required:
+        [id, number, title, budgetLineId, amount, status, submittedAt, decidedAt, decisionNote]
+      properties:
+        id: { type: string, pattern: '^cco_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        status: { type: string, enum: [draft, submitted, approved, rejected] }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    CommitmentChangeOrderList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentChangeOrder' }
+    CreateCommitmentChangeOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [title, budgetLineId, amount]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    CommitmentPayment:
+      type: object
+      required: [id, number, amount, paidOn, reference, status, voidReason]
+      properties:
+        id: { type: string, pattern: '^cpy_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        paidOn: { type: string, format: date }
+        reference: { type: [string, 'null'] }
+        status: { type: string, enum: [recorded, void] }
+        voidReason: { type: [string, 'null'] }
+    CommitmentPaymentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentPayment' }
+    RecordCommitmentPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [amount, paidOn]
+      properties:
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        paidOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+    CommitmentVoidRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentFigure:
+      type: object
+      required: [count, amount]
+      properties:
+        count: { type: integer }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    CommitmentSummary:
+      type: object
+      required:
+        [
+          approvedCommitments,
+          pendingCommitments,
+          draftCommitments,
+          approvedChangeOrders,
+          pendingChangeOrders,
+          draftChangeOrders,
+          payments,
+        ]
+      properties:
+        approvedCommitments: { $ref: '#/components/schemas/CommitmentFigure' }
+        pendingCommitments: { $ref: '#/components/schemas/CommitmentFigure' }
+        draftCommitments: { $ref: '#/components/schemas/CommitmentFigure' }
+        approvedChangeOrders: { $ref: '#/components/schemas/CommitmentFigure' }
+        pendingChangeOrders: { $ref: '#/components/schemas/CommitmentFigure' }
+        draftChangeOrders: { $ref: '#/components/schemas/CommitmentFigure' }
+        payments: { $ref: '#/components/schemas/CommitmentFigure' }
     CommitmentDecisionRequest:
       type: object
       additionalProperties: false

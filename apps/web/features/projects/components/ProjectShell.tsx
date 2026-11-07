@@ -196,7 +196,7 @@ export function projectToolGroups(
       label: 'Budget',
       icon: BudgetIcon,
     },
-    canRead('commitments') && {
+    canRead('payment_claims') && {
       href: webRoutes.commitments(orgSlug, projectId),
       label: 'Commitments',
       icon: BudgetIcon,
