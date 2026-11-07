@@ -110,7 +110,12 @@ export const heuristicBudgetReview: FakeResponder = (req) => {
   const asksReason = /<question>[^<]*reason/i.test(text);
   const points: BudgetReviewOutput['points'] = findings.slice(0, 8).map((m) => ({
     findingId: m[1]!,
-    text: m[4]!.replace(/&lt;/g, '<').replace(/&gt;/g, '>').slice(0, 300),
+    text: m[4]!
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .slice(0, 300),
   }));
   const options: BudgetReviewOutput['options'] = findings.slice(0, 10).map((m) => ({
     findingId: m[1]!,

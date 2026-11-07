@@ -83,3 +83,24 @@ describe('reviewBudgetAdvice', () => {
     expect(summarySentence({ ...facts, findings: [] })).toMatch(/nothing to flag/);
   });
 });
+
+describe('reviewBudgetAdvice, harder inputs', () => {
+  it('catches amounts written without a dollar sign', () => {
+    expect(figuresIn('AUD 130000 and 99,000 dollars and $5')).toEqual([13000000, 9900000, 500]);
+    const r = reviewBudgetAdvice(out({ reply: 'Add 999999 dollars. It is $10,000 over.' }), facts);
+    expect(r.reply).toBe('It is $10,000 over.');
+  });
+
+  it('takes links and email addresses out of everything Nova wrote', () => {
+    const r = reviewBudgetAdvice(
+      out({
+        reply: 'See https://evil.example/pay now. The line is over.',
+        points: [{ findingId: null, text: 'Email boss@evil.example for details.' }],
+        draftReason: 'Per www.evil.example/x the commitment grew.',
+      }),
+      facts,
+    );
+    expect(JSON.stringify(r)).not.toMatch(/evil/);
+    expect(r.notes).toContain('Links and email addresses were removed.');
+  });
+});

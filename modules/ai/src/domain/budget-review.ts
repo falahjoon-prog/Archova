@@ -6,12 +6,27 @@ import type { BudgetReviewOutput, ReviewFinding } from '@archova/ai-prompts';
 export const BUDGET_REVIEW_DISCLAIMER =
   'Nova is an AI assistant, not an accountant. Nova suggests; you decide, and nothing in the budget changes from here.';
 
-const MONEY = /\$\s?(\d[\d,]*(?:\.\d{1,2})?)/g;
+const NUM = String.raw`(\d[\d,]*(?:\.\d{1,2})?)`;
+// "$130,000", "AUD 130000", "130000 dollars": any way of writing an amount of money that a reader would take as one.
+const MONEY = new RegExp(
+  String.raw`(?:\$|\bAUD|\bA\$)\s?${NUM}|${NUM}\s?(?:dollars?|AUD|bucks)\b`,
+  'gi',
+);
 
-/** The dollar figures in some text, in cents. */
+/** The money figures in some text, in cents. */
 export function figuresIn(text: string): number[] {
-  return [...text.matchAll(MONEY)].map((m) => Math.round(Number(m[1]!.replace(/,/g, '')) * 100));
+  return [...text.matchAll(MONEY)].map((m) =>
+    Math.round(Number((m[1] ?? m[2])!.replace(/,/g, '')) * 100),
+  );
 }
+
+const LINK = /\b(?:https?:\/\/|www\.)\S+|\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+/gi;
+/** Text with links and email addresses taken out; the draft reason gets pasted into adjustments, so none may ride along. */
+export const withoutLinks = (t: string) =>
+  t
+    .replace(LINK, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 
 const cents = (v: string) => {
   const neg = v.startsWith('-');
@@ -49,6 +64,19 @@ export function reviewBudgetAdvice(out: BudgetReviewOutput, f: ReviewFacts): Rev
   const supported = (t: string) => figuresIn(t).every((c) => allowed.has(c));
   const known = (id: string | null) => id === null || ids.has(id);
 
+  let linksRemoved = false;
+  const clean = (t: string) => {
+    const c = withoutLinks(t);
+    if (c !== t.trim()) linksRemoved = true;
+    return c;
+  };
+  out = {
+    reply: clean(out.reply),
+    points: out.points.map((p) => ({ ...p, text: clean(p.text) })).filter((p) => p.text),
+    options: out.options.map((o) => ({ ...o, text: clean(o.text) })).filter((o) => o.text),
+    draftReason: out.draftReason ? clean(out.draftReason) || null : null,
+  };
+
   const sentences = out.reply.split(/(?<=[.!?])\s+/).filter(Boolean);
   const kept = sentences.filter(supported);
   if (kept.length < sentences.length)
@@ -79,6 +107,7 @@ export function reviewBudgetAdvice(out: BudgetReviewOutput, f: ReviewFacts): Rev
       'The draft reason used a figure that is not in the budget checks, so it was left out.',
     );
   }
+  if (linksRemoved) notes.push('Links and email addresses were removed.');
   return {
     reply: kept.join(' ') || summarySentence(f),
     points,

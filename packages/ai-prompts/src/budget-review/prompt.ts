@@ -10,7 +10,7 @@ export const MAX_REVIEW_TURNS = 10;
 const Amount = z.string().regex(/^-?\d{1,14}\.\d{2}$/);
 
 export const ReviewFinding = z.object({
-  id: z.string().regex(/^[a-z_]{3,20}:[^\s<>"]{1,40}$/),
+  id: z.string().regex(/^[a-z_]{3,20}:.{1,40}$/),
   kind: z.enum(['over_committed', 'over_spent', 'unbudgeted', 'near_limit', 'large_change']),
   severity: z.enum(['high', 'medium']),
   code: z.string().max(40),
