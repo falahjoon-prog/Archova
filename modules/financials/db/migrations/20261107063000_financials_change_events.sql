@@ -29,12 +29,8 @@ select kernel.enable_retention_guard('financials.change_events');
 
 alter table financials.variations
   add column change_event_id uuid references financials.change_events (id);
-create index variations_change_event on financials.variations (org_id, change_event_id)
-  where change_event_id is not null;
 
 alter table financials.commitments
   add column change_event_id uuid references financials.change_events (id);
-create index commitments_change_event on financials.commitments (org_id, change_event_id)
-  where change_event_id is not null;
 
 select kernel.grant_module_schema('financials');
