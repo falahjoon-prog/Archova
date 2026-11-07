@@ -62,6 +62,7 @@ export type ProjectTool =
   | 'observations'
   | 'swms'
   | 'incidents'
+  | 'insurance'
   | 'inspections'
   | 'late-submissions'
   | 'spec-books'
