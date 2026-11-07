@@ -1,11 +1,17 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queries } from '@/shared/lib/api';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { createReportingApi } from '../data/api';
-import type { ReportConfig, ReportInput } from '../lib/types';
+import type { AuditFilters, ReportConfig, ReportInput } from '../lib/types';
 
 function useApi() {
   const { orgId } = useCurrentOrg();
@@ -79,4 +85,16 @@ export function useReadinessPack() {
 export function useReadinessPdf() {
   const api = useApi();
   return useMutation({ mutationFn: () => api.readinessPdf() });
+}
+
+/** The audit log, newest first, fifty lines at a time. */
+export function useAuditLog(filters: AuditFilters) {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: ['orgs', orgId, 'audit-log', filters],
+    queryFn: ({ pageParam }) => api.auditLog(filters, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
 }

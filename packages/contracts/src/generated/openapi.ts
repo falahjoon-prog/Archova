@@ -590,6 +590,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/recents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The records the caller opened lately, newest first.
+         * @description Only the caller's own views are returned. Pass `projectId` to list one project's (the project home card).
+         */
+        get: operations["listRecentViews"];
+        put?: never;
+        /**
+         * Note that the caller opened a record (idempotent; it moves the record to the top).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. The caller keeps their newest 50 views.
+         */
+        post: operations["recordRecentView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -3238,6 +3265,31 @@ export interface paths {
         };
         /** The tender-readiness pack as a PDF. */
         get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Who did what, when, across the company, newest first. Org owners and admins only.
+         * @description The audit log, read from the events every change writes in the same transaction. Each line is the action
+         *     (`rfis.rfi.created`), the kind of record it touched, the project, the person (or `link` for someone on an
+         *     access link, `system` for the platform) and the time. Event details are never returned. Filter by project,
+         *     module, person and date range; `to` is exclusive.
+         */
+        get: operations["listAuditLog"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6461,6 +6513,74 @@ export interface paths {
          * @description Asks the compliance check first. A blocked sign-in is recorded and returns `outcome: blocked` with the reasons (ATT-AC7).
          */
         post: operations["signInSelf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * My digital Safety ID badge for this project.
+         * @description The caller's own badge: name, company, photo (a short-lived link), emergency contact, QR code value, the
+         *     white card and licences they have recorded (last four characters only, never "verified"), and the site
+         *     inductions they have completed on this project. Nobody else's record is reachable from this call.
+         */
+        get: operations["getMySafetyBadge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear my emergency contact. */
+        put: operations["setMyEmergencyContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or clear my badge photo.
+         * @description The file must be one you uploaded and that has passed scanning. `fileId: null` removes the photo.
+         */
+        put: operations["setMyBadgePhoto"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10355,6 +10475,27 @@ export interface components {
             expiresAt: string;
             filename: string;
         };
+        AuditLogPage: {
+            data: components["schemas"]["AuditEvent"][];
+            nextCursor: string | null;
+        };
+        AuditEvent: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            action: string;
+            module: string;
+            summary: string;
+            entityType: string;
+            projectId: string | null;
+            projectName: string | null;
+            actor: {
+                /** @enum {string} */
+                kind: "user" | "link" | "system";
+                id: string | null;
+                name: string | null;
+            };
+        };
         ReportList: {
             data: components["schemas"]["Report"][];
         };
@@ -11574,6 +11715,28 @@ export interface components {
         NotificationList: {
             data: components["schemas"]["Notification"][];
             unreadCount: number;
+        };
+        /** @enum {string} */
+        RecentViewEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        RecentViewInput: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        RecentView: {
+            entityType: components["schemas"]["RecentViewEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            viewedAt: string;
+        };
+        RecentViewList: {
+            data: components["schemas"]["RecentView"][];
         };
         FeatureFlags: {
             orgId: string;
@@ -14899,7 +15062,7 @@ export interface components {
          */
         DefectStage: "pre_pc" | "pc" | "dlp";
         /** @enum {string} */
-        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void";
+        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void" | "reopen";
         /** @enum {string} */
         DefectSource: "manual" | "inspection" | "ai_suggested";
         Defect: {
@@ -14917,7 +15080,16 @@ export interface components {
             stage: components["schemas"]["DefectStage"];
             pin: components["schemas"]["DrawingPin"] | null;
             assigneeCompanyId: string | null;
+            /** @description The first assignee (kept for older clients). */
             assigneeUserId: string | null;
+            /** @description Everyone the punch item is assigned to, in the assigned company. */
+            assigneeUserIds: string[];
+            /** @description Punch Item Manager. */
+            managerUserId: string | null;
+            /** @description When set, only this person closes, rejects or reopens the item. */
+            finalApproverUserId: string | null;
+            /** @description Told about changes but not assigned. */
+            distributionUserIds: string[];
             /** Format: date */
             dueDate: string | null;
             /** @description Open or disputed and past its due date in the project's time zone */
@@ -15777,6 +15949,10 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
             assigneeUserId?: components["schemas"]["UserRef"];
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"];
+            finalApproverUserId?: components["schemas"]["UserRef"];
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
@@ -15792,13 +15968,17 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
             assigneeUserId?: components["schemas"]["UserRef"] | null;
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"] | null;
+            finalApproverUserId?: components["schemas"]["UserRef"] | null;
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];
         };
         DefectTransitionRequest: {
             action: components["schemas"]["DefectAction"];
-            /** @description Required for reject, dispute and void. A reject reason is shown to the subcontractor. */
+            /** @description Required for reject, dispute, reopen and void. A reject reason is shown to the subcontractor. */
             reason?: string;
             /** @description Photos for this step. Marking ready for review needs at least one (DEF-AC5). */
             fileIds?: components["schemas"]["FileRef"][];
@@ -16418,6 +16598,50 @@ export interface components {
             /** @enum {string} */
             status: "active" | "inactive";
             version: number;
+        };
+        EmergencyContact: {
+            name: string;
+            relationship: string | null;
+            phone: string;
+        };
+        SetEmergencyContactRequest: {
+            /** @description The person to call in an emergency, or null to clear it. */
+            contact: {
+                name: string;
+                relationship?: string | null;
+                phone: string;
+            } | null;
+        };
+        SetBadgePhotoRequest: {
+            /** Format: uuid */
+            fileId: string | null;
+        };
+        SafetyBadge: {
+            workerId: string;
+            fullName: string;
+            companyName: string | null;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            /** @description The text the badge QR encodes. It identifies the badge only; reading anything behind it needs a sign-in. */
+            qrValue: string;
+            /** @description Short-lived link; fetch a new badge when it expires. */
+            photoUrl: string | null;
+            emergencyContact: components["schemas"]["EmergencyContact"] | null;
+            credentials: {
+                kind: string;
+                numberLast4: string;
+                /** Format: date */
+                expiresOn: string | null;
+                /** @enum {string} */
+                status: "recorded" | "sighted";
+            }[];
+            inductions: {
+                title: string;
+                /** Format: date-time */
+                completedAt: string;
+                /** Format: date */
+                expiresOn: string | null;
+            }[];
         };
         WorkerList: {
             data: components["schemas"]["Worker"][];
@@ -18958,6 +19182,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Notification"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRecentViews: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                /** @description At most this many rows (default 10, at most 50). */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recent views */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentViewList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRecentView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecentViewInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -22903,6 +23179,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAuditLog: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                module?: string;
+                actorId?: string;
+                from?: string;
+                to?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -28536,6 +28843,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMySafetyBadge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEmergencyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMyBadgePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBadgePhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated badge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyBadge"];
                 };
             };
             default: components["responses"]["Problem"];

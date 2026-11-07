@@ -97,6 +97,17 @@ export const MarkNotificationReadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "notificationId": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
 });
+export const ListRecentViewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListRecentViewsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(50).optional(),
+});
+export const RecordRecentViewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const RecordRecentViewBody = s.RecentViewInputSchema;
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -941,6 +952,18 @@ export const GetReadinessPackParams = z.object({
 });
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListAuditLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListAuditLogQuery = z.object({
+  "projectId": z.string().optional(),
+  "module": z.string().max(40).optional(),
+  "actorId": z.string().optional(),
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
 });
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -2084,6 +2107,20 @@ export const SignInSelfParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const SignInSelfBody = s.SelfSignInRequestSchema;
+export const GetMySafetyBadgeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyEmergencyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyEmergencyContactBody = s.SetEmergencyContactRequestSchema;
+export const SetMyBadgePhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetMyBadgePhotoBody = s.SetBadgePhotoRequestSchema;
 export const SignOutSelfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3604,6 +3641,30 @@ export const operations = {
     params: MarkNotificationReadParams,
     query: null,
     body: null,
+  },
+  listRecentViews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/recents',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListRecentViewsParams,
+    query: ListRecentViewsQuery,
+    body: null,
+  },
+  recordRecentView: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/recents',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: RecordRecentViewParams,
+    query: null,
+    body: RecordRecentViewBody,
   },
   listProjects: {
     method: 'GET',
@@ -5260,6 +5321,18 @@ export const operations = {
     contentType: null,
     params: GetReadinessPackPdfParams,
     query: null,
+    body: null,
+  },
+  listAuditLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/audit-log',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.audit.read",
+    internal: false,
+    contentType: null,
+    params: ListAuditLogParams,
+    query: ListAuditLogQuery,
     body: null,
   },
   listReports: {
@@ -7616,6 +7689,42 @@ export const operations = {
     params: SignInSelfParams,
     query: null,
     body: SignInSelfBody,
+  },
+  getMySafetyBadge: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: null,
+    params: GetMySafetyBadgeParams,
+    query: null,
+    body: null,
+  },
+  setMyEmergencyContact: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/emergency-contact',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SetMyEmergencyContactParams,
+    query: null,
+    body: SetMyEmergencyContactBody,
+  },
+  setMyBadgePhoto: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/me/photo',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SetMyBadgePhotoParams,
+    query: null,
+    body: SetMyBadgePhotoBody,
   },
   signOutSelf: {
     method: 'POST',
