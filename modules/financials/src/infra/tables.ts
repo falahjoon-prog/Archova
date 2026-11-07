@@ -71,6 +71,7 @@ export const variations = financialsSchema.table('variations', {
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
   costCodeId: uuid('cost_code_id'),
+  changeEventId: uuid('change_event_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
@@ -386,6 +387,7 @@ export const commitments = financialsSchema.table('commitments', {
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
   overBudgetOverride: boolean('over_budget_override').notNull().default(false),
+  changeEventId: uuid('change_event_id'),
   sourcePackageId: uuid('source_package_id'),
   sourceQuoteId: uuid('source_quote_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -402,6 +404,29 @@ export const commitmentLines = financialsSchema.table('commitment_lines', {
   description: text('description').notNull(),
   amount: money('amount').notNull(),
   sort: integer('sort').notNull(),
+});
+
+export const changeEvents = financialsSchema.table('change_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  reason: text('reason')
+    .$type<'design_change' | 'latent_condition' | 'client_request' | 'rfi' | 'other'>()
+    .notNull(),
+  estimate: money('estimate'),
+  status: text('status')
+    .$type<'open' | 'converted_to_variation' | 'converted_to_commitment' | 'closed'>()
+    .notNull()
+    .default('open'),
+  closedNote: text('closed_note'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedBy: uuid('closed_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
 });
 
 export const directCosts = financialsSchema.table('direct_costs', {

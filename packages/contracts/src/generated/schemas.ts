@@ -663,6 +663,55 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ChangeEventReasonSchema = z.enum(["design_change", "latent_condition", "client_request", "rfi", "other"]);
+export type ChangeEventReason = z.infer<typeof ChangeEventReasonSchema>;
+
+export const ChangeEventStatusSchema = z.enum(["open", "converted_to_variation", "converted_to_commitment", "closed"]);
+export type ChangeEventStatus = z.infer<typeof ChangeEventStatusSchema>;
+
+export const ChangeEventSchema = z.object({
+  "id": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "reason": ChangeEventReasonSchema,
+  "estimate": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable(),
+  "status": ChangeEventStatusSchema,
+  "closedNote": z.string().nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ChangeEvent = z.infer<typeof ChangeEventSchema>;
+
+export const VariationStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "withdrawn"]);
+export type VariationStatus = z.infer<typeof VariationStatusSchema>;
+
+export const CommitmentStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "void"]);
+export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
+
+export const ChangeEventDetailSchema = z.intersection(ChangeEventSchema, z.object({
+  "variations": z.array(z.object({
+  "id": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "status": VariationStatusSchema,
+  "amount": FinancialsMoneySchema,
+})),
+  "commitments": z.array(z.object({
+  "id": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "status": CommitmentStatusSchema,
+  "total": FinancialsMoneySchema,
+})),
+}));
+export type ChangeEventDetail = z.infer<typeof ChangeEventDetailSchema>;
+
+export const ChangeEventListSchema = z.object({
+  "data": z.array(ChangeEventSchema),
+});
+export type ChangeEventList = z.infer<typeof ChangeEventListSchema>;
+
 export const ClaimEvidenceDeliverySchema = z.object({
   "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
   "sendProof": z.object({
@@ -769,13 +818,15 @@ export const ClaimStatementSchema = z.object({
 });
 export type ClaimStatement = z.infer<typeof ClaimStatementSchema>;
 
+export const CloseChangeEventRequestSchema = z.object({
+  "note": z.string().min(1).max(5000),
+}).strict();
+export type CloseChangeEventRequest = z.infer<typeof CloseChangeEventRequestSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
 export type CloseRfiRequest = z.infer<typeof CloseRfiRequestSchema>;
-
-export const CommitmentStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "void"]);
-export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
 
 export const CommitmentSchema = z.object({
   "id": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
@@ -786,6 +837,7 @@ export const CommitmentSchema = z.object({
   "status": CommitmentStatusSchema,
   "total": FinancialsMoneySchema,
   "overBudgetOverride": z.boolean(),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")).nullable(),
   "submittedAt": z.string().datetime({ offset: true }).nullable(),
   "decidedAt": z.string().datetime({ offset: true }).nullable(),
   "decisionNote": z.string().nullable(),
@@ -1544,6 +1596,14 @@ export const CreateBudgetSnapshotRequestSchema = z.object({
 }).strict();
 export type CreateBudgetSnapshotRequest = z.infer<typeof CreateBudgetSnapshotRequestSchema>;
 
+export const CreateChangeEventRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().min(1).max(5000).optional(),
+  "reason": ChangeEventReasonSchema,
+  "estimate": FinancialsMoneySchema.optional(),
+}).strict();
+export type CreateChangeEventRequest = z.infer<typeof CreateChangeEventRequestSchema>;
+
 export const CreateCommitmentFromAwardRequestSchema = z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
 }).strict();
@@ -1553,6 +1613,7 @@ export const CreateCommitmentRequestSchema = z.object({
   "kind": z.enum(["subcontract", "purchase_order"]),
   "title": z.string().min(1).max(300),
   "vendorCompanyId": z.string().nullable().optional(),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")).optional(),
   "lines": z.array(z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
   "description": z.string().min(1).max(300),
@@ -2431,6 +2492,7 @@ export const CreateVariationRequestSchema = z.object({
   "amount": FinancialsMoneySchema,
   "timeImpactDays": z.number().int().min(0).max(3650).optional(),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
 
@@ -7245,6 +7307,14 @@ export const UpdateBudgetLineRequestSchema = z.object({
 }).strict();
 export type UpdateBudgetLineRequest = z.infer<typeof UpdateBudgetLineRequestSchema>;
 
+export const UpdateChangeEventRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(5000).nullable().optional(),
+  "reason": ChangeEventReasonSchema.optional(),
+  "estimate": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
+}).strict();
+export type UpdateChangeEventRequest = z.infer<typeof UpdateChangeEventRequestSchema>;
+
 export const UpdateComplianceDocumentRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),
   "number": z.string().min(1).max(50).nullable().optional(),
@@ -7713,9 +7783,6 @@ export const UploadSchema = z.object({
 });
 export type Upload = z.infer<typeof UploadSchema>;
 
-export const VariationStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "withdrawn"]);
-export type VariationStatus = z.infer<typeof VariationStatusSchema>;
-
 export const VariationSchema = z.object({
   "id": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
@@ -7730,6 +7797,7 @@ export const VariationSchema = z.object({
   "decidedAt": z.string().datetime({ offset: true }).nullable(),
   "decisionNote": z.string().nullable(),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")).nullable(),
 });
 export type Variation = z.infer<typeof VariationSchema>;
 

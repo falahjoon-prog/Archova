@@ -167,6 +167,9 @@ export function financialsRoutes(
             commitments.createCommitment(s, project(input.params), {
               kind: b.kind,
               title: b.title,
+              ...(b.changeEventId
+                ? { changeEventId: ref('changeEvent', b.changeEventId, 'changeEventId') }
+                : {}),
               ...(b.vendorCompanyId !== undefined
                 ? {
                     vendorCompanyId: b.vendorCompanyId
@@ -299,6 +302,9 @@ export function financialsRoutes(
                 ...(b.timeImpactDays !== undefined ? { timeImpactDays: b.timeImpactDays } : {}),
                 ...(b.costCodeId
                   ? { costCodeId: ref('costCode', b.costCodeId, 'costCodeId') }
+                  : {}),
+                ...(b.changeEventId
+                  ? { changeEventId: ref('changeEvent', b.changeEventId, 'changeEventId') }
                   : {}),
               },
             ),

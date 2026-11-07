@@ -12145,6 +12145,106 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/change-events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listChangeEvents
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.change_events.read
+      summary: Change events, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeEventList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createChangeEvent
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.change_events.manage
+      summary: Raise a potential change before it is priced.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateChangeEventRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ChangeEventId'
+    get:
+      operationId: getChangeEvent
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.change_events.read
+      summary: One change event with the variations and commitments raised from it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeEventDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateChangeEvent
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.change_events.manage
+      summary: Edit a change event that is not closed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateChangeEventRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ChangeEventId'
+    post:
+      operationId: closeChangeEvent
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.change_events.manage
+      summary: Close a change event with a reason. Nothing more can be raised from a closed one.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CloseChangeEventRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeEvent' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/direct-costs:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13415,6 +13515,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    ChangeEventId:
+      name: changeEventId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^chg_[0-9A-Za-z]{26}$' }
     DirectCostId:
       name: directCostId
       in: path
@@ -21987,6 +22092,7 @@ components:
           decidedAt,
           decisionNote,
           costCodeId,
+          changeEventId,
         ]
       properties:
         id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
@@ -22003,6 +22109,7 @@ components:
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
         costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        changeEventId: { type: [string, 'null'], pattern: '^chg_[0-9A-Za-z]{26}$' }
     SetVariationCostCodeRequest:
       type: object
       additionalProperties: false
@@ -22212,6 +22319,7 @@ components:
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
         timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
         costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        changeEventId: { type: string, pattern: '^chg_[0-9A-Za-z]{26}$' }
     VariationDecisionRequest:
       type: object
       additionalProperties: false
@@ -22232,6 +22340,7 @@ components:
           status,
           total,
           overBudgetOverride,
+          changeEventId,
           submittedAt,
           decidedAt,
           decisionNote,
@@ -22245,6 +22354,7 @@ components:
         status: { $ref: '#/components/schemas/CommitmentStatus' }
         total: { $ref: '#/components/schemas/FinancialsMoney' }
         overBudgetOverride: { type: boolean }
+        changeEventId: { type: [string, 'null'], pattern: '^chg_[0-9A-Za-z]{26}$' }
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
@@ -22263,6 +22373,85 @@ components:
         lines:
           type: array
           items: { $ref: '#/components/schemas/CommitmentLine' }
+    ChangeEventReason:
+      type: string
+      enum: [design_change, latent_condition, client_request, rfi, other]
+    ChangeEventStatus:
+      type: string
+      enum: [open, converted_to_variation, converted_to_commitment, closed]
+    ChangeEvent:
+      type: object
+      required:
+        [id, number, title, description, reason, estimate, status, closedNote, closedAt, createdAt]
+      properties:
+        id: { type: string, pattern: '^chg_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        reason: { $ref: '#/components/schemas/ChangeEventReason' }
+        estimate: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        status: { $ref: '#/components/schemas/ChangeEventStatus' }
+        closedNote: { type: [string, 'null'] }
+        closedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ChangeEventList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ChangeEvent' }
+    ChangeEventDetail:
+      allOf:
+        - $ref: '#/components/schemas/ChangeEvent'
+        - type: object
+          required: [variations, commitments]
+          properties:
+            variations:
+              type: array
+              items:
+                type: object
+                required: [id, number, title, status, amount]
+                properties:
+                  id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+                  number: { type: integer }
+                  title: { type: string }
+                  status: { $ref: '#/components/schemas/VariationStatus' }
+                  amount: { $ref: '#/components/schemas/FinancialsMoney' }
+            commitments:
+              type: array
+              items:
+                type: object
+                required: [id, number, title, status, total]
+                properties:
+                  id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+                  number: { type: integer }
+                  title: { type: string }
+                  status: { $ref: '#/components/schemas/CommitmentStatus' }
+                  total: { $ref: '#/components/schemas/FinancialsMoney' }
+    CreateChangeEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title, reason]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        reason: { $ref: '#/components/schemas/ChangeEventReason' }
+        estimate: { $ref: '#/components/schemas/FinancialsMoney' }
+    UpdateChangeEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        reason: { $ref: '#/components/schemas/ChangeEventReason' }
+        estimate: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    CloseChangeEventRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
     DirectCostCategory:
       type: string
       enum: [labour, materials, plant, fees, other]
@@ -22342,6 +22531,7 @@ components:
         kind: { type: string, enum: [subcontract, purchase_order] }
         title: { type: string, minLength: 1, maxLength: 300 }
         vendorCompanyId: { type: [string, 'null'] }
+        changeEventId: { type: string, pattern: '^chg_[0-9A-Za-z]{26}$' }
         lines:
           type: array
           minItems: 1

@@ -348,6 +348,9 @@ export const PROBLEM_CODES = {
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.change_event.not_found': 404,
+  'financials.change_event.closed': 409,
+  'financials.change_event.reason_required': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,
