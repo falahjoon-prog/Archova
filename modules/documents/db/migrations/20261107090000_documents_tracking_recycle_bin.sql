@@ -2,8 +2,6 @@
 -- `deleted_at` already exists; the bin lists documents where it is set, restore clears it.
 
 alter table documents.documents add column deleted_by uuid;
-create index documents_bin on documents.documents (org_id, project_id, deleted_at desc) where deleted_at is not null;
-create index documents_created on documents.documents (org_id, project_id, created_at desc) where deleted_at is null;
 
 -- A person's own watch list. Only the person sees their rows, so there is no version or change feed.
 create table documents.document_tracking (
