@@ -16,6 +16,7 @@ import {
 import { Plus, RfisIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { isOverdue } from '../lib/lifecycle';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { previewDataOnly } from '@/shared/lib/data-mode';
@@ -41,12 +42,21 @@ export function RfiListScreen() {
   const project = useCurrentProject();
   const actor = useActor();
   const dir = useProjectDirectory();
+  const everyRfi = useRfiList(project.projectId, {});
+  const today = todayIn(project.timezone);
   usePublishAssistantScope({
     projectId: project.projectId,
     record: { type: 'rfis', id: 'register' },
+    ...(everyRfi.data
+      ? {
+          counts: {
+            open: everyRfi.data.filter((r) => r.status === 'open').length,
+            overdue: everyRfi.data.filter((r) => isOverdue(r, today)).length,
+          },
+        }
+      : {}),
   });
   const [params, setParams] = useUrlState(['status', 'waiting', 'overdue', 'impact', 'q'] as const);
-  const today = todayIn(project.timezone);
   const status = (RFI_STATUSES as readonly string[]).includes(params.status)
     ? (params.status as RfiStatus)
     : undefined;

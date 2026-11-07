@@ -3,7 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addDays, parseLocalDate } from '@archova/time';
-import { Alert, Button, CitationChip, NovaFeedback, Textarea } from '@archova/ui';
+import { Alert, Button, CitationChip, buttonClassName, NovaFeedback, Textarea } from '@archova/ui';
 import { NovaIcon, X } from '@archova/ui/icons';
 import { AppLink } from '@/shared/layout/AppLink';
 import { resolveCitation } from '@/shared/lib/citations';
@@ -12,6 +12,7 @@ import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNova, sendAnswerFeedback } from '../data/ask';
 import { actionRedirect } from '../data/actions';
+import { startersFor } from '../data/starters';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import {
@@ -106,7 +107,13 @@ export function AssistantPanel() {
       ? { projectId: scope.projectId, projectName: scope.projectName, timezone: scope.timezone }
       : {}),
     ...(scope.record && !dropped.record && !dropped.project ? { record: scope.record } : {}),
+    ...(scope.counts && !dropped.project ? { counts: scope.counts } : {}),
   };
+  const starters = startersFor(
+    scope.record && dropped.record ? { ...scope, record: undefined } : scope,
+    org.orgSlug,
+  );
+  const questions = starters.questions.length ? starters.questions : SUGGESTIONS;
   const chips = [
     ...(effective.projectId
       ? [{ key: 'project' as const, label: effective.projectName ?? 'This project' }]
@@ -236,7 +243,7 @@ export function AssistantPanel() {
             only use what you can see.
           </p>
           <ul className="plain-list stack" aria-label="Suggested questions">
-            {SUGGESTIONS.map((s) => (
+            {questions.map((s) => (
               <li key={s}>
                 <button
                   type="button"
@@ -249,6 +256,17 @@ export function AssistantPanel() {
               </li>
             ))}
           </ul>
+          {starters.actions.length ? (
+            <ul className="row-actions plain-list" aria-label="Quick actions">
+              {starters.actions.map((a) => (
+                <li key={a.key}>
+                  <AppLink className={buttonClassName('secondary', 'ac-button--sm')} href={a.href}>
+                    {a.label}
+                  </AppLink>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 
