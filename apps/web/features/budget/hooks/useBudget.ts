@@ -58,6 +58,15 @@ export function useCreateSnapshot(projectId: string) {
   });
 }
 
+export function useProjectAdjustments(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { projectAdjustments: true }),
+    queryFn: () => source.projectAdjustments(projectId),
+  });
+}
+
 export function useDirectCosts(projectId: string) {
   const { orgId } = useCurrentOrg();
   const source = useBudgetApi();

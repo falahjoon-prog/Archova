@@ -2746,6 +2746,10 @@ export const GetBudgetSnapshotParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "snapshotId": z.string().regex(new RegExp("^bsn_[0-9A-Za-z]{26}$")),
 });
+export const ListProjectBudgetAdjustmentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ListBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9175,6 +9179,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetBudgetSnapshotParams,
+    query: null,
+    body: null,
+  },
+  listProjectBudgetAdjustments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectBudgetAdjustmentsParams,
     query: null,
     body: null,
   },

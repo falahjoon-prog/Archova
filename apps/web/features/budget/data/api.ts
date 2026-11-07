@@ -8,6 +8,7 @@ type S = components['schemas'];
 export type Budget = S['Budget'];
 export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
+export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
 export type CostCode = S['CostCode'];
 export type AddBudgetLine = S['AddBudgetLineRequest'];
 export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
@@ -71,6 +72,12 @@ export function createBudgetApi(orgId: string) {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
         }),
       );
+    },
+    async projectAdjustments(projectId: string): Promise<ProjectBudgetAdjustment[]> {
+      const r = unwrap(
+        await api.GET(`${P}/budget/adjustments`, { params: { path: { orgId, projectId } } }),
+      );
+      return r.data;
     },
     async adjustments(projectId: string, lineId: string): Promise<BudgetAdjustment[]> {
       return unwrap(
