@@ -184,6 +184,22 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
       await tx(input, (s) => budget.deleteLine(s, project(input.params), line(input.params)));
       return { status: 204 };
     },
+    importBudgetLines: async (input) => {
+      const r = await tx(input, (s) =>
+        budget.importLines(
+          s,
+          project(input.params),
+          input.body.rows.map((x) => ({
+            code: x.code,
+            ...(x.codeDescription ? { codeDescription: x.codeDescription } : {}),
+            ...(x.description ? { description: x.description } : {}),
+            original: x.original,
+            ...(x.isMargin ? { isMargin: true } : {}),
+          })),
+        ),
+      );
+      return { status: 201, body: { imported: r.imported, ...toBudgetDto(r) } };
+    },
     lockBudget: async (input) => ({
       status: 200,
       body: toBudgetDto(await tx(input, (s) => budget.lockBudget(s, project(input.params)))),

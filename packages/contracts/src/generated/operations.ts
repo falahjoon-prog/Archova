@@ -2670,6 +2670,11 @@ export const AddBudgetLineParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddBudgetLineBody = s.AddBudgetLineRequestSchema;
+export const ImportBudgetLinesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportBudgetLinesBody = s.ImportBudgetLinesRequestSchema;
 export const UpdateBudgetLineParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8980,6 +8985,18 @@ export const operations = {
     params: AddBudgetLineParams,
     query: null,
     body: AddBudgetLineBody,
+  },
+  importBudgetLines: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/import',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ImportBudgetLinesParams,
+    query: null,
+    body: ImportBudgetLinesBody,
   },
   updateBudgetLine: {
     method: 'PATCH',

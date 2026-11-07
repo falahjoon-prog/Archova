@@ -3249,6 +3249,22 @@ export const HazardSignalSchema = z.object({
 });
 export type HazardSignal = z.infer<typeof HazardSignalSchema>;
 
+export const ImportBudgetLinesRequestSchema = z.object({
+  "rows": z.array(z.object({
+  "code": z.string().min(1).max(30),
+  "codeDescription": z.string().max(200).optional(),
+  "description": z.string().max(300).optional(),
+  "original": z.string().max(20),
+  "isMargin": z.boolean().optional(),
+}).strict()).min(1).max(500),
+}).strict();
+export type ImportBudgetLinesRequest = z.infer<typeof ImportBudgetLinesRequestSchema>;
+
+export const ImportBudgetLinesResultSchema = z.intersection(BudgetSchema, z.object({
+  "imported": z.number().int(),
+}));
+export type ImportBudgetLinesResult = z.infer<typeof ImportBudgetLinesResultSchema>;
+
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
 

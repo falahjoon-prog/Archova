@@ -15,6 +15,7 @@ export type AdjustBudgetLine = S['AdjustBudgetLineRequest'];
 export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
 export type BudgetSnapshot = S['BudgetSnapshot'];
+export type ImportBudgetLinesRequest = S['ImportBudgetLinesRequest'];
 export type DirectCost = S['DirectCost'];
 export type DirectCostList = S['DirectCostList'];
 export type LaborProductivity = S['LaborProductivity'];
@@ -124,6 +125,14 @@ export function createBudgetApi(orgId: string) {
         await api.POST(`${P}/direct-costs/{directCostId}/void`, {
           params: { path: { orgId, projectId, directCostId }, header: idempotencyKey() },
           body: { note },
+        }),
+      );
+    },
+    async importLines(projectId: string, body: ImportBudgetLinesRequest) {
+      return unwrap(
+        await api.POST(`${P}/budget/lines/import`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
         }),
       );
     },

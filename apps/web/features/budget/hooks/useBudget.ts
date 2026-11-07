@@ -10,6 +10,7 @@ import {
   type AdjustBudgetLine,
   type CostCodeProduction,
   type CreateCostCode,
+  type ImportBudgetLinesRequest,
   type RecordDirectCost,
   type UpdateBudgetLine,
   type UpdateCostCode,
@@ -108,6 +109,10 @@ export function useBudgetMutations(projectId: string) {
   return {
     createBudget: useMutation({
       mutationFn: () => source.createBudget(projectId),
+      onSuccess: refresh,
+    }),
+    importLines: useMutation({
+      mutationFn: (body: ImportBudgetLinesRequest) => source.importLines(projectId, body),
       onSuccess: refresh,
     }),
     lock: useMutation({ mutationFn: () => source.lock(projectId), onSuccess: refresh }),
