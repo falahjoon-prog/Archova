@@ -24,6 +24,8 @@ export function createPortfolioService(deps: ReportingDeps) {
         name: p.name,
         number: p.number,
         status: p.status,
+        phase: p.phase,
+        siteLocation: p.siteLocation,
         ...counts,
         budget: budgetView(budget),
         attention: attention(counts),

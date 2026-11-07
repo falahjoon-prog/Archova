@@ -12,7 +12,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { Address } from '@archova/contracts';
-import type { AuState, CompanyType, OrgKind, ProjectStatus } from '@archova/domain';
+import type { AuState, CompanyType, OrgKind, ProjectPhase, ProjectStatus } from '@archova/domain';
 import type { OrgRole } from '@archova/domain/permissions';
 
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -80,6 +80,7 @@ export const projects = platform.table('projects', {
   name: text('name').notNull(),
   number: text('number'),
   status: text('status').$type<ProjectStatus>().notNull(),
+  phase: text('phase').$type<ProjectPhase>(),
   address: jsonb('address').$type<Address>(),
   state: text('state').$type<AuState>(),
   timezone: text('timezone').notNull(),

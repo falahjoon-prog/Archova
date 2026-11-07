@@ -107,6 +107,8 @@ export interface BudgetSummary {
   hasBudget: boolean;
   revisedCents: number;
   forecastFinalCents: number;
+  /** Claimed by subcontractors plus direct costs recorded: what has been spent so far. */
+  spentCents: number;
   /** Revised budget less forecast final cost: negative means the forecast is over budget. */
   varianceCents: number;
   /** Cost codes whose own forecast is over their revised budget. */
@@ -124,6 +126,7 @@ export const budgetView = (b: BudgetSummary) => ({
   hasBudget: b.hasBudget,
   revised: money(b.restricted || !b.hasBudget ? 0 : b.revisedCents),
   forecastFinal: money(b.restricted || !b.hasBudget ? 0 : b.forecastFinalCents),
+  spent: money(b.restricted || !b.hasBudget ? 0 : b.spentCents),
   variance: money(b.restricted || !b.hasBudget ? 0 : b.varianceCents),
   overBudgetCodes: b.restricted || !b.hasBudget ? 0 : b.overBudgetCodes,
 });
