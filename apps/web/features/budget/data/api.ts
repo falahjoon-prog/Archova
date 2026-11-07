@@ -2,7 +2,7 @@
 
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
-import { api } from '@/shared/lib/api';
+import { api, ensureCsrfToken } from '@/shared/lib/api';
 
 type S = components['schemas'];
 export type Budget = S['Budget'];
@@ -10,6 +10,9 @@ export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
 export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
 export type BudgetReviewChecks = S['BudgetReviewChecks'];
+export type BudgetCostReport = S['BudgetCostReport'];
+export type BudgetCostReportItems = S['BudgetCostReportItems'];
+export type CostReportColumn = 'approved' | 'pending' | 'direct';
 export type BudgetFinding = S['BudgetFinding'];
 export type BudgetReviewAdvice = S['BudgetReviewAdvice'];
 export type BudgetReviewTurn = S['BudgetReviewTurn'];
@@ -26,6 +29,10 @@ export type DirectCostList = S['DirectCostList'];
 export type LaborProductivity = S['LaborProductivity'];
 export type LaborProductivityRow = S['LaborProductivityRow'];
 export type CostCodeProduction = S['CostCodeProduction'];
+export type ProductionLogEntry = S['ProductionLogEntry'];
+export type LogQuantity = S['LogQuantityRequest'];
+export type LaborTurn = S['LaborTurn'];
+export type LaborExplanation = S['LaborProductivityExplanation'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
@@ -77,6 +84,22 @@ export function createBudgetApi(orgId: string) {
         }),
       );
     },
+    async costReport(projectId: string): Promise<BudgetCostReport> {
+      return unwrap(
+        await api.GET(`${P}/budget/cost-report`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async costReportItems(
+      projectId: string,
+      lineId: string,
+      column: CostReportColumn,
+    ): Promise<BudgetCostReportItems> {
+      return unwrap(
+        await api.GET(`${P}/budget/lines/{lineId}/cost-report-items`, {
+          params: { path: { orgId, projectId, lineId }, query: { column } },
+        }),
+      );
+    },
     async reviewChecks(projectId: string): Promise<BudgetReviewChecks> {
       return unwrap(
         await api.GET(`${P}/budget/review-checks`, { params: { path: { orgId, projectId } } }),
@@ -125,6 +148,43 @@ export function createBudgetApi(orgId: string) {
       return unwrap(
         await api.PUT(`${P}/cost-codes/{costCodeId}/production`, {
           params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async quantityLog(projectId: string, costCodeId: string): Promise<ProductionLogEntry[]> {
+      return unwrap(
+        await api.GET(`${P}/cost-codes/{costCodeId}/production/log`, {
+          params: { path: { orgId, projectId, costCodeId } },
+        }),
+      ).data;
+    },
+    async logQuantity(projectId: string, costCodeId: string, body: LogQuantity) {
+      return unwrap(
+        await api.POST(`${P}/cost-codes/{costCodeId}/production/log`, {
+          params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async exportLaborProductivity(
+      projectId: string,
+      filter: { divisionId?: string; subJobId?: string },
+    ) {
+      return unwrap(
+        await api.GET(`${P}/reports/labor-productivity/export`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async explainLabor(
+      projectId: string,
+      body: { costCodeId: string; question?: string; history?: LaborTurn[] },
+    ): Promise<LaborExplanation> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/ai/labor-productivity`, {
+          params: { path: { orgId, projectId } },
           body,
         }),
       );

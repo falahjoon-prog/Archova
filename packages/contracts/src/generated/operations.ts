@@ -891,6 +891,13 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const EndDrainGrantsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const EndDrainGrantsBody = z.object({
+  "userId": s.UserRefSchema,
+}).strict();
 export const ListBidderListsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2730,6 +2737,30 @@ export const GetLaborProductivityQuery = z.object({
   "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
   "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 });
+export const ExportLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExportLaborProductivityQuery = z.object({
+  "divisionId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "subJobId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ListCostCodeQuantityLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const LogCostCodeQuantityBody = s.LogQuantityRequestSchema;
+export const ExplainLaborProductivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExplainLaborProductivityBody = s.ExplainLaborProductivityRequestSchema;
 export const SetCostCodeProductionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2757,6 +2788,18 @@ export const GetBudgetSnapshotParams = z.object({
 export const GetBudgetReviewChecksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetCostReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetCostReportItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetCostReportItemsQuery = z.object({
+  "column": z.enum(["approved", "pending", "direct"]),
 });
 export const ListProjectBudgetAdjustmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -5058,6 +5101,18 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  endDrainGrants: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants',
+    module: "sync",
+    auth: "required",
+    permission: "sync.late.review",
+    internal: false,
+    contentType: "application/json",
+    params: EndDrainGrantsParams,
+    query: null,
+    body: EndDrainGrantsBody,
   },
   listBidderLists: {
     method: 'GET',
@@ -9146,6 +9201,54 @@ export const operations = {
     query: GetLaborProductivityQuery,
     body: null,
   },
+  exportLaborProductivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ExportLaborProductivityParams,
+    query: ExportLaborProductivityQuery,
+    body: null,
+  },
+  listCostCodeQuantityLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListCostCodeQuantityLogParams,
+    query: null,
+    body: null,
+  },
+  logCostCodeQuantity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log',
+    module: "financials",
+    auth: "required",
+    permission: "financials.production.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogCostCodeQuantityParams,
+    query: null,
+    body: LogCostCodeQuantityBody,
+  },
+  explainLaborProductivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity',
+    module: "ai",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: "application/json",
+    params: ExplainLaborProductivityParams,
+    query: null,
+    body: ExplainLaborProductivityBody,
+  },
   setCostCodeProduction: {
     method: 'PUT',
     path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production',
@@ -9216,6 +9319,30 @@ export const operations = {
     contentType: null,
     params: GetBudgetReviewChecksParams,
     query: null,
+    body: null,
+  },
+  getBudgetCostReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/cost-report',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetCostReportParams,
+    query: null,
+    body: null,
+  },
+  getBudgetCostReportItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetCostReportItemsParams,
+    query: GetBudgetCostReportItemsQuery,
     body: null,
   },
   listProjectBudgetAdjustments: {

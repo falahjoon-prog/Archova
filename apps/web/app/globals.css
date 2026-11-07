@@ -3402,3 +3402,119 @@ fieldset.worker-card > legend {
   inset-block-end: var(--space-3);
   inset-inline-end: var(--space-3);
 }
+
+/* Budget root cause analysis: flow chart of where a variance comes from. */
+.rc-scroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.rc-svg {
+  display: block;
+  max-inline-size: none;
+}
+.rc-total {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rc-text--over {
+  color: var(--c-status-danger);
+}
+.rc-node--over {
+  fill: var(--c-status-danger);
+  stroke: var(--c-status-danger);
+}
+.rc-node--under {
+  fill: var(--c-status-success);
+  stroke: var(--c-status-success);
+}
+.rc-link {
+  fill: none;
+  opacity: 0.28;
+}
+.rc-node {
+  stroke: none;
+}
+.rc-node--sel {
+  stroke: var(--c-text);
+  stroke-width: 2;
+}
+.rc-node-g[role='button'] {
+  cursor: pointer;
+}
+.rc-node-g:focus-visible {
+  outline: 2px solid var(--c-text);
+  outline-offset: 2px;
+}
+.rc-dim {
+  opacity: 0.18;
+}
+.rc-label {
+  fill: var(--c-text);
+  font-size: 12px;
+}
+.rc-label--sub {
+  fill: var(--c-text-secondary);
+}
+
+/* Drawing register: discipline groups share column widths so the tables line up */
+.drw-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.drw-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.drw-group__title {
+  margin: 0;
+  font-size: var(--font-md);
+}
+.drw-group__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--c-text);
+  cursor: pointer;
+}
+.drw-group__chevron--closed {
+  transform: rotate(-90deg);
+}
+.drw-group .ac-table {
+  table-layout: fixed;
+  min-width: 56rem;
+}
+.drw-group .drw-col-no {
+  width: 8rem;
+}
+.drw-group .drw-col-rev {
+  width: 6rem;
+}
+.drw-group .drw-col-status {
+  width: 9rem;
+}
+.drw-group .drw-col-date {
+  width: 8.5rem;
+}
+.drw-group .drw-col-set {
+  width: 12rem;
+}
+.drw-group .drw-col-open {
+  width: 6rem;
+}
+.drw-group .ac-table td,
+.drw-group .ac-table th {
+  overflow-wrap: anywhere;
+}

@@ -3972,6 +3972,41 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions/end-grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: endDrainGrants
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: End a person's late-send access for this project, so their phone can no longer queue changes.
+      description: |
+        Ends every live drain grant the person holds for the project. Changes already waiting stay in the queue for an
+        admin to accept or reject. Ending is idempotent: `ended` is 0 when nothing was live.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userId]
+              properties:
+                userId: { $ref: '#/components/schemas/UserRef' }
+      responses:
+        '200':
+          description: Ended
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ended]
+                properties:
+                  ended: { type: integer, minimum: 0 }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bidder-lists:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11718,6 +11753,117 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LaborProductivity' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/reports/labor-productivity/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: exportLaborProductivity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The labor productivity report as CSV text, for the same filters.
+      parameters:
+        - {
+            name: divisionId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: subJobId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: The file name, CSV text and row count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [filename, csv, count]
+                properties:
+                  filename: { type: string }
+                  csv: { type: string }
+                  count: { type: integer }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production/log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    get:
+      operationId: listCostCodeQuantityLog
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The latest 100 quantity-in-place entries for a cost code, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductionLogEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logCostCodeQuantity
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.production.log
+      summary: Log quantity put in place for a day. It adds to the cost code's quantity in place; a negative entry corrects and needs a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogQuantityRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entry, quantityComplete]
+                properties:
+                  entry: { $ref: '#/components/schemas/ProductionLogEntry' }
+                  quantityComplete: { type: number }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/labor-productivity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: explainLaborProductivity
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.budget.read
+      summary: Nova suggests why a cost code is behind plan and discusses it. Nothing is changed.
+      description: |
+        Nova reads one cost code's labor productivity figures and recent quantity entries and suggests causes to check on
+        site and questions to ask. The server keeps no conversation: pass `history` from the last answer back with the next
+        `question`. Every figure in Nova's words is checked against the report. Staff only. Uses AI credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExplainLaborProductivityRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaborProductivityExplanation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}/production:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11836,6 +11982,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/cost-report:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetCostReport
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Per budget line, what is approved, pending and spent outside a commitment, and the projected cost.
+      description: |
+        Approved is the lines of approved commitments; pending is the lines of submitted ones (waiting for a
+        decision); non-committed is the direct costs recorded against the line. Projected is the three added up and
+        variance is revised budget less projected, so a negative variance is over budget. Margin lines follow the
+        same rule as the budget. Builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/cost-report-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getBudgetCostReportItems
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The commitment lines or direct costs behind one figure on the cost report.
+      parameters:
+        - name: column
+          in: query
+          required: true
+          schema: { type: string, enum: [approved, pending, direct] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetCostReportItems' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/adjustments:
     parameters:
@@ -21489,7 +21683,7 @@ components:
         totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
     CostCodeProduction:
       type: object
-      required: [uom, budgetedHours, budgetedQuantity, quantityComplete]
+      required: [uom, budgetedHours, budgetedQuantity]
       properties:
         uom:
           {
@@ -21500,14 +21694,78 @@ components:
           }
         budgetedHours: { type: number, minimum: 0, maximum: 9999999999 }
         budgetedQuantity: { type: number, minimum: 0, maximum: 999999999999 }
-        quantityComplete: { type: number, minimum: 0, maximum: 999999999999 }
+        quantityComplete:
+          {
+            type: number,
+            minimum: 0,
+            maximum: 999999999999,
+            description: 'Opening quantity in place; leave out to keep the running total. Progress is logged with the quantity log.',
+          }
     CostCodeProductionSaved:
-      allOf:
-        - $ref: '#/components/schemas/CostCodeProduction'
-        - type: object
-          required: [costCodeId]
-          properties:
-            costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+      type: object
+      required: [costCodeId, uom, budgetedHours, budgetedQuantity, quantityComplete]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        uom: { type: string }
+        budgetedHours: { type: number }
+        budgetedQuantity: { type: number }
+        quantityComplete: { type: number }
+    ProductionLogEntry:
+      type: object
+      required: [id, loggedOn, quantity, note, createdAt]
+      properties:
+        id: { type: string, pattern: '^pgl_[0-9A-Za-z]{26}$' }
+        loggedOn: { type: string, format: date }
+        quantity: { type: number }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    LogQuantityRequest:
+      type: object
+      required: [loggedOn, quantity]
+      properties:
+        loggedOn: { type: string, format: date }
+        quantity: { type: number, minimum: -999999999999, maximum: 999999999999 }
+        note: { type: string, minLength: 1, maxLength: 300 }
+    LaborTurn:
+      type: object
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    ExplainLaborProductivityRequest:
+      type: object
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        question: { type: string, maxLength: 1000 }
+        history:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/LaborTurn' }
+    LaborProductivityExplanation:
+      type: object
+      required: [runId, reply, causes, questions, notes, history, disclaimer]
+      properties:
+        runId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+        reply: { type: string }
+        causes:
+          type: array
+          items:
+            type: object
+            required: [title, why, check, likelihood]
+            properties:
+              title: { type: string }
+              why: { type: string }
+              check: { type: string }
+              likelihood: { type: string, enum: [likely, possible] }
+        questions:
+          type: array
+          items: { type: string }
+        notes: { type: array, items: { type: string } }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/LaborTurn' }
+        disclaimer: { type: string }
     LaborProductivityRow:
       type: object
       required:
@@ -21687,6 +21945,69 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReport:
+      type: object
+      required: [hasBudget, status, lines]
+      properties:
+        hasBudget: { type: boolean }
+        status: { type: string, enum: [draft, locked] }
+        lines:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                lineId,
+                code,
+                codeDescription,
+                description,
+                original,
+                approvedChanges,
+                revised,
+                approved,
+                pending,
+                nonCommitted,
+                projected,
+                variance,
+              ]
+            properties:
+              lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              codeDescription: { type: string }
+              description: { type: string }
+              original: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approvedChanges: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approved: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              pending: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              nonCommitted: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              projected: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetCostReportItems:
+      type: object
+      required: [code, total, groups]
+      properties:
+        code: { type: string }
+        total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        groups:
+          type: array
+          items:
+            type: object
+            required: [kind, sourceId, label, total, items]
+            properties:
+              kind: { type: string, enum: [subcontract, purchase_order, direct_costs] }
+              sourceId: { type: [string, 'null'] }
+              label: { type: string }
+              total: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [number, description, amount]
+                  properties:
+                    number: { type: integer }
+                    description: { type: string }
+                    amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     BudgetReviewChecks:
       type: object
       required: [hasBudget, status, lineCount, totals, findings]
