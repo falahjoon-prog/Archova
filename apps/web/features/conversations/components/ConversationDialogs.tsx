@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Dialog, SkeletonRows, Textarea, TextField } from '@archova/ui';
+import { Button, Dialog, SkeletonRows, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useConversation, usePostMessage, useStartConversation } from '../hooks/useConversations';
 import { initialsOf, relativeAge } from '../lib/time';
+import { MessageField, useMessageField } from './MessageField';
 
 const SUBJECT_MAX = 200;
-const BODY_MAX = 5000;
 
 export function NewConversationDialog({
   projectId,
@@ -23,17 +23,19 @@ export function NewConversationDialog({
   const start = useStartConversation(projectId);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const field = useMessageField(projectId, body, setBody);
   const ready = subject.trim().length > 0 && body.trim().length > 0;
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!ready) return;
     start.mutate(
-      { subject: subject.trim(), body: body.trim() },
+      { subject: subject.trim(), body: body.trim(), mentions: field.mentions() },
       {
         onSuccess: (created) => {
           setSubject('');
           setBody('');
+          field.reset();
           onStarted(created.id);
         },
       },
@@ -51,13 +53,7 @@ export function NewConversationDialog({
           onChange={(e) => setSubject(e.target.value)}
           required
         />
-        <Textarea
-          label="Message"
-          value={body}
-          maxLength={BODY_MAX}
-          onChange={(e) => setBody(e.target.value)}
-          required
-        />
+        <MessageField label="Message" value={body} onChange={setBody} field={field} required />
         <div className="row-actions">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -121,24 +117,27 @@ export function ThreadDialog({
 function ReplyForm({ projectId, conversationId }: { projectId: string; conversationId: string }) {
   const post = usePostMessage(projectId, conversationId);
   const [body, setBody] = useState('');
+  const field = useMessageField(projectId, body, setBody);
   const ready = body.trim().length > 0;
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!ready) return;
-    post.mutate(body.trim(), { onSuccess: () => setBody('') });
+    post.mutate(
+      { body: body.trim(), mentions: field.mentions() },
+      {
+        onSuccess: () => {
+          setBody('');
+          field.reset();
+        },
+      },
+    );
   }
 
   return (
     <form className="stack" onSubmit={submit}>
       <ErrorAlert error={post.error} title="We couldn't send your reply" />
-      <Textarea
-        label="Reply"
-        rows={3}
-        value={body}
-        maxLength={BODY_MAX}
-        onChange={(e) => setBody(e.target.value)}
-      />
+      <MessageField label="Reply" rows={3} value={body} onChange={setBody} field={field} />
       <div className="row-actions">
         <Button type="submit" disabled={!ready} loading={post.isPending}>
           Send reply

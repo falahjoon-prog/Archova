@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, EmptyState, PageHeader, SkeletonRows } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { NewConversationDialog, ThreadDialog } from '../components/ConversationDialogs';
@@ -14,9 +15,11 @@ import { initialsOf, relativeAge } from '../lib/time';
 export function ConversationsScreen() {
   const project = useCurrentProject();
   usePublishAssistantScope({ projectId: project.projectId });
+  const [params] = useUrlState(['thread'] as const);
   const list = useAllConversations(project.projectId);
   const [starting, setStarting] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A mention in the inbox links here with ?thread=<id>, which opens that conversation.
+  const [openId, setOpenId] = useState<string | null>(params.thread || null);
   const threads = list.data?.pages.flatMap((p) => p.data) ?? [];
   const timeZone = project.timezone;
 

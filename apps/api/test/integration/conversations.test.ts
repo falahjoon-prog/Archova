@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { decodeId, uuidv7 } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
@@ -95,5 +97,57 @@ describe('project conversations', () => {
     expect([403, 404]).toContain(
       (await stranger.browser.get(`${s.base}/conversations`)).statusCode,
     );
+  });
+
+  it('notifies mentioned teammates, and only teammates on the project', async () => {
+    const s = await setup();
+    // A second teammate: an org member (builder staff), then added to the project.
+    const mate = await signUp(t.app, 'cnv-mention');
+    await t.adminDb.withTenantTx(
+      {
+        orgId: decodeId('org', s.org.id)!,
+        userId: decodeId('user', s.pm.userId)!,
+        principalType: 'member' as const,
+        orgRole: 'owner' as const,
+        entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+        requestId: 'test',
+      },
+      ({ tx }) =>
+        tx.execute(sql`insert into platform.memberships (id, org_id, user_id, role, status, joined_at)
+                       values (${uuidv7()}, ${decodeId('org', s.org.id)!}, ${decodeId('user', mate.userId)!}, 'member', 'active', now())`),
+    );
+    await addMember(
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      mate.email,
+      'Project Manager',
+      'Chat Builder',
+    );
+
+    // A guest company member cannot be mentioned.
+    const bad = await s.pm.browser.post(`${s.base}/conversations`, {
+      subject: 'Hi',
+      body: 'Hello @steel',
+      mentions: [s.steel.userId],
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const ok = await s.pm.browser.post(`${s.base}/conversations`, {
+      subject: 'Pour',
+      body: 'Hello @mate, can you check the pour?',
+      mentions: [mate.userId, s.pm.userId],
+    });
+    expect(ok.statusCode, ok.body).toBe(201);
+    expect(ok.json().messages[0].mentionedUserIds).toEqual([mate.userId]);
+
+    const inbox = (await mate.browser.get(`/v1/orgs/${s.org.id}/notifications`)).json();
+    const n = inbox.data.find((x: { kind: string }) => x.kind === 'conversations.mention');
+    expect(n.entityType).toBe('conversation');
+    expect(n.entityId).toBe(ok.json().id);
+    expect(n.title).toContain('mentioned you');
+    // The author is never told about their own message.
+    const own = (await s.pm.browser.get(`/v1/orgs/${s.org.id}/notifications`)).json();
+    expect(own.data.some((x: { kind: string }) => x.kind === 'conversations.mention')).toBe(false);
   });
 });

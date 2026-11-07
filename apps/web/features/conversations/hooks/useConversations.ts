@@ -60,7 +60,8 @@ export function useStartConversation(projectId: string) {
   const source = useApi();
   const refresh = useRefresh(projectId);
   return useMutation({
-    mutationFn: (v: { subject: string; body: string }) => source.create(projectId, v),
+    mutationFn: (v: { subject: string; body: string; mentions?: string[] }) =>
+      source.create(projectId, v),
     onSuccess: refresh,
   });
 }
@@ -69,7 +70,8 @@ export function usePostMessage(projectId: string, conversationId: string) {
   const source = useApi();
   const refresh = useRefresh(projectId);
   return useMutation({
-    mutationFn: (body: string) => source.post(projectId, conversationId, body),
+    mutationFn: (v: { body: string; mentions?: string[] }) =>
+      source.post(projectId, conversationId, v),
     onSuccess: refresh,
   });
 }
