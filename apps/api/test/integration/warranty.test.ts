@@ -5,6 +5,7 @@ import {
   addMember,
   createOrg,
   createProject,
+  API_HOST,
   createTestContext,
   signUp,
   uploadBytes,
@@ -179,6 +180,88 @@ describe('Warranty and defects liability', () => {
     expect(after.json().defect.warrantyItemId).toBeNull();
     expect(after.json().events.map((e: { action: string }) => e.action)).toContain(
       'warranty_unlinked',
+    );
+  });
+});
+
+describe('Warranty access rules', () => {
+  it('scopes subcontractors to their own items, refuses writes from readers, and stays off the public API', async () => {
+    const pm = await signUp(t.app, 'warn-pm');
+    const subA = await signUp(t.app, 'warn-sub-a');
+    const subB = await signUp(t.app, 'warn-sub-b');
+    const client = await signUp(t.app, 'warn-client');
+    const org = await createOrg(pm.browser, 'Warranty Access Builder');
+    const project = await createProject(pm.browser, org.id, { name: 'Tower N', state: 'QLD' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+    const coA = await addMember(
+      pm.browser,
+      org.id,
+      project.id,
+      subA.email,
+      'Subcontractor',
+      'Roofers A',
+    );
+    await addMember(pm.browser, org.id, project.id, subB.email, 'Subcontractor', 'Roofers B');
+    await addMember(pm.browser, org.id, project.id, client.email, 'Client', 'Owner Co');
+
+    const mine = (
+      await pm.browser.post(`${base}/warranty-items`, {
+        name: 'Gutters',
+        system: 'roof',
+        responsibleType: 'subcontractor',
+        responsibleCompanyId: coA.companyId,
+        startDate: '2026-11-01',
+        durationMonths: 60,
+      })
+    ).json().item;
+
+    // The answerable subcontractor sees the item; a different company gets a 404 and an empty list.
+    expect((await subA.browser.get(`${base}/warranty-items/${mine.id}`)).statusCode).toBe(200);
+    expect((await subA.browser.get(`${base}/warranty-items`)).json().data).toHaveLength(1);
+    expect((await subB.browser.get(`${base}/warranty-items/${mine.id}`)).statusCode).toBe(404);
+    expect((await subB.browser.get(`${base}/warranty-items`)).json().data).toEqual([]);
+    expect((await subB.browser.get(`${base}/warranty/summary`)).json()).toMatchObject({
+      itemCount: 0,
+    });
+
+    // Readers cannot write, even the one the item belongs to.
+    for (const who of [subA, subB, client]) {
+      const edit = await who.browser.patch(
+        `${base}/warranty-items/${mine.id}`,
+        { name: 'Changed' },
+        { 'if-match': '"1"' },
+      );
+      expect(edit.statusCode).toBe(403);
+      expect(
+        (await who.browser.del(`${base}/warranty-items/${mine.id}`, { 'if-match': '"1"' }))
+          .statusCode,
+      ).toBe(403);
+    }
+
+    // A personal access token is refused: warranty is not on the public API's allow list, whatever its scopes.
+    const token = (
+      await pm.browser.post(`/v1/orgs/${org.id}/api-tokens`, {
+        name: 'Warehouse',
+        scopes: ['defects:write', 'projects:read'],
+      })
+    ).json().token as string;
+    for (const [method, url] of [
+      ['GET', `${base}/warranty-items`],
+      ['GET', `${base}/warranty/claims`],
+      ['POST', `${base}/warranty-items`],
+    ] as const) {
+      const res = await t.app.inject({
+        method,
+        url,
+        headers: { host: API_HOST, authorization: `Bearer ${token}` },
+        ...(method === 'POST' ? { payload: {} } : {}),
+      });
+      expect([401, 403, 404]).toContain(res.statusCode);
+    }
+
+    // Nothing was changed by any of that.
+    expect((await pm.browser.get(`${base}/warranty-items/${mine.id}`)).json().item.name).toBe(
+      'Gutters',
     );
   });
 });
