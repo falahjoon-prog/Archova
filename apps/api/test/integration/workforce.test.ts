@@ -712,3 +712,29 @@ describe('digital Safety ID badge', () => {
     expect(res.statusCode).toBe(422);
   });
 });
+
+describe('site clearance', () => {
+  it('answers from a scanned Safety ID, and keeps one company out of another’s workers', async () => {
+    const s = await setup('wf-clear');
+    const badge = (await s.sub.browser.get(`${s.base}/attendance/me/badge`)).json();
+    const url = `${s.base}/attendance/clearance`;
+
+    // No white card is recorded yet, so the gate gets a blocking answer with a flag.
+    const res = await s.sm.browser.get(`${url}?code=${encodeURIComponent(badge.qrValue)}`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.workerId).toBe(badge.workerId);
+    expect(body.companyName).toBe('Formco');
+    expect(body.result).toBe('blocked');
+    expect(body.checks.find((c: { key: string }) => c.key === 'white_card').status).toBe('fail');
+    expect(body.flag.severity).toBe('blocking');
+    expect(res.headers['cache-control']).toBe('no-store');
+
+    // The bare worker id works too; a made-up code is a validation error.
+    expect((await s.sm.browser.get(`${url}?code=${badge.workerId}`)).statusCode).toBe(200);
+    expect((await s.sm.browser.get(`${url}?code=nope`)).statusCode).toBe(422);
+
+    // Another subcontractor cannot look up this company's worker.
+    expect((await s.sub2.browser.get(`${url}?code=${badge.workerId}`)).statusCode).toBe(404);
+  });
+});

@@ -7174,6 +7174,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Is this worker cleared to be on site today? One answer from their Safety ID.
+         * @description Scan a worker's Safety ID badge (or type the worker id) and get one pass, warning or blocked answer built from
+         *     what is already recorded: the worker record, white card and licence expiry, the site induction for this
+         *     project, and the SWMS their company works under. Read only: it does not sign anyone in or out. `flag` is the
+         *     rule-based line for the gate or supervisor (no model call). Subcontractors reach their own company's workers only.
+         */
+        get: operations["checkWorkerClearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge": {
         parameters: {
             query?: never;
@@ -19401,6 +19427,41 @@ export interface components {
                 /** Format: date */
                 expiresOn: string | null;
             }[];
+        };
+        WorkerClearance: {
+            workerId: string;
+            fullName: string;
+            /** @enum {string} */
+            kind: "worker" | "visitor" | "delivery";
+            companyName: string | null;
+            /** @description Short-lived link for matching the face at the gate. */
+            photoUrl: string | null;
+            siteId: string | null;
+            /**
+             * Format: date
+             * @description Today in the project's time zone.
+             */
+            localDate: string;
+            /** Format: date-time */
+            checkedAt: string;
+            /** @enum {string} */
+            result: "cleared" | "warning" | "blocked";
+            checks: {
+                /** @enum {string} */
+                key: "worker" | "white_card" | "licences" | "induction" | "swms" | "insurance";
+                label: string;
+                /** @enum {string} */
+                status: "pass" | "warn" | "fail" | "na";
+                detail: string;
+            }[];
+            /** @description The rule-based line for the gate; null when everything is clear. */
+            flag: {
+                /** @enum {string} */
+                severity: "warning" | "blocking";
+                title: string;
+                detail: string;
+                suggestedAction: string;
+            } | null;
         };
         WorkerList: {
             data: components["schemas"]["Worker"][];
@@ -33723,6 +33784,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    checkWorkerClearance: {
+        parameters: {
+            query: {
+                /** @description The badge QR text (`archova:badge:wkr_...`) or the worker id. */
+                code: string;
+                /** @description Check against this site's induction. Defaults to the project's first active site. */
+                siteId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerClearance"];
                 };
             };
             default: components["responses"]["Problem"];

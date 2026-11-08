@@ -10009,6 +10009,31 @@ export const WebhookListSchema = z.object({
 });
 export type WebhookList = z.infer<typeof WebhookListSchema>;
 
+export const WorkerClearanceSchema = z.object({
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "fullName": z.string(),
+  "kind": z.enum(["worker", "visitor", "delivery"]),
+  "companyName": z.string().nullable(),
+  "photoUrl": z.string().nullable(),
+  "siteId": z.string().nullable(),
+  "localDate": z.string().date(),
+  "checkedAt": z.string().datetime({ offset: true }),
+  "result": z.enum(["cleared", "warning", "blocked"]),
+  "checks": z.array(z.object({
+  "key": z.enum(["worker", "white_card", "licences", "induction", "swms", "insurance"]),
+  "label": z.string(),
+  "status": z.enum(["pass", "warn", "fail", "na"]),
+  "detail": z.string(),
+})),
+  "flag": z.union([z.object({
+  "severity": z.enum(["warning", "blocking"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "suggestedAction": z.string(),
+}), z.null()]),
+});
+export type WorkerClearance = z.infer<typeof WorkerClearanceSchema>;
+
 export const WorkerCredentialListSchema = z.object({
   "data": z.array(WorkerCredentialSchema),
 });

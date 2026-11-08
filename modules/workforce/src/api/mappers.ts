@@ -1,5 +1,6 @@
 import { encodeId } from '@archova/domain';
 import type { BadgeView } from '../application/badge';
+import type { WorkerClearance } from '../application/clearance';
 import type {
   AttendanceEntry,
   AttendanceSession,
@@ -10,6 +11,7 @@ import type {
   SafetyBadge,
   SignInResult,
   Worker,
+  WorkerClearance as WorkerClearanceDto,
 } from '@archova/contracts';
 import type {
   CheckRow,
@@ -186,5 +188,21 @@ export function toSafetyBadgeDto(b: BadgeView): SafetyBadge {
       completedAt: i.completedAt.toISOString(),
       expiresOn: i.expiresOn,
     })),
+  };
+}
+
+export function toWorkerClearanceDto(c: WorkerClearance): WorkerClearanceDto {
+  return {
+    workerId: encodeId('worker', c.worker.id),
+    fullName: c.worker.fullName,
+    kind: c.worker.kind,
+    companyName: c.companyName,
+    photoUrl: c.photo?.url ?? null,
+    siteId: c.siteId ? encodeId('workforceSite', c.siteId) : null,
+    localDate: c.localDate,
+    checkedAt: c.checkedAt.toISOString(),
+    result: c.result,
+    checks: c.checks,
+    flag: c.flag,
   };
 }
