@@ -2198,6 +2198,101 @@ describe('Labor productivity', () => {
   });
 });
 
+describe('Change events', () => {
+  it('raises, converts to a variation or commitment, and closes with a reason', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const { contract } = (
+      await post('contracts', {
+        ...contractBody(s.subCo.companyId),
+        sov: [{ code: 'E1', description: 'Rough-in', value: '100000.00' }],
+      })
+    ).json();
+
+    const a = await post('change-events', {
+      title: 'Extra slab thickening',
+      reason: 'latent_condition',
+      estimate: '8000.00',
+    });
+    expect(a.statusCode).toBe(201);
+    const ce = a.json();
+    expect(ce).toMatchObject({ number: 1, status: 'open', reason: 'latent_condition' });
+    expect((await post('change-events', { title: 'Second', reason: 'rfi' })).json().number).toBe(2);
+    expect((await post('change-events', { title: 'x', reason: 'bogus' })).statusCode).toBe(422);
+
+    const edited = await s.pm.browser.patch(`${s.base}/change-events/${ce.id}`, {
+      title: 'Slab thickening at gridline C',
+      estimate: null,
+    });
+    expect(edited.json()).toMatchObject({ title: 'Slab thickening at gridline C', estimate: null });
+
+    // A variation raised from it moves it to converted_to_variation and shows on the event.
+    const v = await post(`contracts/${contract.id}/variations`, {
+      title: 'Thickened slab',
+      amount: '7500.00',
+      changeEventId: ce.id,
+    });
+    expect(v.statusCode).toBe(201);
+    expect(v.json().changeEventId).toBe(ce.id);
+    const detail = (await s.pm.browser.get(`${s.base}/change-events/${ce.id}`)).json();
+    expect(detail.status).toBe('converted_to_variation');
+    expect(detail.variations).toHaveLength(1);
+    expect(detail.variations[0]).toMatchObject({ number: 1, amount: '7500.00' });
+    expect(
+      (
+        await post(`contracts/${contract.id}/variations`, {
+          title: 'x',
+          amount: '1.00',
+          changeEventId: 'chg_0000000000000000000000000A',
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    // A commitment raised from the second event moves that one.
+    const second = (await s.pm.browser.get(`${s.base}/change-events`)).json().data[0];
+    expect(second.number).toBe(2);
+    const cc = (await post('cost-codes', { code: '03', description: 'Concrete' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
+    const cm = await post('commitments', {
+      kind: 'purchase_order',
+      title: 'Extra concrete',
+      changeEventId: second.id,
+      lines: [{ budgetLineId: line.id, description: 'Concrete', amount: '2000.00' }],
+    });
+    expect(cm.statusCode).toBe(201);
+    expect(cm.json().commitment.changeEventId).toBe(second.id);
+    const d2 = (await s.pm.browser.get(`${s.base}/change-events/${second.id}`)).json();
+    expect(d2.status).toBe('converted_to_commitment');
+    expect(d2.commitments).toHaveLength(1);
+
+    // Closing needs a reason; a closed event takes no more work and cannot be edited or closed again.
+    expect((await post(`change-events/${ce.id}/close`, { note: '' })).statusCode).toBe(422);
+    const closed = await post(`change-events/${ce.id}/close`, { note: 'Priced and approved' });
+    expect(closed.json()).toMatchObject({ status: 'closed', closedNote: 'Priced and approved' });
+    expect(
+      (
+        await post(`contracts/${contract.id}/variations`, {
+          title: 'More',
+          amount: '10.00',
+          changeEventId: ce.id,
+        })
+      ).json().code,
+    ).toBe('financials.change_event.closed');
+    expect(
+      (await s.pm.browser.patch(`${s.base}/change-events/${ce.id}`, { title: 'y' })).statusCode,
+    ).toBe(409);
+    expect((await post(`change-events/${ce.id}/close`, { note: 'again' })).statusCode).toBe(409);
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/change-events`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/change-events`, { title: 'z', reason: 'other' }))
+        .statusCode,
+    ).toBe(403);
+  });
+});
+
 describe('Production tracking', () => {
   const day = (offset: number) =>
     new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);

@@ -20,6 +20,7 @@ const c = (over: Partial<Commitment>): Commitment => ({
   status: 'approved',
   total: '1000.50',
   overBudgetOverride: false,
+  changeEventId: null,
   submittedAt: null,
   decidedAt: null,
   decisionNote: null,

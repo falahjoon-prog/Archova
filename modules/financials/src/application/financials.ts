@@ -20,6 +20,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
+import { attachChangeEvent } from './changeEvents';
 import { fromCents, toCents } from '../domain/money';
 import { sealMessage, type EvidenceSigner } from '../domain/seal-proof';
 import {
@@ -158,6 +159,8 @@ export interface CreateVariationInput {
   amount: string;
   timeImpactDays?: number;
   costCodeId?: string;
+  /** The change event this variation prices; moves it to converted_to_variation. */
+  changeEventId?: string;
 }
 
 export interface IssueScheduleInput {
@@ -1509,6 +1512,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
         { path: 'amount', message: 'Must be more than zero' },
       ]);
     if (input.costCodeId) await requireCostCode(scope, projectId, input.costCodeId);
+    if (input.changeEventId)
+      await attachChangeEvent(scope, projectId, input.changeEventId, 'converted_to_variation');
     const [n] = await scope.tx
       .select({ n: sql<number>`coalesce(max(${variations.number}), 0) + 1` })
       .from(variations)
@@ -1527,6 +1532,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         amount: input.amount,
         timeImpactDays: input.timeImpactDays ?? 0,
         costCodeId: input.costCodeId ?? null,
+        changeEventId: input.changeEventId ?? null,
         createdBy: scope.ctx.userId,
       })
       .returning();

@@ -3615,6 +3615,32 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const ListChangeEventsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateChangeEventBody = s.CreateChangeEventRequestSchema;
+export const GetChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateChangeEventBody = s.UpdateChangeEventRequestSchema;
+export const CloseChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const CloseChangeEventBody = s.CloseChangeEventRequestSchema;
 export const ListDirectCostsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11974,6 +12000,66 @@ export const operations = {
     params: WithdrawVariationParams,
     query: null,
     body: null,
+  },
+  listChangeEvents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.read",
+    internal: false,
+    contentType: null,
+    params: ListChangeEventsParams,
+    query: null,
+    body: null,
+  },
+  createChangeEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateChangeEventParams,
+    query: null,
+    body: CreateChangeEventBody,
+  },
+  getChangeEvent: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.read",
+    internal: false,
+    contentType: null,
+    params: GetChangeEventParams,
+    query: null,
+    body: null,
+  },
+  updateChangeEvent: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateChangeEventParams,
+    query: null,
+    body: UpdateChangeEventBody,
+  },
+  closeChangeEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}/close',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CloseChangeEventParams,
+    query: null,
+    body: CloseChangeEventBody,
   },
   listDirectCosts: {
     method: 'GET',

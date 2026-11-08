@@ -77,6 +77,9 @@ export const toVariationDto = (v: { variation: VariationRow; claimedToDate: stri
   decidedAt: v.variation.decidedAt?.toISOString() ?? null,
   decisionNote: v.variation.decisionNote,
   costCodeId: v.variation.costCodeId ? encodeId('costCode', v.variation.costCodeId) : null,
+  changeEventId: v.variation.changeEventId
+    ? encodeId('changeEvent', v.variation.changeEventId)
+    : null,
 });
 
 export const toLineDto = (l: ClaimLineRow) => ({
@@ -117,6 +120,7 @@ export const toCommitmentDto = (c: CommitmentRow) => ({
   status: c.status as 'draft',
   total: c.total,
   overBudgetOverride: c.overBudgetOverride,
+  changeEventId: c.changeEventId ? encodeId('changeEvent', c.changeEventId) : null,
   submittedAt: c.submittedAt?.toISOString() ?? null,
   decidedAt: c.decidedAt?.toISOString() ?? null,
   decisionNote: c.decisionNote,

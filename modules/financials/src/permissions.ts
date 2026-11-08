@@ -45,6 +45,19 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
     tool: 'payment_claims',
     level: 'admin',
   },
+  // Change events are the builder's internal early warning, so staff only (the use cases also refuse outsiders).
+  {
+    key: 'financials.change_events.read',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.change_events.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
   // Direct costs post to the budget, so they sit on the budget tool (admin-only by default).
   { key: 'financials.direct_costs.read', scope: 'project', tool: 'budget', level: 'standard' },
   // Site supervisors log quantity in place against the production plan; the plan itself needs budget.manage.

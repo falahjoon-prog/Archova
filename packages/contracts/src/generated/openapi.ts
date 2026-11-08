@@ -11044,6 +11044,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Change events, newest first. */
+        get: operations["listChangeEvents"];
+        put?: never;
+        /** Raise a potential change before it is priced. */
+        post: operations["createChangeEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        /** One change event with the variations and commitments raised from it. */
+        get: operations["getChangeEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a change event that is not closed. */
+        patch: operations["updateChangeEvent"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a change event with a reason. Nothing more can be raised from a closed one. */
+        post: operations["closeChangeEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/direct-costs": {
         parameters: {
             query?: never;
@@ -19066,6 +19130,7 @@ export interface components {
             decidedAt: string | null;
             decisionNote: string | null;
             costCodeId: string | null;
+            changeEventId: string | null;
         };
         SetVariationCostCodeRequest: {
             costCodeId: string | null;
@@ -19214,6 +19279,7 @@ export interface components {
             amount: components["schemas"]["FinancialsMoney"];
             timeImpactDays?: number;
             costCodeId?: string;
+            changeEventId?: string;
         };
         VariationDecisionRequest: {
             note?: string;
@@ -19230,6 +19296,7 @@ export interface components {
             status: components["schemas"]["CommitmentStatus"];
             total: components["schemas"]["FinancialsMoney"];
             overBudgetOverride: boolean;
+            changeEventId: string | null;
             /** Format: date-time */
             submittedAt: string | null;
             /** Format: date-time */
@@ -19244,6 +19311,58 @@ export interface components {
         CommitmentDetail: {
             commitment: components["schemas"]["Commitment"];
             lines: components["schemas"]["CommitmentLine"][];
+        };
+        /** @enum {string} */
+        ChangeEventReason: "design_change" | "latent_condition" | "client_request" | "rfi" | "other";
+        /** @enum {string} */
+        ChangeEventStatus: "open" | "converted_to_variation" | "converted_to_commitment" | "closed";
+        ChangeEvent: {
+            id: string;
+            number: number;
+            title: string;
+            description: string | null;
+            reason: components["schemas"]["ChangeEventReason"];
+            estimate: string | null;
+            status: components["schemas"]["ChangeEventStatus"];
+            closedNote: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ChangeEventList: {
+            data: components["schemas"]["ChangeEvent"][];
+        };
+        ChangeEventDetail: components["schemas"]["ChangeEvent"] & {
+            variations: {
+                id: string;
+                number: number;
+                title: string;
+                status: components["schemas"]["VariationStatus"];
+                amount: components["schemas"]["FinancialsMoney"];
+            }[];
+            commitments: {
+                id: string;
+                number: number;
+                title: string;
+                status: components["schemas"]["CommitmentStatus"];
+                total: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        CreateChangeEventRequest: {
+            title: string;
+            description?: string;
+            reason: components["schemas"]["ChangeEventReason"];
+            estimate?: components["schemas"]["FinancialsMoney"];
+        };
+        UpdateChangeEventRequest: {
+            title?: string;
+            description?: string | null;
+            reason?: components["schemas"]["ChangeEventReason"];
+            estimate?: string | null;
+        };
+        CloseChangeEventRequest: {
+            note: string;
         };
         /** @enum {string} */
         DirectCostCategory: "labour" | "materials" | "plant" | "fees" | "other";
@@ -19511,6 +19630,7 @@ export interface components {
             kind: "subcontract" | "purchase_order";
             title: string;
             vendorCompanyId?: string | null;
+            changeEventId?: string;
             lines: {
                 budgetLineId: string;
                 description: string;
@@ -23334,6 +23454,7 @@ export interface components {
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
+        ChangeEventId: string;
         DirectCostId: string;
         TmTicketId: string;
         CommitmentId: string;
@@ -41612,6 +41733,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Variation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listChangeEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
                 };
             };
             default: components["responses"]["Problem"];

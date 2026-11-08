@@ -33,6 +33,7 @@ const variation = (over: Record<string, unknown> = {}) => ({
   decidedAt: null,
   decisionNote: null,
   costCodeId: null,
+  changeEventId: null,
   ...over,
 });
 const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
