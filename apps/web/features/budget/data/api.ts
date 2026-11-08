@@ -10,6 +10,7 @@ export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
 export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
 export type BudgetReviewChecks = S['BudgetReviewChecks'];
+export type BudgetForecast = S['BudgetForecast'];
 export type BudgetCostReport = S['BudgetCostReport'];
 export type BudgetCostReportItems = S['BudgetCostReportItems'];
 export type CostReportColumn = 'approved' | 'pending' | 'direct';
@@ -89,6 +90,22 @@ export function createBudgetApi(orgId: string) {
       unwrap(
         await api.DELETE(`${P}/budget/lines/{lineId}`, {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
+        }),
+      );
+    },
+    async forecast(projectId: string): Promise<BudgetForecast> {
+      return unwrap(
+        await api.GET(`${P}/budget/forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async saveForecast(
+      projectId: string,
+      lines: { lineId: string; entries: Record<string, string> }[],
+    ): Promise<BudgetForecast> {
+      return unwrap(
+        await api.PUT(`${P}/budget/forecast`, {
+          params: { path: { orgId, projectId } },
+          body: { lines },
         }),
       );
     },

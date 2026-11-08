@@ -64,6 +64,26 @@ export function useCreateSnapshot(projectId: string) {
   });
 }
 
+export function useForecast(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { forecast: true }),
+    queryFn: () => source.forecast(projectId),
+  });
+}
+
+export function useSaveForecast(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lines: { lineId: string; entries: Record<string, string> }[]) =>
+      source.saveForecast(projectId, lines),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
 export function useCostReport(projectId: string) {
   const { orgId } = useCurrentOrg();
   const source = useBudgetApi();

@@ -5,6 +5,7 @@ import {
   type KernelServices,
   type MessageSender,
   type RouteTable,
+  type TenantScope,
 } from '@archova/kernel';
 import {
   AI_PERMISSIONS,
@@ -29,8 +30,10 @@ import {
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
+import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
+import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -52,7 +55,9 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
+import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -70,6 +75,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -80,6 +86,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -90,13 +97,16 @@ export const MODULE_PERMISSIONS = [
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
+  PERMITS_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -187,8 +197,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
   let access: ReturnType<typeof createAccessModule> | null = null;
+  let filesApi: ReturnType<typeof createFilesModule>['api'] | null = null;
   const platform = createPlatformModule(services, {
     identity: identity.api,
+    files: () => filesApi!,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
@@ -233,6 +245,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       correspondence: 'correspondence.items.respond',
     },
   });
+  filesApi = files.api;
 
   const documents = createDocumentsModule(services, {
     access: access.api,
@@ -273,6 +286,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
   });
 
+  const announcements = createAnnouncementsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    access: access.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -308,6 +327,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
@@ -317,6 +337,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
+    dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
+    getFile: (scope, fileId) => files.api.getFile(scope, fileId),
+    // diary is built later; this is only called at request time.
+    diaryEntryExists: async (scope, projectId, date) =>
+      (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -335,11 +360,26 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const quality = createQualityModule(services, {
     access: access.api,
     platform: platform.api,
+    documents: documents.api,
     files: files.api,
     safety: safety.api,
   });
   qualityApi = quality.api;
 
+  const environment = createEnvironmentModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    safety: safety.api,
+  });
+  // Wallet licences are read lazily: workforce is built later.
+  let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
+    null;
+  const permits = createPermitsModule(services, {
+    platform: platform.api,
+    files: files.api,
+    licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
+  });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -436,6 +476,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
+  const plant = createPlantModule(services, { access: access.api });
+
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -444,6 +486,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
+    clearanceSwms: safety.api.workerSwms,
+    clearanceInsurance: async (scope, projectId, companyId) => {
+      const c = await insurance.api.companyClearance(scope, projectId, companyId);
+      return {
+        state: c.state,
+        // Nothing to check when the project sets no requirements and the company has nothing recorded.
+        checked: c.requirementsSet || c.coverCount > 0,
+        messages: c.issues.map((i) => ({ level: i.level, text: i.message })),
+      };
+    },
     links: {
       access: access.api,
       platform: platform.api,
@@ -460,6 +512,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       logger: services.logger,
     },
   });
+  lapsedLicences = workforce.api.lapsedLicences;
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
@@ -467,12 +520,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     platform: platform.api,
     access: access.api,
+    environment: environment.api,
     rfis: rfis.api,
     defects: defects.api,
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
     incidents: safety.api.reporting,
+    observations: quality.api.reporting.observations,
+    inspections: quality.api.reporting.inspections,
     programme: scheduling.api.reporting,
     budget: { portfolioSummary: financials.api.budgetSummary },
     precon: precon.api,
@@ -530,16 +586,21 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
+    plant,
     financials,
     quality,
+    environment,
     precon,
     safety,
+    permits,
     insurance,
     estimating,
     integrations,
@@ -572,16 +633,21 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
+    plant,
     financials,
     quality,
+    environment,
     precon,
     safety,
+    permits,
     insurance,
     estimating,
     integrations,
