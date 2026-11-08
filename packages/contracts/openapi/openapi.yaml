@@ -1845,6 +1845,85 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BimModel' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/site-captures:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSiteCaptures
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.read
+      summary: The project's 360 site captures, the most recently captured first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCaptureList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Embed a 360 tour in the project by its share link.
+      description: |
+        The link must be an https share link from Matterport, Kuula or Ricoh Tours; anything else is a 422. Archova
+        keeps the link, not the imagery, so the tour stays in the provider's account and follows its sharing settings.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSiteCaptureRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCapture' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SiteCaptureId'
+    patch:
+      operationId: updateSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Change a capture's title, date, area, note or link, or the RFI or issue it relates to.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSiteCaptureRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCapture' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Remove a capture from the project. The tour itself is untouched in the provider's account.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/coordination-issues:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3134,6 +3213,120 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: scanCaptureViewWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.scan
+      summary: Ask Nova about a view from a 360 site capture.
+      description: |
+        The person takes a still from a 360 tour (a screenshot of the view), uploads it to the project and asks Nova
+        about it. Nova reads that still, not the live embedded tour, and lists what looks like a defect, missing
+        fire-stopping or incomplete work. Each observation has a category, one or two plain sentences saying what the
+        still shows, and a confidence. An observation is for a person to check against the plans: Nova does not say a
+        rule was broken, does not cite legislation, does not describe people and raises no issue. Wording that judges
+        is dropped (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+        `unsupportedNumbers`. The observations are kept as `open` for a person to confirm or dismiss. Costs a quarter
+        of a Nova credit. The still is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+        is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [still]
+              properties:
+                still:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Where the view is and what the person is checking. May be empty.
+      responses:
+        '200':
+          description: The observations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaCaptureScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCaptureObservations
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.review
+      summary: What Nova noticed in this project's 360 capture stills, newest first.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HazardSignalStatus' } }
+        - { name: fileId, in: query, schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: The observations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CaptureObservation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: observationId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^aco_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reviewCaptureObservation
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.review
+      summary: Confirm or dismiss something Nova noticed in a capture view.
+      description: |
+        A person looks at the view and decides. `confirmed` means it is real; `dismissed` means it isn't (the still is
+        distorted, it was already dealt with). An observation is decided once; deciding it again is
+        `ai.capture_observation.already_reviewed`. Confirming raises no issue: the person raises a coordination issue
+        from the capture if it warrants it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [confirmed, dismissed] }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: The decided observation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureObservation' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns:
     parameters:
@@ -14186,6 +14379,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    SiteCaptureId:
+      name: captureId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^scp_[0-9A-Za-z]{26}$' }
     CoordinationIssueId:
       name: issueId
       in: path
@@ -17233,6 +17431,7 @@ components:
           diary_summary,
           defect_tagging,
           safety_hazards,
+          site_capture,
           minutes,
           estimating,
           contract_review,
@@ -18370,6 +18569,56 @@ components:
           type: array
           items: { type: string }
         disclaimer: { type: string }
+    CaptureObservation:
+      type: object
+      required:
+        [
+          id,
+          fileId,
+          category,
+          categoryLabel,
+          observation,
+          confidence,
+          status,
+          reviewNote,
+          reviewedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, description: The observation (`aco_`) }
+        fileId: { type: string, description: The still it was noticed in (`fil_`) }
+        category: { type: string }
+        categoryLabel: { type: string }
+        observation:
+          {
+            type: string,
+            description: What the still shows,
+            as an observation and never a finding.,
+          }
+        confidence: { $ref: '#/components/schemas/HazardConfidence' }
+        status: { $ref: '#/components/schemas/HazardSignalStatus' }
+        reviewNote: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NovaCaptureScan:
+      type: object
+      required: [runId, scanId, observations, stillUnclear, dropped, unsupportedNumbers, disclaimer]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        scanId: { type: string, description: The scan (`acs_`); its observations share it }
+        observations:
+          type: array
+          items: { $ref: '#/components/schemas/CaptureObservation' }
+        stillUnclear:
+          type: boolean
+          description: The still was too dark, blurred, distorted or distant to judge, or isn't a building interior.
+        dropped:
+          type: integer
+          description: Observations left out because their wording judged instead of observing.
+        unsupportedNumbers:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
     HazardPattern:
       type: object
       required: [category, label, open, confirmed, dismissed, photos, isPattern, trend]
@@ -18775,6 +19024,69 @@ components:
         pageFrom: { type: integer, minimum: 1 }
         pageTo: { type: integer, minimum: 1 }
         revision: { type: [string, 'null'] }
+    SiteCapture:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          provider,
+          url,
+          capturedOn,
+          area,
+          note,
+          rfiId,
+          issueId,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        provider: { type: string, enum: [matterport, kuula, ricoh] }
+        url: { type: string, description: The share link as the tour is embedded. }
+        capturedOn: { type: string, format: date, description: The day the capture shows. }
+        area: { type: string, description: Where on site, for example Level 3 east. }
+        note: { type: string }
+        rfiId: { type: [string, 'null'] }
+        issueId:
+          { type: [string, 'null'], description: The coordination issue it relates to (`cis_`). }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SiteCaptureList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SiteCapture' }
+    CreateSiteCaptureRequest:
+      type: object
+      additionalProperties: false
+      required: [title, url, capturedOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, maxLength: 2000 }
+        capturedOn: { type: string, format: date }
+        area: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        issueId: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    UpdateSiteCaptureRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, maxLength: 2000 }
+        capturedOn: { type: string, format: date }
+        area: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        issueId: { type: [string, 'null'], pattern: '^cis_[0-9A-Za-z]{26}$' }
     BimDiscipline:
       type: string
       enum: [architectural, structural, mechanical, electrical, hydraulic, fire, civil, other]

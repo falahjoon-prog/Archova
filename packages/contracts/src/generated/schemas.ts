@@ -182,7 +182,7 @@ export const AdjustTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AdjustTimesheetLineRequest = z.infer<typeof AdjustTimesheetLineRequestSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "minutes", "estimating", "contract_review"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "site_capture", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -765,6 +765,26 @@ export const CaptureSchema = z.object({
   "location": GeoFixSchema.optional(),
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
+
+export const HazardConfidenceSchema = z.enum(["low", "medium", "high"]);
+export type HazardConfidence = z.infer<typeof HazardConfidenceSchema>;
+
+export const HazardSignalStatusSchema = z.enum(["open", "confirmed", "dismissed"]);
+export type HazardSignalStatus = z.infer<typeof HazardSignalStatusSchema>;
+
+export const CaptureObservationSchema = z.object({
+  "id": z.string(),
+  "fileId": z.string(),
+  "category": z.string(),
+  "categoryLabel": z.string(),
+  "observation": z.string(),
+  "confidence": HazardConfidenceSchema,
+  "status": HazardSignalStatusSchema,
+  "reviewNote": z.string().nullable(),
+  "reviewedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type CaptureObservation = z.infer<typeof CaptureObservationSchema>;
 
 export const ClaimEvidenceDeliverySchema = z.object({
   "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
@@ -2564,6 +2584,17 @@ export const CreateShiftRequestSchema = z.object({
 }).strict();
 export type CreateShiftRequest = z.infer<typeof CreateShiftRequestSchema>;
 
+export const CreateSiteCaptureRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "url": z.string().max(2000),
+  "capturedOn": z.string().date(),
+  "area": z.string().max(200).optional(),
+  "note": z.string().max(2000).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).optional(),
+  "issueId": z.string().regex(new RegExp("^cis_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateSiteCaptureRequest = z.infer<typeof CreateSiteCaptureRequestSchema>;
+
 export const CreateSpecBookRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "issuedDate": z.string().date().nullable().optional(),
@@ -3647,9 +3678,6 @@ export const GrantedWalletListSchema = z.object({
 });
 export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
-export const HazardConfidenceSchema = z.enum(["low", "medium", "high"]);
-export type HazardConfidence = z.infer<typeof HazardConfidenceSchema>;
-
 export const HazardPatternSchema = z.object({
   "category": z.string(),
   "label": z.string(),
@@ -3661,9 +3689,6 @@ export const HazardPatternSchema = z.object({
   "trend": z.enum(["rising", "steady", "falling"]),
 });
 export type HazardPattern = z.infer<typeof HazardPatternSchema>;
-
-export const HazardSignalStatusSchema = z.enum(["open", "confirmed", "dismissed"]);
-export type HazardSignalStatus = z.infer<typeof HazardSignalStatusSchema>;
 
 export const HazardSignalSchema = z.object({
   "id": z.string(),
@@ -5121,6 +5146,17 @@ export const NovaAnswerSchema = z.object({
   "nccNote": z.string().optional(),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaCaptureScanSchema = z.object({
+  "runId": z.string(),
+  "scanId": z.string(),
+  "observations": z.array(CaptureObservationSchema),
+  "stillUnclear": z.boolean(),
+  "dropped": z.number().int(),
+  "unsupportedNumbers": z.array(z.string()),
+  "disclaimer": z.string(),
+});
+export type NovaCaptureScan = z.infer<typeof NovaCaptureScanSchema>;
 
 export const NovaContractAnswerSchema = z.object({
   "runId": z.string(),
@@ -7190,6 +7226,28 @@ export const SignupRequestSchema = z.object({
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
+export const SiteCaptureSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "provider": z.enum(["matterport", "kuula", "ricoh"]),
+  "url": z.string(),
+  "capturedOn": z.string().date(),
+  "area": z.string(),
+  "note": z.string(),
+  "rfiId": z.string().nullable(),
+  "issueId": z.string().nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type SiteCapture = z.infer<typeof SiteCaptureSchema>;
+
+export const SiteCaptureListSchema = z.object({
+  "data": z.array(SiteCaptureSchema),
+});
+export type SiteCaptureList = z.infer<typeof SiteCaptureListSchema>;
+
 export const SpecBookSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -8291,6 +8349,17 @@ export const UpdateScheduleActivityRequestSchema = z.object({
   "cascade": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateScheduleActivityRequest = z.infer<typeof UpdateScheduleActivityRequestSchema>;
+
+export const UpdateSiteCaptureRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "url": z.string().max(2000).optional(),
+  "capturedOn": z.string().date().optional(),
+  "area": z.string().max(200).optional(),
+  "note": z.string().max(2000).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "issueId": z.string().regex(new RegExp("^cis_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type UpdateSiteCaptureRequest = z.infer<typeof UpdateSiteCaptureRequestSchema>;
 
 export const UpdateSubmittalRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),

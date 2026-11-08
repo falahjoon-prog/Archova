@@ -48,6 +48,9 @@ export const webRoutes = {
   /** The 3D viewer for the project's IFC models, with clash checking. */
   coordinationModels: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/coordination/models`,
+  /** 360 tours embedded by share link, with Ask Nova on a still from a tour. */
+  coordinationCaptures: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/coordination/captures`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>

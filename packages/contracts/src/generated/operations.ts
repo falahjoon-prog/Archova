@@ -405,6 +405,26 @@ export const CreateBimModelParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const CreateBimModelBody = s.CreateBimModelRequestSchema;
+export const ListSiteCapturesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSiteCaptureBody = s.CreateSiteCaptureRequestSchema;
+export const UpdateSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "captureId": z.string().regex(new RegExp("^scp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSiteCaptureBody = s.UpdateSiteCaptureRequestSchema;
+export const DeleteSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "captureId": z.string().regex(new RegExp("^scp_[0-9A-Za-z]{26}$")),
+});
 export const ListCoordinationIssuesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -718,6 +738,34 @@ export const ReviewHazardSignalParams = z.object({
   "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
 });
 export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ScanCaptureViewWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanCaptureViewWithNovaBody = z.object({
+  "still": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListCaptureObservationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCaptureObservationsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewCaptureObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^aco_[0-9A-Za-z]{26}$")),
+});
+export const ReviewCaptureObservationBody = z.object({
   "decision": z.enum(["confirmed", "dismissed"]),
   "note": z.string().max(1000).optional(),
 }).strict();
@@ -4468,6 +4516,54 @@ export const operations = {
     query: null,
     body: CreateBimModelBody,
   },
+  listSiteCaptures: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.read",
+    internal: false,
+    contentType: null,
+    params: ListSiteCapturesParams,
+    query: null,
+    body: null,
+  },
+  createSiteCapture: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSiteCaptureParams,
+    query: null,
+    body: CreateSiteCaptureBody,
+  },
+  updateSiteCapture: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSiteCaptureParams,
+    query: null,
+    body: UpdateSiteCaptureBody,
+  },
+  deleteSiteCapture: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteSiteCaptureParams,
+    query: null,
+    body: null,
+  },
   listCoordinationIssues: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues',
@@ -5091,6 +5187,42 @@ export const operations = {
     params: ReviewHazardSignalParams,
     query: null,
     body: ReviewHazardSignalBody,
+  },
+  scanCaptureViewWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanCaptureViewWithNovaParams,
+    query: null,
+    body: ScanCaptureViewWithNovaBody,
+  },
+  listCaptureObservations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.review",
+    internal: false,
+    contentType: null,
+    params: ListCaptureObservationsParams,
+    query: ListCaptureObservationsQuery,
+    body: null,
+  },
+  reviewCaptureObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewCaptureObservationParams,
+    query: null,
+    body: ReviewCaptureObservationBody,
   },
   getHazardPatterns: {
     method: 'GET',

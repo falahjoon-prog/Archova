@@ -3460,6 +3460,30 @@ fieldset.worker-card > legend {
   fill: var(--c-text-secondary);
 }
 
+/* Site capture: the embedded 360 tour keeps a 16:9 box that never overflows the page. */
+.capture-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 240px;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--c-surface-sunken, var(--c-surface));
+}
+.capture-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.capture-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* Drawing register: discipline groups share column widths so the tables line up */
 .drw-summary {
   display: flex;
