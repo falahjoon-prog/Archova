@@ -1,4 +1,4 @@
--- Composed from modules/platform/db/migrations/20261107120000_platform_project_locations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/platform/db/migrations/20261107121000_platform_project_locations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- platform: project locations (site office, laydown, parking, hospital...), each with an address, an optional map
 -- point and a site-access note. Directions links are built from the address/point when read; nothing is stored for them.
 
