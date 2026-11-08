@@ -9,10 +9,11 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
-import type { InspectionService } from '../application/inspections';
+import type { HeaderInput, InspectionService } from '../application/inspections';
 import type { ObservationFields, ObservationService } from '../application/observations';
 import {
   toInspectionDetail,
+  toItemEvent,
   toInspectionDto,
   toObservationDto,
   toTemplateDetail,
@@ -54,6 +55,46 @@ function observationFields(b: ObservationBody): ObservationFields {
         : ref('company', b.assigneeCompanyId, 'assigneeCompanyId');
   if (b.swmsId !== undefined)
     out.swmsId = b.swmsId === null ? null : ref('swms', b.swmsId, 'swmsId');
+  if (b.fileIds !== undefined)
+    out.fileIds = b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`));
+  return out;
+}
+
+type HeaderBody = {
+  title?: string;
+  location?: string | null;
+  scheduledFor?: string | null;
+  dueDate?: string | null;
+  inspectorId?: string;
+  assigneeIds?: string[];
+  responsibleCompanyId?: string | null;
+  pointOfContactId?: string | null;
+  trade?: string | null;
+  specSection?: string | null;
+  description?: string;
+  fileIds?: string[];
+};
+
+function headerFields(b: HeaderBody): HeaderInput {
+  const out: HeaderInput = {};
+  if (b.title !== undefined) out.title = b.title;
+  if (b.location !== undefined) out.location = b.location;
+  if (b.scheduledFor !== undefined) out.scheduledFor = b.scheduledFor;
+  if (b.dueDate !== undefined) out.dueDate = b.dueDate;
+  if (b.inspectorId !== undefined) out.inspectorId = ref('user', b.inspectorId, 'inspectorId');
+  if (b.assigneeIds !== undefined)
+    out.assigneeIds = b.assigneeIds.map((u, i) => ref('user', u, `assigneeIds/${i}`));
+  if (b.responsibleCompanyId !== undefined)
+    out.responsibleCompanyId =
+      b.responsibleCompanyId === null
+        ? null
+        : ref('company', b.responsibleCompanyId, 'responsibleCompanyId');
+  if (b.pointOfContactId !== undefined)
+    out.pointOfContactId =
+      b.pointOfContactId === null ? null : ref('user', b.pointOfContactId, 'pointOfContactId');
+  if (b.trade !== undefined) out.trade = b.trade;
+  if (b.specSection !== undefined) out.specSection = b.specSection;
+  if (b.description !== undefined) out.description = b.description;
   if (b.fileIds !== undefined)
     out.fileIds = b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`));
   return out;
@@ -162,14 +203,95 @@ export function qualityRoutes(
         201,
         await tx(input, (s) =>
           inspections.create(s, project(input.params), {
+            ...headerFields(input.body),
             templateId: ref('inspectionTemplate', input.body.templateId, 'templateId'),
-            ...(input.body.title ? { title: input.body.title } : {}),
-            ...(input.body.location ? { location: input.body.location } : {}),
-            ...(input.body.scheduledFor ? { scheduledFor: input.body.scheduledFor } : {}),
-            ...(input.body.inspectorId
-              ? { inspectorId: ref('user', input.body.inspectorId, 'inspectorId') }
-              : {}),
           }),
+        ),
+      ),
+    updateInspection: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return okInspection(
+        200,
+        await tx(input, (s) =>
+          inspections.update(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            expected,
+            headerFields(input.body),
+          ),
+        ),
+      );
+    },
+    setInspectionSectionNa: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return okInspection(
+        200,
+        await tx(input, (s) =>
+          inspections.setSectionNa(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            expected,
+            input.body.section,
+            input.body.na,
+          ),
+        ),
+      );
+    },
+    addInspectionSignature: async (input) =>
+      okInspection(
+        200,
+        await tx(input, (s) =>
+          inspections.addSignature(s, project(input.params), inspectionId(input.params), {
+            name: input.body.name,
+            ...(input.body.fileId ? { fileId: ref('file', input.body.fileId, 'fileId') } : {}),
+          }),
+        ),
+      ),
+    listInspectionItemActivity: async (input) => {
+      const rows = await read(input, (s) =>
+        inspections.itemActivityLog(
+          s,
+          project(input.params),
+          inspectionId(input.params),
+          notFound('inspectionItem', input.params.itemId, 'inspection.not_found'),
+        ),
+      );
+      return { status: 200, body: { data: rows.map(toItemEvent) } };
+    },
+    addInspectionItemComment: async (input) =>
+      okInspection(
+        200,
+        await tx(input, (s) =>
+          inspections.addItemComment(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            notFound('inspectionItem', input.params.itemId, 'inspection.not_found'),
+            {
+              ...(input.body.body ? { body: input.body.body } : {}),
+              ...(input.body.fileIds
+                ? { fileIds: input.body.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)) }
+                : {}),
+            },
+          ),
+        ),
+      ),
+    createObservationFromInspectionItem: async (input) =>
+      okObservation(
+        201,
+        await tx(input, (s) =>
+          observations.createFromItem(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            notFound('inspectionItem', input.params.itemId, 'inspection.not_found'),
+            {
+              ...observationFields(input.body),
+              ...(input.body.comment !== undefined ? { comment: input.body.comment } : {}),
+            },
+          ),
         ),
       ),
     getInspection: async (input) =>
@@ -211,7 +333,7 @@ export function qualityRoutes(
         200,
         await tx(input, (s) =>
           inspections.submit(s, project(input.params), inspectionId(input.params), expected, {
-            signedByName: input.body.signedByName,
+            ...(input.body.signedByName ? { signedByName: input.body.signedByName } : {}),
             ...(input.body.signatureFileId
               ? { signatureFileId: ref('file', input.body.signatureFileId, 'signatureFileId') }
               : {}),

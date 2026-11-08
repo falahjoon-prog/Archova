@@ -17,8 +17,17 @@ import {
   type ObservationType,
   type ObservationViewer,
 } from '../domain/observation';
-import { observations, type Priority } from '../infra/tables';
-import { checkFiles, liveObservation, viewerOf, type QualityDeps } from './shared';
+import { inspectionLabel } from '../domain/inspection';
+import { observationDraft } from '../domain/item-activity';
+import {
+  inspections,
+  itemEvents,
+  observations,
+  responses,
+  templateItems,
+  type Priority,
+} from '../infra/tables';
+import { checkFiles, liveObservation, requireInternal, viewerOf, type QualityDeps } from './shared';
 
 export type ObservationRow = typeof observations.$inferSelect;
 export type ObservationView = ObservationRow & { isOverdue: boolean };
@@ -33,6 +42,9 @@ export interface ObservationFields {
   dueDate?: string | null;
   swmsId?: string | null;
   fileIds?: string[];
+  /** Set when it is raised from a checklist item; the inspection and the item it came from. */
+  inspectionId?: string;
+  inspectionItemId?: string;
 }
 
 export function createObservationService(deps: QualityDeps) {
@@ -183,6 +195,8 @@ export function createObservationService(deps: QualityDeps) {
         raisedByCompanyId: v.companyId,
         dueDate: input.dueDate ?? null,
         swmsId: input.swmsId ?? null,
+        inspectionId: input.inspectionId ?? null,
+        inspectionItemId: input.inspectionItemId ?? null,
         fileIds: [...new Set(input.fileIds ?? [])],
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
@@ -203,6 +217,85 @@ export function createObservationService(deps: QualityDeps) {
       },
     });
     return getVisible(scope, projectId, id);
+  }
+
+  /**
+   * "Create Observation" on a checklist line: starts from the item (its question, answer, latest comment and
+   * photos) and lets the person override anything. The item's activity records that it was raised.
+   */
+  async function createFromItem(
+    scope: TenantScope,
+    projectId: string,
+    inspectionId: string,
+    templateItemId: string,
+    input: Partial<Omit<ObservationFields, 'inspectionId' | 'inspectionItemId'>> & {
+      comment?: string;
+    },
+  ) {
+    await requireInternal(deps, scope, projectId, 'inspection.not_found');
+    const [inspection] = await scope.tx
+      .select()
+      .from(inspections)
+      .where(
+        and(
+          eq(inspections.id, inspectionId),
+          eq(inspections.projectId, projectId),
+          isNull(inspections.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!inspection) throw new AppError('inspection.not_found');
+    const [item] = await scope.tx
+      .select()
+      .from(templateItems)
+      .where(
+        and(
+          eq(templateItems.id, templateItemId),
+          eq(templateItems.templateId, inspection.templateId),
+        ),
+      )
+      .limit(1);
+    if (!item)
+      throw new AppError('inspection.invalid_response', 'That item is not on this checklist.', [
+        { path: 'templateItemId', message: 'Not on this checklist' },
+      ]);
+    const [answer] = await scope.tx
+      .select()
+      .from(responses)
+      .where(
+        and(eq(responses.inspectionId, inspectionId), eq(responses.templateItemId, templateItemId)),
+      )
+      .limit(1);
+    const comment = input.comment ?? answer?.note ?? null;
+    const created = await create(scope, projectId, {
+      ...input,
+      type: input.type ?? 'quality',
+      description:
+        input.description ??
+        observationDraft({
+          inspectionLabel: inspectionLabel(inspection.number),
+          itemPrompt: item.prompt,
+          result: answer?.result ?? null,
+          comment,
+        }),
+      location: input.location ?? inspection.location,
+      priority: input.priority ?? (answer?.result === 'fail' ? 'high' : 'medium'),
+      fileIds: input.fileIds ?? answer?.fileIds ?? [],
+      inspectionId,
+      inspectionItemId: templateItemId,
+    });
+    await scope.tx.insert(itemEvents).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      inspectionId,
+      templateItemId,
+      kind: 'observation',
+      observationId: created.observation.id,
+      actorId: scope.ctx.userId,
+      at: now(),
+    });
+    return created;
   }
 
   async function update(
@@ -336,7 +429,7 @@ export function createObservationService(deps: QualityDeps) {
     return getVisible(scope, projectId, id);
   }
 
-  return { list, create, detail: getVisible, update, transition };
+  return { list, create, createFromItem, detail: getVisible, update, transition };
 }
 
 export type ObservationService = ReturnType<typeof createObservationService>;

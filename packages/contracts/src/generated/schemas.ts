@@ -112,6 +112,21 @@ export const AddCoordinationCommentRequestSchema = z.object({
 }).strict();
 export type AddCoordinationCommentRequest = z.infer<typeof AddCoordinationCommentRequestSchema>;
 
+export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
+export type FileRef = z.infer<typeof FileRefSchema>;
+
+export const AddInspectionItemCommentRequestSchema = z.object({
+  "body": z.string().min(1).max(2000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+}).strict();
+export type AddInspectionItemCommentRequest = z.infer<typeof AddInspectionItemCommentRequestSchema>;
+
+export const AddInspectionSignatureRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "fileId": FileRefSchema.optional(),
+}).strict();
+export type AddInspectionSignatureRequest = z.infer<typeof AddInspectionSignatureRequestSchema>;
+
 export const MeetingLiveSourceSchema = z.enum(["rfis_overdue", "submittals_due", "defects_open", "delays_week"]);
 export type MeetingLiveSource = z.infer<typeof MeetingLiveSourceSchema>;
 
@@ -1030,9 +1045,6 @@ export const ComplianceAccessRequestPreviewSchema = z.object({
   "grantExpiresOn": z.string().date(),
 });
 export type ComplianceAccessRequestPreview = z.infer<typeof ComplianceAccessRequestPreviewSchema>;
-
-export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
-export type FileRef = z.infer<typeof FileRefSchema>;
 
 export const ComplianceDocumentSchema = z.object({
   "id": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
@@ -2149,10 +2161,18 @@ export const CreateInspectionRequestSchema = z.object({
   "location": z.string().min(1).max(300).optional(),
   "scheduledFor": z.string().date().optional(),
   "inspectorId": UserRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "assigneeIds": z.array(UserRefSchema).max(20).optional(),
+  "responsibleCompanyId": CompanyRefSchema.optional(),
+  "pointOfContactId": UserRefSchema.optional(),
+  "trade": z.string().min(1).max(200).optional(),
+  "specSection": z.string().min(1).max(200).optional(),
+  "description": z.string().max(5000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type CreateInspectionRequest = z.infer<typeof CreateInspectionRequestSchema>;
 
-export const InspectionResponseTypeSchema = z.enum(["pass_fail_na", "yes_no", "number", "text", "photo", "signature", "select"]);
+export const InspectionResponseTypeSchema = z.enum(["pass_fail_na", "yes_no", "number", "text", "photo", "signature", "select", "date"]);
 export type InspectionResponseType = z.infer<typeof InspectionResponseTypeSchema>;
 
 export const InspectionTemplateItemInputSchema = z.object({
@@ -2162,6 +2182,7 @@ export const InspectionTemplateItemInputSchema = z.object({
   "options": z.array(z.string().min(1).max(200)).max(30).optional(),
   "required": z.boolean().optional(),
   "createsDefectOnFail": z.boolean().optional(),
+  "helpText": z.string().max(2000).optional(),
 }).strict();
 export type InspectionTemplateItemInput = z.infer<typeof InspectionTemplateItemInputSchema>;
 
@@ -2280,6 +2301,20 @@ export type CreateOauthAppRequest = z.infer<typeof CreateOauthAppRequestSchema>;
 
 export const ObservationTypeSchema = z.enum(["safety", "quality", "environmental", "commercial"]);
 export type ObservationType = z.infer<typeof ObservationTypeSchema>;
+
+export const CreateObservationFromItemRequestSchema = z.object({
+  "type": ObservationTypeSchema.optional(),
+  "hazard": z.string().min(1).max(200).optional(),
+  "description": z.string().min(1).max(20000).optional(),
+  "comment": z.string().max(2000).optional(),
+  "location": z.string().min(1).max(300).optional(),
+  "priority": DefectPrioritySchema.optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+}).strict();
+export type CreateObservationFromItemRequest = z.infer<typeof CreateObservationFromItemRequestSchema>;
 
 export const CreateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema,
@@ -4349,6 +4384,14 @@ export const InspectionSchema = z.object({
   "status": InspectionStatusSchema,
   "inspectorId": z.string().nullable(),
   "scheduledFor": z.string().date().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "assigneeIds": z.array(z.string()),
+  "responsibleCompanyId": z.string().nullable(),
+  "pointOfContactId": z.string().nullable(),
+  "trade": z.string().nullable(),
+  "specSection": z.string().nullable(),
+  "description": z.string(),
+  "fileIds": z.array(z.string()),
   "completedAt": z.string().datetime({ offset: true }).nullable(),
   "signedBy": z.union([InspectionSignatureSchema, z.null()]),
   "createdAt": z.string().datetime({ offset: true }),
@@ -4356,6 +4399,35 @@ export const InspectionSchema = z.object({
   "version": z.number().int(),
 });
 export type Inspection = z.infer<typeof InspectionSchema>;
+
+export const InspectionItemSuggestionSchema = z.object({
+  "code": z.enum(["failed_with_photo"]),
+  "message": z.string(),
+});
+export type InspectionItemSuggestion = z.infer<typeof InspectionItemSuggestionSchema>;
+
+export const InspectionItemActivitySchema = z.object({
+  "templateItemId": z.string(),
+  "responseChanges": z.number().int(),
+  "attachments": z.number().int(),
+  "photos": z.number().int(),
+  "comments": z.number().int(),
+  "observations": z.number().int(),
+  "suggestion": z.union([InspectionItemSuggestionSchema, z.null()]),
+});
+export type InspectionItemActivity = z.infer<typeof InspectionItemActivitySchema>;
+
+export const InspectionSectionSchema = z.object({
+  "section": z.string(),
+  "items": z.number().int(),
+  "answered": z.number().int(),
+  "pass": z.number().int(),
+  "fail": z.number().int(),
+  "na": z.number().int(),
+  "unanswered": z.number().int(),
+  "isNa": z.boolean(),
+});
+export type InspectionSection = z.infer<typeof InspectionSectionSchema>;
 
 export const InspectionTemplateItemSchema = z.object({
   "id": z.string(),
@@ -4366,6 +4438,7 @@ export const InspectionTemplateItemSchema = z.object({
   "options": z.array(z.string()),
   "required": z.boolean(),
   "createsDefectOnFail": z.boolean(),
+  "helpText": z.string(),
 });
 export type InspectionTemplateItem = z.infer<typeof InspectionTemplateItemSchema>;
 
@@ -4385,12 +4458,32 @@ export type InspectionItemResponse = z.infer<typeof InspectionItemResponseSchema
 
 export const InspectionDetailSchema = z.object({
   "inspection": InspectionSchema,
+  "itemActivity": z.array(InspectionItemActivitySchema),
+  "sections": z.array(InspectionSectionSchema),
+  "signatures": z.array(InspectionSignatureSchema),
   "items": z.array(InspectionTemplateItemSchema),
   "responses": z.array(InspectionItemResponseSchema),
   "missingRequiredItemIds": z.array(z.string()),
   "failedItemIds": z.array(z.string()),
 });
 export type InspectionDetail = z.infer<typeof InspectionDetailSchema>;
+
+export const InspectionItemEventSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["response", "comment", "attachment", "photo", "observation"]),
+  "body": z.string().nullable(),
+  "result": z.union([InspectionResultSchema, z.null()]),
+  "fileIds": z.array(z.string()),
+  "observationId": z.string().nullable(),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type InspectionItemEvent = z.infer<typeof InspectionItemEventSchema>;
+
+export const InspectionItemEventListSchema = z.object({
+  "data": z.array(InspectionItemEventSchema),
+});
+export type InspectionItemEventList = z.infer<typeof InspectionItemEventListSchema>;
 
 export const InspectionPageSchema = z.object({
   "data": z.array(InspectionSchema),
@@ -5471,6 +5564,8 @@ export const ObservationSchema = z.object({
   "status": ObservationStatusSchema,
   "dueDate": z.string().date().nullable(),
   "isOverdue": z.boolean(),
+  "inspectionId": z.string().nullable(),
+  "inspectionItemId": z.string().nullable(),
   "swmsId": z.string().nullable(),
   "resolutionNote": z.string().nullable(),
   "fileIds": z.array(z.string()),
@@ -6942,6 +7037,12 @@ export const SetEmergencyContactRequestSchema = z.object({
 });
 export type SetEmergencyContactRequest = z.infer<typeof SetEmergencyContactRequestSchema>;
 
+export const SetInspectionSectionNaRequestSchema = z.object({
+  "section": z.string().max(300),
+  "na": z.boolean(),
+}).strict();
+export type SetInspectionSectionNaRequest = z.infer<typeof SetInspectionSectionNaRequestSchema>;
+
 export const SetMeetingAttendeesRequestSchema = z.object({
   "attendees": z.array(z.intersection(MeetingPersonSchema, z.object({
   "attendance": MeetingAttendanceSchema.optional(),
@@ -7119,7 +7220,7 @@ export const SubmitInductionQuizRequestSchema = z.object({
 export type SubmitInductionQuizRequest = z.infer<typeof SubmitInductionQuizRequestSchema>;
 
 export const SubmitInspectionRequestSchema = z.object({
-  "signedByName": z.string().min(1).max(200),
+  "signedByName": z.string().min(1).max(200).optional(),
   "signatureFileId": FileRefSchema.optional(),
 }).strict();
 export type SubmitInspectionRequest = z.infer<typeof SubmitInspectionRequestSchema>;
@@ -7936,6 +8037,22 @@ export const UpdateInductionRequestSchema = z.object({
   "status": z.enum(["archived"]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateInductionRequest = z.infer<typeof UpdateInductionRequestSchema>;
+
+export const UpdateInspectionRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "location": z.string().min(1).max(300).nullable().optional(),
+  "scheduledFor": z.string().date().nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "inspectorId": UserRefSchema.optional(),
+  "assigneeIds": z.array(UserRefSchema).max(20).optional(),
+  "responsibleCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "pointOfContactId": z.union([UserRefSchema, z.null()]).optional(),
+  "trade": z.string().min(1).max(200).nullable().optional(),
+  "specSection": z.string().min(1).max(200).nullable().optional(),
+  "description": z.string().max(5000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+}).strict();
+export type UpdateInspectionRequest = z.infer<typeof UpdateInspectionRequestSchema>;
 
 export const UpdateInspectionTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
