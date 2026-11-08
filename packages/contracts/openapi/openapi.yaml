@@ -846,6 +846,85 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/KeyDateChangeList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectLocations
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: The project's pinned locations (site office, gates, laydown, parking, nearest hospital), each with a Get Directions link and its site-access note.
+      responses:
+        '200':
+          description: Locations, in the order the project set
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Pin a location. The first one becomes the default; at most 30 per project.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectLocationRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: locationId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^plc_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Change a location. Send `If-Match`. Making it the default clears the previous default.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectLocationRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Remove a location. If it was the default, the next one takes over.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/delay-register:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16286,6 +16365,95 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/KeyDateChange' }
+    LocationKind:
+      type: string
+      enum: [site_office, gate, laydown, parking, hospital, other]
+    ProjectLocation:
+      type: object
+      required:
+        [
+          id,
+          name,
+          kind,
+          address,
+          point,
+          directionsUrl,
+          accessNote,
+          contactName,
+          contactPhone,
+          usedFor,
+          isDefault,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'] }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        directionsUrl:
+          type: [string, 'null']
+          description: A plain maps link to the point (or address). No maps key is involved.
+        accessNote:
+          { type: [string, 'null'], description: 'Gate code, parking instructions, site contact.' }
+        contactName: { type: [string, 'null'] }
+        contactPhone: { type: [string, 'null'] }
+        usedFor:
+          type: array
+          items: { type: string }
+          description: What the point is for ("deliveries", "visitors"); Nova matches arrivals to these.
+        isDefault: { type: boolean }
+        version: { type: integer }
+    ProjectLocationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectLocation' }
+    CreateProjectLocationRequest:
+      type: object
+      additionalProperties: false
+      required: [name, kind]
+      description: Give an address, a map point, or both.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'], maxLength: 300 }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        accessNote: { type: [string, 'null'], maxLength: 2000 }
+        contactName: { type: [string, 'null'], maxLength: 120 }
+        contactPhone: { type: [string, 'null'], maxLength: 40 }
+        usedFor:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 40 }
+        isDefault: { type: boolean }
+    UpdateProjectLocationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'], maxLength: 300 }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        accessNote: { type: [string, 'null'], maxLength: 2000 }
+        contactName: { type: [string, 'null'], maxLength: 120 }
+        contactPhone: { type: [string, 'null'], maxLength: 40 }
+        usedFor:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 40 }
+        isDefault: { type: boolean }
     DelayRegisterRow:
       type: object
       required:

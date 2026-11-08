@@ -9,6 +9,7 @@ export const ID_PREFIXES = {
   company: 'cmp',
   membership: 'mem',
   projectMember: 'pmb',
+  projectLocation: 'plc',
   permissionTemplate: 'ptp',
   session: 'ses',
   apiToken: 'tok',
