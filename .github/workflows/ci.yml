@@ -13,6 +13,9 @@ on:
   push:
     branches: [main]
 
+# Runner choice: unset repo variables mean GitHub-hosted runners. Setting CI_RUNNER (and CI_RUNNER_INTEGRATION for the
+# job that publishes fixed Postgres/Valkey ports) to a JSON label array, e.g. ["self-hosted","archova"], moves the jobs
+# to the self-hosted runner (scripts/ci/setup-selfhosted-runner.sh). Delete the variables to fall back instantly.
 concurrency:
   group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   # Never cancel a run on main: each push to main must finish its own full run.
@@ -24,7 +27,7 @@ permissions:
 jobs:
   changes:
     name: What changed
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 5
     outputs:
       all: ${{ steps.scope.outputs.all }}
@@ -56,7 +59,7 @@ jobs:
   static:
     name: Static checks (format, lint, typecheck)
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -92,7 +95,7 @@ jobs:
   unit:
     name: Unit tests
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -115,7 +118,7 @@ jobs:
   build:
     name: Build
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -147,7 +150,7 @@ jobs:
     name: Lint, typecheck, unit tests, build
     needs: [static, unit, build]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - name: All three passed
@@ -161,7 +164,7 @@ jobs:
     name: Integration tests (Postgres + Valkey, RLS on)
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.all == 'true' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-latest' }}
     timeout-minutes: 20
     services:
       postgres:
