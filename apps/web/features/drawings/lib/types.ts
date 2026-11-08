@@ -53,8 +53,50 @@ export interface DrawingSheet {
   currentRev: string;
   currentIssuedFor: IssuedFor | null;
   currentDrawingDate: string | null;
+  /** The issue (drawing set) the current revision came in with; null when the API doesn't say. */
+  currentSetId: string | null;
   /** Null when the list doesn't say (the API register lists current revisions only). */
   revisionCount: number | null;
+}
+
+/** A published issue of drawings (`documents.drawing_sets`): "IFC Set 3", with when it was issued and received. */
+export interface DrawingSetSummary {
+  id: string;
+  name: string;
+  status: 'processing' | 'review' | 'published';
+  issuedDate: string | null;
+  receivedDate: string | null;
+}
+
+/** One discipline's sheets in the grouped register. */
+export interface DisciplineGroup {
+  key: string;
+  label: string;
+  sheets: DrawingSheet[];
+}
+
+/** Groups sheets by discipline: known disciplines in DISCIPLINES order, other codes by name, no discipline last. */
+export function groupByDiscipline(sheets: readonly DrawingSheet[]): DisciplineGroup[] {
+  const order = Object.keys(DISCIPLINES);
+  const groups = new Map<string, DisciplineGroup>();
+  for (const sheet of sheets) {
+    const known = disciplineCode(sheet.discipline);
+    const key = known ?? sheet.discipline ?? '';
+    const group = groups.get(key) ?? {
+      key,
+      label: sheet.discipline ? disciplineLabel(sheet.discipline) : 'No discipline',
+      sheets: [],
+    };
+    group.sheets.push(sheet);
+    groups.set(key, group);
+  }
+  const rank = (g: DisciplineGroup) => {
+    const i = order.indexOf(g.key);
+    return g.key === '' ? 2000 : i >= 0 ? i : 1000;
+  };
+  return [...groups.values()].sort(
+    (a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label, 'en-AU'),
+  );
 }
 
 /** `documents.drawing_revisions`. */
@@ -190,3 +232,41 @@ export const ISSUED_FOR_LABELS: Record<IssuedFor, string> = {
   for_approval: 'For approval',
   for_construction: 'For construction',
 };
+
+function csvCell(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/** The register as CSV, in the order shown: a value a spreadsheet would run as a formula opens as text. */
+export function registerCsv(
+  groups: readonly DisciplineGroup[],
+  setFor: (sheet: DrawingSheet) => DrawingSetSummary | undefined,
+): string {
+  const head = [
+    'Drawing no.',
+    'Title',
+    'Discipline',
+    'Revision',
+    'Status',
+    'Drawing date',
+    'Received date',
+    'Set',
+  ];
+  const lines = groups.flatMap((g) =>
+    g.sheets.map((s) => {
+      const set = setFor(s);
+      return [
+        s.sheetNumber,
+        s.title,
+        g.label,
+        s.currentRev,
+        issuedForLabel(s.currentIssuedFor),
+        s.currentDrawingDate ?? '',
+        set?.receivedDate ?? '',
+        set?.name ?? '',
+      ];
+    }),
+  );
+  return [head, ...lines].map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}

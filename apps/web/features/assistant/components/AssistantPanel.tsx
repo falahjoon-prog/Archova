@@ -10,8 +10,10 @@ import { resolveCitation } from '@/shared/lib/citations';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { askNova, sendAnswerFeedback } from '../data/ask';
+import { askNova, askNovaHelp, sendAnswerFeedback } from '../data/ask';
 import { actionRedirect } from '../data/actions';
+import { errorHelpAnswer, navHelpAnswer } from '../data/help';
+import type { ErrorView } from '@/shared/lib/errors';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import {
@@ -30,6 +32,8 @@ interface Turn {
   answer: NovaAnswer | null;
   shown: string;
   feedback: 'up' | 'down' | null;
+  /** Set when the person asked Nova about an error; the answer explains it and suggests what to do. */
+  error?: ErrorView;
 }
 
 const RECORD_LABELS: Record<string, string> = {
@@ -52,6 +56,32 @@ function recordLabel(r: NonNullable<AssistantScope['record']>): string {
 }
 
 /** Starters that work with what Nova can read: the preview's records, or what the project holds (documents, drawings, RFIs, defects, the site diary). */
+/**
+ * Model-written help from the ai module, or the built-in rule-based answer for an error when it can't be reached
+ * (preview data, Nova off, credits used, network). Null for a plain question that failed, so the caller carries on.
+ */
+async function helpFromNova(
+  orgId: string,
+  question: string,
+  error: ErrorView | undefined,
+  signal: AbortSignal,
+): Promise<NovaAnswer | null> {
+  if (!previewDataOnly) {
+    try {
+      return await askNovaHelp(
+        orgId,
+        error
+          ? { error: { status: error.status, code: error.code, message: error.message } }
+          : { question },
+        signal,
+      );
+    } catch {
+      /* fall through to the built-in answer */
+    }
+  }
+  return error ? errorHelpAnswer(error) : null;
+}
+
 const SUGGESTIONS = previewDataOnly
   ? [
       'Which RFIs are overdue?',
@@ -120,20 +150,25 @@ export function AssistantPanel() {
   const update = (id: number, patch: Partial<Turn>) =>
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = async (id: number, question: string, s: AssistantScope) => {
+  const run = async (id: number, question: string, s: AssistantScope, error?: ErrorView) => {
     const controller = new AbortController();
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
+        (error ? await helpFromNova(org.orgId, question, error, controller.signal) : null) ??
         actionRedirect(question, s) ??
+        navHelpAnswer(question) ??
         (previewDataOnly || !s.projectId
-          ? await previewAnswer(
+          ? ((!s.projectId && !previewDataOnly
+              ? await helpFromNova(org.orgId, question, undefined, controller.signal)
+              : null) ??
+            (await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
-            )
+            )))
           : await askNova(org.orgId, s.projectId, question, controller.signal));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
@@ -149,7 +184,7 @@ export function AssistantPanel() {
     }
   };
 
-  const ask = (question: string) => {
+  const ask = (question: string, error?: ErrorView) => {
     const q = question.trim();
     if (!q || busy || exhausted) return;
     const id = nextId.current++;
@@ -162,11 +197,24 @@ export function AssistantPanel() {
       answer: null,
       shown: '',
       feedback: null,
+      ...(error ? { error } : {}),
     };
     setTurns((ts) => [...ts, turn]);
     setDraft('');
-    void run(id, q, effective);
+    void run(id, q, effective, error);
   };
+
+  // "Ask Nova what to do" on an error alert: explain it and suggest a fix, once per click.
+  const pendingError = panel.pendingError;
+  useEffect(() => {
+    if (!pendingError || busy) return;
+    panel.clearPendingError();
+    ask(
+      `What went wrong${pendingError.status ? ` (error ${pendingError.status})` : ''}, and what should I do?`,
+      pendingError,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingError]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -217,7 +265,7 @@ export function AssistantPanel() {
               turn={t}
               orgSlug={org.orgSlug}
               onStop={() => abort.current?.abort()}
-              onRetry={() => void run(t.id, t.question, t.scope)}
+              onRetry={() => void run(t.id, t.question, t.scope, t.error)}
               onFeedback={(v) => {
                 update(t.id, { feedback: v });
                 // Only answers the API produced can be rated; the preview's are kept on screen.

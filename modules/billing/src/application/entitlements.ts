@@ -20,6 +20,7 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'defects',
     'quality',
     'safety',
+    'insurance',
     'photos',
     'meetings',
     // Project action plan (phased lifecycle checklist with hold points). Paid plans list it once pricing is set.

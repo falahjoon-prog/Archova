@@ -10,6 +10,8 @@ import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingCompareVisualSuite } from './suites/drawing-compare-visual';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { captureScanSuite } from './suites/capture-scan';
+import { helpExplainSuite } from './suites/help-explain';
 import { hazardScanSuite } from './suites/hazard-scan';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
@@ -18,6 +20,7 @@ import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { laborProductivitySuite } from './suites/labor-productivity';
+import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
@@ -41,6 +44,7 @@ export const SUITES: readonly AnySuite[] = [
   translationSuite,
   budgetReviewSuite,
   diarySummarySuite,
+  helpExplainSuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
   rfiDraftSuite,
@@ -50,10 +54,12 @@ export const SUITES: readonly AnySuite[] = [
   drawingCompareVisualSuite,
   defectTagSuite,
   hazardScanSuite,
+  captureScanSuite,
   importMappingSuite,
   quoteReadSuite,
   quoteNegotiateSuite,
   laborProductivitySuite,
+  announcementDraftSuite,
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,

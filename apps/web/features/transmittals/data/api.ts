@@ -7,6 +7,7 @@ import { allPages } from '@/shared/lib/data-mode';
 import type {
   CreateTransmittal,
   Sendable,
+  RegisterRow,
   Transmittal,
   TransmittalAccess,
   TransmittalDetail,
@@ -27,6 +28,14 @@ export function createTransmittalsApi(orgId: string) {
           }),
         ),
       );
+    },
+    async register(projectId: string): Promise<RegisterRow[]> {
+      const res = unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/document-register', {
+          params: { path: { orgId, projectId } },
+        }),
+      );
+      return res.data;
     },
     /** The current revision of every drawing and document, to choose from. */
     async listSendable(projectId: string): Promise<Sendable[]> {

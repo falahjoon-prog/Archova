@@ -1,0 +1,5 @@
+-- Adds 'project_plan_item' (a request for an attachment or photo on an action plan item) to the entity types a notification can point at. Keeps every type from the migrations before it.
+alter table notifications.notifications drop constraint notifications_entity_type_check;
+alter table notifications.notifications
+  add constraint notifications_entity_type_check
+  check (entity_type in ('meeting', 'tender_package', 'contract', 'incident', 'compliance_document', 'conversation', 'permit', 'cover', 'announcement', 'project_plan_item'));
