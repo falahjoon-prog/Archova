@@ -78,6 +78,7 @@ export const PROBLEM_CODES = {
   'project_member.user_not_found': 422,
   'project_member.not_found': 404,
   'project_member.cannot_remove_self': 422,
+  'project_location.not_found': 404,
   'company.not_found': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
@@ -198,6 +199,9 @@ export const PROBLEM_CODES = {
   'submittal_step.not_found': 404,
   // bim
   'bim.model_not_found': 404,
+  'bim.capture_not_found': 404,
+  'ai.capture_observation.not_found': 404,
+  'ai.capture_observation.already_reviewed': 409,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
   // conversations
@@ -290,6 +294,9 @@ export const PROBLEM_CODES = {
   'ownerportal.item_not_found': 404,
   // notifications
   'notification.not_found': 404,
+  // bookmarks
+  'bookmark.invalid_target': 422,
+  'bookmark.limit_reached': 409,
   // recents
   'recent.invalid_target': 422,
   // scheduling (programme)
@@ -347,9 +354,18 @@ export const PROBLEM_CODES = {
   'financials.commitment.bad_state': 409,
   'financials.commitment.reason_required': 422,
   'financials.commitment.over_budget': 422,
+  'financials.owner_invoice.not_found': 404,
+  'financials.owner_invoice.not_head_contract': 422,
+  'financials.owner_invoice.claim_not_eligible': 422,
+  'financials.owner_invoice.flags_unconfirmed': 422,
+  'financials.owner_invoice.claim_taken': 409,
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.tm_ticket.not_found': 404,
+  'financials.tm_ticket.bad_state': 409,
+  'financials.tm_ticket.duplicate_source': 409,
+  'financials.tm_ticket.reason_required': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,
@@ -377,6 +393,12 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // permits: project permits and approvals register
+  'permit.not_found': 404,
+  'permit.invalid_transition': 409,
+  // insurance: subcontractor insurance and bonds register
+  'cover.not_found': 404,
+  'cover.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,

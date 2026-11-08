@@ -20,6 +20,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  uploadFile,
   type TestContext,
 } from './helpers';
 
@@ -1488,6 +1489,96 @@ describe('Commitments against the budget', () => {
   });
 });
 
+describe('Owner invoice pre-fill', () => {
+  it('compiles approved subcontractor claims, holds flagged ones for confirmation, and frees them on discard', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const head = (
+      await post('contracts', {
+        kind: 'head',
+        title: 'Head contract',
+        originalValue: '900000.00',
+        retentionPct: '5.00',
+        sov: [{ code: 'H1', description: 'Works', value: '900000.00' }],
+      })
+    ).json();
+    const sub = (await post('contracts', contractBody(s.subCo.companyId))).json();
+    const claim = async (periodEnd: string) => {
+      const r = await post(`contracts/${sub.contract.id}/claims`, {
+        periodEnd,
+        receivedAt: '2026-10-13T23:00:00Z',
+        statesAct: true,
+        lines: [{ sovItemId: sub.sov[0].id, thisClaim: '20000.00' }],
+      });
+      expect(r.statusCode).toBe(201);
+      return r.json().claim;
+    };
+    const first = await claim('2026-09-30');
+    const twin = await claim('2026-09-30');
+    const unscheduled = await claim('2026-10-31');
+    for (const c of [first, twin]) {
+      const issued = await post(`payment-claims/${c.id}/schedule`, {
+        scheduledAmount: c.claimedNet,
+      });
+      expect(issued.statusCode).toBe(201);
+    }
+    const base = `contracts/${head.contract.id}`;
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+
+    // Only scheduled claims up to the period end are offered; the same-period twin is flagged.
+    const pre = (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json();
+    expect(pre.candidates.map((c: { claimId: string }) => c.claimId).sort()).toEqual(
+      [first.id, twin.id].sort(),
+    );
+    expect(unscheduled.status).toBe('submitted');
+    for (const c of pre.candidates) {
+      expect(c.flags.map((f: { code: string }) => f.code)).toContain('duplicate');
+      expect(c.amount).toBe('19000.00');
+      expect(c.backup.find((b: { kind: string }) => b.kind === 'claim_pdf').status).toBe(
+        'attached',
+      );
+    }
+    expect(
+      (await get(`contracts/${sub.contract.id}/owner-invoice-prefill?periodEnd=2026-10-31`)).json()
+        .code,
+    ).toBe('financials.owner_invoice.not_head_contract');
+
+    const body = (confirmed: string[]) => ({
+      periodEnd: '2026-10-31',
+      markupPct: '10.00',
+      claimIds: [first.id, twin.id],
+      confirmedClaimIds: confirmed,
+    });
+    const held = await post(`${base}/owner-invoices`, body([first.id]));
+    expect(held.statusCode).toBe(422);
+    expect(held.json().code).toBe('financials.owner_invoice.flags_unconfirmed');
+    const made = await post(`${base}/owner-invoices`, body([first.id, twin.id]));
+    expect(made.statusCode).toBe(201);
+    expect(made.json().invoice).toMatchObject({
+      number: 1,
+      subTotal: '38000.00',
+      markupAmount: '3800.00',
+      total: '41800.00',
+    });
+    expect(made.json().lines[0].flagsConfirmedAt).not.toBeNull();
+
+    // Taken claims aren't offered again; discarding the draft gives them back.
+    expect(
+      (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json().candidates,
+    ).toEqual([]);
+    expect((await get(`${base}/owner-invoices`)).json().data).toHaveLength(1);
+    expect(
+      (await s.sub.browser.get(`${s.base}/${base}/owner-invoice-prefill?periodEnd=2026-10-31`))
+        .statusCode,
+    ).toBe(403);
+    const del = await s.pm.browser.del(`${s.base}/owner-invoices/${made.json().invoice.id}`);
+    expect(del.statusCode).toBe(204);
+    expect(
+      (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json().candidates,
+    ).toHaveLength(2);
+  });
+});
+
 describe('Budget against forecast', () => {
   it('compares revised budget with forecast final cost per cost code', async () => {
     const s = await setup('NSW');
@@ -1689,6 +1780,226 @@ describe('Direct costs', () => {
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/direct-costs`)).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);
+  });
+});
+
+describe('T&M tickets', () => {
+  it('drafts from the day, freezes at signing, needs two people, converts once, and is staff only', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const principal = await signUp(t.app, 'fin-tm-super');
+    await addMember(
+      s.pm.browser,
+      s.orgId,
+      s.base.split('/').pop()!,
+      principal.email,
+      'Superintendent',
+      'Client Rep Co',
+    );
+    const projectId = s.base.split('/').pop()!;
+    const docket = await uploadFile(t, s.pm.browser, s.orgId, projectId, 'docket.pdf');
+    const cc = (await post('cost-codes', { code: '08', description: 'Daywork' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
+    const body = {
+      title: 'Extra excavation at grid C',
+      workDate: '2026-11-03',
+      location: 'Level 2',
+      contractor: 'Acme Civil',
+      instructedBy: 'S. Lee (Superintendent)',
+      lines: [
+        {
+          kind: 'labour',
+          description: 'Dan, labourer',
+          quantity: '8.00',
+          unit: 'hr',
+          rate: '85.00',
+        },
+        {
+          kind: 'equipment',
+          description: '5t excavator',
+          quantity: '4.50',
+          unit: 'hr',
+          rate: '140.00',
+        },
+        {
+          kind: 'material',
+          description: 'Road base',
+          quantity: '12.00',
+          unit: 'm3',
+          rate: '60.50',
+        },
+      ],
+    };
+
+    // Nova's draft is empty here (no timesheets), and a future day is refused.
+    expect((await get('tm-tickets/suggestion?date=2026-11-03')).json().lines).toEqual([]);
+    expect((await get('tm-tickets/suggestion?date=2999-01-01')).statusCode).toBe(422);
+
+    // Bad input.
+    expect((await post('tm-tickets', { ...body, lines: [] })).statusCode).toBe(422);
+    expect((await post('tm-tickets', { ...body, workDate: '2999-01-01' })).statusCode).toBe(422);
+    expect(
+      (await post('tm-tickets', { ...body, lines: [{ ...body.lines[0], quantity: '0' }] }))
+        .statusCode,
+    ).toBe(422);
+
+    const created = await post('tm-tickets', body);
+    expect(created.statusCode).toBe(201);
+    const t1 = created.json();
+    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '1970.00' });
+    expect(t1.lines.map((l: { amount: string }) => l.amount)).toEqual([
+      '680.00',
+      '630.00',
+      '726.00',
+    ]);
+
+    // A draft can be edited; unsigned tickets cannot be converted.
+    const edited = await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, {
+      ...body,
+      title: 'Extra excavation C',
+    });
+    expect(edited.json().title).toBe('Extra excavation C');
+    const convertEarly = await post(`tm-tickets/${t1.id}/convert`, {
+      to: 'direct_cost',
+      budgetLineId: line.id,
+    });
+    expect(convertEarly.json().code).toBe('financials.tm_ticket.bad_state');
+
+    // First signature freezes the ticket; the same person cannot sign twice or in the other role.
+    const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
+      role: 'contractor',
+      signerName: 'Pat Manager',
+    });
+    expect(sign1.json()).toMatchObject({ status: 'part_signed' });
+    expect(sign1.json().signoffs[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
+    expect((await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, body)).json().code).toBe(
+      'financials.tm_ticket.bad_state',
+    );
+    expect(
+      (
+        await post(`tm-tickets/${t1.id}/sign`, { role: 'principal_rep', signerName: 'Pat Manager' })
+      ).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+
+    // The principal's representative needs evidence of the on-site signature.
+    const noEvidence = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+    });
+    expect(noEvidence.statusCode).toBe(422);
+    const sign2 = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+      signerPosition: 'Superintendent',
+      evidenceFileId: docket,
+    });
+    expect(sign2.json().signoffs[1]).toMatchObject({ hasEvidence: true, evidenceFileId: docket });
+    expect(sign2.json()).toMatchObject({ status: 'signed' });
+    // The superintendent can sign but not convert.
+    expect(
+      (
+        await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/convert`, {
+          to: 'direct_cost',
+          budgetLineId: line.id,
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    // The database itself refuses to change a signed ticket, its lines or its sign-offs, whatever the app does.
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    for (const stmt of [
+      sql`update financials.tm_tickets set title = 'changed' where number = 1`,
+      sql`update financials.tm_ticket_lines set rate = 0`,
+      sql`delete from financials.tm_ticket_lines`,
+      sql`update financials.tm_ticket_signoffs set signer_name = 'x'`,
+      sql`delete from financials.tm_ticket_signoffs`,
+      sql`update financials.tm_tickets set status = 'draft' where number = 1`,
+    ])
+      await expect(t.database.withTenantTx(ctx, (sc) => sc.tx.execute(stmt))).rejects.toThrow();
+
+    // Converting to direct costs posts one per kind to the budget line, once.
+    const conv = await post(`tm-tickets/${t1.id}/convert`, {
+      to: 'direct_cost',
+      budgetLineId: line.id,
+    });
+    expect(conv.json()).toMatchObject({ status: 'converted', convertedTo: 'direct_cost' });
+    const dcs = (await get('direct-costs')).json();
+    expect(dcs.total).toBe('1970.00');
+    expect(dcs.data.map((d: { category: string }) => d.category).sort()).toEqual([
+      'labour',
+      'materials',
+      'plant',
+    ]);
+    expect(
+      (await post(`tm-tickets/${t1.id}/convert`, { to: 'direct_cost', budgetLineId: line.id }))
+        .statusCode,
+    ).toBe(409);
+    expect((await post(`tm-tickets/${t1.id}/void`, { note: 'oops' })).statusCode).toBe(409);
+
+    // A second ticket becomes a draft variation on a contract; voiding needs a reason.
+    const contract = (await post('contracts', contractBody())).json().contract;
+    const t2 = (await post('tm-tickets', body)).json();
+    expect(t2.number).toBe(2);
+    await post(`tm-tickets/${t2.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' });
+    await principal.browser.post(`${s.base}/tm-tickets/${t2.id}/sign`, {
+      role: 'principal_rep',
+      signerName: 'Sam Lee',
+    });
+    const asVar = await post(`tm-tickets/${t2.id}/convert`, {
+      to: 'variation',
+      contractId: contract.id,
+    });
+    expect(asVar.json()).toMatchObject({ status: 'converted', convertedTo: 'variation' });
+    expect(asVar.json().variationId).toMatch(/^var_/);
+    const vars = (await get(`contracts/${contract.id}/variations`)).json();
+    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '1970.00' });
+
+    const t3 = (await post('tm-tickets', body)).json();
+    expect((await post(`tm-tickets/${t3.id}/void`, { note: '' })).statusCode).toBe(422);
+    expect((await post(`tm-tickets/${t3.id}/void`, { note: 'Raised twice' })).json().status).toBe(
+      'void',
+    );
+
+    const list = (await get('tm-tickets')).json();
+    expect(list.data.map((d: { number: number }) => d.number)).toEqual([3, 2, 1]);
+    expect(list.total).toBe('3940.00');
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/tm-tickets`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/tm-tickets`, body)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.get(`${s.base}/tm-tickets/suggestion?date=2026-11-03`)).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await s.sub.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+          role: 'contractor',
+          signerName: 'x',
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    // A source id that is not a real timesheet or equipment record is refused.
+    const fake = {
+      ...body.lines[0],
+      sourceType: 'timesheet_line',
+      sourceId: '018f0000-0000-7000-8000-000000000001',
+    };
+    expect((await post('tm-tickets', { ...body, lines: [fake] })).statusCode).toBe(422);
+    // Rates are capped.
+    expect(
+      (await post('tm-tickets', { ...body, lines: [{ ...body.lines[0], rate: '9999999.00' }] }))
+        .statusCode,
+    ).toBe(422);
   });
 });
 

@@ -341,6 +341,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The company's logo, accent colour and Portfolio widgets (members only). */
+        get: operations["getOrgBranding"];
+        /**
+         * Change the logo, accent colour or Portfolio widgets (org owners and admins).
+         * @description Only the fields sent change. `accentColor: null` goes back to the Archova amber and `logoFileId: null` to the
+         *     Archova logo. The logo is an org-level image upload (`module: branding`, no project). The accent replaces the
+         *     brand amber only; buttons, links, status and safety colours never change.
+         */
+        put: operations["updateOrgBranding"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access": {
         parameters: {
             query?: never;
@@ -617,6 +642,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's bookmarks, newest first.
+         * @description Only the caller's own bookmarks are ever returned (at most 200). Pass `projectId` to list one project's.
+         */
+        get: operations["listBookmarks"];
+        put?: never;
+        /**
+         * Bookmark a record (idempotent; saving it again refreshes the title).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. A person can keep up to 200 bookmarks (`bookmark.limit_reached`, 409).
+         */
+        post: operations["saveBookmark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bookmarks/{bookmarkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one of the caller's bookmarks (idempotent). */
+        delete: operations["deleteBookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -694,6 +766,49 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's pinned locations (site office, gates, laydown, parking, nearest hospital), each with a Get Directions link and its site-access note. */
+        get: operations["listProjectLocations"];
+        put?: never;
+        /** Pin a location. The first one becomes the default; at most 30 per project. */
+        post: operations["createProjectLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a location. If it was the default, the next one takes over. */
+        delete: operations["deleteProjectLocation"];
+        options?: never;
+        head?: never;
+        /** Change a location. Send `If-Match`. Making it the default clears the previous default. */
+        patch: operations["updateProjectLocation"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/delay-register": {
@@ -1341,6 +1456,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/site-captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's 360 site captures, the most recently captured first. */
+        get: operations["listSiteCaptures"];
+        put?: never;
+        /**
+         * Embed a 360 tour in the project by its share link.
+         * @description The link must be an https share link from Matterport, Kuula or Ricoh Tours; anything else is a 422. Archova
+         *     keeps the link, not the imagery, so the tour stays in the provider's account and follows its sharing settings.
+         */
+        post: operations["createSiteCapture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a capture from the project. The tour itself is untouched in the provider's account. */
+        delete: operations["deleteSiteCapture"];
+        options?: never;
+        head?: never;
+        /** Change a capture's title, date, area, note or link, or the RFI or issue it relates to. */
+        patch: operations["updateSiteCapture"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues": {
         parameters: {
             query?: never;
@@ -1860,6 +2022,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/document-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The document control register: every drawing sheet and document with its current revision, who was sent
+         *     which revision, and acknowledgement status. `flags` are Nova's rule-based findings (outstanding
+         *     acknowledgements, superseded revisions still in use, distribution gaps); no model is called.
+         */
+        get: operations["getDocumentRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/transmittal-access": {
         parameters: {
             query?: never;
@@ -2282,6 +2468,84 @@ export interface paths {
          *     the manager reports one from the incidents screen if it warrants it.
          */
         post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova about a view from a 360 site capture.
+         * @description The person takes a still from a 360 tour (a screenshot of the view), uploads it to the project and asks Nova
+         *     about it. Nova reads that still, not the live embedded tour, and lists what looks like a defect, missing
+         *     fire-stopping or incomplete work. Each observation has a category, one or two plain sentences saying what the
+         *     still shows, and a confidence. An observation is for a person to check against the plans: Nova does not say a
+         *     rule was broken, does not cite legislation, does not describe people and raises no issue. Wording that judges
+         *     is dropped (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The observations are kept as `open` for a person to confirm or dismiss. Costs a quarter
+         *     of a Nova credit. The still is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanCaptureViewWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What Nova noticed in this project's 360 capture stills, newest first. */
+        get: operations["listCaptureObservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss something Nova noticed in a capture view.
+         * @description A person looks at the view and decides. `confirmed` means it is real; `dismissed` means it isn't (the still is
+         *     distorted, it was already dealt with). An observation is decided once; deciding it again is
+         *     `ai.capture_observation.already_reviewed`. Confirming raises no issue: the person raises a coordination issue
+         *     from the capture if it warrants it.
+         */
+        post: operations["reviewCaptureObservation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5345,6 +5609,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Days with site activity (a sign-in or an equipment log) but no submitted daily log, newest first.
+         * @description A rule, not a model: Nova shows it as "no daily log for a day with site activity". Today is never listed.
+         *     `missing` is no entry at all, `draft` is an entry nobody has submitted. Readers limited to their own
+         *     company get an empty list. At most 93 days.
+         */
+        get: operations["listDiaryGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}": {
         parameters: {
             query?: never;
@@ -7939,6 +8228,49 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted. */
+        patch: operations["updateInspection"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Mark a whole section not applicable, or put it back. Its items stop counting as unanswered. */
+        put: operations["setInspectionSectionNa"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add another signature (inspector, contractor, client) until the inspection is closed. */
+        post: operations["addInspectionSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -8485,6 +8817,111 @@ export interface paths {
         put?: never;
         /** A worker records that they have read the accepted revision. Repeating it is harmless. */
         post: operations["acknowledgeSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The permits and approvals register for a project, with each permit's status today. */
+        get: operations["listPermits"];
+        put?: never;
+        /** Add a permit or approval to the register. It is numbered PMT-0001 per project. */
+        post: operations["createPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags for the project (no model): permits expiring or expired, required types missing, and wallet licences that have lapsed. */
+        get: operations["listPermitFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The permit types this project is expected to hold, with each one's reminder lead time in days. */
+        get: operations["getPermitRequirements"];
+        /** Replace the expected permit types. An empty list switches the missing-permit flags off. */
+        put: operations["setPermitRequirements"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        /** A permit with its history. */
+        get: operations["getPermit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a permit's details. */
+        patch: operations["updatePermit"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** startRenewal, markRenewed (needs the new expiry date), close or reopen. */
+        post: operations["transitionPermit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9348,6 +9785,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** T&M (daywork) tickets, newest first, with the total of those not voided (ex GST). */
+        get: operations["listTmTickets"];
+        put?: never;
+        /** Raise a T&M ticket for labour, equipment and material used on site. Lines can come from Nova's draft. */
+        post: operations["createTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's draft lines for a day, from timesheets and equipment logs not already on a ticket. Unpriced; a person reviews before creating. */
+        get: operations["suggestTmTicket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        /** One T&M ticket with its lines and signatures. */
+        get: operations["getTmTicket"];
+        /** Replace a draft ticket. Refused from the first signature. */
+        put: operations["updateTmTicket"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed. */
+        post: operations["signTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a ticket that has not been converted, with a reason. */
+        post: operations["voidTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert a signed ticket, once, into direct costs on a budget line or a draft variation on a contract. */
+        post: operations["convertTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
         parameters: {
             query?: never;
@@ -9490,6 +10053,77 @@ export interface paths {
         put: operations["setVariationCostCode"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Approved subcontractor claims that can be compiled into the next owner invoice, each checked by Nova.
+         * @description Builder staff only, head contract only. Lists subcontractor claims with a payment schedule issued (or paid), up to the period end, that no owner invoice has taken yet. Each carries Nova's rule-based flags (possible duplicate, outlier, over contract sum, missing statement, invalid claim) and what backs it up.
+         */
+        get: operations["getOwnerInvoicePrefill"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Owner invoice drafts on a head contract, newest first. */
+        get: operations["listOwnerInvoices"];
+        put?: never;
+        /**
+         * Compile the chosen subcontractor claims into an owner invoice draft with its backup pack.
+         * @description Every claim Nova flagged must be listed in `confirmedClaimIds`, otherwise 422. A claim sits on one draft only; discarding the draft frees it.
+         */
+        post: operations["createOwnerInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        /** One owner invoice draft with the claims in it and its backup pack. */
+        get: operations["getOwnerInvoice"];
+        put?: never;
+        post?: never;
+        /** Discard a draft, freeing its claims for another owner invoice. */
+        delete: operations["discardOwnerInvoice"];
         options?: never;
         head?: never;
         patch?: never;
@@ -10154,6 +10788,198 @@ export interface paths {
         head?: never;
         /** Change a capital plan line. */
         patch: operations["updateOwnerCapitalItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        /** The item's history, oldest first: answer changes, comments, photos, files and observations raised from it. */
+        get: operations["listInspectionItemActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a comment and/or files to one checklist item without changing its answer. Only while the inspection is not submitted. */
+        post: operations["addInspectionItemComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Observation on a checklist line. Starts from the item (question, answer, latest comment, photos); anything in the body overrides it. Failed items default to high priority. */
+        post: operations["createObservationFromInspectionItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/covers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The insurance certificates and bonds register for a project, with each item's status today. */
+        get: operations["listCovers"];
+        put?: never;
+        /** Add a certificate of currency or bond for a company on the project. It is numbered INS-0001 per project. */
+        post: operations["createCover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags for the project (no model): covers expiring or expired, required types missing, and amounts below the project minimum. */
+        get: operations["listCoverFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The cover types each tracked company is expected to hold, with reminder lead time and optional minimum amount. */
+        get: operations["getCoverRequirements"];
+        /** Replace the expected cover types. An empty list switches the missing and below-minimum checks off. */
+        put: operations["setCoverRequirements"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/companies/{companyId}/clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                companyId: components["parameters"]["CompanyId"];
+            };
+            cookie?: never;
+        };
+        /** Where one company stands on insurance and bonds today, for the site gate: cleared, warning or blocked, with the reasons. */
+        get: operations["getCompanyClearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                coverId: components["parameters"]["CoverId"];
+            };
+            cookie?: never;
+        };
+        /** A cover with its history. */
+        get: operations["getCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a cover's details. */
+        patch: operations["updateCover"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                coverId: components["parameters"]["CoverId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** startRenewal, markRenewed (needs the new expiry date), close or reopen. */
+        post: operations["transitionCover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -11350,6 +12176,39 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        OrgBranding: {
+            logoFileId: string | null;
+            /** @description Six-digit hex such as #1F6FEB. */
+            accentColor: string | null;
+            /** @description The Portfolio widgets that show, in order. */
+            dashboardWidgets: string[];
+            /** @description The saved Portfolio tile layout, or null while the default one is used. */
+            dashboardLayout: components["schemas"]["DashboardTile"][] | null;
+            availableWidgets: {
+                key: string;
+                label: string;
+            }[];
+            version: number;
+        };
+        UpdateOrgBrandingRequest: {
+            logoFileId?: string | null;
+            accentColor?: string | null;
+            dashboardWidgets?: string[];
+            /** @description Replaces the tile layout; null puts the default layout back. */
+            dashboardLayout?: components["schemas"]["DashboardTile"][] | null;
+        };
+        /** @description A tile on the 12-column dashboard grid. `type` is a tile from the web tile library. */
+        DashboardTile: {
+            id: string;
+            type: string;
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            config?: {
+                [key: string]: unknown;
+            };
+        };
         SupportAccessGrant: {
             /** Format: uuid */
             id: string;
@@ -11441,6 +12300,30 @@ export interface components {
          * @enum {string}
          */
         ProjectPhase: "planning" | "design" | "tender" | "pre_construction" | "construction" | "handover" | "defects_liability";
+        RichRun: {
+            text: string;
+            bold?: boolean;
+            italic?: boolean;
+            underline?: boolean;
+            /** @enum {string} */
+            colour?: "slate" | "red" | "green" | "blue";
+        };
+        RichBlock: {
+            /** @enum {string} */
+            type: "paragraph" | "bullet_list" | "ordered_list";
+            /** @enum {string} */
+            align?: "left" | "center" | "right";
+            lines: components["schemas"]["RichRun"][][];
+        };
+        /** @description Free-written formatted text as data, not HTML. At most 8000 characters in all. */
+        RichDoc: {
+            blocks: components["schemas"]["RichBlock"][];
+        };
+        ProjectStatusTile: {
+            /** @description Custom tile title; null shows "Project description". */
+            title: string | null;
+            doc: components["schemas"]["RichDoc"];
+        };
         Address: {
             line1?: string;
             line2?: string;
@@ -11478,6 +12361,9 @@ export interface components {
             number: string | null;
             status: components["schemas"]["ProjectStatus"];
             phase?: components["schemas"]["ProjectPhase"] | null;
+            /** @description A project photo shown at the top of the project home. */
+            heroFileId?: string | null;
+            statusTile?: components["schemas"]["ProjectStatusTile"] | null;
             /** @enum {string|null} */
             state: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
             /** @description IANA time zone; local dates and deadlines use it (X32) */
@@ -11573,6 +12459,51 @@ export interface components {
         KeyDateChangeList: {
             data: components["schemas"]["KeyDateChange"][];
         };
+        /** @enum {string} */
+        LocationKind: "site_office" | "gate" | "laydown" | "parking" | "hospital" | "other";
+        ProjectLocation: {
+            id: string;
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address: string | null;
+            point: components["schemas"]["GeoPoint"] | null;
+            /** @description A plain maps link to the point (or address). No maps key is involved. */
+            directionsUrl: string | null;
+            /** @description Gate code, parking instructions, site contact. */
+            accessNote: string | null;
+            contactName: string | null;
+            contactPhone: string | null;
+            /** @description What the point is for ("deliveries", "visitors"); Nova matches arrivals to these. */
+            usedFor: string[];
+            isDefault: boolean;
+            version: number;
+        };
+        ProjectLocationList: {
+            data: components["schemas"]["ProjectLocation"][];
+        };
+        /** @description Give an address, a map point, or both. */
+        CreateProjectLocationRequest: {
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address?: string | null;
+            point?: components["schemas"]["GeoPoint"] | null;
+            accessNote?: string | null;
+            contactName?: string | null;
+            contactPhone?: string | null;
+            usedFor?: string[];
+            isDefault?: boolean;
+        };
+        UpdateProjectLocationRequest: {
+            name?: string;
+            kind?: components["schemas"]["LocationKind"];
+            address?: string | null;
+            point?: components["schemas"]["GeoPoint"] | null;
+            accessNote?: string | null;
+            contactName?: string | null;
+            contactPhone?: string | null;
+            usedFor?: string[];
+            isDefault?: boolean;
+        };
         DelayRegisterRow: {
             id: string;
             /** @enum {string} */
@@ -11628,6 +12559,8 @@ export interface components {
             number?: string | null;
             status?: components["schemas"]["ProjectStatus"];
             phase?: components["schemas"]["ProjectPhase"] | null;
+            heroFileId?: string | null;
+            statusTile?: components["schemas"]["ProjectStatusTile"] | null;
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];
@@ -11766,7 +12699,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "permit" | "cover";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -11801,6 +12734,29 @@ export interface components {
         RecentViewList: {
             data: components["schemas"]["RecentView"][];
         };
+        /** @enum {string} */
+        BookmarkEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        BookmarkInput: {
+            entityType: components["schemas"]["BookmarkEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        Bookmark: {
+            id: string;
+            entityType: components["schemas"]["BookmarkEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BookmarkList: {
+            data: components["schemas"]["Bookmark"][];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -11830,7 +12786,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "site_capture" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -12503,6 +13459,36 @@ export interface components {
             unsupportedNumbers: string[];
             disclaimer: string;
         };
+        CaptureObservation: {
+            /** @description The observation (`aco_`) */
+            id: string;
+            /** @description The still it was noticed in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the still shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaCaptureScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`acs_`); its observations share it */
+            scanId: string;
+            observations: components["schemas"]["CaptureObservation"][];
+            /** @description The still was too dark, blurred, distorted or distant to judge, or isn't a building interior. */
+            stillUnclear: boolean;
+            /** @description Observations left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
         HazardPattern: {
             category: string;
             label: string;
@@ -12780,6 +13766,54 @@ export interface components {
             pageFrom: number;
             pageTo: number;
             revision: string | null;
+        };
+        SiteCapture: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** @enum {string} */
+            provider: "matterport" | "kuula" | "ricoh";
+            /** @description The share link as the tour is embedded. */
+            url: string;
+            /**
+             * Format: date
+             * @description The day the capture shows.
+             */
+            capturedOn: string;
+            /** @description Where on site */
+            area: string;
+            note: string;
+            rfiId: string | null;
+            /** @description The coordination issue it relates to (`cis_`). */
+            issueId: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SiteCaptureList: {
+            data: components["schemas"]["SiteCapture"][];
+        };
+        CreateSiteCaptureRequest: {
+            title: string;
+            url: string;
+            /** Format: date */
+            capturedOn: string;
+            area?: string;
+            note?: string;
+            rfiId?: string;
+            issueId?: string;
+        };
+        UpdateSiteCaptureRequest: {
+            title?: string;
+            url?: string;
+            /** Format: date */
+            capturedOn?: string;
+            area?: string;
+            note?: string;
+            rfiId?: string | null;
+            issueId?: string | null;
         };
         /** @enum {string} */
         BimDiscipline: "architectural" | "structural" | "mechanical" | "electrical" | "hydraulic" | "fire" | "civil" | "other";
@@ -13204,6 +14238,58 @@ export interface components {
             shapes?: components["schemas"]["MarkupShape"][];
             /** @description true confirms a carried-forward markup's location */
             locationConfirmed?: boolean;
+        };
+        /**
+         * @description `stale`: last sent an earlier revision than the current one. `cc` recipients are not asked to acknowledge.
+         * @enum {string}
+         */
+        RegisterRecipientStatus: "acknowledged" | "cc" | "pending" | "outstanding" | "overdue" | "stale";
+        /** @enum {string} */
+        RegisterFlagKind: "ack_overdue" | "ack_outstanding" | "superseded_in_use" | "distribution_gap" | "not_distributed";
+        RegisterFlag: {
+            kind: components["schemas"]["RegisterFlagKind"];
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            /** @description Recipients affected */
+            count: number;
+        };
+        RegisterRecipient: {
+            email: string;
+            name: string | null;
+            companyId: string | null;
+            /** @enum {string} */
+            role: "to" | "cc";
+            status: components["schemas"]["RegisterRecipientStatus"];
+            /** @description The revision they were last sent */
+            rev: string;
+            revisionId: string;
+            transmittalId: string;
+            transmittalNumber: number;
+            /** Format: date-time */
+            sentAt: string;
+            /** Format: date-time */
+            openedAt: string | null;
+            /** Format: date-time */
+            downloadedAt: string | null;
+            /** Format: date-time */
+            acknowledgedAt: string | null;
+        };
+        DocumentRegisterRow: {
+            /** @enum {string} */
+            kind: "drawing" | "document";
+            /** @description Sheet or document id */
+            id: string;
+            number: string | null;
+            title: string;
+            discipline: string | null;
+            currentRevisionId: string | null;
+            currentRev: string | null;
+            recipients: components["schemas"]["RegisterRecipient"][];
+            flags: components["schemas"]["RegisterFlag"][];
+        };
+        DocumentRegister: {
+            data: components["schemas"]["DocumentRegisterRow"][];
         };
         /** @enum {string} */
         TransmittalPurpose: "for_information" | "for_review" | "for_construction" | "for_tender" | "other";
@@ -15023,7 +16109,7 @@ export interface components {
          */
         DefectStage: "pre_pc" | "pc" | "dlp";
         /** @enum {string} */
-        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void";
+        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void" | "reopen";
         /** @enum {string} */
         DefectSource: "manual" | "inspection" | "ai_suggested";
         Defect: {
@@ -15041,7 +16127,16 @@ export interface components {
             stage: components["schemas"]["DefectStage"];
             pin: components["schemas"]["DrawingPin"] | null;
             assigneeCompanyId: string | null;
+            /** @description The first assignee (kept for older clients). */
             assigneeUserId: string | null;
+            /** @description Everyone the punch item is assigned to, in the assigned company. */
+            assigneeUserIds: string[];
+            /** @description Punch Item Manager. */
+            managerUserId: string | null;
+            /** @description When set, only this person closes, rejects or reopens the item. */
+            finalApproverUserId: string | null;
+            /** @description Told about changes but not assigned. */
+            distributionUserIds: string[];
             /** Format: date */
             dueDate: string | null;
             /** @description Open or disputed and past its due date in the project's time zone */
@@ -15747,6 +16842,188 @@ export interface components {
         VoidDirectCostRequest: {
             note: string;
         };
+        OwnerInvoiceFlag: {
+            /** @enum {string} */
+            code: "duplicate" | "outlier" | "overclaim" | "statement_missing" | "invalid_claim";
+            message: string;
+        };
+        OwnerInvoiceBackupItem: {
+            /** @enum {string} */
+            kind: "claim_pdf" | "payment_schedule_pdf" | "subcontractor_statement";
+            /** @enum {string} */
+            status: "attached" | "missing" | "not_required";
+            /** @description For the statement, the day it was signed. */
+            detail: string | null;
+        };
+        OwnerInvoiceCandidate: {
+            claimId: string;
+            contractId: string;
+            contractTitle: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            status: components["schemas"]["PaymentClaimStatus"];
+            thisPeriod: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            amount: components["schemas"]["FinancialsMoney"];
+            withheld: components["schemas"]["FinancialsMoney"];
+            flags: components["schemas"]["OwnerInvoiceFlag"][];
+            backup: components["schemas"]["OwnerInvoiceBackupItem"][];
+        };
+        OwnerInvoicePrefill: {
+            /** Format: date */
+            periodEnd: string;
+            candidates: components["schemas"]["OwnerInvoiceCandidate"][];
+        };
+        CreateOwnerInvoiceRequest: {
+            /** Format: date */
+            periodEnd: string;
+            /** @description Margin added on the subcontract cost, in per cent (for example 12.5). */
+            markupPct: string;
+            note?: string;
+            claimIds: string[];
+            confirmedClaimIds: string[];
+        };
+        OwnerInvoice: {
+            id: string;
+            contractId: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            markupPct: string;
+            subTotal: components["schemas"]["FinancialsMoney"];
+            markupAmount: components["schemas"]["FinancialsMoney"];
+            total: components["schemas"]["FinancialsMoney"];
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OwnerInvoiceList: {
+            data: components["schemas"]["OwnerInvoice"][];
+        };
+        OwnerInvoiceLine: {
+            claimId: string;
+            contractTitle: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            flags: components["schemas"]["OwnerInvoiceFlag"][];
+            /** Format: date-time */
+            flagsConfirmedAt: string | null;
+            backup: components["schemas"]["OwnerInvoiceBackupItem"][];
+        };
+        OwnerInvoiceDetail: {
+            invoice: components["schemas"]["OwnerInvoice"];
+            lines: components["schemas"]["OwnerInvoiceLine"][];
+            /** @description Backup items still missing across all claims. */
+            missingBackup: number;
+        };
+        /** @enum {string} */
+        TmKind: "labour" | "equipment" | "material";
+        /** @enum {string} */
+        TmSourceType: "timesheet_line" | "equipment_log";
+        TmTicketLine: {
+            kind: components["schemas"]["TmKind"];
+            description: string;
+            quantity: string;
+            unit: string;
+            rate: components["schemas"]["FinancialsMoney"];
+            amount: components["schemas"]["FinancialsMoney"];
+            sourceType: components["schemas"]["TmSourceType"] | null;
+            /** Format: uuid */
+            sourceId: string | null;
+        };
+        /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
+        TmTicketSignoff: {
+            /** @enum {string} */
+            role: "contractor" | "principal_rep";
+            signerName: string;
+            signerPosition: string | null;
+            hasEvidence: boolean;
+            evidenceFileId: string | null;
+            contentHash: string;
+            /** Format: date-time */
+            signedAt: string;
+        };
+        TmTicket: {
+            id: string;
+            number: number;
+            title: string;
+            description: string | null;
+            /** Format: date */
+            workDate: string;
+            location: string | null;
+            contractor: string | null;
+            instructedBy: string | null;
+            /** @enum {string} */
+            origin: "manual" | "nova";
+            /** @enum {string} */
+            status: "draft" | "part_signed" | "signed" | "converted" | "void";
+            total: components["schemas"]["FinancialsMoney"];
+            /** @enum {string|null} */
+            convertedTo: "direct_cost" | "variation" | null;
+            /** Format: date-time */
+            convertedAt: string | null;
+            variationId: string | null;
+            voidReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TmTicketDetail: components["schemas"]["TmTicket"] & {
+            lines: components["schemas"]["TmTicketLine"][];
+            signoffs: components["schemas"]["TmTicketSignoff"][];
+        };
+        TmTicketList: {
+            data: components["schemas"]["TmTicket"][];
+            total: components["schemas"]["FinancialsMoney"];
+            awaitingSignature: number;
+            unconverted: number;
+        };
+        TmTicketLineRequest: {
+            kind: components["schemas"]["TmKind"];
+            description: string;
+            quantity: string;
+            unit: string;
+            rate: components["schemas"]["FinancialsMoney"];
+            sourceType?: components["schemas"]["TmSourceType"];
+            /** Format: uuid */
+            sourceId?: string;
+        };
+        TmTicketRequest: {
+            title: string;
+            description?: string;
+            /** Format: date */
+            workDate: string;
+            location?: string;
+            contractor?: string;
+            instructedBy?: string;
+            /** @enum {string} */
+            origin?: "manual" | "nova";
+            lines: components["schemas"]["TmTicketLineRequest"][];
+        };
+        TmTicketSuggestion: {
+            /** Format: date */
+            date: string;
+            lines: components["schemas"]["TmTicketLineRequest"][];
+        };
+        SignTmTicketRequest: {
+            /** @enum {string} */
+            role: "contractor" | "principal_rep";
+            signerName: string;
+            signerPosition?: string;
+            /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
+            evidenceFileId?: string;
+        };
+        VoidTmTicketRequest: {
+            note: string;
+        };
+        ConvertTmTicketRequest: {
+            /** @enum {string} */
+            to: "direct_cost" | "variation";
+            budgetLineId?: string;
+            contractId?: string;
+        };
         CommitmentList: {
             data: components["schemas"]["Commitment"][];
         };
@@ -15901,6 +17178,10 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
             assigneeUserId?: components["schemas"]["UserRef"];
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"];
+            finalApproverUserId?: components["schemas"]["UserRef"];
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
@@ -15916,13 +17197,17 @@ export interface components {
             stage?: components["schemas"]["DefectStage"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
             assigneeUserId?: components["schemas"]["UserRef"] | null;
+            assigneeUserIds?: components["schemas"]["UserRef"][];
+            managerUserId?: components["schemas"]["UserRef"] | null;
+            finalApproverUserId?: components["schemas"]["UserRef"] | null;
+            distributionUserIds?: components["schemas"]["UserRef"][];
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];
         };
         DefectTransitionRequest: {
             action: components["schemas"]["DefectAction"];
-            /** @description Required for reject, dispute and void. A reject reason is shown to the subcontractor. */
+            /** @description Required for reject, dispute, reopen and void. A reject reason is shown to the subcontractor. */
             reason?: string;
             /** @description Photos for this step. Marking ready for review needs at least one (DEF-AC5). */
             fileIds?: components["schemas"]["FileRef"][];
@@ -15991,6 +17276,15 @@ export interface components {
         };
         DiaryEntryList: {
             data: components["schemas"]["DiaryEntry"][];
+        };
+        DiaryGapList: {
+            data: {
+                /** Format: date */
+                date: string;
+                /** @enum {string} */
+                state: "missing" | "draft";
+                sources: ("attendance" | "equipment")[];
+            }[];
         };
         DiaryAmendment: {
             id: string;
@@ -17673,7 +18967,7 @@ export interface components {
             }[];
         };
         /** @enum {string} */
-        InspectionResponseType: "pass_fail_na" | "yes_no" | "number" | "text" | "photo" | "signature" | "select";
+        InspectionResponseType: "pass_fail_na" | "yes_no" | "number" | "text" | "photo" | "signature" | "select" | "date";
         /** @enum {string} */
         InspectionResult: "pass" | "fail" | "na";
         /** @enum {string} */
@@ -17700,6 +18994,8 @@ export interface components {
             options: string[];
             required: boolean;
             createsDefectOnFail: boolean;
+            /** @description Instructions shown behind the item's info icon. Empty when there are none. */
+            helpText: string;
         };
         InspectionTemplateDetail: {
             template: components["schemas"]["InspectionTemplate"];
@@ -17717,6 +19013,8 @@ export interface components {
             required?: boolean;
             /** @description Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it. */
             createsDefectOnFail?: boolean;
+            /** @description Instructions shown behind the item's info icon. */
+            helpText?: string;
         };
         CreateInspectionTemplateRequest: {
             name: string;
@@ -17746,8 +19044,21 @@ export interface components {
             location: string | null;
             status: components["schemas"]["InspectionStatus"];
             inspectorId: string | null;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description The inspection date.
+             */
             scheduledFor: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            assigneeIds: string[];
+            responsibleCompanyId: string | null;
+            pointOfContactId: string | null;
+            trade: string | null;
+            specSection: string | null;
+            description: string;
+            /** @description Files attached to the inspection itself. */
+            fileIds: string[];
             /** Format: date-time */
             completedAt: string | null;
             signedBy: components["schemas"]["InspectionSignature"] | null;
@@ -17770,10 +19081,27 @@ export interface components {
         };
         InspectionDetail: {
             inspection: components["schemas"]["Inspection"];
+            /** @description One entry per checklist item, for the activity strip under each line. */
+            itemActivity: components["schemas"]["InspectionItemActivity"][];
+            /** @description One entry per section, in checklist order, with the rollup counts. */
+            sections: components["schemas"]["InspectionSection"][];
+            signatures: components["schemas"]["InspectionSignature"][];
             items: components["schemas"]["InspectionTemplateItem"][];
             responses: components["schemas"]["InspectionItemResponse"][];
             missingRequiredItemIds: string[];
             failedItemIds: string[];
+        };
+        InspectionSection: {
+            section: string;
+            items: number;
+            /** @description Items with an answer that is not pass, fail or N/A. */
+            answered: number;
+            pass: number;
+            fail: number;
+            na: number;
+            unanswered: number;
+            /** @description The whole section is marked not applicable. */
+            isNa: boolean;
         };
         InspectionPage: {
             data: components["schemas"]["Inspection"][];
@@ -17787,6 +19115,40 @@ export interface components {
             /** Format: date */
             scheduledFor?: string;
             inspectorId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            dueDate?: string;
+            assigneeIds?: components["schemas"]["UserRef"][];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"];
+            pointOfContactId?: components["schemas"]["UserRef"];
+            trade?: string;
+            specSection?: string;
+            description?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        /** @description Header fields. Send only what changes; null clears an optional field. */
+        UpdateInspectionRequest: {
+            title?: string;
+            location?: string | null;
+            /** Format: date */
+            scheduledFor?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            inspectorId?: components["schemas"]["UserRef"];
+            assigneeIds?: components["schemas"]["UserRef"][];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"] | null;
+            pointOfContactId?: components["schemas"]["UserRef"] | null;
+            trade?: string | null;
+            specSection?: string | null;
+            description?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        SetInspectionSectionNaRequest: {
+            section: string;
+            na: boolean;
+        };
+        AddInspectionSignatureRequest: {
+            name: string;
+            fileId?: components["schemas"]["FileRef"];
         };
         InspectionResponseInput: {
             templateItemId: string;
@@ -17798,8 +19160,9 @@ export interface components {
         RecordInspectionResponsesRequest: {
             responses: components["schemas"]["InspectionResponseInput"][];
         };
+        /** @description Name the signer here, or add signatures first and send an empty body. */
         SubmitInspectionRequest: {
-            signedByName: string;
+            signedByName?: string;
             signatureFileId?: components["schemas"]["FileRef"];
         };
         /** @enum {string} */
@@ -17825,6 +19188,10 @@ export interface components {
             /** Format: date */
             dueDate: string | null;
             isOverdue: boolean;
+            /** @description The inspection it was raised from. */
+            inspectionId: string | null;
+            /** @description The checklist item it was raised from. */
+            inspectionItemId: string | null;
             /** @description The SWMS this observation is about (stop work: SWMS not followed). */
             swmsId: string | null;
             resolutionNote: string | null;
@@ -18277,6 +19644,154 @@ export interface components {
             writtenNoticeRequestedAt?: string;
             people?: components["schemas"]["IncidentPersonInput"][];
         };
+        /** @enum {string} */
+        CoverKind: "public_liability" | "workers_comp" | "contract_works" | "professional_indemnity" | "personal_accident" | "other_insurance" | "performance_bond" | "retention_bond" | "advance_payment_bond" | "bank_guarantee" | "other_bond";
+        /** @enum {string} */
+        CoverCategory: "insurance" | "bond";
+        /**
+         * @description Derived from the lifecycle and the expiry date in the project's own calendar day.
+         * @enum {string}
+         */
+        CoverStatus: "active" | "expiring_soon" | "expired" | "renewal_in_progress" | "closed";
+        /** @enum {string} */
+        CoverLifecycle: "active" | "renewal_in_progress" | "closed";
+        Cover: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            companyId: string;
+            kind: components["schemas"]["CoverKind"];
+            category: components["schemas"]["CoverCategory"];
+            title: string;
+            issuer: string | null;
+            referenceNumber: string | null;
+            /** @description Sum insured or bond face value */
+            amountCents: number | null;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            lifecycle: components["schemas"]["CoverLifecycle"];
+            status: components["schemas"]["CoverStatus"];
+            /** @description Negative once expired. */
+            daysToExpiry: number | null;
+            /** Format: date */
+            renewalStartedOn: string | null;
+            notes: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CoverEvent: {
+            id: string;
+            action: string;
+            fromLifecycle: components["schemas"]["CoverLifecycle"] | null;
+            toLifecycle: components["schemas"]["CoverLifecycle"];
+            /** Format: date */
+            expiresOn: string | null;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        CoverDetail: {
+            cover: components["schemas"]["Cover"];
+            events: components["schemas"]["CoverEvent"][];
+        };
+        CoverPage: {
+            data: components["schemas"]["Cover"][];
+            nextCursor: string | null;
+        };
+        CreateCoverRequest: {
+            kind: components["schemas"]["CoverKind"];
+            title: string;
+            companyId: string;
+            issuer?: string | null;
+            referenceNumber?: string | null;
+            amountCents?: number | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        UpdateCoverRequest: {
+            kind?: components["schemas"]["CoverKind"];
+            title?: string;
+            companyId?: string;
+            issuer?: string | null;
+            referenceNumber?: string | null;
+            amountCents?: number | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        CoverTransitionRequest: {
+            /** @enum {string} */
+            action: "startRenewal" | "markRenewed" | "close" | "reopen";
+            /**
+             * Format: date
+             * @description Required for markRenewed; must be after the current expiry.
+             */
+            newExpiresOn?: string | null;
+            note?: string | null;
+        };
+        CoverRequirement: {
+            kind: components["schemas"]["CoverKind"];
+            leadDays: number;
+            minAmountCents: number | null;
+        };
+        CoverRequirementList: {
+            data: components["schemas"]["CoverRequirement"][];
+        };
+        SetCoverRequirementsRequest: {
+            items: components["schemas"]["CoverRequirement"][];
+        };
+        CoverFlag: {
+            kind: components["schemas"]["CoverIssueKind"];
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            companyId: string;
+            title: string;
+            detail: string;
+            coverId: string | null;
+            coverKind: components["schemas"]["CoverKind"] | null;
+            /** Format: date */
+            expiresOn: string | null;
+            daysLeft: number | null;
+        };
+        /** @enum {string} */
+        CoverIssueKind: "expired" | "expired_while_renewing" | "expiring" | "missing" | "below_minimum";
+        CoverFlagList: {
+            data: components["schemas"]["CoverFlag"][];
+        };
+        CompanyCoverClearance: {
+            companyId: string;
+            /** @enum {string} */
+            state: "cleared" | "warning" | "blocked";
+            /** @description False when the project has set no requirements */
+            requirementsSet: boolean;
+            coverCount: number;
+            issues: {
+                kind: components["schemas"]["CoverIssueKind"];
+                /** @enum {string} */
+                level: "blocking" | "warning";
+                coverId: string | null;
+                coverKind: components["schemas"]["CoverKind"] | null;
+                /** Format: date */
+                expiresOn: string | null;
+                daysLeft: number | null;
+                message: string;
+            }[];
+        };
         UpdateIncidentRequest: {
             title?: string;
             type?: components["schemas"]["IncidentType"];
@@ -18319,6 +19834,125 @@ export interface components {
             dueDate?: string | null;
             source?: components["schemas"]["IncidentSource"] | null;
             status?: components["schemas"]["CorrectiveStatus"];
+        };
+        /** @enum {string} */
+        PermitKind: "building_permit" | "development_approval" | "construction_certificate" | "occupation_certificate" | "council_approval" | "planning_permit" | "environmental_permit" | "road_occupancy" | "traffic_management" | "crane_hoist" | "demolition" | "hot_work" | "trade_licence" | "other";
+        /**
+         * @description Derived from the lifecycle and the expiry date in the project's own calendar day.
+         * @enum {string}
+         */
+        PermitStatus: "active" | "expiring_soon" | "expired" | "renewal_in_progress" | "closed";
+        /** @enum {string} */
+        PermitLifecycle: "active" | "renewal_in_progress" | "closed";
+        Permit: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            kind: components["schemas"]["PermitKind"];
+            title: string;
+            issuingAuthority: string | null;
+            referenceNumber: string | null;
+            holderCompanyId: string | null;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            lifecycle: components["schemas"]["PermitLifecycle"];
+            status: components["schemas"]["PermitStatus"];
+            /** @description Negative once expired. */
+            daysToExpiry: number | null;
+            /** Format: date */
+            renewalStartedOn: string | null;
+            notes: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        PermitEvent: {
+            id: string;
+            action: string;
+            fromLifecycle: components["schemas"]["PermitLifecycle"] | null;
+            toLifecycle: components["schemas"]["PermitLifecycle"];
+            /** Format: date */
+            expiresOn: string | null;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        PermitDetail: {
+            permit: components["schemas"]["Permit"];
+            events: components["schemas"]["PermitEvent"][];
+        };
+        PermitPage: {
+            data: components["schemas"]["Permit"][];
+            nextCursor: string | null;
+        };
+        CreatePermitRequest: {
+            kind: components["schemas"]["PermitKind"];
+            title: string;
+            issuingAuthority?: string | null;
+            referenceNumber?: string | null;
+            holderCompanyId?: string | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        UpdatePermitRequest: {
+            kind?: components["schemas"]["PermitKind"];
+            title?: string;
+            issuingAuthority?: string | null;
+            referenceNumber?: string | null;
+            holderCompanyId?: string | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        PermitTransitionRequest: {
+            /** @enum {string} */
+            action: "startRenewal" | "markRenewed" | "close" | "reopen";
+            /**
+             * Format: date
+             * @description Required for markRenewed; must be after the current expiry.
+             */
+            newExpiresOn?: string | null;
+            note?: string | null;
+        };
+        PermitRequirement: {
+            kind: components["schemas"]["PermitKind"];
+            leadDays: number;
+        };
+        PermitRequirementList: {
+            data: components["schemas"]["PermitRequirement"][];
+        };
+        SetPermitRequirementsRequest: {
+            items: components["schemas"]["PermitRequirement"][];
+        };
+        PermitFlag: {
+            /** @enum {string} */
+            kind: "expiring" | "expired" | "expired_while_renewing" | "missing_required" | "worker_licence_lapsed";
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            title: string;
+            detail: string;
+            permitId: string | null;
+            permitKind: components["schemas"]["PermitKind"] | null;
+            /** Format: date */
+            expiresOn: string | null;
+            daysLeft: number | null;
+        };
+        PermitFlagList: {
+            data: components["schemas"]["PermitFlag"][];
         };
         /** @enum {string} */
         SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
@@ -18455,6 +20089,57 @@ export interface components {
             /** @description The language the SWMS was shown in. */
             language?: string;
         };
+        InspectionItemSuggestion: {
+            /** @enum {string} */
+            code: "failed_with_photo";
+            message: string;
+        };
+        InspectionItemActivity: {
+            templateItemId: string;
+            responseChanges: number;
+            /** @description Files that are not photos. */
+            attachments: number;
+            photos: number;
+            comments: number;
+            /** @description Observations raised from this item. */
+            observations: number;
+            /** @description Set when the item failed with a photo attached and no observation exists yet. A rule, not a reading of the photo. It never creates anything: a person confirms. */
+            suggestion: components["schemas"]["InspectionItemSuggestion"] | null;
+        };
+        InspectionItemEvent: {
+            id: string;
+            /** @enum {string} */
+            kind: "response" | "comment" | "attachment" | "photo" | "observation";
+            body: string | null;
+            result: components["schemas"]["InspectionResult"] | null;
+            fileIds: string[];
+            observationId: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        InspectionItemEventList: {
+            data: components["schemas"]["InspectionItemEvent"][];
+        };
+        AddInspectionItemCommentRequest: {
+            body?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        CreateObservationFromItemRequest: {
+            type?: components["schemas"]["ObservationType"];
+            hazard?: string;
+            description?: string;
+            /** @description Replaces the item's latest comment in the draft description. */
+            comment?: string;
+            location?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            /** Format: date */
+            dueDate?: string;
+            swmsId?: string;
+            /** @description Defaults to the files on the item's answer. */
+            fileIds?: components["schemas"]["FileRef"][];
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -18468,6 +20153,7 @@ export interface components {
         };
     };
     parameters: {
+        InspectionItemId: string;
         TimesheetId: string;
         EquipmentId: string;
         EquipmentBookingId: string;
@@ -18478,8 +20164,11 @@ export interface components {
         ObservationId: string;
         EnvironmentConditionId: string;
         EnvironmentDocumentId: string;
+        CoverId: string;
+        CompanyId: string;
         IncidentId: string;
         IncidentActionId: string;
+        PermitId: string;
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
@@ -18495,6 +20184,7 @@ export interface components {
         SubmittalId: string;
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
+        SiteCaptureId: string;
         CoordinationIssueId: string;
         ConversationId: string;
         CorrespondenceId: string;
@@ -18506,7 +20196,9 @@ export interface components {
         ForecastAdjustmentId: string;
         VariationId: string;
         DirectCostId: string;
+        TmTicketId: string;
         CommitmentId: string;
+        OwnerInvoiceId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
@@ -18519,6 +20211,7 @@ export interface components {
         EstimateLineId: string;
         ApiTokenId: string;
         NotificationId: string;
+        BookmarkId: string;
         AccountingProvider: "xero" | "myob";
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
@@ -19076,6 +20769,56 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getOrgBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Branding */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgBranding"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOrgBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrgBrandingRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgBranding"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getSupportAccess: {
         parameters: {
             query?: never;
@@ -19410,6 +21153,80 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listBookmarks: {
+        parameters: {
+            query?: {
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bookmarks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookmarkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookmarkInput"];
+            };
+        };
+        responses: {
+            /** @description The bookmark */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bookmark"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listProjects: {
         parameters: {
             query?: {
@@ -19599,6 +21416,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeyDateChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations, in the order the project set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProjectLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectLocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -20698,6 +22624,117 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listSiteCaptures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCaptureList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSiteCapture: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSiteCaptureRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapture"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteSiteCapture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateSiteCapture: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                captureId: components["parameters"]["SiteCaptureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSiteCaptureRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapture"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCoordinationIssues: {
         parameters: {
             query?: {
@@ -21645,6 +23682,30 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getDocumentRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per sheet or document, in sheet/document number order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getTransmittalAccess: {
         parameters: {
             query?: never;
@@ -22203,6 +24264,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    scanCaptureViewWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    still: {
+                        fileId: string;
+                    };
+                    /** @description Where the view is and what the person is checking. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The observations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaCaptureScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCaptureObservations: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                fileId?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The observations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CaptureObservation"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewCaptureObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided observation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureObservation"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -27021,6 +29179,33 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listDiaryGaps: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gap days */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryGapList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getDiaryEntry: {
         parameters: {
             query?: never;
@@ -31320,6 +33505,101 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    updateInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setInspectionSectionNa: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetInspectionSectionNaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addInspectionSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInspectionSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     recordInspectionResponses: {
         parameters: {
             query?: never;
@@ -32450,6 +34730,236 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPermits: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["PermitKind"];
+                status?: components["schemas"]["PermitStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPermit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePermitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPermitFlags: {
+        parameters: {
+            query?: {
+                windowDays?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPermitRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setPermitRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPermitRequirementsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPermit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePermitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermitTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -33857,6 +36367,235 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listTmTickets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestTmTicket: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTmTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    convertTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCommitments: {
         parameters: {
             query?: never;
@@ -34083,6 +36822,137 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Variation"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerInvoicePrefill: {
+        parameters: {
+            query: {
+                periodEnd: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoicePrefill"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerInvoiceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    discardOwnerInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                ownerInvoiceId: components["parameters"]["OwnerInvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -35200,6 +38070,352 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionItemActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionItemEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addInspectionItemComment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInspectionItemCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createObservationFromInspectionItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateObservationFromItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCovers: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["CoverKind"];
+                companyId?: string;
+                status?: components["schemas"]["CoverStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCover: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCoverFlags: {
+        parameters: {
+            query?: {
+                windowDays?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCoverRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setCoverRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCoverRequirementsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCompanyClearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                companyId: components["parameters"]["CompanyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyCoverClearance"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                coverId: components["parameters"]["CoverId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCover: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                coverId: components["parameters"]["CoverId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionCover: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                coverId: components["parameters"]["CoverId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoverTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverDetail"];
                 };
             };
             default: components["responses"]["Problem"];

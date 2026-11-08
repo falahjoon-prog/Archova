@@ -3,8 +3,10 @@ import { AppError, defineModule, type Entitlements, type KernelServices } from '
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { createAccountDeletionService } from './application/account-deletion';
+import { createBrandingService, type BrandingFilesPort } from './application/branding';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
+import { createLocationService } from './application/locations';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
@@ -22,6 +24,8 @@ export function createPlatformModule(
     access: () => AccessService;
     defaultEntitlements: Entitlements;
     onOrgCreated?: OrgDeps['onOrgCreated'];
+    /** Resolved lazily: files is built after platform. Used to check an org logo. */
+    files?: () => BrandingFilesPort;
     supportAccess?: SupportAccessPort;
     /** True when this staff member holds an open support session inside an unrevoked grant for the org. */
     hasOpenSupportSession?: (orgId: string, staffId: string) => Promise<boolean>;
@@ -36,8 +40,10 @@ export function createPlatformModule(
     defaultEntitlements: deps.defaultEntitlements,
     ...(deps.onOrgCreated ? { onOrgCreated: deps.onOrgCreated } : {}),
   });
+  const branding = createBrandingService(() => deps.files?.());
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
+  const locations = createLocationService({ projects });
   const companies = createCompanyService();
   const accountDeletion = createAccountDeletionService({
     database: services.database,
@@ -52,8 +58,10 @@ export function createPlatformModule(
       database: services.database,
       identity: deps.identity,
       orgs,
+      branding,
       projects,
       keyDates,
+      locations,
       companies,
       members,
       accountDeletion,

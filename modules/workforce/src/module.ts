@@ -4,6 +4,7 @@ import { createAttendanceService, type ComplianceSource } from './application/at
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
 import { createTimesheetService } from './application/timesheet';
 import { createEquipmentService } from './application/equipment';
+import { createSiteActivityService } from './application/site-activity';
 import { createRosterService } from './application/roster';
 import { createBadgeService } from './application/badge';
 import { createWalletService } from './application/wallet';
@@ -23,6 +24,7 @@ export function createWorkforceModule(
 ) {
   // The induction rules join the X54 compliance interface ahead of any sources passed in.
   const sources: ComplianceSource[] = [...(deps.complianceSources ?? [])];
+  const siteActivity = createSiteActivityService();
   const attendance = createAttendanceService({ ...deps, complianceSources: sources });
   const inductions = createInductionService(deps, attendance);
   sources.unshift(inductions.gateSource);
@@ -100,8 +102,14 @@ export function createWorkforceModule(
       insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
+      /** For `permits` (Nova flags): licences in the wallet that have lapsed or are about to. */
+      lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
+      dayActivity: sheets.dayActivity,
+      /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */
+      siteActivityDays: siteActivity.siteActivityDays,
     },
   };
 }
