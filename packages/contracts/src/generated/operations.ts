@@ -3447,6 +3447,37 @@ export const SetCostCodeProductionParams = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
 });
 export const SetCostCodeProductionBody = s.CostCodeProductionSchema;
+export const GetProductionReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetProductionReportQuery = z.object({
+  "trade": z.string().max(60).optional(),
+  "location": z.string().max(80).optional(),
+  "includeArchived": z.boolean().optional(),
+});
+export const CreateProductionItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProductionItemBody = s.CreateProductionItemRequestSchema;
+export const UpdateProductionItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProductionItemBody = s.UpdateProductionItemRequestSchema;
+export const ListProductionEntriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const LogProductionEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const LogProductionEntryBody = s.LogProductionEntryRequestSchema;
 export const LockBudgetParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11469,6 +11500,66 @@ export const operations = {
     params: SetCostCodeProductionParams,
     query: null,
     body: SetCostCodeProductionBody,
+  },
+  getProductionReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/report',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetProductionReportParams,
+    query: GetProductionReportQuery,
+    body: null,
+  },
+  createProductionItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProductionItemParams,
+    query: null,
+    body: CreateProductionItemBody,
+  },
+  updateProductionItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProductionItemParams,
+    query: null,
+    body: UpdateProductionItemBody,
+  },
+  listProductionEntries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListProductionEntriesParams,
+    query: null,
+    body: null,
+  },
+  logProductionEntry: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.production.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogProductionEntryParams,
+    query: null,
+    body: LogProductionEntryBody,
   },
   lockBudget: {
     method: 'POST',
