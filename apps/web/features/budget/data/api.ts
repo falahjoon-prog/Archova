@@ -2,7 +2,7 @@
 
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
-import { api } from '@/shared/lib/api';
+import { api, ensureCsrfToken } from '@/shared/lib/api';
 
 type S = components['schemas'];
 export type Budget = S['Budget'];
@@ -10,6 +10,10 @@ export type BudgetLine = S['BudgetLine'];
 export type BudgetAdjustment = S['BudgetAdjustment'];
 export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
 export type BudgetReviewChecks = S['BudgetReviewChecks'];
+export type BudgetForecast = S['BudgetForecast'];
+export type BudgetCostReport = S['BudgetCostReport'];
+export type BudgetCostReportItems = S['BudgetCostReportItems'];
+export type CostReportColumn = 'approved' | 'pending' | 'direct';
 export type BudgetFinding = S['BudgetFinding'];
 export type BudgetReviewAdvice = S['BudgetReviewAdvice'];
 export type BudgetReviewTurn = S['BudgetReviewTurn'];
@@ -26,7 +30,19 @@ export type DirectCostList = S['DirectCostList'];
 export type LaborProductivity = S['LaborProductivity'];
 export type LaborProductivityRow = S['LaborProductivityRow'];
 export type CostCodeProduction = S['CostCodeProduction'];
+export type ProductionLogEntry = S['ProductionLogEntry'];
+export type LogQuantity = S['LogQuantityRequest'];
+export type LaborTurn = S['LaborTurn'];
+export type LaborExplanation = S['LaborProductivityExplanation'];
 export type RecordDirectCost = S['RecordDirectCostRequest'];
+export type ProductionReport = S['ProductionReport'];
+export type ProductionItem = S['ProductionItem'];
+export type ProductionItemRow = S['ProductionItemRow'];
+export type ProductionCurve = S['ProductionCurve'];
+export type ProductionRateFlag = S['ProductionRateFlag'];
+export type CreateProductionItem = S['CreateProductionItemRequest'];
+export type LogProductionEntry = S['LogProductionEntryRequest'];
+export type ProductionEntry = S['ProductionEntry'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -74,6 +90,38 @@ export function createBudgetApi(orgId: string) {
       unwrap(
         await api.DELETE(`${P}/budget/lines/{lineId}`, {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
+        }),
+      );
+    },
+    async forecast(projectId: string): Promise<BudgetForecast> {
+      return unwrap(
+        await api.GET(`${P}/budget/forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async saveForecast(
+      projectId: string,
+      lines: { lineId: string; entries: Record<string, string> }[],
+    ): Promise<BudgetForecast> {
+      return unwrap(
+        await api.PUT(`${P}/budget/forecast`, {
+          params: { path: { orgId, projectId } },
+          body: { lines },
+        }),
+      );
+    },
+    async costReport(projectId: string): Promise<BudgetCostReport> {
+      return unwrap(
+        await api.GET(`${P}/budget/cost-report`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async costReportItems(
+      projectId: string,
+      lineId: string,
+      column: CostReportColumn,
+    ): Promise<BudgetCostReportItems> {
+      return unwrap(
+        await api.GET(`${P}/budget/lines/{lineId}/cost-report-items`, {
+          params: { path: { orgId, projectId, lineId }, query: { column } },
         }),
       );
     },
@@ -125,6 +173,76 @@ export function createBudgetApi(orgId: string) {
       return unwrap(
         await api.PUT(`${P}/cost-codes/{costCodeId}/production`, {
           params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async quantityLog(projectId: string, costCodeId: string): Promise<ProductionLogEntry[]> {
+      return unwrap(
+        await api.GET(`${P}/cost-codes/{costCodeId}/production/log`, {
+          params: { path: { orgId, projectId, costCodeId } },
+        }),
+      ).data;
+    },
+    async logQuantity(projectId: string, costCodeId: string, body: LogQuantity) {
+      return unwrap(
+        await api.POST(`${P}/cost-codes/{costCodeId}/production/log`, {
+          params: { path: { orgId, projectId, costCodeId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async exportLaborProductivity(
+      projectId: string,
+      filter: { divisionId?: string; subJobId?: string },
+    ) {
+      return unwrap(
+        await api.GET(`${P}/reports/labor-productivity/export`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async explainLabor(
+      projectId: string,
+      body: { costCodeId: string; question?: string; history?: LaborTurn[] },
+    ): Promise<LaborExplanation> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/ai/labor-productivity`, {
+          params: { path: { orgId, projectId } },
+          body,
+        }),
+      );
+    },
+    async productionReport(
+      projectId: string,
+      filter: { trade?: string; location?: string },
+    ): Promise<ProductionReport> {
+      return unwrap(
+        await api.GET(`${P}/production/report`, {
+          params: { path: { orgId, projectId }, query: filter },
+        }),
+      );
+    },
+    async createProductionItem(projectId: string, body: CreateProductionItem) {
+      return unwrap(
+        await api.POST(`${P}/production/items`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async productionEntries(projectId: string, itemId: string): Promise<ProductionEntry[]> {
+      return unwrap(
+        await api.GET(`${P}/production/items/{itemId}/entries`, {
+          params: { path: { orgId, projectId, itemId } },
+        }),
+      ).data;
+    },
+    async logProductionEntry(projectId: string, itemId: string, body: LogProductionEntry) {
+      return unwrap(
+        await api.POST(`${P}/production/items/{itemId}/entries`, {
+          params: { path: { orgId, projectId, itemId }, header: idempotencyKey() },
           body,
         }),
       );

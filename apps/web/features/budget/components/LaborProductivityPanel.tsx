@@ -15,13 +15,28 @@ import {
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { LaborProductivityRow } from '../data/api';
-import { useLaborProductivity, useSetProduction } from '../hooks/useBudget';
+import {
+  useExportLaborProductivity,
+  useLaborProductivity,
+  useSetProduction,
+} from '../hooks/useBudget';
+import { LogQuantityCard } from './LogQuantityCard';
+import { NovaLaborCard } from './NovaLaborCard';
 
 const num = (n: number | null, digits = 2) =>
   n === null ? '–' : n.toLocaleString('en-AU', { maximumFractionDigits: digits });
 const pct = (n: number | null) => (n === null ? '–' : `${(n * 100).toFixed(1)}%`);
 const rate = (n: number | null, uom: string | null) =>
   n === null ? '–' : `${num(n)}${uom ? ` ${uom}/hr` : ''}`;
+
+function download(filename: string, csv: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /**
  * Labor productivity: timesheet hours against the production plan for each cost code. Earned hours are percent
@@ -36,6 +51,9 @@ export function LaborProductivityPanel({ canManage }: { canManage: boolean }) {
     ...(subJobId ? { subJobId } : {}),
   };
   const q = useLaborProductivity(project.projectId, filter);
+  const exportCsv = useExportLaborProductivity(project.projectId);
+  const [logging, setLogging] = useState<LaborProductivityRow | null>(null);
+  const [asking, setAsking] = useState<LaborProductivityRow | null>(null);
   const [editing, setEditing] = useState<{
     costCodeId: string;
     row: LaborProductivityRow | null;
@@ -118,13 +136,22 @@ export function LaborProductivityPanel({ canManage }: { canManage: boolean }) {
         </span>
       ),
     },
-    ...(canManage
-      ? [
-          {
-            id: 'actions',
-            header: 'Actions',
-            align: 'end' as const,
-            cell: (r: LaborProductivityRow) => (
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'end' as const,
+      cell: (r: LaborProductivityRow) =>
+        r.budgetedHours === null ? null : (
+          <span className="row-actions">
+            <Button size="sm" variant="secondary" onClick={() => setLogging(r)}>
+              Log quantity {r.code}
+            </Button>
+            {r.flagged ? (
+              <Button size="sm" variant="secondary" onClick={() => setAsking(r)}>
+                Ask Nova {r.code}
+              </Button>
+            ) : null}
+            {canManage ? (
               <Button
                 size="sm"
                 variant="secondary"
@@ -132,10 +159,10 @@ export function LaborProductivityPanel({ canManage }: { canManage: boolean }) {
               >
                 Edit plan {r.code}
               </Button>
-            ),
-          },
-        ]
-      : []),
+            ) : null}
+          </span>
+        ),
+    },
   ];
 
   const t = q.data?.totals;
@@ -189,6 +216,37 @@ export function LaborProductivityPanel({ canManage }: { canManage: boolean }) {
       <p className="u-m-0 u-caption">
         Hours come from submitted, approved and exported timesheets, with breaks taken off.
       </p>
+      <div className="row-actions">
+        <Button
+          variant="secondary"
+          disabled={exportCsv.isPending}
+          onClick={() =>
+            exportCsv.mutate(filter, {
+              onSuccess: (x) => x.count > 0 && download(x.filename, x.csv),
+            })
+          }
+        >
+          Export CSV
+        </Button>
+      </div>
+      <ErrorAlert error={exportCsv.error} title="We couldn't export the report" />
+      {logging ? (
+        <LogQuantityCard
+          key={logging.costCodeId}
+          costCodeId={logging.costCodeId}
+          code={logging.code}
+          uom={logging.uom}
+          onDone={() => setLogging(null)}
+        />
+      ) : null}
+      {asking ? (
+        <NovaLaborCard
+          key={asking.costCodeId}
+          costCodeId={asking.costCodeId}
+          code={asking.code}
+          onDone={() => setAsking(null)}
+        />
+      ) : null}
       {canManage ? (
         editing ? (
           <PlanForm
@@ -239,11 +297,17 @@ function PlanForm({
     if (!uom.trim()) return setError('Enter the unit of measure, like m2 or lm.');
     if (bh === null) return setError('Enter the budgeted hours as a number, like 120.');
     if (bq === null) return setError('Enter the budgeted quantity as a number, like 500.');
-    if (qd === null) return setError('Enter the quantity in place to date, or 0.');
+    if (qd === null) return setError('Enter the opening quantity in place, or 0.');
     save.mutate(
       {
         costCodeId,
-        body: { uom: uom.trim(), budgetedHours: bh, budgetedQuantity: bq, quantityComplete: qd },
+        body: {
+          uom: uom.trim(),
+          budgetedHours: bh,
+          budgetedQuantity: bq,
+          // Progress on an existing plan is logged by day; only a new plan takes an opening figure.
+          ...(r === null ? { quantityComplete: qd } : {}),
+        },
       },
       { onSuccess: onDone },
     );
@@ -284,12 +348,14 @@ function PlanForm({
             value={qty}
             onChange={(e) => setQty(e.target.value)}
           />
-          <TextField
-            label="Quantity in place to date"
-            inputMode="decimal"
-            value={done}
-            onChange={(e) => setDone(e.target.value)}
-          />
+          {r === null ? (
+            <TextField
+              label="Opening quantity in place"
+              inputMode="decimal"
+              value={done}
+              onChange={(e) => setDone(e.target.value)}
+            />
+          ) : null}
         </div>
         {error ? <Alert tone="danger">{error}</Alert> : null}
         <ErrorAlert error={save.error} title="We couldn't save the plan" />

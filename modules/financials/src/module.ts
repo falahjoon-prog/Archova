@@ -4,9 +4,15 @@ import { financialsRoutes } from './api/routes';
 import { commitmentActivityRoutes } from './api/commitmentActivityRoutes';
 import { directCostRoutes } from './api/directCostRoutes';
 import { createCommitmentActivityService } from './application/commitment-activity';
+import { tmTicketRoutes } from './api/tmRoutes';
+import { createTmTicketsService } from './application/tmTickets';
+import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
+import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
+import { createProductionService } from './application/production';
 import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
@@ -27,11 +33,17 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const budget = createBudgetService({
     access: deps.access,
     forecastInputs: forecast.inputsByCode,
+    monthlySpend: forecast.monthlySpend,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const productivity = createProductivityService({
     access: deps.access,
     timesheetMinutes: deps.timesheetMinutes,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const production = createProductionService({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
@@ -44,6 +56,24 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   });
   const directCosts = createDirectCostsService({
     access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const tmTickets = createTmTicketsService({
+    access: deps.access,
+    directCosts,
+    createVariation: service.createVariation,
+    dayActivity: deps.dayActivity,
+    getFile: deps.getFile,
+    siteOf: async (scope, projectId) => {
+      const p = await deps.platform.getProject(scope, projectId);
+      return { lat: p.siteLat, lng: p.siteLng, radiusM: p.geofenceRadiusM };
+    },
+    diaryEntryExists: deps.diaryEntryExists,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const ownerInvoices = createOwnerInvoicesService({
+    access: deps.access,
+    requireStaff: service.requireStaff,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const reportingSources = createReportingSources({
@@ -65,7 +95,10 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
       ...commitmentActivityRoutes(services.database, commitmentActivity),
+      ...tmTicketRoutes(services.database, tmTickets),
+      ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
+      ...productionRoutes(services.database, production),
     },
     api: {
       ledgerSource: service.ledgerSource,
@@ -77,6 +110,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
+      laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
       budgetSummary: budget.portfolioSummary,
       /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */

@@ -209,6 +209,27 @@ describe('BudgetScreen', () => {
     });
   });
 
+  it('filters the budget lines and exports what is shown', async () => {
+    fake.on('GET', `${P}/budget`, () =>
+      budget({
+        lines: [
+          line(),
+          line({ id: 'bln_2', costCodeId: 'ccd_2', code: '09-200', codeDescription: 'Painting' }),
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderInProject(<BudgetScreen />);
+    expect(await screen.findByText('Painting')).toBeTruthy();
+    await enterText(user, screen.getByLabelText('Filter lines'), 'paint');
+    expect(screen.queryByText('Concrete')).toBeNull();
+    expect(screen.getByText('Painting')).toBeTruthy();
+    await user.clear(screen.getByLabelText('Filter lines'));
+    await enterText(user, screen.getByLabelText('Filter lines'), 'zzz');
+    expect(await screen.findByText('No lines match')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Export CSV' }).hasAttribute('disabled')).toBe(true);
+  });
+
   it('adds a cost code from the Cost codes tab', async () => {
     fake.on('GET', `${P}/budget`, () => budget());
     fake.on('POST', `${P}/cost-codes`, () => ({

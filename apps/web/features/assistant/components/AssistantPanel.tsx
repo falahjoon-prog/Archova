@@ -3,15 +3,18 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addDays, parseLocalDate } from '@archova/time';
-import { Alert, Button, CitationChip, NovaFeedback, Textarea } from '@archova/ui';
+import { Alert, Button, CitationChip, buttonClassName, NovaFeedback, Textarea } from '@archova/ui';
 import { NovaIcon, X } from '@archova/ui/icons';
 import { AppLink } from '@/shared/layout/AppLink';
 import { resolveCitation } from '@/shared/lib/citations';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { askNova, sendAnswerFeedback } from '../data/ask';
+import { askNovaHelp, assistNova, sendAnswerFeedback, type AssistTurn } from '../data/ask';
 import { actionRedirect } from '../data/actions';
+import { startersFor } from '../data/starters';
+import { errorHelpAnswer, navHelpAnswer } from '../data/help';
+import type { ErrorView } from '@/shared/lib/errors';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
 import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import {
@@ -30,6 +33,8 @@ interface Turn {
   answer: NovaAnswer | null;
   shown: string;
   feedback: 'up' | 'down' | null;
+  /** Set when the person asked Nova about an error; the answer explains it and suggests what to do. */
+  error?: ErrorView;
 }
 
 const RECORD_LABELS: Record<string, string> = {
@@ -52,6 +57,32 @@ function recordLabel(r: NonNullable<AssistantScope['record']>): string {
 }
 
 /** Starters that work with what Nova can read: the preview's records, or what the project holds (documents, drawings, RFIs, defects, the site diary). */
+/**
+ * Model-written help from the ai module, or the built-in rule-based answer for an error when it can't be reached
+ * (preview data, Nova off, credits used, network). Null for a plain question that failed, so the caller carries on.
+ */
+async function helpFromNova(
+  orgId: string,
+  question: string,
+  error: ErrorView | undefined,
+  signal: AbortSignal,
+): Promise<NovaAnswer | null> {
+  if (!previewDataOnly) {
+    try {
+      return await askNovaHelp(
+        orgId,
+        error
+          ? { error: { status: error.status, code: error.code, message: error.message } }
+          : { question },
+        signal,
+      );
+    } catch {
+      /* fall through to the built-in answer */
+    }
+  }
+  return error ? errorHelpAnswer(error) : null;
+}
+
 const SUGGESTIONS = previewDataOnly
   ? [
       'Which RFIs are overdue?',
@@ -106,7 +137,13 @@ export function AssistantPanel() {
       ? { projectId: scope.projectId, projectName: scope.projectName, timezone: scope.timezone }
       : {}),
     ...(scope.record && !dropped.record && !dropped.project ? { record: scope.record } : {}),
+    ...(scope.counts && !dropped.project ? { counts: scope.counts } : {}),
   };
+  const starters = startersFor(
+    scope.record && dropped.record ? { ...scope, record: undefined } : scope,
+    org.orgSlug,
+  );
+  const questions = starters.questions.length ? starters.questions : SUGGESTIONS;
   const chips = [
     ...(effective.projectId
       ? [{ key: 'project' as const, label: effective.projectName ?? 'This project' }]
@@ -120,21 +157,42 @@ export function AssistantPanel() {
   const update = (id: number, patch: Partial<Turn>) =>
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = async (id: number, question: string, s: AssistantScope) => {
+  const run = async (
+    id: number,
+    question: string,
+    s: AssistantScope,
+    error?: ErrorView,
+    history: AssistTurn[] = [],
+  ) => {
     const controller = new AbortController();
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
+        (error ? await helpFromNova(org.orgId, question, error, controller.signal) : null) ??
         actionRedirect(question, s) ??
+        navHelpAnswer(question) ??
         (previewDataOnly || !s.projectId
-          ? await previewAnswer(
+          ? ((!s.projectId && !previewDataOnly
+              ? await helpFromNova(org.orgId, question, undefined, controller.signal)
+              : null) ??
+            (await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
-            )
-          : await askNova(org.orgId, s.projectId, question, controller.signal));
+            )))
+          : await assistNova(
+              org.orgId,
+              s.projectId,
+              question,
+              // The screen and record the person has open, so "this" means something (ai/07 §3).
+              {
+                ...(s.record ? { screen: s.record.type, record: s.record } : {}),
+              },
+              history,
+              controller.signal,
+            ));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
@@ -149,9 +207,17 @@ export function AssistantPanel() {
     }
   };
 
-  const ask = (question: string) => {
+  const ask = (question: string, error?: ErrorView) => {
     const q = question.trim();
     if (!q || busy || exhausted) return;
+    // The last few finished exchanges, so a follow-up ("and the defects?") keeps its meaning.
+    const history: AssistTurn[] = turns
+      .filter((t) => t.status === 'done' && t.answer)
+      .slice(-3)
+      .flatMap((t) => [
+        { role: 'user' as const, text: t.question.slice(0, 1500) },
+        { role: 'nova' as const, text: t.answer!.text.slice(0, 1500) },
+      ]);
     const id = nextId.current++;
     const turn: Turn = {
       id,
@@ -162,11 +228,24 @@ export function AssistantPanel() {
       answer: null,
       shown: '',
       feedback: null,
+      ...(error ? { error } : {}),
     };
     setTurns((ts) => [...ts, turn]);
     setDraft('');
-    void run(id, q, effective);
+    void run(id, q, effective, error, history);
   };
+
+  // "Ask Nova what to do" on an error alert: explain it and suggest a fix, once per click.
+  const pendingError = panel.pendingError;
+  useEffect(() => {
+    if (!pendingError || busy) return;
+    panel.clearPendingError();
+    ask(
+      `What went wrong${pendingError.status ? ` (error ${pendingError.status})` : ''}, and what should I do?`,
+      pendingError,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingError]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -217,7 +296,7 @@ export function AssistantPanel() {
               turn={t}
               orgSlug={org.orgSlug}
               onStop={() => abort.current?.abort()}
-              onRetry={() => void run(t.id, t.question, t.scope)}
+              onRetry={() => void run(t.id, t.question, t.scope, t.error)}
               onFeedback={(v) => {
                 update(t.id, { feedback: v });
                 // Only answers the API produced can be rated; the preview's are kept on screen.
@@ -236,7 +315,7 @@ export function AssistantPanel() {
             only use what you can see.
           </p>
           <ul className="plain-list stack" aria-label="Suggested questions">
-            {SUGGESTIONS.map((s) => (
+            {questions.map((s) => (
               <li key={s}>
                 <button
                   type="button"
@@ -249,6 +328,17 @@ export function AssistantPanel() {
               </li>
             ))}
           </ul>
+          {starters.actions.length ? (
+            <ul className="row-actions plain-list" aria-label="Quick actions">
+              {starters.actions.map((a) => (
+                <li key={a.key}>
+                  <AppLink className={buttonClassName('secondary', 'ac-button--sm')} href={a.href}>
+                    {a.label}
+                  </AppLink>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 

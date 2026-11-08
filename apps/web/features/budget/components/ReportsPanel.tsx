@@ -22,21 +22,13 @@ import {
   CATEGORIES,
   buyoutRows,
   buyoutTotals,
+  downloadCsv,
   modificationsTotal,
   resourceRows,
   toCsv,
   type BuyoutRow,
   type ResourceRow,
 } from '../lib/reports';
-
-function download(name: string, csv: string) {
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 const Amount = ({ value }: { value: string }) => (
   <span className="u-mono u-nowrap">{aud(value)}</span>
@@ -167,7 +159,7 @@ function Buyout({ state }: { state: ReturnType<typeof useBudget> }) {
         caption="Approved commitments against each line's revised budget. Margin lines are left out."
         disabled={rows.length === 0}
         onDownload={() =>
-          download(
+          downloadCsv(
             'buyout-summary.csv',
             toCsv(
               [
@@ -259,7 +251,7 @@ function Modifications({
         caption="Every change made to the budget after it was locked, newest first."
         disabled={rows.length === 0}
         onDownload={() =>
-          download(
+          downloadCsv(
             'budget-modifications.csv',
             toCsv(
               ['Date', 'Cost code', 'Description', 'Change', 'Reason'],
@@ -359,7 +351,7 @@ function Resources({
         caption="Recorded direct costs by resource type against each line's revised budget. Voided costs are left out."
         disabled={rows.length === 0}
         onDownload={() =>
-          download(
+          downloadCsv(
             'monitored-resources.csv',
             toCsv(
               [
