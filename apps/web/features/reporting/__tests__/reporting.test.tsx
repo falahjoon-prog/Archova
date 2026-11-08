@@ -42,6 +42,7 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
     spent: '0.00',
     variance: '0.00',
     overBudgetCodes: 0,
+    monthly: [],
   },
   attention: 0,
   ...over,
@@ -93,6 +94,10 @@ describe('PortfolioScreen', () => {
             spent: '40000.00',
             variance: '-12500.00',
             overBudgetCodes: 2,
+            monthly: [
+              { month: '2026-09', spent: '10000.00' },
+              { month: '2026-11', spent: '30000.00' },
+            ],
           },
         }),
         project('prj_b', 'Bravo Lofts', { defects: tool(1, 0), rfis: tool(0, 0, true) }),
@@ -144,6 +149,63 @@ describe('PortfolioScreen', () => {
     const last = fake.callsTo('GET', PORTFOLIO).at(-1)!;
     expect(last.init.params?.query).toMatchObject({ includeClosed: 'true' });
   });
+  it('lets an admin add a tile from the library and saves the layout for the company', async () => {
+    const zero = Object.fromEntries(
+      [
+        'projects',
+        'rfisOpen',
+        'rfisOverdue',
+        'defectsOpen',
+        'defectsOverdue',
+        'submittalsOpen',
+        'submittalsOverdue',
+        'claimsOpen',
+        'claimsOverdue',
+        'variationsOpen',
+        'variationsOverdue',
+        'incidentsOpen',
+        'incidentsOverdue',
+        'programmeOpen',
+        'programmeOverdue',
+        'budgetProjects',
+        'projectsOverBudget',
+      ].map((k) => [k, 0]),
+    );
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        ...zero,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [],
+      truncated: false,
+    }));
+    const B = '/v1/orgs/{orgId}/branding';
+    const branding = {
+      logoFileId: null,
+      accentColor: null,
+      dashboardWidgets: ['rfis'],
+      dashboardLayout: null,
+      availableWidgets: [{ key: 'rfis', label: 'RFIs open' }],
+      version: 1,
+    };
+    fake.on('GET', B, () => branding);
+    fake.on('PUT', B, () => branding);
+    renderInProject(<PortfolioScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit layout' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add tiles' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add Text box' }));
+    expect(screen.getByRole('button', { name: /^Move Text box/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await screen.findByRole('button', { name: 'Edit layout' });
+    const body = fake.callsTo('PUT', B).at(-1)!.init.body as { dashboardLayout: unknown[] };
+    expect(body.dashboardLayout).toMatchObject([
+      { id: 'rfis', type: 'stat_rfis', x: 0, y: 0, w: 3, h: 2 },
+      { type: 'portfolio_charts', x: 0, y: 2, w: 12, h: 7 },
+      { type: 'text_box', x: 0, y: 9, w: 4, h: 3 },
+    ]);
+  });
 });
 
 describe('PortfolioScreen charts', () => {
@@ -183,6 +245,7 @@ describe('PortfolioScreen charts', () => {
             spent: '40000.00',
             variance: '10000.00',
             overBudgetCodes: 0,
+            monthly: [],
           },
         }),
         project('prj_b', 'Bravo Lofts'),
@@ -208,6 +271,7 @@ describe('Status report', () => {
     spent: '1000.00',
     variance,
     overBudgetCodes: 0,
+    monthly: [],
   });
   const programme = (late: number, lateDays: number) => ({
     restricted: false,
@@ -243,7 +307,13 @@ describe('Status report', () => {
       },
       projects: [
         project('prj_a', 'Alpha Tower', {
-          budget: budget('100000.00', '90000.00', '10000.00'),
+          budget: {
+            ...budget('100000.00', '90000.00', '10000.00'),
+            monthly: [
+              { month: '2026-09', spent: '1000.00' },
+              { month: '2026-11', spent: '2500.00' },
+            ],
+          },
           programme: programme(0, 0),
         }),
         project('prj_b', 'Bravo Lofts', {
@@ -265,6 +335,9 @@ describe('Status report', () => {
     expect(within(bars).getByText('Over budget, off schedule').nextSibling).toBeTruthy();
     expect(within(bars).getByText('Not enough data')).toBeTruthy();
     expect(screen.getByText('4.5')).toBeTruthy(); // 9 days over 2 late tasks
+    const flow = screen.getByRole('list', { name: 'Spend by month with running total' });
+    expect(within(flow).getAllByRole('listitem')).toHaveLength(3); // Sep, a quiet Oct, Nov
+    expect(within(flow).getByText('Oct 2026')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Project'), 'prj_a');
     expect(screen.getByText('under budget')).toBeTruthy();
     expect(screen.getByText('90%')).toBeTruthy();

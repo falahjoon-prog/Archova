@@ -39,15 +39,28 @@ export {
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
 export {
   DonutChart,
+  FlowBars,
   GroupedBars,
   SiteMap,
   ToneBars,
   type BarGroup,
   type BarSeries,
   type DonutSlice,
+  type FlowRow,
   type MapPoint,
   type TonedBar,
 } from './patterns/Charts';
+export { RichText } from './patterns/RichText';
+export { RichTextEditor, type RichTextEditorProps } from './patterns/RichTextEditor';
+export {
+  docFromElement,
+  docText,
+  fillElement,
+  type RichBlock,
+  type RichColour,
+  type RichDoc,
+  type RichRun,
+} from './patterns/richText';
 export { StatGrid, type StatItem, type StatTone } from './patterns/StatGrid';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState';
 export { FilterBar } from './patterns/FilterBar';

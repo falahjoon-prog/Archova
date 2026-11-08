@@ -17,14 +17,27 @@ import {
   type ObservationType,
   type ObservationViewer,
 } from '../domain/observation';
-import { observations, type Priority } from '../infra/tables';
-import { checkFiles, liveObservation, viewerOf, type QualityDeps } from './shared';
+import { inspectionLabel } from '../domain/inspection';
+import { observationDraft } from '../domain/item-activity';
+import {
+  inspections,
+  itemEvents,
+  observations,
+  responses,
+  templateItems,
+  type Priority,
+} from '../infra/tables';
+import { createObservationTypeService, loadTypes } from './observation-types';
+import { typeProblem } from '../domain/observation-types';
+import { checkFiles, liveObservation, requireInternal, viewerOf, type QualityDeps } from './shared';
 
 export type ObservationRow = typeof observations.$inferSelect;
 export type ObservationView = ObservationRow & { isOverdue: boolean };
 
 export interface ObservationFields {
   type?: ObservationType;
+  /** A built-in key or `custom:<id>` from the type picker. It sets `type` to the register category. */
+  typeKey?: string | null;
   hazard?: string | null;
   description?: string;
   location?: string | null;
@@ -33,6 +46,9 @@ export interface ObservationFields {
   dueDate?: string | null;
   swmsId?: string | null;
   fileIds?: string[];
+  /** Set when it is raised from a checklist item; the inspection and the item it came from. */
+  inspectionId?: string;
+  inspectionItemId?: string;
 }
 
 export function createObservationService(deps: QualityDeps) {
@@ -155,16 +171,53 @@ export function createObservationService(deps: QualityDeps) {
     };
   }
 
+  /** The register category and picker type an observation is filed under, and its attachment rule. */
+  async function resolveType(
+    scope: TenantScope,
+    projectId: string,
+    typeKey: string | null | undefined,
+    legacy: ObservationType | undefined,
+    fileCount: number,
+    allowHidden = false,
+  ): Promise<{ type: ObservationType; typeKey: string | null }> {
+    if (!typeKey) {
+      if (!legacy)
+        throw new AppError('validation_failed', 'Choose an observation type.', [
+          { path: 'type', message: 'Required' },
+        ]);
+      return { type: legacy, typeKey: null };
+    }
+    const { types } = await loadTypes(scope, projectId);
+    const t = types.find((x) => x.key === typeKey && (allowHidden || !x.hidden));
+    if (!t)
+      throw new AppError('validation_failed', 'Choose a type from the list.', [
+        { path: 'typeKey', message: 'Unknown or hidden type' },
+      ]);
+    const problem = typeProblem(t, fileCount);
+    if (problem)
+      throw new AppError(problem.code, problem.message, [
+        { path: 'fileIds', message: 'An attachment is required' },
+      ]);
+    return { type: t.category, typeKey: t.key };
+  }
+
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: ObservationFields & { type: ObservationType; description: string },
+    input: ObservationFields & { description: string },
   ) {
     const v = await viewerOf(deps, scope, projectId);
     await deps.platform.getProject(scope, projectId);
     if (input.assigneeCompanyId) await checkAssignee(scope, projectId, input.assigneeCompanyId);
     if (input.swmsId) await checkSwms(scope, projectId, input.swmsId);
     await checkFiles(deps, scope, projectId, input.fileIds ?? []);
+    const filed = await resolveType(
+      scope,
+      projectId,
+      input.typeKey,
+      input.type,
+      new Set(input.fileIds ?? []).size,
+    );
     const id = uuidv7();
     const number = await nextNumber(scope, projectId, 'observation');
     const [row] = await scope.tx
@@ -174,7 +227,8 @@ export function createObservationService(deps: QualityDeps) {
         orgId: scope.ctx.orgId,
         projectId,
         number,
-        type: input.type,
+        type: filed.type,
+        typeKey: filed.typeKey,
         hazard: input.hazard ?? null,
         description: input.description.trim(),
         location: input.location ?? null,
@@ -183,6 +237,8 @@ export function createObservationService(deps: QualityDeps) {
         raisedByCompanyId: v.companyId,
         dueDate: input.dueDate ?? null,
         swmsId: input.swmsId ?? null,
+        inspectionId: input.inspectionId ?? null,
+        inspectionItemId: input.inspectionItemId ?? null,
         fileIds: [...new Set(input.fileIds ?? [])],
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
@@ -198,11 +254,103 @@ export function createObservationService(deps: QualityDeps) {
       data: {
         observationId: id,
         number,
-        type: input.type,
+        type: filed.type,
         assigneeCompanyId: row!.assigneeCompanyId,
       },
     });
     return getVisible(scope, projectId, id);
+  }
+
+  /**
+   * "Create Observation" on a checklist line: starts from the item (its question, answer, latest comment and
+   * photos) and lets the person override anything. The item's activity records that it was raised.
+   */
+  async function createFromItem(
+    scope: TenantScope,
+    projectId: string,
+    inspectionId: string,
+    templateItemId: string,
+    input: Partial<Omit<ObservationFields, 'inspectionId' | 'inspectionItemId'>> & {
+      comment?: string;
+    },
+  ) {
+    await requireInternal(deps, scope, projectId, 'inspection.not_found');
+    const [inspection] = await scope.tx
+      .select()
+      .from(inspections)
+      .where(
+        and(
+          eq(inspections.id, inspectionId),
+          eq(inspections.projectId, projectId),
+          isNull(inspections.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!inspection) throw new AppError('inspection.not_found');
+    const [item] = await scope.tx
+      .select()
+      .from(templateItems)
+      .where(
+        and(
+          eq(templateItems.id, templateItemId),
+          eq(templateItems.templateId, inspection.templateId),
+        ),
+      )
+      .limit(1);
+    if (!item)
+      throw new AppError('inspection.invalid_response', 'That item is not on this checklist.', [
+        { path: 'templateItemId', message: 'Not on this checklist' },
+      ]);
+    const [answer] = await scope.tx
+      .select()
+      .from(responses)
+      .where(
+        and(eq(responses.inspectionId, inspectionId), eq(responses.templateItemId, templateItemId)),
+      )
+      .limit(1);
+    const comment = input.comment ?? answer?.note ?? null;
+    const files = input.fileIds ?? answer?.fileIds ?? [];
+    // No type chosen: start from the suggested one, unless it needs an attachment the item doesn't have yet.
+    let suggested: string | undefined;
+    if (!input.typeKey && !input.type) {
+      const s = await createObservationTypeService(deps).suggest(
+        scope,
+        projectId,
+        inspectionId,
+        templateItemId,
+      );
+      if (s && (!s.type.requiresAttachment || files.length > 0)) suggested = s.key;
+    }
+    const created = await create(scope, projectId, {
+      ...input,
+      ...(suggested ? { typeKey: suggested } : {}),
+      ...(input.typeKey || suggested ? {} : { type: input.type ?? 'quality' }),
+      description:
+        input.description ??
+        observationDraft({
+          inspectionLabel: inspectionLabel(inspection.number),
+          itemPrompt: item.prompt,
+          result: answer?.result ?? null,
+          comment,
+        }),
+      location: input.location ?? inspection.location,
+      priority: input.priority ?? (answer?.result === 'fail' ? 'high' : 'medium'),
+      fileIds: input.fileIds ?? answer?.fileIds ?? [],
+      inspectionId,
+      inspectionItemId: templateItemId,
+    });
+    await scope.tx.insert(itemEvents).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      inspectionId,
+      templateItemId,
+      kind: 'observation',
+      observationId: created.observation.id,
+      actorId: scope.ctx.userId,
+      at: now(),
+    });
+    return created;
   }
 
   async function update(
@@ -228,10 +376,26 @@ export function createObservationService(deps: QualityDeps) {
     if (patch.assigneeCompanyId) await checkAssignee(scope, projectId, patch.assigneeCompanyId);
     if (patch.swmsId) await checkSwms(scope, projectId, patch.swmsId);
     if (patch.fileIds) await checkFiles(deps, scope, projectId, patch.fileIds);
+    // A new type, or new files on a type that needs one, is checked against the files the observation will have.
+    const refiled =
+      patch.typeKey !== undefined || (patch.fileIds !== undefined && observation.typeKey)
+        ? await resolveType(
+            scope,
+            projectId,
+            patch.typeKey !== undefined ? patch.typeKey : observation.typeKey,
+            patch.type ?? observation.type,
+            new Set(patch.fileIds ?? observation.fileIds).size,
+            patch.typeKey === undefined,
+          )
+        : null;
     const [row] = await scope.tx
       .update(observations)
       .set({
-        ...(patch.type !== undefined ? { type: patch.type } : {}),
+        ...(refiled
+          ? { type: refiled.type, typeKey: refiled.typeKey }
+          : patch.type !== undefined
+            ? { type: patch.type }
+            : {}),
         ...(patch.hazard !== undefined ? { hazard: patch.hazard } : {}),
         ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
         ...(patch.location !== undefined ? { location: patch.location } : {}),
@@ -336,7 +500,7 @@ export function createObservationService(deps: QualityDeps) {
     return getVisible(scope, projectId, id);
   }
 
-  return { list, create, detail: getVisible, update, transition };
+  return { list, create, createFromItem, detail: getVisible, update, transition };
 }
 
 export type ObservationService = ReturnType<typeof createObservationService>;

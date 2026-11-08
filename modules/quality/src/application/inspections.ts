@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import {
   AppError,
@@ -11,15 +11,27 @@ import {
 import {
   failedItems,
   isEditable,
-  missingRequired,
+  missingRequiredIn,
   responseProblem,
+  sectionSummaries,
   type InspectionStatus,
   type ItemResult,
   type ItemSpec,
   type ResponseState,
   type ResponseType,
 } from '../domain/inspection';
-import { inspections, responses, templateItems, templates } from '../infra/tables';
+import { countActivity, itemSuggestion, type ItemEventKind } from '../domain/item-activity';
+import { canSeePrivate, reopenFlag, statusCounts } from '../domain/inspection-record';
+import {
+  history,
+  inspections,
+  itemEvents,
+  responses,
+  signatures,
+  templateItems,
+  templates,
+  type HistoryKind,
+} from '../infra/tables';
 import { uniqueViolation } from './errors';
 import { checkFiles, requireInternal, type QualityDeps } from './shared';
 
@@ -27,6 +39,9 @@ export type TemplateRow = typeof templates.$inferSelect;
 export type ItemRow = typeof templateItems.$inferSelect;
 export type InspectionRow = typeof inspections.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
+export type SignatureRow = typeof signatures.$inferSelect;
+export type ItemEventRow = typeof itemEvents.$inferSelect;
+export type HistoryRow = typeof history.$inferSelect;
 
 export interface TemplateItemInput {
   section?: string;
@@ -35,6 +50,8 @@ export interface TemplateItemInput {
   options?: string[];
   required?: boolean;
   createsDefectOnFail?: boolean;
+  /** Shown behind the item's info icon. */
+  helpText?: string;
 }
 
 export interface ResponseInput {
@@ -43,6 +60,28 @@ export interface ResponseInput {
   result?: ItemResult | null;
   note?: string | null;
   fileIds?: string[];
+}
+
+export interface HeaderInput {
+  title?: string;
+  location?: string | null;
+  /** The inspection date. */
+  scheduledFor?: string | null;
+  dueDate?: string | null;
+  inspectorId?: string;
+  assigneeIds?: string[];
+  responsibleCompanyId?: string | null;
+  pointOfContactId?: string | null;
+  trade?: string | null;
+  specSection?: string | null;
+  description?: string;
+  /** Files attached to the inspection itself, as opposed to one item. */
+  fileIds?: string[];
+  isPrivate?: boolean;
+  /** People who are sent the inspection (the Email action's default recipients). */
+  distributionIds?: string[];
+  /** Drawing revisions the inspection is about. */
+  drawingRevisionIds?: string[];
 }
 
 const spec = (i: ItemRow): ItemSpec => ({
@@ -111,6 +150,7 @@ export function createInspectionService(deps: QualityDeps) {
         options: it.responseType === 'select' ? (it.options ?? []) : [],
         required: it.required ?? true,
         createsDefectOnFail: it.responseType === 'pass_fail_na' && !!it.createsDefectOnFail,
+        helpText: it.helpText?.trim() ?? '',
       })),
     );
   }
@@ -257,12 +297,50 @@ export function createInspectionService(deps: QualityDeps) {
         options: i.options,
         required: i.required,
         createsDefectOnFail: i.createsDefectOnFail,
+        helpText: i.helpText,
       })),
     );
     return templateDetail(scope, projectId, copy);
   }
 
   // ---- inspections ----
+
+  /** Who may open a private inspection: the people on it, and anyone who can close inspections. */
+  async function privacy(scope: TenantScope, projectId: string) {
+    const canClose = await deps.access.can(scope, 'quality.inspections.close', { projectId });
+    const uid = scope.ctx.userId;
+    return {
+      canClose,
+      /** A SQL condition that hides private inspections from everyone else, or null when nothing is hidden. */
+      where: canClose
+        ? null
+        : or(
+            eq(inspections.isPrivate, false),
+            eq(inspections.createdBy, uid),
+            eq(inspections.inspectorId, uid),
+            sql`${uid}::uuid = any(${inspections.assigneeIds})`,
+          )!,
+    };
+  }
+
+  /** One line in the inspection's change history. */
+  async function record(
+    scope: TenantScope,
+    inspection: { id: string; projectId: string },
+    kind: HistoryKind,
+    detail: Record<string, unknown> = {},
+  ) {
+    await scope.tx.insert(history).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId: inspection.projectId,
+      inspectionId: inspection.id,
+      kind,
+      detail,
+      actorId: scope.ctx.userId,
+      at: now(),
+    });
+  }
 
   async function load(scope: TenantScope, projectId: string, id: string) {
     await internal(scope, projectId, 'inspection.not_found');
@@ -278,6 +356,11 @@ export function createInspectionService(deps: QualityDeps) {
       )
       .limit(1);
     if (!row) throw new AppError('inspection.not_found');
+    if (row.isPrivate) {
+      const p = await privacy(scope, projectId);
+      if (!canSeePrivate(row, scope.ctx.userId, p.canClose))
+        throw new AppError('inspection.not_found');
+    }
     return row;
   }
 
@@ -300,13 +383,41 @@ export function createInspectionService(deps: QualityDeps) {
     const byItem = new Map<string, ResponseState>(
       rows.map((r) => [r.templateItemId, { value: r.value, result: r.result, fileIds: r.fileIds }]),
     );
-    const specs = items.map(spec);
+    const sigs = await scope.tx
+      .select()
+      .from(signatures)
+      .where(eq(signatures.inspectionId, id))
+      .orderBy(asc(signatures.at), asc(signatures.id));
+    const naSections = new Set(inspection.naSections);
+    const specs = items.map((i) => ({ ...spec(i), section: i.section }));
+    const events = await scope.tx.select().from(itemEvents).where(eq(itemEvents.inspectionId, id));
+    const byItemEvents = new Map<string, ItemEventRow[]>();
+    for (const e of events)
+      byItemEvents.set(e.templateItemId, [...(byItemEvents.get(e.templateItemId) ?? []), e]);
+    const itemActivity = items.map((i) => {
+      const own = byItemEvents.get(i.id) ?? [];
+      const counts = countActivity(own.map((e) => ({ kind: e.kind, fileCount: e.fileIds.length })));
+      const answer = rows.find((r) => r.templateItemId === i.id);
+      return {
+        templateItemId: i.id,
+        ...counts,
+        suggestion: itemSuggestion(answer?.result ?? null, counts.photos, counts.observations),
+      };
+    });
     return {
       inspection,
       items,
+      itemActivity,
+      signatures: sigs,
       responses: rows,
-      missingRequiredItemIds: missingRequired(specs, byItem).map((i) => i.id),
-      failedItemIds: failedItems(specs, byItem).map((i) => i.id),
+      sections: sectionSummaries(specs, byItem, naSections),
+      summary: statusCounts(sectionSummaries(specs, byItem, naSections)),
+      reopenFlag: reopenFlag(inspection.reopenCount),
+      missingRequiredItemIds: missingRequiredIn(specs, byItem, naSections).map((i) => i.id),
+      failedItemIds: failedItems(
+        specs.filter((i) => !naSections.has(i.section)),
+        byItem,
+      ).map((i) => i.id),
     };
   }
 
@@ -318,6 +429,8 @@ export function createInspectionService(deps: QualityDeps) {
     await internal(scope, projectId, 'inspection.not_found');
     const after = decodeCursor<{ id: string }>(opts.cursor);
     const conditions: SQL[] = [eq(inspections.projectId, projectId), isNull(inspections.deletedAt)];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
     if (opts.status) conditions.push(eq(inspections.status, opts.status));
     if (opts.templateId) conditions.push(eq(inspections.templateId, opts.templateId));
     if (after) conditions.push(lt(inspections.id, after.id));
@@ -330,20 +443,160 @@ export function createInspectionService(deps: QualityDeps) {
     return toPage(rows, opts.limit, (r) => ({ id: r.id }));
   }
 
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  /** People and the company on the header must belong to this project. */
+  async function checkHeader(scope: TenantScope, projectId: string, input: HeaderInput) {
+    for (const [path, v] of [
+      ['scheduledFor', input.scheduledFor],
+      ['dueDate', input.dueDate],
+    ] as const)
+      if (v && !ISO_DATE.test(v.slice(0, 10)))
+        throw new AppError('validation_failed', 'Use a calendar date.', [
+          { path, message: 'Not a date' },
+        ]);
+    const people: (readonly [string, string])[] = [
+      ...(input.assigneeIds ?? []).map((u, i) => [`assigneeIds/${i}`, u] as const),
+      ...(input.pointOfContactId ? [['pointOfContactId', input.pointOfContactId] as const] : []),
+      ...(input.inspectorId ? [['inspectorId', input.inspectorId] as const] : []),
+    ];
+    people.push(
+      ...(input.distributionIds ?? []).map((u, i) => [`distributionIds/${i}`, u] as const),
+    );
+    for (const [path, userId] of people) {
+      const m = await deps.platform.getProjectMembership(scope, projectId, userId);
+      if (!m)
+        throw new AppError('validation_failed', 'Choose people who are on this project.', [
+          { path, message: 'Not a member of the project' },
+        ]);
+    }
+    if (input.responsibleCompanyId) {
+      const onProject = await deps.platform.projectCompanies(scope, projectId);
+      if (!onProject.some((c) => c.id === input.responsibleCompanyId))
+        throw new AppError('validation_failed', 'Choose a company on this project.', [
+          { path: 'responsibleCompanyId', message: 'Not a company on the project' },
+        ]);
+    }
+    if (input.fileIds?.length) await checkFiles(deps, scope, projectId, input.fileIds);
+    for (const [i, revisionId] of (input.drawingRevisionIds ?? []).entries()) {
+      const rev = await deps.documents.getDrawingRevision(scope, projectId, revisionId);
+      if (rev.status === 'draft')
+        throw new AppError('validation_failed', 'Link a published drawing.', [
+          { path: `drawingRevisionIds/${i}`, message: 'Not a published drawing revision' },
+        ]);
+    }
+  }
+
+  /** Only the fields that were sent, mapped to columns. */
+  function headerValues(input: HeaderInput) {
+    const v: Record<string, unknown> = {};
+    if (input.location !== undefined) v.location = input.location;
+    if (input.scheduledFor !== undefined) v.scheduledFor = input.scheduledFor;
+    if (input.dueDate !== undefined) v.dueDate = input.dueDate;
+    if (input.assigneeIds !== undefined) v.assigneeIds = input.assigneeIds;
+    if (input.responsibleCompanyId !== undefined)
+      v.responsibleCompanyId = input.responsibleCompanyId;
+    if (input.pointOfContactId !== undefined) v.pointOfContactId = input.pointOfContactId;
+    if (input.trade !== undefined) v.trade = input.trade;
+    if (input.specSection !== undefined) v.specSection = input.specSection;
+    if (input.description !== undefined) v.description = input.description;
+    if (input.fileIds !== undefined) v.fileIds = input.fileIds;
+    if (input.isPrivate !== undefined) v.isPrivate = input.isPrivate;
+    if (input.distributionIds !== undefined) v.distributionIds = input.distributionIds;
+    if (input.drawingRevisionIds !== undefined) v.drawingRevisionIds = input.drawingRevisionIds;
+    return v;
+  }
+
+  async function update(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+    input: HeaderInput,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (!isEditable(inspection.status))
+      throw new AppError(
+        'inspection.invalid_state',
+        `An inspection that is ${inspection.status} can't be edited.`,
+        undefined,
+        { status: inspection.status },
+      );
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    await checkHeader(scope, projectId, input);
+    const at = now();
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        ...headerValues(input),
+        ...(input.title?.trim() ? { title: input.title.trim() } : {}),
+        ...(input.inspectorId ? { inspectorId: input.inspectorId } : {}),
+        version: inspection.version + 1,
+        updatedAt: at,
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await changed(scope, row);
+    await record(scope, row, 'updated', {
+      fields: Object.keys(input).filter((k) => (input as Record<string, unknown>)[k] !== undefined),
+    });
+    return detail(scope, projectId, id);
+  }
+
+  /** Mark a whole section not applicable (or put it back). */
+  async function setSectionNa(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+    section: string,
+    na: boolean,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (!isEditable(inspection.status))
+      throw new AppError(
+        'inspection.invalid_state',
+        `An inspection that is ${inspection.status} can't be edited.`,
+        undefined,
+        { status: inspection.status },
+      );
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    const items = await itemsOf(scope, inspection.templateId);
+    if (!items.some((i) => (i.section ?? '') === section))
+      throw new AppError('validation_failed', 'That section is not on this checklist.', [
+        { path: 'section', message: 'Unknown section' },
+      ]);
+    const current = inspection.naSections ?? [];
+    const next = na ? [...new Set([...current, section])] : current.filter((s) => s !== section);
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        naSections: next,
+        version: inspection.version + 1,
+        updatedAt: now(),
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await changed(scope, row);
+    await record(scope, row, 'section_na', { section, na });
+    return detail(scope, projectId, id);
+  }
+
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: {
+    input: HeaderInput & {
       /** A device-chosen id, so the record it already shows is the one the next pull confirms. */
       id?: string;
       templateId: string;
-      title?: string;
-      location?: string;
-      scheduledFor?: string;
-      inspectorId?: string;
     },
   ) {
     await internal(scope, projectId, 'inspection.not_found');
+    await checkHeader(scope, projectId, input);
     const template = await loadTemplate(scope, projectId, input.templateId);
     if (!template.published)
       throw new AppError(
@@ -370,16 +623,129 @@ export function createInspectionService(deps: QualityDeps) {
         templateId: template.id,
         templateVersion: template.version,
         number,
+        ...headerValues(input),
         title: input.title?.trim() || template.name,
-        location: input.location ?? null,
-        scheduledFor: input.scheduledFor ?? null,
         inspectorId: input.inspectorId ?? scope.ctx.userId,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
       .returning();
     await changed(scope, row!);
+    await record(scope, row!, 'created', { template: template.name });
     return detail(scope, projectId, id);
+  }
+
+  async function logItemEvent(
+    scope: TenantScope,
+    inspection: InspectionRow,
+    templateItemId: string,
+    kind: ItemEventKind,
+    e: {
+      body?: string | null;
+      result?: ItemResult | null;
+      fileIds?: string[];
+      observationId?: string;
+    },
+  ) {
+    await scope.tx.insert(itemEvents).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId: inspection.projectId,
+      inspectionId: inspection.id,
+      templateItemId,
+      kind,
+      body: e.body ?? null,
+      result: e.result ?? null,
+      fileIds: e.fileIds ?? [],
+      observationId: e.observationId ?? null,
+      actorId: scope.ctx.userId,
+      at: now(),
+    });
+  }
+
+  /** Photos and other files are logged separately so the strip can count them apart. */
+  async function logFiles(
+    scope: TenantScope,
+    inspection: InspectionRow,
+    templateItemId: string,
+    files: { id: string; isImage: boolean }[],
+    alreadyThere: ReadonlySet<string>,
+  ) {
+    const fresh = files.filter((f) => !alreadyThere.has(f.id));
+    const photos = fresh.filter((f) => f.isImage).map((f) => f.id);
+    const others = fresh.filter((f) => !f.isImage).map((f) => f.id);
+    if (photos.length)
+      await logItemEvent(scope, inspection, templateItemId, 'photo', { fileIds: photos });
+    if (others.length)
+      await logItemEvent(scope, inspection, templateItemId, 'attachment', { fileIds: others });
+  }
+
+  async function itemOf(scope: TenantScope, inspection: InspectionRow, templateItemId: string) {
+    const [item] = await scope.tx
+      .select()
+      .from(templateItems)
+      .where(
+        and(
+          eq(templateItems.id, templateItemId),
+          eq(templateItems.templateId, inspection.templateId),
+        ),
+      )
+      .limit(1);
+    if (!item)
+      throw new AppError('inspection.invalid_response', 'That item is not on this checklist.', [
+        { path: 'templateItemId', message: 'Not on this checklist' },
+      ]);
+    return item;
+  }
+
+  /** The item's activity, oldest first. */
+  async function itemActivityLog(
+    scope: TenantScope,
+    projectId: string,
+    inspectionId: string,
+    templateItemId: string,
+  ) {
+    const inspection = await load(scope, projectId, inspectionId);
+    await itemOf(scope, inspection, templateItemId);
+    return scope.tx
+      .select()
+      .from(itemEvents)
+      .where(
+        and(
+          eq(itemEvents.inspectionId, inspectionId),
+          eq(itemEvents.templateItemId, templateItemId),
+        ),
+      )
+      .orderBy(asc(itemEvents.at), asc(itemEvents.id));
+  }
+
+  /** The "Add Comment" box and "Attach Files" on one item, without touching the answer. */
+  async function addItemComment(
+    scope: TenantScope,
+    projectId: string,
+    inspectionId: string,
+    templateItemId: string,
+    input: { body?: string; fileIds?: string[] },
+  ) {
+    const inspection = await load(scope, projectId, inspectionId);
+    if (!isEditable(inspection.status))
+      throw new AppError(
+        'inspection.invalid_state',
+        `An inspection that is ${inspection.status} can't be changed.`,
+        undefined,
+        { status: inspection.status },
+      );
+    await itemOf(scope, inspection, templateItemId);
+    const body = input.body?.trim() ?? '';
+    const fileIds = [...new Set(input.fileIds ?? [])];
+    if (!body && fileIds.length === 0)
+      throw new AppError('validation_failed', 'Add a comment or attach a file.', [
+        { path: 'body', message: 'A comment or a file is required' },
+      ]);
+    const checked = await checkFiles(deps, scope, projectId, fileIds);
+    if (body) await logItemEvent(scope, inspection, templateItemId, 'comment', { body });
+    await logFiles(scope, inspection, templateItemId, checked, new Set());
+    return detail(scope, projectId, inspectionId);
   }
 
   async function recordResponses(
@@ -398,6 +764,12 @@ export function createInspectionService(deps: QualityDeps) {
       );
     const items = new Map((await itemsOf(scope, inspection.templateId)).map((i) => [i.id, i]));
     const at = now();
+    const previous = new Map(
+      (await scope.tx.select().from(responses).where(eq(responses.inspectionId, id))).map((r) => [
+        r.templateItemId,
+        r,
+      ]),
+    );
     for (const [n, r] of input.entries()) {
       const item = items.get(r.templateItemId);
       if (!item)
@@ -409,10 +781,18 @@ export function createInspectionService(deps: QualityDeps) {
         throw new AppError('inspection.invalid_response', problem, [
           { path: `responses/${n}`, message: problem },
         ]);
-      await checkFiles(deps, scope, projectId, r.fileIds ?? [], `responses/${n}/fileIds`);
+      const checked = await checkFiles(
+        deps,
+        scope,
+        projectId,
+        r.fileIds ?? [],
+        `responses/${n}/fileIds`,
+      );
       const values = {
-        value: item.responseType === 'pass_fail_na' ? null : (r.value ?? null),
-        result: item.responseType === 'pass_fail_na' ? (r.result ?? null) : null,
+        // N/A overrides any item type; otherwise only pass/fail items carry a result.
+        value: item.responseType === 'pass_fail_na' || r.result === 'na' ? null : (r.value ?? null),
+        result:
+          r.result === 'na' || item.responseType === 'pass_fail_na' ? (r.result ?? null) : null,
         note: r.note ?? null,
         fileIds: [...new Set(r.fileIds ?? [])],
         updatedAt: at,
@@ -431,6 +811,19 @@ export function createInspectionService(deps: QualityDeps) {
           target: [responses.inspectionId, responses.templateItemId],
           set: values,
         });
+      const before = previous.get(r.templateItemId);
+      const sameAnswer =
+        before !== undefined &&
+        before.result === values.result &&
+        JSON.stringify(before.value ?? null) === JSON.stringify(values.value ?? null);
+      if (!sameAnswer)
+        await logItemEvent(scope, inspection, r.templateItemId, 'response', {
+          result: values.result,
+          body: values.result === null && values.value !== null ? String(values.value) : null,
+        });
+      if (values.note && values.note !== (before?.note ?? null))
+        await logItemEvent(scope, inspection, r.templateItemId, 'comment', { body: values.note });
+      await logFiles(scope, inspection, r.templateItemId, checked, new Set(before?.fileIds ?? []));
     }
     const [row] = await scope.tx
       .update(inspections)
@@ -451,7 +844,7 @@ export function createInspectionService(deps: QualityDeps) {
     projectId: string,
     id: string,
     expectedVersion: number,
-    input: { signedByName: string; signatureFileId?: string },
+    input: { signedByName?: string; signatureFileId?: string },
   ) {
     const d = await detail(scope, projectId, id);
     const { inspection } = d;
@@ -472,19 +865,39 @@ export function createInspectionService(deps: QualityDeps) {
           message: 'Required',
         })),
       );
+    if (!input.signedByName && d.signatures.length === 0)
+      throw new AppError('inspection.incomplete', 'Add a signature before submitting.', [
+        { path: 'signedByName', message: 'A signature is required' },
+      ]);
     if (input.signatureFileId)
       await checkFiles(deps, scope, projectId, [input.signatureFileId], 'signatureFileId');
     const at = now();
+    if (input.signedByName)
+      await scope.tx.insert(signatures).values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        inspectionId: id,
+        name: input.signedByName.trim(),
+        fileId: input.signatureFileId ?? null,
+        signedBy: scope.ctx.userId,
+        at,
+      });
+    const first = input.signedByName
+      ? {
+          name: input.signedByName.trim(),
+          fileId: input.signatureFileId ?? null,
+          at: at.toISOString(),
+        }
+      : (() => {
+          const g = d.signatures[0]!;
+          return { name: g.name, fileId: g.fileId, at: g.at.toISOString() };
+        })();
     const [row] = await scope.tx
       .update(inspections)
       .set({
         status: 'submitted',
         completedAt: at,
-        signedBy: {
-          name: input.signedByName.trim(),
-          fileId: input.signatureFileId ?? null,
-          at: at.toISOString(),
-        },
+        signedBy: first,
         version: inspection.version + 1,
         updatedAt: at,
         updatedBy: scope.ctx.userId,
@@ -493,6 +906,7 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'submitted', { failedItems: d.failedItemIds.length });
     scope.events.add({
       type: 'quality.inspection.submitted.v1',
       projectId,
@@ -501,6 +915,37 @@ export function createInspectionService(deps: QualityDeps) {
       entityVersion: row.version,
       data: { inspectionId: id, failedItems: d.failedItemIds.length },
     });
+    return detail(scope, projectId, id);
+  }
+
+  /** An extra signature (contractor, client) while the inspection is open or submitted. */
+  async function addSignature(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { name: string; fileId?: string },
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (inspection.status === 'closed')
+      throw new AppError(
+        'inspection.invalid_state',
+        "A closed inspection can't be signed.",
+        undefined,
+        {
+          status: inspection.status,
+        },
+      );
+    if (input.fileId) await checkFiles(deps, scope, projectId, [input.fileId], 'fileId');
+    await scope.tx.insert(signatures).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      inspectionId: id,
+      name: input.name.trim(),
+      fileId: input.fileId ?? null,
+      signedBy: scope.ctx.userId,
+      at: now(),
+    });
+    await record(scope, inspection, 'signed', { name: input.name.trim() });
     return detail(scope, projectId, id);
   }
 
@@ -526,7 +971,113 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'closed');
     return detail(scope, projectId, id);
+  }
+
+  /**
+   * Put a submitted or closed inspection back in progress. A reason is required and it is counted: reopened
+   * twice or more is flagged on the record. Reopening a closed one takes the close permission.
+   */
+  async function reopen(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+    reason: string,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (inspection.status !== 'submitted' && inspection.status !== 'closed')
+      throw new AppError(
+        'inspection.invalid_state',
+        `An inspection that is ${inspection.status} is already open.`,
+        undefined,
+        { status: inspection.status },
+      );
+    if (
+      inspection.status === 'closed' &&
+      !(await deps.access.can(scope, 'quality.inspections.close', { projectId }))
+    )
+      throw new AppError(
+        'access.denied',
+        'Only someone who can close inspections can reopen a closed one.',
+      );
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    if (!reason.trim())
+      throw new AppError('validation_failed', 'Say why it is being reopened.', [
+        { path: 'reason', message: 'Required' },
+      ]);
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        status: 'in_progress',
+        completedAt: null,
+        reopenCount: inspection.reopenCount + 1,
+        version: inspection.version + 1,
+        updatedAt: now(),
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await changed(scope, row);
+    await record(scope, row, 'reopened', {
+      reason: reason.trim(),
+      from: inspection.status,
+      count: row.reopenCount,
+    });
+    scope.events.add({
+      type: 'quality.inspection.reopened.v1',
+      projectId,
+      entityType: 'inspection',
+      entityId: id,
+      entityVersion: row.version,
+      data: { inspectionId: id, reopenCount: row.reopenCount },
+    });
+    return detail(scope, projectId, id);
+  }
+
+  /** Delete an inspection (admins). It disappears from lists; the history keeps a record that it was deleted. */
+  async function remove(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    const at = now();
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        deletedAt: at,
+        version: inspection.version + 1,
+        updatedAt: at,
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await scope.recordChange({
+      module: 'quality',
+      entityType: 'inspection',
+      entityId: id,
+      op: 'delete',
+      version: row.version,
+      projectId,
+      isPrivate: false,
+    });
+    await record(scope, row, 'deleted');
+  }
+
+  /** The inspection's change history, oldest first. */
+  async function changeHistory(scope: TenantScope, projectId: string, id: string) {
+    await load(scope, projectId, id);
+    return scope.tx
+      .select()
+      .from(history)
+      .where(eq(history.inspectionId, id))
+      .orderBy(asc(history.at), asc(history.id));
   }
 
   /** The project an inspection belongs to (RLS limits this to the caller's organisation), or null. */
@@ -597,10 +1148,18 @@ export function createInspectionService(deps: QualityDeps) {
     newTemplateVersion,
     list,
     create,
+    update,
+    setSectionNa,
     detail,
+    itemActivityLog,
+    addItemComment,
     recordResponses,
     submit,
+    addSignature,
     close,
+    reopen,
+    remove,
+    changeHistory,
   };
 }
 
