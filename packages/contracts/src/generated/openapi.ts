@@ -8956,6 +8956,199 @@ export interface paths {
         patch: operations["updateIncidentAction"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's toolbox topic library with when each was last run. Inactive topics only with includeInactive. */
+        get: operations["listToolboxTopics"];
+        put?: never;
+        /** Add a topic to the library. */
+        post: operations["createToolboxTopic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics/{topicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                topicId: components["parameters"]["ToolboxTopicId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a topic or retire it (isActive false). Past talks keep their topic. */
+        patch: operations["updateToolboxTopic"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Toolbox talks, newest first. People who are not builder staff see the talks they started and the ones their company attended. */
+        get: operations["listToolboxTalks"];
+        put?: never;
+        /** Record a talk that was held. It is numbered TBT-0001 per project. The attendance rows can be added now or on the grid. */
+        post: operations["createToolboxTalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggests what to talk about next, from rules over this project (recent incidents, SWMS in force, topics not run lately). No model is called and nothing is created. Empty for people who are not builder staff. */
+        get: operations["suggestToolboxTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        /** A talk with its attendance grid. Each signed row says if its signature image repeats (a flag for a person to look at, never a block). */
+        get: operations["getToolboxTalk"];
+        put?: never;
+        post?: never;
+        /** Delete an open talk that nobody has signed. */
+        delete: operations["deleteToolboxTalk"];
+        options?: never;
+        head?: never;
+        /** Change the details of an open talk. */
+        patch: operations["updateToolboxTalk"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the talk (needs everyone on the grid signed or removed) or reopen it (needs the manage permission). */
+        post: operations["transitionToolboxTalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add people to the attendance grid of an open talk. */
+        post: operations["addToolboxAttendees"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an unsigned row from the grid. */
+        delete: operations["removeToolboxAttendee"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Sign one row with a signature drawn on the device and uploaded as an image to this project. */
+        put: operations["signToolboxAttendee"];
+        post?: never;
+        /** Clear one row's signature so it can be signed again. */
+        delete: operations["clearToolboxSignature"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
         parameters: {
             query?: never;
@@ -20136,6 +20329,140 @@ export interface components {
         IncidentActionFromSourceList: {
             data: components["schemas"]["IncidentActionFromSource"][];
         };
+        /** @enum {string} */
+        ToolboxTopicCategory: "general" | "hazard" | "plant" | "environment" | "wellbeing" | "incident_review" | "emergency";
+        /** @enum {string} */
+        ToolboxTalkStatus: "open" | "closed";
+        ToolboxTopic: {
+            id: string;
+            projectId: string;
+            title: string;
+            talkingPoints: string;
+            category: components["schemas"]["ToolboxTopicCategory"];
+            /** @description The high-risk work category this topic covers */
+            hrcwCategory: string | null;
+            isActive: boolean;
+            /**
+             * Format: date-time
+             * @description When a talk on this topic was last held on the project.
+             */
+            lastHeldAt: string | null;
+            version: number;
+        };
+        ToolboxTopicList: {
+            data: components["schemas"]["ToolboxTopic"][];
+        };
+        CreateToolboxTopicRequest: {
+            title: string;
+            talkingPoints?: string;
+            category?: components["schemas"]["ToolboxTopicCategory"];
+            hrcwCategory?: string | null;
+        };
+        UpdateToolboxTopicRequest: {
+            title?: string;
+            talkingPoints?: string;
+            category?: components["schemas"]["ToolboxTopicCategory"];
+            hrcwCategory?: string | null;
+            isActive?: boolean;
+        };
+        ToolboxTalk: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description TBT-0001 */
+            numberLabel: string;
+            topicId: string | null;
+            title: string;
+            /** Format: date-time */
+            heldAt: string;
+            location: string | null;
+            presenterName: string;
+            notes: string | null;
+            status: components["schemas"]["ToolboxTalkStatus"];
+            /** Format: date-time */
+            closedAt: string | null;
+            attendeeCount: number;
+            signedCount: number;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        ToolboxTalkPage: {
+            data: components["schemas"]["ToolboxTalk"][];
+            nextCursor: string | null;
+        };
+        /**
+         * @description shared_between_people is one signature image on rows for different people in this talk. reused_from_earlier_talk is a person's image identical to one they signed with in an earlier talk. A hand-drawn signature is never identical twice, so both are worth a look. Neither blocks anything.
+         * @enum {string}
+         */
+        ToolboxRepeatReason: "shared_between_people" | "reused_from_earlier_talk";
+        ToolboxAttendee: {
+            id: string;
+            personName: string;
+            companyId: string | null;
+            userId: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            signatureFileId: string | null;
+            repeatFlags: components["schemas"]["ToolboxRepeatReason"][];
+        };
+        ToolboxTalkDetail: {
+            talk: components["schemas"]["ToolboxTalk"];
+            topic: components["schemas"]["ToolboxTopic"] | null;
+            attendees: components["schemas"]["ToolboxAttendee"][];
+            /** @description What stops the talk closing now. Empty when it can close. */
+            closeBlockers: string[];
+            canEdit: boolean;
+        };
+        ToolboxAttendeeInput: {
+            personName: string;
+            companyId?: string | null;
+            userId?: string | null;
+        };
+        CreateToolboxTalkRequest: {
+            title: string;
+            topicId?: string | null;
+            /** Format: date-time */
+            heldAt: string;
+            location?: string | null;
+            presenterName: string;
+            notes?: string | null;
+            attendees?: components["schemas"]["ToolboxAttendeeInput"][];
+        };
+        UpdateToolboxTalkRequest: {
+            title?: string;
+            topicId?: string | null;
+            /** Format: date-time */
+            heldAt?: string;
+            location?: string | null;
+            presenterName?: string;
+            notes?: string | null;
+        };
+        ToolboxTransitionRequest: {
+            /** @enum {string} */
+            action: "close" | "reopen";
+        };
+        AddToolboxAttendeesRequest: {
+            attendees: components["schemas"]["ToolboxAttendeeInput"][];
+        };
+        SignToolboxAttendeeRequest: {
+            /** @description A ready image uploaded to this project. */
+            signatureFileId: string;
+        };
+        ToolboxSuggestion: {
+            /** @enum {string} */
+            reason: "recent_incident" | "swms_in_force" | "not_run_recently" | "never_run";
+            /** @description A topic in the library to run */
+            topicId: string | null;
+            title: string;
+            /** @description One plain sentence with the facts behind the suggestion. */
+            because: string;
+            hrcwCategory: string | null;
+        };
+        ToolboxSuggestionList: {
+            data: components["schemas"]["ToolboxSuggestion"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -20681,6 +21008,9 @@ export interface components {
         EnvironmentDocumentId: string;
         CoverId: string;
         CompanyId: string;
+        ToolboxTopicId: string;
+        ToolboxTalkId: string;
+        ToolboxAttendeeId: string;
         IncidentId: string;
         IncidentActionId: string;
         PermitId: string;
@@ -35414,6 +35744,425 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentAction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listToolboxTopics: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopicList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createToolboxTopic: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateToolboxTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopic"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateToolboxTopic: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                topicId: components["parameters"]["ToolboxTopicId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolboxTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopic"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listToolboxTalks: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ToolboxTalkStatus"];
+                topicId?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createToolboxTalk: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateToolboxTalkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestToolboxTopics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxSuggestionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getToolboxTalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolboxTalkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToolboxTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addToolboxAttendees: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddToolboxAttendeesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeToolboxAttendee: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signToolboxAttendee: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignToolboxAttendeeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearToolboxSignature: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
                 };
             };
             default: components["responses"]["Problem"];

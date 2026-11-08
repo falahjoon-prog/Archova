@@ -12305,6 +12305,310 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-topics:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listToolboxTopics
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: The project's toolbox topic library with when each was last run. Inactive topics only with includeInactive.
+      parameters:
+        - { name: includeInactive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopicList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createToolboxTopic
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.manage
+      summary: Add a topic to the library.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateToolboxTopicRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopic' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-topics/{topicId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTopicId'
+    patch:
+      operationId: updateToolboxTopic
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.manage
+      summary: Edit a topic or retire it (isActive false). Past talks keep their topic.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateToolboxTopicRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopic' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listToolboxTalks
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: Toolbox talks, newest first. People who are not builder staff see the talks they started and the ones their company attended.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ToolboxTalkStatus' } }
+        - { name: topicId, in: query, schema: { type: string, pattern: '^tbp_[0-9A-Za-z]{26}$' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Record a talk that was held. It is numbered TBT-0001 per project. The attendance rows can be added now or on the grid.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateToolboxTalkRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestToolboxTopics
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: Nova suggests what to talk about next, from rules over this project (recent incidents, SWMS in force, topics not run lately). No model is called and nothing is created. Empty for people who are not builder staff.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxSuggestionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    get:
+      operationId: getToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: A talk with its attendance grid. Each signed row says if its signature image repeats (a flag for a person to look at, never a block).
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Change the details of an open talk.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateToolboxTalkRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Delete an open talk that nobody has signed.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    post:
+      operationId: transitionToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Close the talk (needs everyone on the grid signed or removed) or reopen it (needs the manage permission).
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ToolboxTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    post:
+      operationId: addToolboxAttendees
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Add people to the attendance grid of an open talk.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddToolboxAttendeesRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+      - $ref: '#/components/parameters/ToolboxAttendeeId'
+    delete:
+      operationId: removeToolboxAttendee
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Remove an unsigned row from the grid.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+      - $ref: '#/components/parameters/ToolboxAttendeeId'
+    put:
+      operationId: signToolboxAttendee
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Sign one row with a signature drawn on the device and uploaded as an image to this project.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignToolboxAttendeeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: clearToolboxSignature
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Clear one row's signature so it can be signed again.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15353,6 +15657,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    ToolboxTopicId:
+      name: topicId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tbp_[0-9A-Za-z]{26}$' }
+    ToolboxTalkId:
+      name: talkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tbt_[0-9A-Za-z]{26}$' }
+    ToolboxAttendeeId:
+      name: attendeeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tba_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -29872,6 +30191,221 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/IncidentActionFromSource' }
+    ToolboxTopicCategory:
+      type: string
+      enum: [general, hazard, plant, environment, wellbeing, incident_review, emergency]
+    ToolboxTalkStatus:
+      type: string
+      enum: [open, closed]
+    ToolboxTopic:
+      type: object
+      required:
+        [id, projectId, title, talkingPoints, category, hrcwCategory, isActive, lastHeldAt, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        talkingPoints: { type: string }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory:
+          {
+            type: [string, 'null'],
+            description: The high-risk work category this topic covers,
+            if any.,
+          }
+        isActive: { type: boolean }
+        lastHeldAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: When a talk on this topic was last held on the project.,
+          }
+        version: { type: integer }
+    ToolboxTopicList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxTopic' }
+    CreateToolboxTopicRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        talkingPoints: { type: string, maxLength: 10000 }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory: { type: [string, 'null'], maxLength: 60 }
+    UpdateToolboxTopicRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        talkingPoints: { type: string, maxLength: 10000 }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory: { type: [string, 'null'], maxLength: 60 }
+        isActive: { type: boolean }
+    ToolboxTalk:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          topicId,
+          title,
+          heldAt,
+          location,
+          presenterName,
+          notes,
+          status,
+          closedAt,
+          attendeeCount,
+          signedCount,
+          createdBy,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: TBT-0001 }
+        topicId: { type: [string, 'null'] }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'] }
+        presenterName: { type: string }
+        notes: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ToolboxTalkStatus' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        attendeeCount: { type: integer }
+        signedCount: { type: integer }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    ToolboxTalkPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxTalk' }
+        nextCursor: { type: [string, 'null'] }
+    ToolboxRepeatReason:
+      type: string
+      description: shared_between_people is one signature image on rows for different people in this talk. reused_from_earlier_talk is a person's image identical to one they signed with in an earlier talk. A hand-drawn signature is never identical twice, so both are worth a look. Neither blocks anything.
+      enum: [shared_between_people, reused_from_earlier_talk]
+    ToolboxAttendee:
+      type: object
+      required: [id, personName, companyId, userId, signedAt, signatureFileId, repeatFlags]
+      properties:
+        id: { type: string }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+        signedAt: { type: [string, 'null'], format: date-time }
+        signatureFileId: { type: [string, 'null'] }
+        repeatFlags:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxRepeatReason' }
+    ToolboxTalkDetail:
+      type: object
+      required: [talk, topic, attendees, closeBlockers, canEdit]
+      properties:
+        talk: { $ref: '#/components/schemas/ToolboxTalk' }
+        topic:
+          oneOf:
+            - { $ref: '#/components/schemas/ToolboxTopic' }
+            - { type: 'null' }
+        attendees:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxAttendee' }
+        closeBlockers:
+          type: array
+          description: What stops the talk closing now. Empty when it can close.
+          items: { type: string }
+        canEdit: { type: boolean }
+    ToolboxAttendeeInput:
+      type: object
+      additionalProperties: false
+      required: [personName]
+      properties:
+        personName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+    CreateToolboxTalkRequest:
+      type: object
+      additionalProperties: false
+      required: [title, heldAt, presenterName]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        topicId: { type: [string, 'null'] }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 200 }
+        presenterName: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+        attendees:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ToolboxAttendeeInput' }
+    UpdateToolboxTalkRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        topicId: { type: [string, 'null'] }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 200 }
+        presenterName: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+    ToolboxTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [close, reopen] }
+    AddToolboxAttendeesRequest:
+      type: object
+      additionalProperties: false
+      required: [attendees]
+      properties:
+        attendees:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ToolboxAttendeeInput' }
+    SignToolboxAttendeeRequest:
+      type: object
+      additionalProperties: false
+      required: [signatureFileId]
+      properties:
+        signatureFileId: { type: string, description: A ready image uploaded to this project. }
+    ToolboxSuggestion:
+      type: object
+      required: [reason, topicId, title, because, hrcwCategory]
+      properties:
+        reason:
+          { type: string, enum: [recent_incident, swms_in_force, not_run_recently, never_run] }
+        topicId:
+          {
+            type: [string, 'null'],
+            description: A topic in the library to run,
+            or null when nothing in the library fits.,
+          }
+        title: { type: string }
+        because:
+          { type: string, description: One plain sentence with the facts behind the suggestion. }
+        hrcwCategory: { type: [string, 'null'] }
+    ToolboxSuggestionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxSuggestion' }
     IncidentPage:
       type: object
       required: [data, nextCursor]
