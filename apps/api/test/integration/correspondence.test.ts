@@ -270,3 +270,53 @@ describe('correspondence types and notices (product/08 SCH-AC5)', () => {
     expect((await s.steel.browser.get(`${s.base}/correspondence-types`)).json().data).toEqual([]);
   });
 });
+
+describe('correspondence emails', () => {
+  it('queues an email about a sent item for people who can open it', async () => {
+    const s = await setup();
+    const type = (
+      await s.pm.browser.post(`/v1/orgs/${s.org.id}/correspondence-types`, {
+        name: 'Letter',
+        prefix: 'ltr',
+      })
+    ).json();
+    const created = await s.pm.browser.post(`${s.base}/correspondence`, {
+      typeId: type.id,
+      subject: 'Hello',
+      body: 'Body',
+      toCompanyIds: [s.steelCo.companyId],
+    });
+    const id = created.json().item.id as string;
+    const emails = `${s.base}/correspondence/${id}/emails`;
+
+    // Not while it is a draft.
+    expect((await s.pm.browser.post(emails, { userIds: [s.steel.userId] })).json().code).toBe(
+      'correspondence.invalid_transition',
+    );
+    await s.pm.browser.post(`${s.base}/correspondence/${id}/send`, undefined, {
+      'if-match': etagOf(created),
+    });
+
+    const queued = await s.pm.browser.post(emails, {
+      userIds: [s.steel.userId],
+      message: 'Please read before Monday',
+    });
+    expect(queued.statusCode).toBe(201);
+    expect(queued.json().data).toEqual([
+      expect.objectContaining({
+        recipientUserId: s.steel.userId,
+        senderId: s.pm.userId,
+        status: 'queued',
+        message: 'Please read before Monday',
+        sentAt: null,
+      }),
+    ]);
+    expect((await s.steel.browser.get(emails)).json().data).toHaveLength(1);
+
+    // The other subcontractor can't open the item, so it can't be emailed to them or read the log.
+    const refused = await s.pm.browser.post(emails, { userIds: [s.outsider.userId] });
+    expect(refused.json().code).toBe('correspondence.recipient_cannot_see');
+    expect((await s.pm.browser.post(emails, { userIds: [] })).statusCode).toBe(422);
+    expect((await s.outsider.browser.get(emails)).statusCode).toBe(404);
+  });
+});

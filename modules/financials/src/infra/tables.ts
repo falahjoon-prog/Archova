@@ -2,6 +2,7 @@ import {
   boolean,
   customType,
   date,
+  doublePrecision,
   integer,
   jsonb,
   numeric,
@@ -320,6 +321,18 @@ export const budgetLines = financialsSchema.table('budget_lines', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const budgetForecastEntries = financialsSchema.table('budget_forecast_entries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  /** First day of the month. */
+  month: date('month').notNull(),
+  amount: money('amount').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
 export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -427,6 +440,81 @@ export const directCosts = financialsSchema.table('direct_costs', {
   version: integer('version').notNull().default(1),
 });
 
+export const tmTickets = financialsSchema.table('tm_tickets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  workDate: date('work_date').notNull(),
+  location: text('location'),
+  contractor: text('contractor'),
+  instructedBy: text('instructed_by'),
+  origin: text('origin').$type<'manual' | 'nova'>().notNull().default('manual'),
+  status: text('status')
+    .$type<'draft' | 'part_signed' | 'signed' | 'converted' | 'void'>()
+    .notNull()
+    .default('draft'),
+  total: money('total').notNull().default('0'),
+  convertedTo: text('converted_to').$type<'direct_cost' | 'variation'>(),
+  convertedAt: timestamp('converted_at', { withTimezone: true }),
+  convertedBy: uuid('converted_by'),
+  variationId: uuid('variation_id'),
+  voidReason: text('void_reason'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const tmTicketLines = financialsSchema.table('tm_ticket_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  sort: integer('sort').notNull(),
+  kind: text('kind').$type<'labour' | 'equipment' | 'material'>().notNull(),
+  description: text('description').notNull(),
+  quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
+  unit: text('unit').notNull(),
+  rate: money('rate').notNull(),
+  amount: money('amount').notNull(),
+  sourceType: text('source_type').$type<'timesheet_line' | 'equipment_log'>(),
+  sourceId: uuid('source_id'),
+});
+
+export const tmTicketSignoffs = financialsSchema.table('tm_ticket_signoffs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  role: text('role').$type<'contractor' | 'principal_rep'>().notNull(),
+  signerName: text('signer_name').notNull(),
+  signerPosition: text('signer_position'),
+  signedBy: uuid('signed_by').notNull(),
+  contentHash: text('content_hash').notNull(),
+  esignRequestId: uuid('esign_request_id'),
+  evidenceFileId: uuid('evidence_file_id'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  lat: doublePrecision('lat'),
+  lng: doublePrecision('lng'),
+  accuracyM: integer('accuracy_m'),
+  geofenceStatus: text('geofence_status')
+    .$type<'inside' | 'outside' | 'uncertain' | 'unknown'>()
+    .notNull()
+    .default('unknown'),
+  signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const tmTicketDirectCosts = financialsSchema.table('tm_ticket_direct_costs', {
+  orgId: uuid('org_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  directCostId: uuid('direct_cost_id').notNull(),
+});
+
 export const trustAccounts = financialsSchema.table('trust_accounts', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -524,4 +612,33 @@ export const productionLog = financialsSchema.table('production_log', {
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const ownerInvoices = financialsSchema.table('owner_invoices', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  number: integer('number').notNull(),
+  periodEnd: date('period_end').notNull(),
+  markupPct: numeric('markup_pct', { precision: 6, scale: 2 }).notNull(),
+  subTotal: money('sub_total').notNull(),
+  markupAmount: money('markup_amount').notNull(),
+  total: money('total').notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const ownerInvoiceSources = financialsSchema.table('owner_invoice_sources', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ownerInvoiceId: uuid('owner_invoice_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  amount: money('amount').notNull(),
+  flags: jsonb('flags').$type<{ code: string; message: string }[]>().notNull(),
+  flagsConfirmedBy: uuid('flags_confirmed_by'),
+  flagsConfirmedAt: timestamp('flags_confirmed_at', { withTimezone: true }),
 });

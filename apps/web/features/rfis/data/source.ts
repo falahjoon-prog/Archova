@@ -70,7 +70,7 @@ function seedRfi(
 
 function seed(): Store {
   return {
-    nextNumber: 5,
+    nextNumber: 6,
     photoFiles: { fil_binstore: { name: 'bin-store-door.jpg', url: SAMPLE_PHOTO } },
     annotations: [],
     rfis: [
@@ -186,6 +186,27 @@ function seed(): Store {
         drawing: { sheetId: 'sht_e301', revisionId: 'rev_e301_a', label: 'E-301 Rev A' },
         activity: [
           { id: 'a1', actor: 'Dana Okafor', action: 'submitted the RFI', at: at('2026-10-01') },
+        ],
+      }),
+      seedRfi({
+        id: 'rfi_005',
+        number: 5,
+        subject: 'Hydraulic riser clash with beam at level 1',
+        question:
+          'HY-401 P1 routes the 100 mm stack through the transfer beam at grid D. Can the riser move 300 mm east, or does the structural engineer need to sleeve the beam?',
+        status: 'open',
+        assigneeId: 'usr_eng',
+        assigneeCompanyId: 'cmp_struct',
+        ballInCourtId: 'usr_eng',
+        ballInCourtCompanyId: 'cmp_struct',
+        dueDate: '2026-10-14',
+        costImpact: 'tbc',
+        scheduleImpactDays: 3,
+        drawing: { sheetId: 'sht_hy401', revisionId: 'rev_hy401_p1', label: 'HY-401 Rev P1' },
+        specSection: '0331 Structural concrete',
+        location: 'Level 1, grid D',
+        activity: [
+          { id: 'a1', actor: 'Dana Okafor', action: 'submitted the RFI', at: at('2026-10-05') },
         ],
       }),
     ],

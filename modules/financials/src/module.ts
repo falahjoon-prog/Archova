@@ -2,6 +2,10 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import { budgetRoutes } from './api/budgetRoutes';
 import { financialsRoutes } from './api/routes';
 import { directCostRoutes } from './api/directCostRoutes';
+import { tmTicketRoutes } from './api/tmRoutes';
+import { createTmTicketsService } from './application/tmTickets';
+import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
+import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
 import { productivityRoutes } from './api/productivityRoutes';
@@ -25,6 +29,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const budget = createBudgetService({
     access: deps.access,
     forecastInputs: forecast.inputsByCode,
+    monthlySpend: forecast.monthlySpend,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const productivity = createProductivityService({
@@ -39,6 +44,24 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   });
   const directCosts = createDirectCostsService({
     access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const tmTickets = createTmTicketsService({
+    access: deps.access,
+    directCosts,
+    createVariation: service.createVariation,
+    dayActivity: deps.dayActivity,
+    getFile: deps.getFile,
+    siteOf: async (scope, projectId) => {
+      const p = await deps.platform.getProject(scope, projectId);
+      return { lat: p.siteLat, lng: p.siteLng, radiusM: p.geofenceRadiusM };
+    },
+    diaryEntryExists: deps.diaryEntryExists,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const ownerInvoices = createOwnerInvoicesService({
+    access: deps.access,
+    requireStaff: service.requireStaff,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const reportingSources = createReportingSources({
@@ -59,6 +82,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...financialsRoutes(services.database, service, forecast, commitments, trust, retention),
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
+      ...tmTicketRoutes(services.database, tmTickets),
+      ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
     },
     api: {
