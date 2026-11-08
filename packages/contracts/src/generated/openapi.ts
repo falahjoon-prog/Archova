@@ -11673,6 +11673,30 @@ export interface components {
          * @enum {string}
          */
         ProjectPhase: "planning" | "design" | "tender" | "pre_construction" | "construction" | "handover" | "defects_liability";
+        RichRun: {
+            text: string;
+            bold?: boolean;
+            italic?: boolean;
+            underline?: boolean;
+            /** @enum {string} */
+            colour?: "slate" | "red" | "green" | "blue";
+        };
+        RichBlock: {
+            /** @enum {string} */
+            type: "paragraph" | "bullet_list" | "ordered_list";
+            /** @enum {string} */
+            align?: "left" | "center" | "right";
+            lines: components["schemas"]["RichRun"][][];
+        };
+        /** @description Free-written formatted text as data, not HTML. At most 8000 characters in all. */
+        RichDoc: {
+            blocks: components["schemas"]["RichBlock"][];
+        };
+        ProjectStatusTile: {
+            /** @description Custom tile title; null shows "Project description". */
+            title: string | null;
+            doc: components["schemas"]["RichDoc"];
+        };
         Address: {
             line1?: string;
             line2?: string;
@@ -11710,6 +11734,9 @@ export interface components {
             number: string | null;
             status: components["schemas"]["ProjectStatus"];
             phase?: components["schemas"]["ProjectPhase"] | null;
+            /** @description A project photo shown at the top of the project home. */
+            heroFileId?: string | null;
+            statusTile?: components["schemas"]["ProjectStatusTile"] | null;
             /** @enum {string|null} */
             state: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
             /** @description IANA time zone; local dates and deadlines use it (X32) */
@@ -11905,6 +11932,8 @@ export interface components {
             number?: string | null;
             status?: components["schemas"]["ProjectStatus"];
             phase?: components["schemas"]["ProjectPhase"] | null;
+            heroFileId?: string | null;
+            statusTile?: components["schemas"]["ProjectStatusTile"] | null;
             state?: components["schemas"]["AuState"];
             timezone?: string;
             address?: components["schemas"]["Address"];

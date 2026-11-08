@@ -17,6 +17,9 @@ import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { DirectionsCard } from '../components/DirectionsCard';
 import { PhotosCard } from '../components/PhotosCard';
+import { ProjectHero } from '../components/ProjectHero';
+import { ProjectStatusCard } from '../components/ProjectStatusCard';
+import { useUpdateProject } from '../hooks/useProjectMutations';
 import { MemberList } from '../components/MemberList';
 import { projectToolGroups } from '../components/ProjectShell';
 import { AddMemberForm } from '../forms/AddMemberForm';
@@ -37,11 +40,16 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
   const permissions = useProjectPermissions(org.orgId, projectId);
+  const updateProject = useUpdateProject(org.orgId, projectId);
 
   // UI gating only; the API enforces the same rule (frontend 02 §6). The contract types tool names as plain
   // strings, while `can()` takes the domain's narrower `Tool` union; unknown tools are simply never matched.
   const canManageMembers = permissions.data
     ? can(permissions.data as EffectivePermissions, 'platform.project_members.manage')
+    : false;
+
+  const canEditProject = permissions.data
+    ? can(permissions.data as EffectivePermissions, 'platform.projects.update')
     : false;
 
   // Names for the member table. Only fetched when the caller manages members (they need the same reference data).
@@ -87,6 +95,23 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
       </nav>
       <PageHeader title={p.name} eyebrow={p.number ? `Project ${p.number}` : undefined} />
       <div className="stack-lg">
+        <ProjectHero
+          orgId={org.orgId}
+          fileId={p.heroFileId}
+          name={p.name}
+          onRemove={
+            canEditProject
+              ? () => updateProject.mutate({ version: p.version, body: { heroFileId: null } })
+              : undefined
+          }
+        />
+        <ProjectStatusCard
+          orgId={org.orgId}
+          projectId={projectId}
+          version={p.version}
+          tile={p.statusTile ?? null}
+          canEdit={canEditProject}
+        />
         <KeyDatesCard
           projectId={projectId}
           timeZone={p.timezone}
@@ -95,7 +120,18 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
         <BookmarksCard projectId={projectId} />
         <RecentsCard projectId={projectId} />
         <ConversationsCard projectId={projectId} timeZone={p.timezone} />
-        <PhotosCard projectId={projectId} timeZone={p.timezone} />
+        <ErrorAlert error={updateProject.error} title="We couldn't change the project photo" />
+        <PhotosCard
+          projectId={projectId}
+          timeZone={p.timezone}
+          heroFileId={p.heroFileId}
+          onUseAsHero={
+            canEditProject
+              ? (fileId) =>
+                  updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
+              : undefined
+          }
+        />
         <DirectionsCard
           projectId={projectId}
           permissions={permissions.data as EffectivePermissions | undefined}
