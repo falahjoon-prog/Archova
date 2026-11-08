@@ -15,11 +15,14 @@ const speech = vi.hoisted(() => ({
   supported: true,
   start: vi.fn(),
   stopSpeaking: vi.fn(),
+  speak: vi.fn(),
 }));
 vi.mock('@/shared/lib/speech', () => ({
   recordingSupported: () => speech.supported,
   startRecording: speech.start,
   stopSpeaking: speech.stopSpeaking,
+  speak: speech.speak,
+  speechSupported: () => speech.supported,
 }));
 const listen = vi.hoisted(() => ({ transcribe: vi.fn() }));
 vi.mock('../data/listen', () => ({ transcribeClip: listen.transcribe }));
