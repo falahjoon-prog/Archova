@@ -11,6 +11,7 @@ import {
 } from '@archova/kernel';
 import {
   failedItems,
+  inspectionLabel,
   isEditable,
   missingRequiredIn,
   responseProblem,
@@ -1184,7 +1185,154 @@ export function createInspectionService(deps: QualityDeps) {
     };
   }
 
+  // ---- Nova lookups (read-only, as the caller) ----
+
+  const NOVA_STATUS: Record<InspectionStatus, string> = {
+    scheduled: 'Scheduled',
+    in_progress: 'In progress',
+    submitted: 'Submitted',
+    closed: 'Closed',
+  };
+
+  /** Inspections are the builder's, and private ones stay hidden as on the list; anyone else reads `restricted`. */
+  async function novaAllowed(scope: TenantScope, projectId: string) {
+    return (
+      scope.ctx.principalType === 'member' &&
+      (await deps.access.can(scope, 'quality.inspections.read', { projectId }))
+    );
+  }
+
+  /** Inspections not closed and past their due date, oldest due first. */
+  async function overdueForNova(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await novaAllowed(scope, projectId)))
+      return { rows: [], truncated: false, restricted: true };
+    const project = await deps.platform.getProject(scope, projectId);
+    const date = localDateOf(now(), project.timezone);
+    const conditions: SQL[] = [
+      eq(inspections.projectId, projectId),
+      isNull(inspections.deletedAt),
+      sql`${inspections.status} <> 'closed'`,
+      sql`${inspections.dueDate} < ${date}::date`,
+    ];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
+    const found = await scope.tx
+      .select({
+        id: inspections.id,
+        number: inspections.number,
+        title: inspections.title,
+        status: inspections.status,
+        dueDate: inspections.dueDate,
+      })
+      .from(inspections)
+      .where(and(...conditions))
+      .orderBy(asc(inspections.dueDate), asc(inspections.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: inspectionLabel(r.number),
+        title: r.title,
+        detail: `${NOVA_STATUS[r.status]}, due ${r.dueDate}`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  /**
+   * Items answered Fail on inspections that are not closed, on checklist sections not marked N/A, with whether a
+   * defect or observation was raised from each. Newest inspection first.
+   */
+  async function failedItemsForNova(
+    scope: TenantScope,
+    projectId: string,
+    opts: { limit: number },
+  ) {
+    if (!(await novaAllowed(scope, projectId)))
+      return { rows: [], truncated: false, restricted: true };
+    const conditions: SQL[] = [
+      eq(inspections.projectId, projectId),
+      isNull(inspections.deletedAt),
+      sql`${inspections.status} <> 'closed'`,
+      eq(responses.result, 'fail'),
+      sql`not (${templateItems.section} = any(${inspections.naSections}))`,
+    ];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
+    const found = await scope.tx
+      .select({
+        inspectionId: inspections.id,
+        number: inspections.number,
+        prompt: templateItems.prompt,
+        section: templateItems.section,
+        defectId: responses.defectId,
+        observations: sql<number>`(select count(*) from quality.observations o where o.inspection_item_id = ${responses.templateItemId} and o.inspection_id = ${inspections.id} and o.deleted_at is null)::int`,
+      })
+      .from(responses)
+      .innerJoin(inspections, eq(inspections.id, responses.inspectionId))
+      .innerJoin(templateItems, eq(templateItems.id, responses.templateItemId))
+      .where(and(...conditions))
+      .orderBy(desc(inspections.number), asc(templateItems.sort))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.inspectionId,
+        ref: inspectionLabel(r.number),
+        title: r.prompt,
+        detail: `${r.section ? `${r.section}, ` : ''}${
+          r.defectId || r.observations > 0 ? 'follow-up raised' : 'no follow-up raised yet'
+        }`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  /** A few facts about named inspections the caller may see; ids they may not see are left out. */
+  async function summariesForNova(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!(await novaAllowed(scope, projectId)) || ids.length === 0) return [];
+    const conditions: SQL[] = [
+      eq(inspections.projectId, projectId),
+      isNull(inspections.deletedAt),
+      sql`${inspections.id} in (${sql.join(
+        ids.map((i) => sql`${i}::uuid`),
+        sql`, `,
+      )})`,
+    ];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
+    const rows = await scope.tx
+      .select({
+        id: inspections.id,
+        number: inspections.number,
+        title: inspections.title,
+        status: inspections.status,
+        dueDate: inspections.dueDate,
+        reopenCount: inspections.reopenCount,
+      })
+      .from(inspections)
+      .where(and(...conditions));
+    const out = [];
+    for (const r of rows) {
+      const d = await detail(scope, projectId, r.id);
+      out.push({
+        id: r.id,
+        ref: inspectionLabel(r.number),
+        title: r.title,
+        status: NOVA_STATUS[r.status],
+        dueDate: r.dueDate,
+        reopenCount: r.reopenCount,
+        summary: d.summary,
+      });
+    }
+    return out;
+  }
+
   return {
+    overdueForNova,
+    failedItemsForNova,
+    summariesForNova,
     portfolioCounts,
     projectOf,
     templateProjectOf,
