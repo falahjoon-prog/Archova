@@ -4916,6 +4916,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/dbp-insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getDbpInsights
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Inspection pass rates and observation risk classifications by building element, for DBP Act reporting.
+      description: |
+        Counts only; Archova records what a person classified and never classifies a defect itself. Covers the projects
+        the caller can see (same rules as the portfolio) and, per project, only what the caller may read in the
+        inspections tool: other projects count in `restrictedProjects` and add nothing. Observations that are not
+        closed are counted; "late" is an inspection still open past its scheduled date or an open observation past its
+        due date, in the project's local date. The pass-rate trend covers the last 12 months by submission month.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The insights
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DbpInsights' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/portfolio/sustainability:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17540,6 +17569,98 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    TradeCategory:
+      type: string
+      description: The building element an inspection or observation concerns.
+      enum: [fire_safety, waterproofing, structural, external_cladding, building_services, other]
+    ObservationClassification:
+      type: string
+      description: A person's risk classification of an observation (serious defect as in the NSW DBP and RAB Acts).
+      enum: [serious_defect, potential_serious_defect, low_risk]
+    ContributingCondition:
+      type: string
+      enum: [workmanship, design, materials, supervision, weather, coordination, documentation]
+    DbpClassCounts:
+      type: object
+      required: [serious_defect, potential_serious_defect, low_risk, unclassified]
+      properties:
+        serious_defect: { type: integer }
+        potential_serious_defect: { type: integer }
+        low_risk: { type: integer }
+        unclassified: { type: integer }
+    DbpInsights:
+      type: object
+      required:
+        [
+          categories,
+          classificationTotals,
+          passRateTrend,
+          conditions,
+          projects,
+          restrictedProjects,
+          truncated,
+        ]
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            required: [category, itemsPassing, lateInspections, lateObservations, classifications]
+            properties:
+              category:
+                oneOf:
+                  - { $ref: '#/components/schemas/TradeCategory' }
+                  - { type: string, enum: [uncategorised] }
+              itemsPassing:
+                type: object
+                required: [pass, fail, rate]
+                properties:
+                  pass: { type: integer }
+                  fail: { type: integer }
+                  rate:
+                    {
+                      type: [integer, 'null'],
+                      description: 'Whole percent; null when nothing was answered.',
+                    }
+              lateInspections: { type: integer }
+              lateObservations: { type: integer }
+              classifications: { $ref: '#/components/schemas/DbpClassCounts' }
+        classificationTotals: { $ref: '#/components/schemas/DbpClassCounts' }
+        passRateTrend:
+          type: array
+          items:
+            type: object
+            required: [month, pass, fail, rate]
+            properties:
+              month: { type: string, description: 'yyyy-mm' }
+              pass: { type: integer }
+              fail: { type: integer }
+              rate: { type: [integer, 'null'] }
+        conditions:
+          type: array
+          items:
+            type: object
+            required: [condition, count]
+            properties:
+              condition:
+                oneOf:
+                  - { $ref: '#/components/schemas/ContributingCondition' }
+                  - { type: string, enum: [not_recorded] }
+              count: { type: integer }
+        projects:
+          type: array
+          items:
+            type: object
+            required: [id, name, restricted, classifications, lateInspections, lateObservations]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              restricted: { type: boolean }
+              classifications: { $ref: '#/components/schemas/DbpClassCounts' }
+              lateInspections: { type: integer }
+              lateObservations: { type: integer }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
     SearchResults:
       type: object
       required: [query, results, truncated]
@@ -30867,12 +30988,13 @@ components:
       enum: [scheduled, in_progress, submitted, closed]
     InspectionTemplate:
       type: object
-      required: [id, projectId, name, type, version, published, createdAt, updatedAt]
+      required: [id, projectId, name, type, tradeCategory, version, published, createdAt, updatedAt]
       properties:
         id: { type: string }
         projectId: { type: string }
         name: { type: string }
         type: { type: string, description: 'ITP, pre-pour, handover, safety walk or your own' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
         version: { type: integer }
         published: { type: boolean }
         createdAt: { type: string, format: date-time }
@@ -30940,6 +31062,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { type: string, minLength: 1, maxLength: 50 }
+        tradeCategory: { $ref: '#/components/schemas/TradeCategory' }
         items:
           type: array
           maxItems: 300
@@ -30951,6 +31074,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { type: string, minLength: 1, maxLength: 50 }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
         items:
           type: array
           maxItems: 300
@@ -31369,6 +31493,9 @@ components:
           description,
           location,
           priority,
+          tradeCategory,
+          classification,
+          contributingCondition,
           assigneeCompanyId,
           raisedByCompanyId,
           status,
@@ -31398,6 +31525,11 @@ components:
         description: { type: string }
         location: { type: [string, 'null'] }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
+        classification:
+          oneOf: [{ $ref: '#/components/schemas/ObservationClassification' }, { type: 'null' }]
+        contributingCondition:
+          oneOf: [{ $ref: '#/components/schemas/ContributingCondition' }, { type: 'null' }]
         assigneeCompanyId: { type: [string, 'null'] }
         raisedByCompanyId: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ObservationStatus' }
@@ -32245,6 +32377,9 @@ components:
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: string, minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { $ref: '#/components/schemas/TradeCategory' }
+        classification: { $ref: '#/components/schemas/ObservationClassification' }
+        contributingCondition: { $ref: '#/components/schemas/ContributingCondition' }
         assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
         dueDate: { type: string, format: date }
         swmsId: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
@@ -32263,6 +32398,11 @@ components:
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
+        classification:
+          oneOf: [{ $ref: '#/components/schemas/ObservationClassification' }, { type: 'null' }]
+        contributingCondition:
+          oneOf: [{ $ref: '#/components/schemas/ContributingCondition' }, { type: 'null' }]
         assigneeCompanyId:
           { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
         dueDate: { type: [string, 'null'], format: date }
