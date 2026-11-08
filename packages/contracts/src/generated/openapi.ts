@@ -617,6 +617,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's bookmarks, newest first.
+         * @description Only the caller's own bookmarks are ever returned (at most 200). Pass `projectId` to list one project's.
+         */
+        get: operations["listBookmarks"];
+        put?: never;
+        /**
+         * Bookmark a record (idempotent; saving it again refreshes the title).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. A person can keep up to 200 bookmarks (`bookmark.limit_reached`, 409).
+         */
+        post: operations["saveBookmark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bookmarks/{bookmarkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one of the caller's bookmarks (idempotent). */
+        delete: operations["deleteBookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -11922,6 +11969,29 @@ export interface components {
         RecentViewList: {
             data: components["schemas"]["RecentView"][];
         };
+        /** @enum {string} */
+        BookmarkEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        BookmarkInput: {
+            entityType: components["schemas"]["BookmarkEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        Bookmark: {
+            id: string;
+            entityType: components["schemas"]["BookmarkEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BookmarkList: {
+            data: components["schemas"]["Bookmark"][];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -18665,6 +18735,7 @@ export interface components {
         EstimateLineId: string;
         ApiTokenId: string;
         NotificationId: string;
+        BookmarkId: string;
         AccountingProvider: "xero" | "myob";
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
@@ -19547,6 +19618,80 @@ export interface operations {
         };
         responses: {
             /** @description Recorded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBookmarks: {
+        parameters: {
+            query?: {
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bookmarks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookmarkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookmarkInput"];
+            };
+        };
+        responses: {
+            /** @description The bookmark */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bookmark"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
             204: {
                 headers: {
                     [name: string]: unknown;

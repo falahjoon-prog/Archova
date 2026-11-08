@@ -48,6 +48,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: bookmarks
   - name: recents
   - name: reporting
   - name: search
@@ -709,6 +710,60 @@ paths:
       responses:
         '204':
           description: Recorded
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bookmarks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listBookmarks
+      tags: [bookmarks]
+      x-module: platform
+      summary: The caller's bookmarks, newest first.
+      description: |
+        Only the caller's own bookmarks are ever returned (at most 200). Pass `projectId` to list one project's.
+      parameters:
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: The bookmarks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: saveBookmark
+      tags: [bookmarks]
+      x-module: platform
+      summary: Bookmark a record (idempotent; saving it again refreshes the title).
+      description: |
+        `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+        record's own module. A person can keep up to 200 bookmarks (`bookmark.limit_reached`, 409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkInput' }
+      responses:
+        '200':
+          description: The bookmark
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bookmarks/{bookmarkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BookmarkId'
+    delete:
+      operationId: deleteBookmark
+      tags: [bookmarks]
+      x-module: platform
+      summary: Remove one of the caller's bookmarks (idempotent).
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -14069,6 +14124,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
+    BookmarkId:
+      name: bookmarkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
     AccountingProvider:
       name: provider
       in: path
@@ -16792,6 +16852,37 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/RecentView' }
+    BookmarkEntityType:
+      type: string
+      enum: [rfi, submittal, defect, drawing_sheet, meeting]
+    BookmarkInput:
+      type: object
+      required: [entityType, entityId, projectId, title]
+      properties:
+        entityType: { $ref: '#/components/schemas/BookmarkEntityType' }
+        entityId:
+          { type: string, description: Public id of the record, of the kind `entityType` names. }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        subtitle: { type: string, maxLength: 200 }
+    Bookmark:
+      type: object
+      required: [id, entityType, entityId, projectId, title, subtitle, createdAt]
+      properties:
+        id: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
+        entityType: { $ref: '#/components/schemas/BookmarkEntityType' }
+        entityId: { type: string }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        subtitle: { type: string }
+        createdAt: { type: string, format: date-time }
+    BookmarkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Bookmark' }
     FeatureFlags:
       type: object
       required: [orgId, flags]
