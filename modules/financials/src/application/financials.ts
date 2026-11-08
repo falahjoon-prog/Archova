@@ -83,6 +83,8 @@ export interface FinancialsDeps {
   ) => Promise<{ costCodeId: string | null; minutes: number }[]>;
   /** The day's worked hours and equipment logs (workforce), for drafting T&M tickets. Read lazily at request time. */
   dayActivity: (scope: TenantScope, projectId: string, date: string) => Promise<DayActivity>;
+  /** Whether the site diary has an entry on a date, for T&M ticket checks. Read lazily at request time. */
+  diaryEntryExists: (scope: TenantScope, projectId: string, date: string) => Promise<boolean>;
   /** Files module lookup, for T&M sign-off evidence. */
   getFile: (
     scope: TenantScope,

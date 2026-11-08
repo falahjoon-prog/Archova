@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: announcements
   - name: bim
   - name: defects
   - name: financials
@@ -7074,6 +7075,173 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+      description: |
+        Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+        (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+        returned to the sender and managers.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - {
+            name: unread,
+            in: query,
+            description: 'Only announcements the caller has not read',
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Post an announcement to everyone on the project or a chosen group.
+      description: |
+        The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+        subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+        recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+        read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAnnouncementRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    get:
+      operationId: getAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: One announcement. The sender and managers also get the read receipts and Nova's overdue flags.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: markAnnouncementRead
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Mark the caller's copy as read. The first read time is kept.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: nudgeAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+      description: |
+        Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+        four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+        (`announcements.announcements.manage`) may send reminders.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userIds]
+              properties:
+                userIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementNudgeResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftAnnouncementWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: announcements.announcements.create
+      summary: Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+      description: |
+        Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+        Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+        and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+        themselves. Costs half a Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [notes]
+              properties:
+                notes: { type: string, minLength: 1, maxLength: 4000 }
+                audience:
+                  description: Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits.
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11260,6 +11428,62 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InspectionDetail' }
         default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.close
+      summary: Delete an inspection. It is hidden everywhere; the change history keeps a record.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: reopenInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReopenInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    get:
+      operationId: listInspectionHistory
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: The change history of an inspection, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionHistoryList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13769,6 +13993,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TmTicketDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    get:
+      operationId: getTmTicketChecks
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: Nova's checks on a ticket, from the site diary, timesheets, equipment logs and where it was signed. Advice only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketChecks' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15387,6 +15629,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    AnnouncementId:
+      name: announcementId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ann_[0-9A-Za-z]{26}$' }
     ConversationId:
       name: conversationId
       in: path
@@ -15824,7 +16071,8 @@ components:
               }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
+      required:
+        [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes, monthly]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -15846,6 +16094,22 @@ components:
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
+        monthly:
+          type: array
+          description: >-
+            Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow
+            chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend.
+          items:
+            type: object
+            required: [month, spent]
+            properties:
+              month:
+                {
+                  type: string,
+                  pattern: '^\d{4}-(0[1-9]|1[0-2])$',
+                  description: 'Calendar month, YYYY-MM.',
+                }
+              spent: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     PortfolioProject:
       type: object
       required:
@@ -18304,6 +18568,7 @@ components:
                 incident,
                 compliance_document,
                 conversation,
+                announcement,
                 permit,
                 cover,
               ],
@@ -21702,6 +21967,164 @@ components:
           maxItems: 20
           description: Project team members to notify. Each must be an active, non-external member of the project.
           items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    AnnouncementAudienceInput:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [all, group] }
+        companyIds:
+          type: array
+          maxItems: 50
+          description: For `group`, everyone on the project from these companies.
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        userIds:
+          type: array
+          maxItems: 200
+          description: For `group`, these individual people.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    CreateAnnouncementRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body, audience]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        priority: { type: string, enum: [normal, important] }
+        audience: { $ref: '#/components/schemas/AnnouncementAudienceInput' }
+        keyUserIds:
+          type: array
+          maxItems: 100
+          description: People who must read it; each must be among the recipients.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        readByHours:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 720
+          description: Hours after posting by which key people should have read it. Nova flags the ones who haven't.
+    AnnouncementReceipts:
+      type: object
+      required: [recipientCount, readCount]
+      properties:
+        recipientCount: { type: integer }
+        readCount: { type: integer }
+    AnnouncementSummary:
+      type: object
+      required:
+        - id
+        - projectId
+        - title
+        - preview
+        - priority
+        - audienceKind
+        - createdById
+        - createdByName
+        - createdAt
+        - readByHours
+        - isMine
+        - unread
+        - readAt
+        - receipts
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        preview: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        audienceKind: { type: string, enum: [all, group] }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        readByHours: { type: [integer, 'null'] }
+        isMine: { type: boolean }
+        unread: { type: boolean, description: The caller was sent it and hasn't read it. }
+        readAt: { type: [string, 'null'], format: date-time }
+        receipts:
+          description: How many have read it; only for the sender and managers.
+          oneOf:
+            - $ref: '#/components/schemas/AnnouncementReceipts'
+            - type: 'null'
+    AnnouncementPage:
+      type: object
+      required: [data, nextCursor, unreadCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AnnouncementSummary' }
+        nextCursor: { type: [string, 'null'] }
+        unreadCount:
+          { type: integer, description: Announcements on this project the caller hasn't read. }
+    AnnouncementRecipient:
+      type: object
+      required: [userId, name, isKey, readAt, nudgedAt]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        readAt: { type: [string, 'null'], format: date-time }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+    AnnouncementUnreadFlag:
+      type: object
+      required: [userId, name, isKey, hoursOverdue, nudgedAt, canNudge]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        hoursOverdue: { type: integer }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+        canNudge: { type: boolean, description: False inside four hours of the last reminder. }
+    AnnouncementDetail:
+      allOf:
+        - $ref: '#/components/schemas/AnnouncementSummary'
+        - type: object
+          required: [body, audience, dueAt, recipients, flags]
+          properties:
+            body: { type: string }
+            audience:
+              type: object
+              required: [kind, companyIds, userIds]
+              properties:
+                kind: { type: string, enum: [all, group] }
+                companyIds:
+                  type: array
+                  items: { type: string }
+                userIds:
+                  type: array
+                  items: { type: string }
+            dueAt:
+              {
+                type: [string, 'null'],
+                format: date-time,
+                description: When key people should have read it by.,
+              }
+            recipients:
+              description: Who has read it; only for the sender and managers.
+              oneOf:
+                - type: array
+                  items: { $ref: '#/components/schemas/AnnouncementRecipient' }
+                - type: 'null'
+            flags:
+              type: array
+              description: "Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others."
+              items: { $ref: '#/components/schemas/AnnouncementUnreadFlag' }
+    AnnouncementNudgeResult:
+      type: object
+      required: [nudged, skipped]
+      properties:
+        nudged: { type: integer }
+        skipped: { type: integer, description: Already read, or reminded in the last four hours. }
+    AnnouncementDraft:
+      type: object
+      required: [runId, title, body, priority, notes]
+      properties:
+        runId: { type: string }
+        title: { type: string }
+        body: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        notes:
+          type: array
+          description: What code removed or changed because the notes didn't support it.
+          items: { type: string }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
@@ -25094,8 +25517,23 @@ components:
       type: object
       description: Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature.
       required:
-        [role, signerName, signerPosition, hasEvidence, evidenceFileId, contentHash, signedAt]
+        [
+          role,
+          signerName,
+          signerPosition,
+          hasEvidence,
+          evidenceFileId,
+          geofenceStatus,
+          hasPosition,
+          contentHash,
+          signedAt,
+        ]
       properties:
+        geofenceStatus:
+          type: string
+          enum: [inside, outside, uncertain, unknown]
+          description: Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
+        hasPosition: { type: boolean }
         role: { type: string, enum: [contractor, principal_rep] }
         signerName: { type: string }
         signerPosition: { type: [string, 'null'] }
@@ -25153,6 +25591,31 @@ components:
             signoffs:
               type: array
               items: { $ref: '#/components/schemas/TmTicketSignoff' }
+    TmTicketFinding:
+      type: object
+      required: [code, severity, message, line]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              no_diary_entry,
+              labour_hours_differ,
+              equipment_hours_differ,
+              labour_not_from_timesheet,
+              equipment_not_from_log,
+              signed_off_site,
+            ]
+        severity: { type: string, enum: [warn, info] }
+        message: { type: string }
+        line: { type: [integer, 'null'] }
+    TmTicketChecks:
+      type: object
+      required: [findings]
+      properties:
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicketFinding' }
     TmTicketList:
       type: object
       required: [data, total, awaitingSignature, unconverted]
@@ -25212,6 +25675,15 @@ components:
           type: string
           pattern: '^fil_[0-9A-Za-z]{26}$'
           description: A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative.
+        fix:
+          type: object
+          additionalProperties: false
+          required: [lat, lng]
+          description: The device position when signing. Optional; checked against the project's site fence and stored with the sign-off.
+          properties:
+            lat: { type: number, minimum: -90, maximum: 90 }
+            lng: { type: number, minimum: -180, maximum: 180 }
+            accuracyM: { type: number, minimum: 0, maximum: 100000 }
     VoidTmTicketRequest:
       type: object
       additionalProperties: false
@@ -28468,6 +28940,10 @@ components:
           specSection,
           description,
           fileIds,
+          isPrivate,
+          distributionIds,
+          drawingRevisionIds,
+          reopenCount,
           createdAt,
           updatedAt,
           version,
@@ -28495,6 +28971,15 @@ components:
           type: array
           description: Files attached to the inspection itself.
           items: { type: string }
+        isPrivate:
+          {
+            type: boolean,
+            description: Only the creator,
+            assignees and people who can close it can see it.,
+          }
+        distributionIds: { type: array, items: { type: string } }
+        drawingRevisionIds: { type: array, items: { type: string } }
+        reopenCount: { type: integer }
         completedAt: { type: [string, 'null'], format: date-time }
         signedBy:
           oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
@@ -28527,6 +29012,8 @@ components:
           responses,
           missingRequiredItemIds,
           failedItemIds,
+          summary,
+          reopenFlag,
         ]
       properties:
         inspection: { $ref: '#/components/schemas/Inspection' }
@@ -28553,6 +29040,53 @@ components:
         failedItemIds:
           type: array
           items: { type: string }
+        summary: { $ref: '#/components/schemas/InspectionStatusCounts' }
+        reopenFlag:
+          oneOf: [{ $ref: '#/components/schemas/InspectionReopenFlag' }, { type: 'null' }]
+    InspectionStatusCounts:
+      type: object
+      required: [pass, fail, na, answered, unanswered, total]
+      properties:
+        pass: { type: integer }
+        fail: { type: integer }
+        na: { type: integer }
+        answered: { type: integer }
+        unanswered: { type: integer }
+        total: { type: integer }
+    InspectionReopenFlag:
+      type: object
+      required: [code, count, message]
+      properties:
+        code: { type: string, enum: [reopened_repeatedly] }
+        count: { type: integer }
+        message: { type: string }
+    InspectionHistoryEvent:
+      type: object
+      required: [id, inspectionId, kind, detail, actorId, at]
+      properties:
+        id: { type: string }
+        inspectionId: { type: string }
+        kind:
+          {
+            type: string,
+            enum: [created, updated, section_na, signed, submitted, reopened, closed, deleted],
+          }
+        detail: { type: object, additionalProperties: true }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    InspectionHistoryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionHistoryEvent' }
+    ReopenInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 2000 }
     InspectionSection:
       type: object
       required: [section, items, answered, pass, fail, na, unanswered, isNa]
@@ -28604,6 +29138,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     UpdateInspectionRequest:
       type: object
       additionalProperties: false
@@ -28629,6 +29172,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     SetInspectionSectionNaRequest:
       type: object
       additionalProperties: false

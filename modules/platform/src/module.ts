@@ -73,6 +73,8 @@ export function createPlatformModule(
       getProjectMembership: members.getProjectMembership,
       getProjectAccessState: members.getProjectAccessState,
       contactsOfCompany: members.contactsOfCompany,
+      /** Active members of a project with company and external flag; used to resolve broadcast audiences. */
+      listActiveMembers: members.listActiveMembers,
       getProject: projects.get,
       /** A page of the projects the caller can see (org admins: all). Used by `reporting` for the portfolio. */
       listProjects: projects.list,

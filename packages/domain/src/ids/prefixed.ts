@@ -65,6 +65,7 @@ export const ID_PREFIXES = {
   correspondenceResponse: 'crr',
   conversation: 'cnv',
   conversationMessage: 'cnm',
+  announcement: 'ann',
   bimModel: 'bmd',
   siteCapture: 'scp',
   coordinationIssue: 'cis',

@@ -5272,6 +5272,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+         * @description Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+         *     (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+         *     returned to the sender and managers.
+         */
+        get: operations["listAnnouncements"];
+        put?: never;
+        /**
+         * Post an announcement to everyone on the project or a chosen group.
+         * @description The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+         *     subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+         *     recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+         *     read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+         */
+        post: operations["createAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        /** One announcement. The sender and managers also get the read receipts and Nova's overdue flags. */
+        get: operations["getAnnouncement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the caller's copy as read. The first read time is kept. */
+        post: operations["markAnnouncementRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+         * @description Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+         *     four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+         *     (`announcements.announcements.manage`) may send reminders.
+         */
+        post: operations["nudgeAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+         * @description Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+         *     Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+         *     and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+         *     themselves. Costs half a Nova credit.
+         */
+        post: operations["draftAnnouncementWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -8251,11 +8377,54 @@ export interface paths {
         get: operations["getInspection"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an inspection. It is hidden everywhere; the change history keeps a record. */
+        delete: operations["deleteInspection"];
         options?: never;
         head?: never;
         /** Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted. */
         patch: operations["updateInspection"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen). */
+        post: operations["reopenInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        /** The change history of an inspection, oldest first. */
+        get: operations["listInspectionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na": {
@@ -10043,6 +10212,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's checks on a ticket, from the site diary, timesheets, equipment logs and where it was signed. Advice only. */
+        get: operations["getTmTicketChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign": {
         parameters: {
             query?: never;
@@ -11309,6 +11499,12 @@ export interface components {
             variance: components["schemas"]["FinancialsSignedMoney"];
             /** @description Cost codes whose forecast is over their revised budget. */
             overBudgetCodes: number;
+            /** @description Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend. */
+            monthly: {
+                /** @description Calendar month, YYYY-MM. */
+                month: string;
+                spent: components["schemas"]["FinancialsSignedMoney"];
+            }[];
         };
         PortfolioProject: {
             id: string;
@@ -12894,7 +13090,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "permit" | "cover";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -15043,6 +15239,108 @@ export interface components {
             /** @description Project team members to notify. Each must be an active, non-external member of the project. */
             mentions?: string[];
         };
+        AnnouncementAudienceInput: {
+            /** @enum {string} */
+            kind: "all" | "group";
+            /** @description For `group`, everyone on the project from these companies. */
+            companyIds?: components["schemas"]["CompanyRef"][];
+            /** @description For `group`, these individual people. */
+            userIds?: string[];
+        };
+        CreateAnnouncementRequest: {
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority?: "normal" | "important";
+            audience: components["schemas"]["AnnouncementAudienceInput"];
+            /** @description People who must read it; each must be among the recipients. */
+            keyUserIds?: string[];
+            /** @description Hours after posting by which key people should have read it. Nova flags the ones who haven't. */
+            readByHours?: number | null;
+        };
+        AnnouncementReceipts: {
+            recipientCount: number;
+            readCount: number;
+        };
+        AnnouncementSummary: {
+            id: string;
+            projectId: string;
+            title: string;
+            preview: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @enum {string} */
+            audienceKind: "all" | "group";
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            readByHours: number | null;
+            isMine: boolean;
+            /** @description The caller was sent it and hasn't read it. */
+            unread: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** @description How many have read it; only for the sender and managers. */
+            receipts: components["schemas"]["AnnouncementReceipts"] | null;
+        };
+        AnnouncementPage: {
+            data: components["schemas"]["AnnouncementSummary"][];
+            nextCursor: string | null;
+            /** @description Announcements on this project the caller hasn't read. */
+            unreadCount: number;
+        };
+        AnnouncementRecipient: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: date-time */
+            nudgedAt: string | null;
+        };
+        AnnouncementUnreadFlag: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            hoursOverdue: number;
+            /** Format: date-time */
+            nudgedAt: string | null;
+            /** @description False inside four hours of the last reminder. */
+            canNudge: boolean;
+        };
+        AnnouncementDetail: components["schemas"]["AnnouncementSummary"] & {
+            body: string;
+            audience: {
+                /** @enum {string} */
+                kind: "all" | "group";
+                companyIds: string[];
+                userIds: string[];
+            };
+            /**
+             * Format: date-time
+             * @description When key people should have read it by.
+             */
+            dueAt: string | null;
+            /** @description Who has read it; only for the sender and managers. */
+            recipients: components["schemas"]["AnnouncementRecipient"][] | null;
+            /** @description Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others. */
+            flags: components["schemas"]["AnnouncementUnreadFlag"][];
+        };
+        AnnouncementNudgeResult: {
+            nudged: number;
+            /** @description Already read */
+            skipped: number;
+        };
+        AnnouncementDraft: {
+            runId: string;
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @description What code removed or changed because the notes didn't support it. */
+            notes: string[];
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -17138,6 +17436,12 @@ export interface components {
         };
         /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
         TmTicketSignoff: {
+            /**
+             * @description Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
+             * @enum {string}
+             */
+            geofenceStatus: "inside" | "outside" | "uncertain" | "unknown";
+            hasPosition: boolean;
             /** @enum {string} */
             role: "contractor" | "principal_rep";
             signerName: string;
@@ -17175,6 +17479,17 @@ export interface components {
         TmTicketDetail: components["schemas"]["TmTicket"] & {
             lines: components["schemas"]["TmTicketLine"][];
             signoffs: components["schemas"]["TmTicketSignoff"][];
+        };
+        TmTicketFinding: {
+            /** @enum {string} */
+            code: "no_diary_entry" | "labour_hours_differ" | "equipment_hours_differ" | "labour_not_from_timesheet" | "equipment_not_from_log" | "signed_off_site";
+            /** @enum {string} */
+            severity: "warn" | "info";
+            message: string;
+            line: number | null;
+        };
+        TmTicketChecks: {
+            findings: components["schemas"]["TmTicketFinding"][];
         };
         TmTicketList: {
             data: components["schemas"]["TmTicket"][];
@@ -17216,6 +17531,12 @@ export interface components {
             signerPosition?: string;
             /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
             evidenceFileId?: string;
+            /** @description The device position when signing. Optional; checked against the project's site fence and stored with the sign-off. */
+            fix?: {
+                lat: number;
+                lng: number;
+                accuracyM?: number;
+            };
         };
         VoidTmTicketRequest: {
             note: string;
@@ -19261,6 +19582,11 @@ export interface components {
             description: string;
             /** @description Files attached to the inspection itself. */
             fileIds: string[];
+            /** @description Only the creator */
+            isPrivate: boolean;
+            distributionIds: string[];
+            drawingRevisionIds: string[];
+            reopenCount: number;
             /** Format: date-time */
             completedAt: string | null;
             signedBy: components["schemas"]["InspectionSignature"] | null;
@@ -19292,6 +19618,40 @@ export interface components {
             responses: components["schemas"]["InspectionItemResponse"][];
             missingRequiredItemIds: string[];
             failedItemIds: string[];
+            summary: components["schemas"]["InspectionStatusCounts"];
+            reopenFlag: components["schemas"]["InspectionReopenFlag"] | null;
+        };
+        InspectionStatusCounts: {
+            pass: number;
+            fail: number;
+            na: number;
+            answered: number;
+            unanswered: number;
+            total: number;
+        };
+        InspectionReopenFlag: {
+            /** @enum {string} */
+            code: "reopened_repeatedly";
+            count: number;
+            message: string;
+        };
+        InspectionHistoryEvent: {
+            id: string;
+            inspectionId: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "section_na" | "signed" | "submitted" | "reopened" | "closed" | "deleted";
+            detail: {
+                [key: string]: unknown;
+            };
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        InspectionHistoryList: {
+            data: components["schemas"]["InspectionHistoryEvent"][];
+        };
+        ReopenInspectionRequest: {
+            reason: string;
         };
         InspectionSection: {
             section: string;
@@ -19326,6 +19686,9 @@ export interface components {
             specSection?: string;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         /** @description Header fields. Send only what changes; null clears an optional field. */
         UpdateInspectionRequest: {
@@ -19343,6 +19706,9 @@ export interface components {
             specSection?: string | null;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         SetInspectionSectionNaRequest: {
             section: string;
@@ -20549,6 +20915,7 @@ export interface components {
         CorrespondenceTypeId: string;
         SiteCaptureId: string;
         CoordinationIssueId: string;
+        AnnouncementId: string;
         ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
@@ -28942,6 +29309,182 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listAnnouncements: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+                /** @description Only announcements the caller has not read */
+                unread?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    markAnnouncementRead: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    nudgeAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementNudgeResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftAnnouncementWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    notes: string;
+                    /** @description Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits. */
+                    audience?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCorrespondence: {
         parameters: {
             query?: {
@@ -33904,6 +34447,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    deleteInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     updateInspection: {
         parameters: {
             query?: never;
@@ -33932,6 +34501,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reopenInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionHistoryList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -37213,6 +37840,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTmTicketChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketChecks"];
                 };
             };
             default: components["responses"]["Problem"];

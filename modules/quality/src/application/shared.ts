@@ -2,12 +2,14 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
+import type { DocumentsApi } from '@archova/mod-documents';
 import type { PlatformApi } from '@archova/mod-platform';
 import { observations } from '../infra/tables';
 
 export interface QualityDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
+  documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   /** The safety module's "stop work: SWMS not followed" (compliance 03 §4, r300). */
   safety: {

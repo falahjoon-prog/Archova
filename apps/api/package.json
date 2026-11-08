@@ -22,6 +22,7 @@
     "@archova/mod-ai": "workspace:*",
     "@archova/mod-backoffice": "workspace:*",
     "@archova/mod-billing": "workspace:*",
+    "@archova/mod-announcements": "workspace:*",
     "@archova/mod-conversations": "workspace:*",
     "@archova/mod-correspondence": "workspace:*",
     "@archova/mod-defects": "workspace:*",

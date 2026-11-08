@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import {
   AppError,
@@ -21,13 +21,16 @@ import {
   type ResponseType,
 } from '../domain/inspection';
 import { countActivity, itemSuggestion, type ItemEventKind } from '../domain/item-activity';
+import { canSeePrivate, reopenFlag, statusCounts } from '../domain/inspection-record';
 import {
+  history,
   inspections,
   itemEvents,
   responses,
   signatures,
   templateItems,
   templates,
+  type HistoryKind,
 } from '../infra/tables';
 import { uniqueViolation } from './errors';
 import { checkFiles, requireInternal, type QualityDeps } from './shared';
@@ -38,6 +41,7 @@ export type InspectionRow = typeof inspections.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
 export type SignatureRow = typeof signatures.$inferSelect;
 export type ItemEventRow = typeof itemEvents.$inferSelect;
+export type HistoryRow = typeof history.$inferSelect;
 
 export interface TemplateItemInput {
   section?: string;
@@ -73,6 +77,11 @@ export interface HeaderInput {
   description?: string;
   /** Files attached to the inspection itself, as opposed to one item. */
   fileIds?: string[];
+  isPrivate?: boolean;
+  /** People who are sent the inspection (the Email action's default recipients). */
+  distributionIds?: string[];
+  /** Drawing revisions the inspection is about. */
+  drawingRevisionIds?: string[];
 }
 
 const spec = (i: ItemRow): ItemSpec => ({
@@ -296,6 +305,43 @@ export function createInspectionService(deps: QualityDeps) {
 
   // ---- inspections ----
 
+  /** Who may open a private inspection: the people on it, and anyone who can close inspections. */
+  async function privacy(scope: TenantScope, projectId: string) {
+    const canClose = await deps.access.can(scope, 'quality.inspections.close', { projectId });
+    const uid = scope.ctx.userId;
+    return {
+      canClose,
+      /** A SQL condition that hides private inspections from everyone else, or null when nothing is hidden. */
+      where: canClose
+        ? null
+        : or(
+            eq(inspections.isPrivate, false),
+            eq(inspections.createdBy, uid),
+            eq(inspections.inspectorId, uid),
+            sql`${uid}::uuid = any(${inspections.assigneeIds})`,
+          )!,
+    };
+  }
+
+  /** One line in the inspection's change history. */
+  async function record(
+    scope: TenantScope,
+    inspection: { id: string; projectId: string },
+    kind: HistoryKind,
+    detail: Record<string, unknown> = {},
+  ) {
+    await scope.tx.insert(history).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId: inspection.projectId,
+      inspectionId: inspection.id,
+      kind,
+      detail,
+      actorId: scope.ctx.userId,
+      at: now(),
+    });
+  }
+
   async function load(scope: TenantScope, projectId: string, id: string) {
     await internal(scope, projectId, 'inspection.not_found');
     const [row] = await scope.tx
@@ -310,6 +356,11 @@ export function createInspectionService(deps: QualityDeps) {
       )
       .limit(1);
     if (!row) throw new AppError('inspection.not_found');
+    if (row.isPrivate) {
+      const p = await privacy(scope, projectId);
+      if (!canSeePrivate(row, scope.ctx.userId, p.canClose))
+        throw new AppError('inspection.not_found');
+    }
     return row;
   }
 
@@ -360,6 +411,8 @@ export function createInspectionService(deps: QualityDeps) {
       signatures: sigs,
       responses: rows,
       sections: sectionSummaries(specs, byItem, naSections),
+      summary: statusCounts(sectionSummaries(specs, byItem, naSections)),
+      reopenFlag: reopenFlag(inspection.reopenCount),
       missingRequiredItemIds: missingRequiredIn(specs, byItem, naSections).map((i) => i.id),
       failedItemIds: failedItems(
         specs.filter((i) => !naSections.has(i.section)),
@@ -376,6 +429,8 @@ export function createInspectionService(deps: QualityDeps) {
     await internal(scope, projectId, 'inspection.not_found');
     const after = decodeCursor<{ id: string }>(opts.cursor);
     const conditions: SQL[] = [eq(inspections.projectId, projectId), isNull(inspections.deletedAt)];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
     if (opts.status) conditions.push(eq(inspections.status, opts.status));
     if (opts.templateId) conditions.push(eq(inspections.templateId, opts.templateId));
     if (after) conditions.push(lt(inspections.id, after.id));
@@ -400,11 +455,14 @@ export function createInspectionService(deps: QualityDeps) {
         throw new AppError('validation_failed', 'Use a calendar date.', [
           { path, message: 'Not a date' },
         ]);
-    const people = [
+    const people: (readonly [string, string])[] = [
       ...(input.assigneeIds ?? []).map((u, i) => [`assigneeIds/${i}`, u] as const),
       ...(input.pointOfContactId ? [['pointOfContactId', input.pointOfContactId] as const] : []),
       ...(input.inspectorId ? [['inspectorId', input.inspectorId] as const] : []),
     ];
+    people.push(
+      ...(input.distributionIds ?? []).map((u, i) => [`distributionIds/${i}`, u] as const),
+    );
     for (const [path, userId] of people) {
       const m = await deps.platform.getProjectMembership(scope, projectId, userId);
       if (!m)
@@ -420,6 +478,13 @@ export function createInspectionService(deps: QualityDeps) {
         ]);
     }
     if (input.fileIds?.length) await checkFiles(deps, scope, projectId, input.fileIds);
+    for (const [i, revisionId] of (input.drawingRevisionIds ?? []).entries()) {
+      const rev = await deps.documents.getDrawingRevision(scope, projectId, revisionId);
+      if (rev.status === 'draft')
+        throw new AppError('validation_failed', 'Link a published drawing.', [
+          { path: `drawingRevisionIds/${i}`, message: 'Not a published drawing revision' },
+        ]);
+    }
   }
 
   /** Only the fields that were sent, mapped to columns. */
@@ -436,6 +501,9 @@ export function createInspectionService(deps: QualityDeps) {
     if (input.specSection !== undefined) v.specSection = input.specSection;
     if (input.description !== undefined) v.description = input.description;
     if (input.fileIds !== undefined) v.fileIds = input.fileIds;
+    if (input.isPrivate !== undefined) v.isPrivate = input.isPrivate;
+    if (input.distributionIds !== undefined) v.distributionIds = input.distributionIds;
+    if (input.drawingRevisionIds !== undefined) v.drawingRevisionIds = input.drawingRevisionIds;
     return v;
   }
 
@@ -471,6 +539,9 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'updated', {
+      fields: Object.keys(input).filter((k) => (input as Record<string, unknown>)[k] !== undefined),
+    });
     return detail(scope, projectId, id);
   }
 
@@ -511,6 +582,7 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'section_na', { section, na });
     return detail(scope, projectId, id);
   }
 
@@ -559,6 +631,7 @@ export function createInspectionService(deps: QualityDeps) {
       })
       .returning();
     await changed(scope, row!);
+    await record(scope, row!, 'created', { template: template.name });
     return detail(scope, projectId, id);
   }
 
@@ -833,6 +906,7 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'submitted', { failedItems: d.failedItemIds.length });
     scope.events.add({
       type: 'quality.inspection.submitted.v1',
       projectId,
@@ -871,6 +945,7 @@ export function createInspectionService(deps: QualityDeps) {
       signedBy: scope.ctx.userId,
       at: now(),
     });
+    await record(scope, inspection, 'signed', { name: input.name.trim() });
     return detail(scope, projectId, id);
   }
 
@@ -896,7 +971,113 @@ export function createInspectionService(deps: QualityDeps) {
       .returning();
     if (!row) throw versionConflict();
     await changed(scope, row);
+    await record(scope, row, 'closed');
     return detail(scope, projectId, id);
+  }
+
+  /**
+   * Put a submitted or closed inspection back in progress. A reason is required and it is counted: reopened
+   * twice or more is flagged on the record. Reopening a closed one takes the close permission.
+   */
+  async function reopen(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+    reason: string,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (inspection.status !== 'submitted' && inspection.status !== 'closed')
+      throw new AppError(
+        'inspection.invalid_state',
+        `An inspection that is ${inspection.status} is already open.`,
+        undefined,
+        { status: inspection.status },
+      );
+    if (
+      inspection.status === 'closed' &&
+      !(await deps.access.can(scope, 'quality.inspections.close', { projectId }))
+    )
+      throw new AppError(
+        'access.denied',
+        'Only someone who can close inspections can reopen a closed one.',
+      );
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    if (!reason.trim())
+      throw new AppError('validation_failed', 'Say why it is being reopened.', [
+        { path: 'reason', message: 'Required' },
+      ]);
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        status: 'in_progress',
+        completedAt: null,
+        reopenCount: inspection.reopenCount + 1,
+        version: inspection.version + 1,
+        updatedAt: now(),
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await changed(scope, row);
+    await record(scope, row, 'reopened', {
+      reason: reason.trim(),
+      from: inspection.status,
+      count: row.reopenCount,
+    });
+    scope.events.add({
+      type: 'quality.inspection.reopened.v1',
+      projectId,
+      entityType: 'inspection',
+      entityId: id,
+      entityVersion: row.version,
+      data: { inspectionId: id, reopenCount: row.reopenCount },
+    });
+    return detail(scope, projectId, id);
+  }
+
+  /** Delete an inspection (admins). It disappears from lists; the history keeps a record that it was deleted. */
+  async function remove(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expectedVersion: number,
+  ) {
+    const inspection = await load(scope, projectId, id);
+    if (inspection.version !== expectedVersion) throw versionConflict();
+    const at = now();
+    const [row] = await scope.tx
+      .update(inspections)
+      .set({
+        deletedAt: at,
+        version: inspection.version + 1,
+        updatedAt: at,
+        updatedBy: scope.ctx.userId,
+      })
+      .where(and(eq(inspections.id, id), eq(inspections.version, expectedVersion)))
+      .returning();
+    if (!row) throw versionConflict();
+    await scope.recordChange({
+      module: 'quality',
+      entityType: 'inspection',
+      entityId: id,
+      op: 'delete',
+      version: row.version,
+      projectId,
+      isPrivate: false,
+    });
+    await record(scope, row, 'deleted');
+  }
+
+  /** The inspection's change history, oldest first. */
+  async function changeHistory(scope: TenantScope, projectId: string, id: string) {
+    await load(scope, projectId, id);
+    return scope.tx
+      .select()
+      .from(history)
+      .where(eq(history.inspectionId, id))
+      .orderBy(asc(history.at), asc(history.id));
   }
 
   /** The project an inspection belongs to (RLS limits this to the caller's organisation), or null. */
@@ -976,6 +1157,9 @@ export function createInspectionService(deps: QualityDeps) {
     submit,
     addSignature,
     close,
+    reopen,
+    remove,
+    changeHistory,
   };
 }
 

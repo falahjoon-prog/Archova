@@ -204,6 +204,9 @@ export const PROBLEM_CODES = {
   'ai.capture_observation.already_reviewed': 409,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
+  // announcements
+  'announcement.not_found': 404,
+  'announcement.audience_empty': 422,
   // conversations
   'conversation.not_found': 404,
   // correspondence

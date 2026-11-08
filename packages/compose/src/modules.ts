@@ -74,6 +74,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -84,6 +85,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -282,6 +284,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
   });
 
+  const announcements = createAnnouncementsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    access: access.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -329,6 +337,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
     dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
     getFile: (scope, fileId) => files.api.getFile(scope, fileId),
+    // diary is built later; this is only called at request time.
+    diaryEntryExists: async (scope, projectId, date) =>
+      (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -347,6 +358,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const quality = createQualityModule(services, {
     access: access.api,
     platform: platform.api,
+    documents: documents.api,
     files: files.api,
     safety: safety.api,
   });
@@ -557,6 +569,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,
@@ -602,6 +615,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,

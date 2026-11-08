@@ -1650,6 +1650,46 @@ export const PostConversationMessageParams = z.object({
   "conversationId": z.string().regex(new RegExp("^cnv_[0-9A-Za-z]{26}$")),
 });
 export const PostConversationMessageBody = s.PostConversationMessageRequestSchema;
+export const ListAnnouncementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListAnnouncementsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+  "unread": z.enum(["true", "false"]).optional(),
+});
+export const CreateAnnouncementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateAnnouncementBody = s.CreateAnnouncementRequestSchema;
+export const GetAnnouncementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "announcementId": z.string().regex(new RegExp("^ann_[0-9A-Za-z]{26}$")),
+});
+export const MarkAnnouncementReadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "announcementId": z.string().regex(new RegExp("^ann_[0-9A-Za-z]{26}$")),
+});
+export const NudgeAnnouncementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "announcementId": z.string().regex(new RegExp("^ann_[0-9A-Za-z]{26}$")),
+});
+export const NudgeAnnouncementBody = z.object({
+  "userIds": z.array(z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"))).min(1).max(100),
+}).strict();
+export const DraftAnnouncementWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftAnnouncementWithNovaBody = z.object({
+  "notes": z.string().min(1).max(4000),
+  "audience": z.string().max(200).optional(),
+}).strict();
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2602,6 +2642,22 @@ export const UpdateInspectionParams = z.object({
   "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
 });
 export const UpdateInspectionBody = s.UpdateInspectionRequestSchema;
+export const DeleteInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const ReopenInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const ReopenInspectionBody = s.ReopenInspectionRequestSchema;
+export const ListInspectionHistoryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
 export const SetInspectionSectionNaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3260,6 +3316,11 @@ export const UpdateTmTicketParams = z.object({
   "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
 });
 export const UpdateTmTicketBody = s.TmTicketRequestSchema;
+export const GetTmTicketChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
 export const SignTmTicketParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7291,6 +7352,78 @@ export const operations = {
     query: null,
     body: PostConversationMessageBody,
   },
+  listAnnouncements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/announcements',
+    module: "announcements",
+    auth: "required",
+    permission: "announcements.announcements.read",
+    internal: false,
+    contentType: null,
+    params: ListAnnouncementsParams,
+    query: ListAnnouncementsQuery,
+    body: null,
+  },
+  createAnnouncement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/announcements',
+    module: "announcements",
+    auth: "required",
+    permission: "announcements.announcements.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateAnnouncementParams,
+    query: null,
+    body: CreateAnnouncementBody,
+  },
+  getAnnouncement: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}',
+    module: "announcements",
+    auth: "required",
+    permission: "announcements.announcements.read",
+    internal: false,
+    contentType: null,
+    params: GetAnnouncementParams,
+    query: null,
+    body: null,
+  },
+  markAnnouncementRead: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read',
+    module: "announcements",
+    auth: "required",
+    permission: "announcements.announcements.read",
+    internal: false,
+    contentType: null,
+    params: MarkAnnouncementReadParams,
+    query: null,
+    body: null,
+  },
+  nudgeAnnouncement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges',
+    module: "announcements",
+    auth: "required",
+    permission: "announcements.announcements.create",
+    internal: false,
+    contentType: "application/json",
+    params: NudgeAnnouncementParams,
+    query: null,
+    body: NudgeAnnouncementBody,
+  },
+  draftAnnouncementWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "announcements.announcements.create",
+    internal: false,
+    contentType: "application/json",
+    params: DraftAnnouncementWithNovaParams,
+    query: null,
+    body: DraftAnnouncementWithNovaBody,
+  },
   listCorrespondence: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
@@ -9431,6 +9564,42 @@ export const operations = {
     query: null,
     body: UpdateInspectionBody,
   },
+  deleteInspection: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.close",
+    internal: false,
+    contentType: null,
+    params: DeleteInspectionParams,
+    query: null,
+    body: null,
+  },
+  reopenInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: ReopenInspectionParams,
+    query: null,
+    body: ReopenInspectionBody,
+  },
+  listInspectionHistory: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionHistoryParams,
+    query: null,
+    body: null,
+  },
   setInspectionSectionNa: {
     method: 'PUT',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na',
@@ -10810,6 +10979,18 @@ export const operations = {
     params: UpdateTmTicketParams,
     query: null,
     body: UpdateTmTicketBody,
+  },
+  getTmTicketChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: GetTmTicketChecksParams,
+    query: null,
+    body: null,
   },
   signTmTicket: {
     method: 'POST',

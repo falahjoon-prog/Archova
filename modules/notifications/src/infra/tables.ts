@@ -10,6 +10,7 @@ export type NotificationEntity =
   | 'incident'
   | 'compliance_document'
   | 'conversation'
+  | 'announcement'
   | 'permit'
   | 'cover';
 

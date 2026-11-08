@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
-import { uuidv7 } from '@archova/domain';
+import { geofenceStatus, isGeoPoint, uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import {
@@ -16,6 +16,7 @@ import {
   type TmRole,
 } from '../domain/tm';
 import { fromCents, isMoney, toCents } from '../domain/money';
+import { runChecks } from '../domain/tmChecks';
 import { tmTicketDirectCosts, tmTicketLines, tmTicketSignoffs, tmTickets } from '../infra/tables';
 import type { DirectCostsService } from './directCosts';
 
@@ -57,6 +58,13 @@ export interface TmTicketsDeps {
     scope: TenantScope,
     fileId: string,
   ) => Promise<{ projectId: string | null; status: string }>;
+  /** The project's site position and fence radius, for the geo check on sign-offs. */
+  siteOf: (
+    scope: TenantScope,
+    projectId: string,
+  ) => Promise<{ lat: number | null; lng: number | null; radiusM: number | null }>;
+  /** Whether the site diary has an entry for the date (diary module; false when unreadable). */
+  diaryEntryExists: (scope: TenantScope, projectId: string, date: string) => Promise<boolean>;
   now?: () => Date;
 }
 
@@ -349,6 +357,8 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
       signerPosition?: string;
       /** A ready file on this project: the photo of the docket signed on site. Required for the principal's rep. */
       evidenceFileId?: string;
+      /** Device position when signing; optional, and never required to sign. */
+      fix?: { lat: number; lng: number; accuracyM?: number | undefined };
       ip?: string | undefined;
       userAgent?: string | undefined;
     },
@@ -383,6 +393,18 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
           { path: 'evidenceFileId', message: 'Not a ready file in this project' },
         ]);
     }
+    if (input.fix && !isGeoPoint(input.fix))
+      throw new AppError('validation_failed', 'That position is not valid.', [
+        { path: 'fix', message: 'Invalid position' },
+      ]);
+    const site = await deps.siteOf(scope, projectId);
+    const geo =
+      input.fix && site.lat !== null && site.lng !== null && site.radiusM
+        ? geofenceStatus(
+            { ...input.fix, accuracyM: input.fix.accuracyM ?? null },
+            { centre: { lat: site.lat, lng: site.lng }, radiusM: site.radiusM },
+          )
+        : 'unknown';
     const existing = await signoffsOf(scope, id);
     if (existing.some((s) => s.role === input.role))
       throw new AppError('financials.tm_ticket.bad_state', 'That role has already signed.');
@@ -415,6 +437,10 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         signedBy: scope.ctx.userId!,
         contentHash: hash,
         evidenceFileId: input.evidenceFileId ?? null,
+        lat: input.fix?.lat ?? null,
+        lng: input.fix?.lng ?? null,
+        accuracyM: input.fix?.accuracyM !== undefined ? Math.round(input.fix.accuracyM) : null,
+        geofenceStatus: geo,
         ip: input.ip ?? null,
         userAgent: input.userAgent?.slice(0, 500) ?? null,
         signedAt: now(),
@@ -449,7 +475,7 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
       entityType: 'tm_ticket',
       entityId: id,
       entityVersion: updated.version,
-      data: { tmTicketId: id, role: input.role, status, signoffId: signoff!.id },
+      data: { tmTicketId: id, role: input.role, status, signoffId: signoff!.id, geofence: geo },
     });
     return detail(scope, updated);
   }
@@ -629,6 +655,21 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     return { date, lines };
   }
 
+  /**
+   * Nova's checks on one ticket (rule-based, no model): the diary has an entry for the day, claimed hours match the
+   * timesheet and equipment log they came from, and sign-offs were recorded on site. Advice only.
+   */
+  async function checks(scope: TenantScope, projectId: string, id: string) {
+    await need(scope, 'financials.tm_tickets.read', projectId);
+    const t = await ticketRow(scope, projectId, id);
+    const [lines, signoffs] = await Promise.all([linesOf(scope, id), signoffsOf(scope, id)]);
+    const [day, diaryEntryExists] = await Promise.all([
+      deps.dayActivity(scope, projectId, t.workDate),
+      deps.diaryEntryExists(scope, projectId, t.workDate),
+    ]);
+    return runChecks({ workDate: t.workDate, lines, signoffs, day, diaryEntryExists });
+  }
+
   async function directCostIds(scope: TenantScope, projectId: string, id: string) {
     await need(scope, 'financials.tm_tickets.read', projectId);
     await ticketRow(scope, projectId, id);
@@ -648,6 +689,7 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     voidTicket,
     convertTicket,
     suggest,
+    checks,
     directCostIds,
   };
 }
