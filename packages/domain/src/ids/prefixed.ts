@@ -144,6 +144,8 @@ export const ID_PREFIXES = {
   environmentDocument: 'edc',
   monitoringPoint: 'mpt',
   environmentReading: 'erd',
+  wasteDocket: 'wdk',
+  carbonEntry: 'cbe',
   contract: 'cnt',
   sovItem: 'sov',
   paymentClaim: 'pcl',

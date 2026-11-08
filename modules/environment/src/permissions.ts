@@ -27,4 +27,10 @@ export const ENVIRONMENT_PERMISSIONS: readonly PermissionDefinition[] = [
     tool: 'environment',
     level: 'standard',
   },
+  { key: 'environment.waste.read', scope: 'project', tool: 'environment', level: 'read' },
+  { key: 'environment.waste.log', scope: 'project', tool: 'environment', level: 'standard' },
+  { key: 'environment.waste.delete', scope: 'project', tool: 'environment', level: 'admin' },
+  { key: 'environment.carbon.read', scope: 'project', tool: 'environment', level: 'read' },
+  { key: 'environment.carbon.log', scope: 'project', tool: 'environment', level: 'standard' },
+  { key: 'environment.carbon.delete', scope: 'project', tool: 'environment', level: 'admin' },
 ];

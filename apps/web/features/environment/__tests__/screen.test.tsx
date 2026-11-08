@@ -133,4 +133,49 @@ describe('EnvironmentScreen', () => {
       ).toBe(1),
     );
   });
+
+  it('shows the diversion rate against the target, and flags a hazardous docket with no copy', async () => {
+    nav.search = 'tab=waste';
+    renderInProject(<EnvironmentScreen />);
+    const table = await screen.findByRole('table', { name: 'Waste dockets' });
+    expect(within(table).getByText('Copy missing')).toBeTruthy();
+    expect(await screen.findByText('Target 80%')).toBeTruthy();
+    const flags = await screen.findByLabelText('Nova flags');
+    expect(within(flags).getByText(/diverted from landfill, against a target of 80%/)).toBeTruthy();
+    expect(within(flags).getByText(/1 hazardous or asbestos docket without a copy/)).toBeTruthy();
+  });
+
+  it('adds a waste docket, which moves the diversion rate', async () => {
+    const user = userEvent.setup();
+    nav.search = 'tab=waste';
+    renderInProject(<EnvironmentScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Add waste docket' }));
+    const save = screen.getByRole('button', { name: 'Add docket' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await enterText(user, screen.getByLabelText('Weight (tonnes)'), '30');
+    await user.selectOptions(screen.getByLabelText('Where it went'), 'recycled');
+    await user.click(save);
+    await waitFor(async () =>
+      expect((await environmentPreview.wasteSummary('prj_test')).totalTonnes).toBeCloseTo(87.6, 1),
+    );
+    expect((await environmentPreview.wasteSummary('prj_test')).diversionPercent).toBeGreaterThan(
+      70,
+    );
+  });
+
+  it('converts a carbon entry with the default factor and lets the factor be overridden', async () => {
+    const user = userEvent.setup();
+    nav.search = 'tab=carbon';
+    renderInProject(<EnvironmentScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Log fuel, power or materials' }));
+    await enterText(user, screen.getByLabelText(/Quantity \(litres\)/), '1000');
+    expect(await screen.findByText(/This adds 2.7 t CO₂-e \(scope 1\)/)).toBeTruthy();
+    await enterText(user, screen.getByLabelText(/Emission factor/), '3');
+    expect(await screen.findByText(/This adds 3 t CO₂-e/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Log entry' }));
+    await waitFor(async () => {
+      const list = await environmentPreview.listCarbon('prj_test');
+      expect(list.some((e) => e.quantity === 1000 && e.kgCo2e === 3000)).toBe(true);
+    });
+  });
 });

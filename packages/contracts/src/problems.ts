@@ -394,6 +394,8 @@ export const PROBLEM_CODES = {
   'environment.document_not_found': 404,
   'environment.point_not_found': 404,
   'environment.reading_not_found': 404,
+  'environment.docket_not_found': 404,
+  'environment.carbon_entry_not_found': 404,
   'observation.attachment_required': 422,
   'observation_type.not_found': 404,
   'observation_type.duplicate': 409,

@@ -215,6 +215,8 @@ export interface Summary {
   };
   documents: { total: number; expired: number; expiring: number };
   monitoring: { points: number; openBreaches: number; overdue: number };
+  waste: { totalTonnes: number; diversionPercent: number | null };
+  carbon: { totalKg: number; last30Kg: number };
   flags: Flag[];
 }
 
@@ -337,4 +339,162 @@ export interface RespondInput {
 export interface ReadingFilters {
   status?: ReadingStatus;
   open?: boolean;
+}
+
+export type WasteType =
+  | 'general'
+  | 'concrete'
+  | 'bricks_masonry'
+  | 'timber'
+  | 'metals'
+  | 'plastics'
+  | 'plasterboard'
+  | 'soil_fill'
+  | 'cardboard_paper'
+  | 'glass'
+  | 'green_waste'
+  | 'hazardous'
+  | 'asbestos'
+  | 'other';
+export type WasteDestination = 'recycled' | 'reused' | 'landfill' | 'treatment';
+
+export const WASTE_TYPE_LABELS: Record<WasteType, string> = {
+  general: 'General waste',
+  concrete: 'Concrete',
+  bricks_masonry: 'Bricks and masonry',
+  timber: 'Timber',
+  metals: 'Metals',
+  plastics: 'Plastics',
+  plasterboard: 'Plasterboard',
+  soil_fill: 'Soil and fill',
+  cardboard_paper: 'Cardboard and paper',
+  glass: 'Glass',
+  green_waste: 'Green waste',
+  hazardous: 'Hazardous',
+  asbestos: 'Asbestos',
+  other: 'Other',
+};
+
+export const WASTE_DESTINATION_LABELS: Record<WasteDestination, string> = {
+  recycled: 'Recycled',
+  reused: 'Reused',
+  landfill: 'Landfill',
+  treatment: 'Treatment',
+};
+
+export const isDiverted = (d: WasteDestination) => d === 'recycled' || d === 'reused';
+/** Hazardous and asbestos waste must have a copy of the signed docket attached. */
+export const isRegulatedWaste = (t: WasteType) => t === 'hazardous' || t === 'asbestos';
+
+export interface WasteDocket {
+  id: string;
+  docketDate: string;
+  wasteType: WasteType;
+  destination: WasteDestination;
+  tonnes: number;
+  docketNumber: string | null;
+  contractor: string | null;
+  facility: string | null;
+  note: string | null;
+  evidenceCount: number;
+}
+
+export interface DocketInput {
+  docketDate: string;
+  wasteType: WasteType;
+  destination: WasteDestination;
+  tonnes: number;
+  docketNumber?: string;
+  contractor?: string;
+  facility?: string;
+  note?: string;
+  files?: File[];
+}
+
+export interface WasteWindow {
+  tonnes: number;
+  divertedTonnes: number;
+  diversionPercent: number | null;
+}
+
+export interface WasteSummary {
+  totalTonnes: number;
+  divertedTonnes: number;
+  diversionPercent: number | null;
+  targetPercent: number;
+  byDestination: Record<WasteDestination, number>;
+  byType: { wasteType: WasteType; tonnes: number; divertedTonnes: number }[];
+  monthly: {
+    month: string;
+    tonnes: number;
+    divertedTonnes: number;
+    diversionPercent: number | null;
+  }[];
+  last30: WasteWindow;
+  previous30: WasteWindow;
+  regulatedWithoutDocket: number;
+}
+
+export type CarbonSource =
+  | 'diesel_litres'
+  | 'petrol_litres'
+  | 'lpg_litres'
+  | 'electricity_kwh'
+  | 'concrete_m3'
+  | 'steel_tonnes'
+  | 'other';
+
+export const CARBON_SOURCE_LABELS: Record<CarbonSource, string> = {
+  diesel_litres: 'Diesel',
+  petrol_litres: 'Petrol',
+  lpg_litres: 'LPG',
+  electricity_kwh: 'Electricity',
+  concrete_m3: 'Concrete',
+  steel_tonnes: 'Steel',
+  other: 'Other',
+};
+
+/** Unit, scope and indicative kg CO2-e per unit; the same defaults the API applies when no factor is given. */
+export const CARBON_SOURCE_INFO: Record<
+  CarbonSource,
+  { unit: string; scope: 1 | 2 | 3; factor: number }
+> = {
+  diesel_litres: { unit: 'litres', scope: 1, factor: 2.7 },
+  petrol_litres: { unit: 'litres', scope: 1, factor: 2.3 },
+  lpg_litres: { unit: 'litres', scope: 1, factor: 1.6 },
+  electricity_kwh: { unit: 'kWh', scope: 2, factor: 0.68 },
+  concrete_m3: { unit: 'm³', scope: 3, factor: 320 },
+  steel_tonnes: { unit: 'tonnes', scope: 3, factor: 1450 },
+  other: { unit: 'units', scope: 3, factor: 1 },
+};
+
+export interface CarbonEntry {
+  id: string;
+  entryDate: string;
+  source: CarbonSource;
+  scope: 1 | 2 | 3;
+  quantity: number;
+  factor: number;
+  kgCo2e: number;
+  description: string | null;
+  note: string | null;
+}
+
+export interface CarbonInput {
+  entryDate: string;
+  source: CarbonSource;
+  quantity: number;
+  factor?: number;
+  description?: string;
+  note?: string;
+}
+
+export interface CarbonSummary {
+  totalKg: number;
+  byScope: Record<1 | 2 | 3, number>;
+  bySource: { source: CarbonSource; quantity: number; kg: number }[];
+  monthly: { month: string; kg: number }[];
+  last30Kg: number;
+  previous30Kg: number;
+  changePercent: number | null;
 }

@@ -3,7 +3,11 @@ import type {
   EnvironmentCondition,
   EnvironmentConditionEvent,
   EnvironmentDocument,
+  CarbonEntry as CarbonEntryDto,
+  CarbonSummary,
   MonitoringPoint,
+  WasteDocket as WasteDocketDto,
+  WasteSummary,
   MonitoringReading,
   EnvironmentPlan,
   EnvironmentSummary,
@@ -12,6 +16,9 @@ import { conditionLabel } from '../domain/condition';
 import type { ConditionEventRow, ConditionView } from '../application/conditions';
 import type { DocumentRow, PlanRow, RegisterService } from '../application/register';
 import type { ExpiryState } from '../domain/document';
+import type { CarbonEntry, CarbonOverview } from '../application/carbon';
+import type { Docket, WasteOverview } from '../application/waste';
+import { DIVERSION_TARGET_PERCENT } from '../domain/waste';
 import type { PointView, Reading } from '../application/monitoring';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -92,6 +99,8 @@ export const toSummaryDto = (s: Summary): EnvironmentSummary => ({
   conditions: s.conditions,
   documents: s.documents,
   monitoring: s.monitoring,
+  waste: s.waste,
+  carbon: s.carbon,
   flags: s.flags.map((f) => ({
     ...f,
     conditionIds: f.conditionIds.map((id) => encodeId('environmentCondition', id)),
@@ -137,4 +146,43 @@ export const toPointDto = (v: PointView): MonitoringPoint => ({
   isOverdue: v.isOverdue,
   isTrending: v.isTrending,
   version: v.point.version,
+});
+
+export const toDocketDto = (d: Docket): WasteDocketDto => ({
+  id: encodeId('wasteDocket', d.id),
+  projectId: encodeId('project', d.projectId),
+  docketDate: d.docketDate,
+  wasteType: d.wasteType,
+  destination: d.destination,
+  tonnes: d.tonnes,
+  docketNumber: d.docketNumber,
+  contractor: d.contractor,
+  facility: d.facility,
+  note: d.note,
+  fileIds: d.fileIds.map((f) => encodeId('file', f)),
+  createdAt: d.createdAt.toISOString(),
+});
+
+export const toWasteSummaryDto = (o: WasteOverview): WasteSummary => ({
+  ...o,
+  targetPercent: DIVERSION_TARGET_PERCENT,
+});
+
+export const toCarbonEntryDto = (e: CarbonEntry): CarbonEntryDto => ({
+  id: encodeId('carbonEntry', e.id),
+  projectId: encodeId('project', e.projectId),
+  entryDate: e.entryDate,
+  source: e.source,
+  scope: e.scope,
+  quantity: e.quantity,
+  factor: e.factor,
+  kgCo2e: e.kgCo2e,
+  description: e.description,
+  note: e.note,
+  createdAt: e.createdAt.toISOString(),
+});
+
+export const toCarbonSummaryDto = (o: CarbonOverview): CarbonSummary => ({
+  ...o,
+  byScope: { '1': o.byScope[1], '2': o.byScope[2], '3': o.byScope[3] },
 });
