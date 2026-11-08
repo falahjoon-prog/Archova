@@ -4916,6 +4916,28 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/my-work:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getMyWork
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.mywork.read
+      summary: The caller's open RFIs, defects and submittals due across their projects, and recently raised items.
+      description: |
+        The My Work page. Across the active, tender and on-hold projects the caller can see, lists open items that are
+        overdue, due today or due in the next 7 days (dates in each project's own time zone), most urgent first, with
+        a count per bucket. `recent` is open items raised in the last 14 days, newest first. Every item is read as the
+        caller: a project where they cannot read a tool counts in `restrictedProjects` and shows nothing from it.
+        Staff only.
+      responses:
+        '200':
+          description: My Work
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyWork' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/portfolio/sustainability:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17779,6 +17801,39 @@ components:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
         filename: { type: string }
+    MyWorkItem:
+      type: object
+      required: [source, projectId, project, ref, title, status, dueDate, createdAt, bucket]
+      properties:
+        source: { type: string, enum: [rfis, defects, submittals] }
+        projectId: { type: string }
+        project: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+        bucket: { type: [string, 'null'], enum: [overdue, today, next7, null] }
+    MyWork:
+      type: object
+      required: [counts, items, recent, restrictedProjects, truncated, generatedAt]
+      properties:
+        counts:
+          type: object
+          required: [overdue, today, next7]
+          properties:
+            overdue: { type: integer }
+            today: { type: integer }
+            next7: { type: integer }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MyWorkItem' }
+        recent:
+          type: array
+          items: { $ref: '#/components/schemas/MyWorkItem' }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
+        generatedAt: { type: string, format: date-time }
     AuditLogPage:
       type: object
       required: [data, nextCursor]

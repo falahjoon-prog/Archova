@@ -10,8 +10,8 @@ import { bookmarkLabel, bookmarkTarget } from '../lib/target';
 
 const SHOWN = 6;
 
-/** Project home card: the person's own bookmarks on this project, newest first. */
-export function BookmarksCard({ projectId }: { projectId: string }) {
+/** The person's own bookmarks, newest first: on one project's home, or across every project when no project is given. */
+export function BookmarksCard({ projectId }: { projectId?: string }) {
   const { orgSlug } = useCurrentOrg();
   const list = useBookmarks(projectId);
   const remove = useRemoveBookmark();

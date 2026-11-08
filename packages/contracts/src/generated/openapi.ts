@@ -3735,6 +3735,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/my-work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's open RFIs, defects and submittals due across their projects, and recently raised items.
+         * @description The My Work page. Across the active, tender and on-hold projects the caller can see, lists open items that are
+         *     overdue, due today or due in the next 7 days (dates in each project's own time zone), most urgent first, with
+         *     a count per bucket. `recent` is open items raised in the last 14 days, newest first. Every item is read as the
+         *     caller: a project where they cannot read a tool counts in `restrictedProjects` and shows nothing from it.
+         *     Staff only.
+         */
+        get: operations["getMyWork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/portfolio/sustainability": {
         parameters: {
             query?: never;
@@ -12598,6 +12624,34 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             filename: string;
+        };
+        MyWorkItem: {
+            /** @enum {string} */
+            source: "rfis" | "defects" | "submittals";
+            projectId: string;
+            project: string;
+            ref: string;
+            title: string;
+            status: string;
+            /** Format: date */
+            dueDate: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string|null} */
+            bucket: "overdue" | "today" | "next7" | null;
+        };
+        MyWork: {
+            counts: {
+                overdue: number;
+                today: number;
+                next7: number;
+            };
+            items: components["schemas"]["MyWorkItem"][];
+            recent: components["schemas"]["MyWorkItem"][];
+            restrictedProjects: number;
+            truncated: boolean;
+            /** Format: date-time */
+            generatedAt: string;
         };
         AuditLogPage: {
             data: components["schemas"]["AuditEvent"][];
@@ -28006,6 +28060,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My Work */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyWork"];
                 };
             };
             default: components["responses"]["Problem"];

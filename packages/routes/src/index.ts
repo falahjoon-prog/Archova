@@ -18,6 +18,7 @@ export const webRoutes = {
   search: (orgSlug: string, q?: string) =>
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  myWork: (orgSlug: string) => `/${enc(orgSlug)}/my-work`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,

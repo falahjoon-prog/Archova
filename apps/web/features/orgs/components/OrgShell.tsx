@@ -66,6 +66,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   {
                     label: 'Portfolio',
                     items: [
+                      { href: webRoutes.myWork(orgSlug), label: 'My Work' },
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
                       ...(membership.role === 'owner' || membership.role === 'admin'
