@@ -9723,6 +9723,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's checks on a ticket, from the site diary, timesheets, equipment logs and where it was signed. Advice only. */
+        get: operations["getTmTicketChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign": {
         parameters: {
             query?: never;
@@ -16811,6 +16832,12 @@ export interface components {
         };
         /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
         TmTicketSignoff: {
+            /**
+             * @description Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
+             * @enum {string}
+             */
+            geofenceStatus: "inside" | "outside" | "uncertain" | "unknown";
+            hasPosition: boolean;
             /** @enum {string} */
             role: "contractor" | "principal_rep";
             signerName: string;
@@ -16848,6 +16875,17 @@ export interface components {
         TmTicketDetail: components["schemas"]["TmTicket"] & {
             lines: components["schemas"]["TmTicketLine"][];
             signoffs: components["schemas"]["TmTicketSignoff"][];
+        };
+        TmTicketFinding: {
+            /** @enum {string} */
+            code: "no_diary_entry" | "labour_hours_differ" | "equipment_hours_differ" | "labour_not_from_timesheet" | "equipment_not_from_log" | "signed_off_site";
+            /** @enum {string} */
+            severity: "warn" | "info";
+            message: string;
+            line: number | null;
+        };
+        TmTicketChecks: {
+            findings: components["schemas"]["TmTicketFinding"][];
         };
         TmTicketList: {
             data: components["schemas"]["TmTicket"][];
@@ -16889,6 +16927,12 @@ export interface components {
             signerPosition?: string;
             /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
             evidenceFileId?: string;
+            /** @description The device position when signing. Optional; checked against the project's site fence and stored with the sign-off. */
+            fix?: {
+                lat: number;
+                lng: number;
+                accuracyM?: number;
+            };
         };
         VoidTmTicketRequest: {
             note: string;
@@ -35873,6 +35917,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTmTicketChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketChecks"];
                 };
             };
             default: components["responses"]["Problem"];

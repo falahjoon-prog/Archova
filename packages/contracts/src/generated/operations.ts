@@ -3118,6 +3118,11 @@ export const UpdateTmTicketParams = z.object({
   "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
 });
 export const UpdateTmTicketBody = s.TmTicketRequestSchema;
+export const GetTmTicketChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
 export const SignTmTicketParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -10392,6 +10397,18 @@ export const operations = {
     params: UpdateTmTicketParams,
     query: null,
     body: UpdateTmTicketBody,
+  },
+  getTmTicketChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: GetTmTicketChecksParams,
+    query: null,
+    body: null,
   },
   signTmTicket: {
     method: 'POST',

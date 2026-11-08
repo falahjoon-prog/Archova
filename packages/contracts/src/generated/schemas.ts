@@ -7433,6 +7433,11 @@ export const SignTmTicketRequestSchema = z.object({
   "signerName": z.string().min(1).max(200),
   "signerPosition": z.string().min(1).max(200).optional(),
   "evidenceFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "fix": z.object({
+  "lat": z.number().min(-90).max(90),
+  "lng": z.number().min(-180).max(180),
+  "accuracyM": z.number().min(0).max(100000).optional(),
+}).strict().optional(),
 }).strict();
 export type SignTmTicketRequest = z.infer<typeof SignTmTicketRequestSchema>;
 
@@ -7990,6 +7995,19 @@ export const TmTicketSchema = z.object({
 });
 export type TmTicket = z.infer<typeof TmTicketSchema>;
 
+export const TmTicketFindingSchema = z.object({
+  "code": z.enum(["no_diary_entry", "labour_hours_differ", "equipment_hours_differ", "labour_not_from_timesheet", "equipment_not_from_log", "signed_off_site"]),
+  "severity": z.enum(["warn", "info"]),
+  "message": z.string(),
+  "line": z.number().int().nullable(),
+});
+export type TmTicketFinding = z.infer<typeof TmTicketFindingSchema>;
+
+export const TmTicketChecksSchema = z.object({
+  "findings": z.array(TmTicketFindingSchema),
+});
+export type TmTicketChecks = z.infer<typeof TmTicketChecksSchema>;
+
 export const TmTicketLineSchema = z.object({
   "kind": TmKindSchema,
   "description": z.string(),
@@ -8003,6 +8021,8 @@ export const TmTicketLineSchema = z.object({
 export type TmTicketLine = z.infer<typeof TmTicketLineSchema>;
 
 export const TmTicketSignoffSchema = z.object({
+  "geofenceStatus": z.enum(["inside", "outside", "uncertain", "unknown"]),
+  "hasPosition": z.boolean(),
   "role": z.enum(["contractor", "principal_rep"]),
   "signerName": z.string(),
   "signerPosition": z.string().nullable(),
