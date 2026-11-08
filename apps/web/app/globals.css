@@ -4340,3 +4340,166 @@ fieldset.worker-card > legend {
     display: none;
   }
 }
+
+/* Deliveries board */
+.dlv-nova {
+  gap: var(--space-3);
+}
+.dlv-flags,
+.dlv-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dlv-chips {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.dlv-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.dlv-flag__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dlv-flag__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dlv-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.dlv-ask > :first-child {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.dlv-ask > button {
+  margin-block-start: var(--space-6);
+}
+.dlv-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-divider);
+}
+.dlv-daynav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin-block-end: var(--space-4);
+}
+.dlv-daynav__title {
+  flex: 1 1 100%;
+  font-size: var(--font-md);
+}
+.dlv-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dlv-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.dlv-facts dt {
+  color: var(--c-text-secondary);
+}
+.dlv-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.dlv-checkin > button {
+  width: 100%;
+  min-height: 3rem;
+}
+.dlv-timeline__scroll {
+  overflow-x: auto;
+}
+.dlv-timeline__grid {
+  min-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.dlv-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.dlv-row__name {
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+.dlv-row__track {
+  position: relative;
+  min-height: 2.5rem;
+  background: color-mix(in srgb, var(--c-text) 4%, var(--c-surface));
+  border-radius: var(--radius-sm);
+}
+.dlv-hours {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  min-height: 0;
+  background: none;
+  font-size: var(--font-xs);
+  color: var(--c-text-secondary);
+}
+.dlv-block {
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  overflow: hidden;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--c-status-info);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--c-status-info) 18%, var(--c-surface));
+  color: var(--c-text);
+  font-size: var(--font-xs);
+  text-align: start;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.dlv-block--arrived,
+.dlv-block--delayed {
+  border-color: var(--c-status-warning);
+  background: color-mix(in srgb, var(--c-status-warning) 20%, var(--c-surface));
+}
+.dlv-block--unloaded {
+  border-color: var(--c-status-success);
+  background: color-mix(in srgb, var(--c-status-success) 18%, var(--c-surface));
+}
+.dlv-block--missed {
+  border-color: var(--c-status-danger);
+}
+.dlv-block--clash {
+  outline: 2px solid var(--c-status-danger);
+  outline-offset: 1px;
+}
+.dlv-block:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  .dlv-row {
+    grid-template-columns: 6rem 1fr;
+  }
+}

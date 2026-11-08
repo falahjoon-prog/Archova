@@ -13,6 +13,8 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNovaHelp, assistNova, sendAnswerFeedback, type AssistTurn } from '../data/ask';
 import { actionRedirect } from '../data/actions';
 import { startersFor } from '../data/starters';
+import { recordingSupported, startRecording, stopSpeaking } from '@/shared/lib/speech';
+import { transcribeClip } from '../data/listen';
 import { errorHelpAnswer, navHelpAnswer } from '../data/help';
 import type { ErrorView } from '@/shared/lib/errors';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
@@ -120,6 +122,10 @@ export function AssistantPanel() {
     record: false,
     project: false,
   });
+  const recorder = useRef<{ stop(): Promise<Blob> } | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const nextId = useRef(1);
@@ -152,6 +158,45 @@ export function AssistantPanel() {
   ];
 
   const exhausted = usage.data?.remaining === 0;
+  // The speech service needs a project to bill and permission-check against; the preview has none.
+  const canListen = recordingSupported() && !previewDataOnly && Boolean(scope.projectId);
+  useEffect(
+    () => () => {
+      void recorder.current?.stop();
+    },
+    [],
+  );
+
+  const toggleMic = async () => {
+    setMicError(null);
+    if (recording) {
+      const active = recorder.current;
+      recorder.current = null;
+      setRecording(false);
+      if (!active || !scope.projectId) return;
+      setListening(true);
+      try {
+        const text = await transcribeClip(org.orgId, scope.projectId, await active.stop());
+        setDraft((d) => (d.trim() ? `${d.trim()} ${text}` : text));
+        input.current?.focus();
+        void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
+      } catch {
+        setMicError("Nova couldn't hear that. Try again, or type your question.");
+      } finally {
+        setListening(false);
+      }
+      return;
+    }
+    try {
+      stopSpeaking();
+      recorder.current = await startRecording();
+      setRecording(true);
+    } catch {
+      setMicError(
+        'Nova could not use the microphone. Allow it in your browser, or type your question.',
+      );
+    }
+  };
   const busy = turns.some((t) => t.status === 'thinking' || t.status === 'streaming');
 
   const update = (id: number, patch: Partial<Turn>) =>
@@ -374,11 +419,37 @@ export function AssistantPanel() {
             }
           }}
         />
-        <div>
-          <Button type="submit" variant="nova" disabled={!draft.trim() || busy || exhausted}>
+        <div className="row-actions">
+          {canListen ? (
+            <Button
+              type="button"
+              variant="secondary"
+              aria-pressed={recording}
+              disabled={listening || busy || exhausted}
+              onClick={() => void toggleMic()}
+            >
+              {recording ? 'Stop and use' : listening ? 'Listening…' : 'Speak'}
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            variant="nova"
+            disabled={!draft.trim() || busy || exhausted || recording || listening}
+          >
             Ask
           </Button>
         </div>
+        {canListen ? (
+          <p className="u-caption u-m-0">
+            Speak a question: the recording goes to Nova in Australia, is turned into words for you
+            to check, and is not kept.
+          </p>
+        ) : null}
+        {micError ? (
+          <p className="u-caption u-m-0" role="alert">
+            {micError}
+          </p>
+        ) : null}
       </form>
     </div>
   );
