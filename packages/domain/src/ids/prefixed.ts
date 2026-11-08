@@ -63,6 +63,7 @@ export const ID_PREFIXES = {
   correspondenceType: 'cty',
   correspondence: 'cor',
   correspondenceResponse: 'crr',
+  correspondenceHistory: 'cch',
   correspondenceEmail: 'cem',
   conversation: 'cnv',
   conversationMessage: 'cnm',

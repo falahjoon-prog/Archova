@@ -1718,6 +1718,22 @@ export const UpdateCorrespondenceParams = z.object({
   "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
 });
 export const UpdateCorrespondenceBody = s.UpdateCorrespondenceRequestSchema;
+export const GetCorrespondenceAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const SetCorrespondenceAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const SetCorrespondenceAccessBody = s.SetCorrespondenceAccessRequestSchema;
+export const ListCorrespondenceHistoryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
 export const SendCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7613,6 +7629,42 @@ export const operations = {
     params: UpdateCorrespondenceParams,
     query: null,
     body: UpdateCorrespondenceBody,
+  },
+  getCorrespondenceAccess: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: GetCorrespondenceAccessParams,
+    query: null,
+    body: null,
+  },
+  setCorrespondenceAccess: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: "application/json",
+    params: SetCorrespondenceAccessParams,
+    query: null,
+    body: SetCorrespondenceAccessBody,
+  },
+  listCorrespondenceHistory: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceHistoryParams,
+    query: null,
+    body: null,
   },
   sendCorrespondence: {
     method: 'POST',
