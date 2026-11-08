@@ -81,3 +81,47 @@ describe('permissionFor', () => {
       expect(permissionFor(a)).toBe('defects.defects.close');
   });
 });
+
+describe('punch list roles', () => {
+  const open = (over = {}) => ({
+    status: 'ready_for_review' as const,
+    assigneeCompanyId: 'sparky',
+    ...over,
+  });
+
+  it('lets only the named final approver close, reject or reopen', () => {
+    const approver = { userId: 'u9', companyId: 'client', isInternal: false };
+    const withApprover = open({ finalApproverUserId: 'u9' });
+    expect(resolveTransition(withApprover, builder, { action: 'close' }).ok).toBe(false);
+    expect(resolveTransition(withApprover, approver, { action: 'close' })).toEqual({
+      ok: true,
+      to: 'closed',
+    });
+    expect(
+      resolveTransition(withApprover, approver, { action: 'reject', reason: 'still chipped' }).ok,
+    ).toBe(true);
+  });
+
+  it('keeps builder-side close when no approver is named', () => {
+    expect(resolveTransition(open(), builder, { action: 'close' }).ok).toBe(true);
+  });
+
+  it('reopens a closed defect with a reason', () => {
+    const closed = { status: 'closed' as const, assigneeCompanyId: 'sparky' };
+    expect(resolveTransition(closed, builder, { action: 'reopen' })).toEqual({
+      ok: false,
+      code: 'defect.reason_required',
+    });
+    expect(
+      resolveTransition(closed, builder, { action: 'reopen', reason: 'crack came back' }),
+    ).toEqual({ ok: true, to: 'open' });
+    expect(resolveTransition(closed, sub, { action: 'reopen', reason: 'x' }).ok).toBe(false);
+  });
+
+  it('shows a named person the item whatever their company', () => {
+    const d = defect('open', { distributionUserIds: ['u3'], managerUserId: 'u4' });
+    expect(canSeeDefect(d, other)).toBe(true);
+    expect(canSeeDefect(d, client)).toBe(true);
+    expect(canSeeDefect(defect('open'), other)).toBe(false);
+  });
+});

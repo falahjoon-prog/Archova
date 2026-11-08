@@ -63,6 +63,7 @@ export type ProjectTool =
   | 'observations'
   | 'swms'
   | 'incidents'
+  | 'insurance'
   | 'inspections'
   | 'late-submissions'
   | 'spec-books'
@@ -73,6 +74,7 @@ export type ProjectTool =
   | 'estimates'
   | 'contracts'
   | 'payment-claims'
+  | 'owner-invoices'
   | 'cost-forecast'
   | 'budget';
 
