@@ -385,6 +385,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // permits: project permits and approvals register
+  'permit.not_found': 404,
+  'permit.invalid_transition': 409,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,

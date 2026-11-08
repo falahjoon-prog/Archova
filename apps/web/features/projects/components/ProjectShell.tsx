@@ -10,6 +10,7 @@ import {
   InspectionsIcon,
   SwmsIcon,
   IncidentsIcon,
+  PermitsIcon,
   InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
@@ -231,6 +232,11 @@ export function projectToolGroups(
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.permits(orgSlug, projectId),
+      label: 'Permits',
+      icon: PermitsIcon,
     },
     canRead('inspections') && {
       href: webRoutes.insurance(orgSlug, projectId),

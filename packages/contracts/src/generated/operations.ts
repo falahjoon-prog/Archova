@@ -2749,6 +2749,54 @@ export const AcknowledgeSwmsParams = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListPermitsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPermitsQuery = z.object({
+  "kind": s.PermitKindSchema.optional(),
+  "status": s.PermitStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreatePermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePermitBody = s.CreatePermitRequestSchema;
+export const ListPermitFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPermitFlagsQuery = z.object({
+  "windowDays": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const GetPermitRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetPermitRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetPermitRequirementsBody = s.SetPermitRequirementsRequestSchema;
+export const GetPermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePermitBody = s.UpdatePermitRequestSchema;
+export const TransitionPermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPermitBody = s.PermitTransitionRequestSchema;
 export const ListContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9488,6 +9536,102 @@ export const operations = {
     params: AcknowledgeSwmsParams,
     query: null,
     body: AcknowledgeSwmsBody,
+  },
+  listPermits: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: ListPermitsParams,
+    query: ListPermitsQuery,
+    body: null,
+  },
+  createPermit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePermitParams,
+    query: null,
+    body: CreatePermitBody,
+  },
+  listPermitFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/flags',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: ListPermitFlagsParams,
+    query: ListPermitFlagsQuery,
+    body: null,
+  },
+  getPermitRequirements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/requirements',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: GetPermitRequirementsParams,
+    query: null,
+    body: null,
+  },
+  setPermitRequirements: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/requirements',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetPermitRequirementsParams,
+    query: null,
+    body: SetPermitRequirementsBody,
+  },
+  getPermit: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: GetPermitParams,
+    query: null,
+    body: null,
+  },
+  updatePermit: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePermitParams,
+    query: null,
+    body: UpdatePermitBody,
+  },
+  transitionPermit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPermitParams,
+    query: null,
+    body: TransitionPermitBody,
   },
   listContracts: {
     method: 'GET',

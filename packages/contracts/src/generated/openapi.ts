@@ -8610,6 +8610,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The permits and approvals register for a project, with each permit's status today. */
+        get: operations["listPermits"];
+        put?: never;
+        /** Add a permit or approval to the register. It is numbered PMT-0001 per project. */
+        post: operations["createPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags for the project (no model): permits expiring or expired, required types missing, and wallet licences that have lapsed. */
+        get: operations["listPermitFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The permit types this project is expected to hold, with each one's reminder lead time in days. */
+        get: operations["getPermitRequirements"];
+        /** Replace the expected permit types. An empty list switches the missing-permit flags off. */
+        put: operations["setPermitRequirements"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        /** A permit with its history. */
+        get: operations["getPermit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a permit's details. */
+        patch: operations["updatePermit"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** startRenewal, markRenewed (needs the new expiry date), close or reopen. */
+        post: operations["transitionPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts": {
         parameters: {
             query?: never;
@@ -19239,6 +19344,125 @@ export interface components {
             status?: components["schemas"]["CorrectiveStatus"];
         };
         /** @enum {string} */
+        PermitKind: "building_permit" | "development_approval" | "construction_certificate" | "occupation_certificate" | "council_approval" | "planning_permit" | "environmental_permit" | "road_occupancy" | "traffic_management" | "crane_hoist" | "demolition" | "hot_work" | "trade_licence" | "other";
+        /**
+         * @description Derived from the lifecycle and the expiry date in the project's own calendar day.
+         * @enum {string}
+         */
+        PermitStatus: "active" | "expiring_soon" | "expired" | "renewal_in_progress" | "closed";
+        /** @enum {string} */
+        PermitLifecycle: "active" | "renewal_in_progress" | "closed";
+        Permit: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            kind: components["schemas"]["PermitKind"];
+            title: string;
+            issuingAuthority: string | null;
+            referenceNumber: string | null;
+            holderCompanyId: string | null;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            lifecycle: components["schemas"]["PermitLifecycle"];
+            status: components["schemas"]["PermitStatus"];
+            /** @description Negative once expired. */
+            daysToExpiry: number | null;
+            /** Format: date */
+            renewalStartedOn: string | null;
+            notes: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        PermitEvent: {
+            id: string;
+            action: string;
+            fromLifecycle: components["schemas"]["PermitLifecycle"] | null;
+            toLifecycle: components["schemas"]["PermitLifecycle"];
+            /** Format: date */
+            expiresOn: string | null;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        PermitDetail: {
+            permit: components["schemas"]["Permit"];
+            events: components["schemas"]["PermitEvent"][];
+        };
+        PermitPage: {
+            data: components["schemas"]["Permit"][];
+            nextCursor: string | null;
+        };
+        CreatePermitRequest: {
+            kind: components["schemas"]["PermitKind"];
+            title: string;
+            issuingAuthority?: string | null;
+            referenceNumber?: string | null;
+            holderCompanyId?: string | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        UpdatePermitRequest: {
+            kind?: components["schemas"]["PermitKind"];
+            title?: string;
+            issuingAuthority?: string | null;
+            referenceNumber?: string | null;
+            holderCompanyId?: string | null;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        PermitTransitionRequest: {
+            /** @enum {string} */
+            action: "startRenewal" | "markRenewed" | "close" | "reopen";
+            /**
+             * Format: date
+             * @description Required for markRenewed; must be after the current expiry.
+             */
+            newExpiresOn?: string | null;
+            note?: string | null;
+        };
+        PermitRequirement: {
+            kind: components["schemas"]["PermitKind"];
+            leadDays: number;
+        };
+        PermitRequirementList: {
+            data: components["schemas"]["PermitRequirement"][];
+        };
+        SetPermitRequirementsRequest: {
+            items: components["schemas"]["PermitRequirement"][];
+        };
+        PermitFlag: {
+            /** @enum {string} */
+            kind: "expiring" | "expired" | "expired_while_renewing" | "missing_required" | "worker_licence_lapsed";
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            title: string;
+            detail: string;
+            permitId: string | null;
+            permitKind: components["schemas"]["PermitKind"] | null;
+            /** Format: date */
+            expiresOn: string | null;
+            daysLeft: number | null;
+        };
+        PermitFlagList: {
+            data: components["schemas"]["PermitFlag"][];
+        };
+        /** @enum {string} */
         SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
         /** @enum {string} */
         SwmsAction: "markReviewed" | "accept" | "reject" | "reopen";
@@ -19450,6 +19674,7 @@ export interface components {
         CompanyId: string;
         IncidentId: string;
         IncidentActionId: string;
+        PermitId: string;
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
@@ -33555,6 +33780,236 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPermits: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["PermitKind"];
+                status?: components["schemas"]["PermitStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPermit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePermitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPermitFlags: {
+        parameters: {
+            query?: {
+                windowDays?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPermitRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setPermitRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPermitRequirementsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPermit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePermitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                permitId: components["parameters"]["PermitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermitTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermitDetail"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -39,6 +39,7 @@ tags:
   - name: precon
   - name: insurance
   - name: safety
+  - name: permits
   - name: estimating
   - name: integrations
   - name: sync
@@ -11802,6 +11803,173 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SwmsDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPermits
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: The permits and approvals register for a project, with each permit's status today.
+      parameters:
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/PermitKind' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PermitStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Add a permit or approval to the register. It is numbered PMT-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePermitRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPermitFlags
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: "Nova's rule-based flags for the project (no model): permits expiring or expired, required types missing, and wallet licences that have lapsed."
+      parameters:
+        - { name: windowDays, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/requirements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPermitRequirements
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: The permit types this project is expected to hold, with each one's reminder lead time in days.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setPermitRequirements
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Replace the expected permit types. An empty list switches the missing-permit flags off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetPermitRequirementsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PermitId'
+    get:
+      operationId: getPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: A permit with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Edit a permit's details.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePermitRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PermitId'
+    post:
+      operationId: transitionPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: startRenewal, markRenewed (needs the new expiry date), close or reopen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PermitTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14473,6 +14641,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
+    PermitId:
+      name: permitId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pmt_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -28447,6 +28620,200 @@ components:
         dueDate: { type: [string, 'null'], format: date }
         source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
         status: { $ref: '#/components/schemas/CorrectiveStatus' }
+    PermitKind:
+      type: string
+      enum:
+        [
+          building_permit,
+          development_approval,
+          construction_certificate,
+          occupation_certificate,
+          council_approval,
+          planning_permit,
+          environmental_permit,
+          road_occupancy,
+          traffic_management,
+          crane_hoist,
+          demolition,
+          hot_work,
+          trade_licence,
+          other,
+        ]
+    PermitStatus:
+      type: string
+      description: Derived from the lifecycle and the expiry date in the project's own calendar day.
+      enum: [active, expiring_soon, expired, renewal_in_progress, closed]
+    PermitLifecycle:
+      type: string
+      enum: [active, renewal_in_progress, closed]
+    Permit:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          kind,
+          title,
+          issuingAuthority,
+          referenceNumber,
+          holderCompanyId,
+          issuedOn,
+          expiresOn,
+          lifecycle,
+          status,
+          daysToExpiry,
+          renewalStartedOn,
+          notes,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string }
+        issuingAuthority: { type: [string, 'null'] }
+        referenceNumber: { type: [string, 'null'] }
+        holderCompanyId: { type: [string, 'null'] }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        lifecycle: { $ref: '#/components/schemas/PermitLifecycle' }
+        status: { $ref: '#/components/schemas/PermitStatus' }
+        daysToExpiry: { type: [integer, 'null'], description: Negative once expired. }
+        renewalStartedOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    PermitEvent:
+      type: object
+      required: [id, action, fromLifecycle, toLifecycle, expiresOn, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromLifecycle:
+          { oneOf: [{ $ref: '#/components/schemas/PermitLifecycle' }, { type: 'null' }] }
+        toLifecycle: { $ref: '#/components/schemas/PermitLifecycle' }
+        expiresOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PermitDetail:
+      type: object
+      required: [permit, events]
+      properties:
+        permit: { $ref: '#/components/schemas/Permit' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PermitEvent' }
+    PermitPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Permit' }
+        nextCursor: { type: [string, 'null'] }
+    CreatePermitRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title]
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        issuingAuthority: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        holderCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdatePermitRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        issuingAuthority: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        holderCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    PermitTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [startRenewal, markRenewed, close, reopen] }
+        newExpiresOn:
+          type: [string, 'null']
+          format: date
+          description: Required for markRenewed; must be after the current expiry.
+        note: { type: [string, 'null'], maxLength: 1000 }
+    PermitRequirement:
+      type: object
+      required: [kind, leadDays]
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        leadDays: { type: integer, minimum: 1, maximum: 365 }
+    PermitRequirementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PermitRequirement' }
+    SetPermitRequirementsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/PermitRequirement' }
+    PermitFlag:
+      type: object
+      required: [kind, severity, title, detail, permitId, permitKind, expiresOn, daysLeft]
+      properties:
+        kind:
+          {
+            type: string,
+            enum:
+              [expiring, expired, expired_while_renewing, missing_required, worker_licence_lapsed],
+          }
+        severity: { type: string, enum: [info, warn, high] }
+        title: { type: string }
+        detail: { type: string }
+        permitId: { type: [string, 'null'] }
+        permitKind: { oneOf: [{ $ref: '#/components/schemas/PermitKind' }, { type: 'null' }] }
+        expiresOn: { type: [string, 'null'], format: date }
+        daysLeft: { type: [integer, 'null'] }
+    PermitFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PermitFlag' }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]

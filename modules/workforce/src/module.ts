@@ -102,6 +102,8 @@ export function createWorkforceModule(
       insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
+      /** For `permits` (Nova flags): licences in the wallet that have lapsed or are about to. */
+      lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
       /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
