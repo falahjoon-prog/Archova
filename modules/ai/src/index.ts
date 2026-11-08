@@ -30,6 +30,7 @@ import { createDefectTagService } from './application/defect-tag';
 import { createCaptureScanService } from './application/capture-scan';
 import { createHazardScanService } from './application/hazard-scan';
 import { createImportMappingService } from './application/import-mapping';
+import { createAnnouncementDraftService } from './application/announcement-draft';
 import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
@@ -460,6 +461,11 @@ export function createAiModule(
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
   });
+  const announcementDrafts = createAnnouncementDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+  });
   const laborProductivity = createLaborProductivityService({
     database: services.database,
     gateway,
@@ -542,6 +548,7 @@ export function createAiModule(
       quoteReads,
       quoteNegotiations,
       laborProductivity,
+      announcementDrafts,
       budgetReviews,
       contractPlaybooks,
       contractReviews,

@@ -3358,6 +3358,113 @@ fieldset.worker-card > legend {
   overflow-wrap: anywhere;
 }
 
+/* Project announcements: Project home card, the "See all" page and the dialogs */
+.announcements__list,
+.announcements__receipts,
+.announcements__flags {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.announcements__list > li + li,
+.announcements__receipts > li + li {
+  border-top: 1px solid var(--c-border-divider);
+}
+.announcements__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.announcements__item:hover {
+  background: var(--c-surface-sunken, var(--c-bg));
+}
+.announcements__item:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.announcements__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: var(--space-2);
+  border-radius: var(--radius-full);
+  background: transparent;
+}
+.announcements__dot--unread {
+  background: var(--c-action-primary);
+}
+.announcements__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.announcements__title {
+  overflow-wrap: anywhere;
+}
+.announcements__title--unread {
+  font-weight: 600;
+}
+.announcements__preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--c-text-secondary);
+  overflow-wrap: anywhere;
+}
+.announcements__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.announcements__all {
+  margin: var(--space-3) 0 0;
+}
+.announcements__list--page {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.announcements__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.announcements__group legend {
+  padding: 0 var(--space-1);
+  font-weight: 600;
+}
+.announcements__receipts > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) 0;
+}
+.announcements__flags {
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
 /* Portfolio charts */
 .chart-grid {
   display: grid;

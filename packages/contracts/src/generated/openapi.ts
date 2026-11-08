@@ -5272,6 +5272,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+         * @description Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+         *     (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+         *     returned to the sender and managers.
+         */
+        get: operations["listAnnouncements"];
+        put?: never;
+        /**
+         * Post an announcement to everyone on the project or a chosen group.
+         * @description The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+         *     subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+         *     recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+         *     read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+         */
+        post: operations["createAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        /** One announcement. The sender and managers also get the read receipts and Nova's overdue flags. */
+        get: operations["getAnnouncement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the caller's copy as read. The first read time is kept. */
+        post: operations["markAnnouncementRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+         * @description Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+         *     four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+         *     (`announcements.announcements.manage`) may send reminders.
+         */
+        post: operations["nudgeAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+         * @description Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+         *     Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+         *     and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+         *     themselves. Costs half a Nova credit.
+         */
+        post: operations["draftAnnouncementWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -12810,7 +12936,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "permit" | "cover";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -14958,6 +15084,108 @@ export interface components {
             body: string;
             /** @description Project team members to notify. Each must be an active, non-external member of the project. */
             mentions?: string[];
+        };
+        AnnouncementAudienceInput: {
+            /** @enum {string} */
+            kind: "all" | "group";
+            /** @description For `group`, everyone on the project from these companies. */
+            companyIds?: components["schemas"]["CompanyRef"][];
+            /** @description For `group`, these individual people. */
+            userIds?: string[];
+        };
+        CreateAnnouncementRequest: {
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority?: "normal" | "important";
+            audience: components["schemas"]["AnnouncementAudienceInput"];
+            /** @description People who must read it; each must be among the recipients. */
+            keyUserIds?: string[];
+            /** @description Hours after posting by which key people should have read it. Nova flags the ones who haven't. */
+            readByHours?: number | null;
+        };
+        AnnouncementReceipts: {
+            recipientCount: number;
+            readCount: number;
+        };
+        AnnouncementSummary: {
+            id: string;
+            projectId: string;
+            title: string;
+            preview: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @enum {string} */
+            audienceKind: "all" | "group";
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            readByHours: number | null;
+            isMine: boolean;
+            /** @description The caller was sent it and hasn't read it. */
+            unread: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** @description How many have read it; only for the sender and managers. */
+            receipts: components["schemas"]["AnnouncementReceipts"] | null;
+        };
+        AnnouncementPage: {
+            data: components["schemas"]["AnnouncementSummary"][];
+            nextCursor: string | null;
+            /** @description Announcements on this project the caller hasn't read. */
+            unreadCount: number;
+        };
+        AnnouncementRecipient: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: date-time */
+            nudgedAt: string | null;
+        };
+        AnnouncementUnreadFlag: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            hoursOverdue: number;
+            /** Format: date-time */
+            nudgedAt: string | null;
+            /** @description False inside four hours of the last reminder. */
+            canNudge: boolean;
+        };
+        AnnouncementDetail: components["schemas"]["AnnouncementSummary"] & {
+            body: string;
+            audience: {
+                /** @enum {string} */
+                kind: "all" | "group";
+                companyIds: string[];
+                userIds: string[];
+            };
+            /**
+             * Format: date-time
+             * @description When key people should have read it by.
+             */
+            dueAt: string | null;
+            /** @description Who has read it; only for the sender and managers. */
+            recipients: components["schemas"]["AnnouncementRecipient"][] | null;
+            /** @description Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others. */
+            flags: components["schemas"]["AnnouncementUnreadFlag"][];
+        };
+        AnnouncementNudgeResult: {
+            nudged: number;
+            /** @description Already read */
+            skipped: number;
+        };
+        AnnouncementDraft: {
+            runId: string;
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @description What code removed or changed because the notes didn't support it. */
+            notes: string[];
         };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
@@ -20379,6 +20607,7 @@ export interface components {
         CorrespondenceTypeId: string;
         SiteCaptureId: string;
         CoordinationIssueId: string;
+        AnnouncementId: string;
         ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
@@ -28767,6 +28996,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAnnouncements: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+                /** @description Only announcements the caller has not read */
+                unread?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    markAnnouncementRead: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    nudgeAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementNudgeResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftAnnouncementWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    notes: string;
+                    /** @description Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits. */
+                    audience?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDraft"];
                 };
             };
             default: components["responses"]["Problem"];
