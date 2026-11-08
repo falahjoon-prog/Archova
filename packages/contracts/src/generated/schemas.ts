@@ -3923,7 +3923,7 @@ export const EnvironmentDocumentListSchema = z.object({
 export type EnvironmentDocumentList = z.infer<typeof EnvironmentDocumentListSchema>;
 
 export const EnvironmentFlagSchema = z.object({
-  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending", "waste_diversion_low", "waste_docket_missing", "carbon_rising"]),
+  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending", "waste_diversion_low", "waste_diversion_falling", "waste_docket_missing", "carbon_rising"]),
   "severity": z.enum(["info", "warning", "critical"]),
   "message": z.string(),
   "conditionIds": z.array(z.string()),
@@ -7090,6 +7090,42 @@ export const ProjectPhotoSchema = z.object({
 });
 export type ProjectPhoto = z.infer<typeof ProjectPhotoSchema>;
 
+export const ProjectSustainabilitySchema = z.object({
+  "restricted": z.boolean(),
+  "hasPlan": z.boolean(),
+  "conditions": z.object({
+  "nonCompliant": z.number().int(),
+  "overdue": z.number().int(),
+  "compliancePercent": z.number().int().nullable(),
+}),
+  "documentsLapsing": z.number().int(),
+  "monitoring": z.object({
+  "points": z.number().int(),
+  "openBreaches": z.number().int(),
+  "overdue": z.number().int(),
+}),
+  "waste": z.object({
+  "totalTonnes": z.number(),
+  "divertedTonnes": z.number(),
+  "landfillTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+  "last30Tonnes": z.number(),
+  "last30DivertedTonnes": z.number(),
+  "last30DiversionPercent": z.number().int().nullable(),
+  "previous30Tonnes": z.number(),
+  "previous30DivertedTonnes": z.number(),
+  "previous30DiversionPercent": z.number().int().nullable(),
+  "regulatedWithoutDocket": z.number().int(),
+}),
+  "carbon": z.object({
+  "totalKg": z.number(),
+  "last30Kg": z.number(),
+  "previous30Kg": z.number(),
+  "changePercent": z.number().int().nullable(),
+}),
+});
+export type ProjectSustainability = z.infer<typeof ProjectSustainabilitySchema>;
+
 export const PublicPriceBookSchema = z.object({
   "version": z.string(),
   "effectiveFrom": z.string().datetime({ offset: true }).nullable(),
@@ -8362,6 +8398,54 @@ export const SupportReadSchema = z.object({
   "at": z.string().datetime({ offset: true }),
 });
 export type SupportRead = z.infer<typeof SupportReadSchema>;
+
+export const SustainabilityFlagSchema = z.object({
+  "code": z.enum(["breach_open", "conditions_non_compliant", "docket_missing", "diversion_falling", "diversion_low", "carbon_rising", "plan_missing"]),
+  "severity": z.enum(["info", "warning", "critical"]),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "message": z.string(),
+});
+export type SustainabilityFlag = z.infer<typeof SustainabilityFlagSchema>;
+
+export const SustainabilityTotalsSchema = z.object({
+  "projectsCovered": z.number().int(),
+  "projectsRestricted": z.number().int(),
+  "projectsWithoutPlan": z.number().int(),
+  "openBreaches": z.number().int(),
+  "nonCompliantConditions": z.number().int(),
+  "overdueConditions": z.number().int(),
+  "documentsLapsing": z.number().int(),
+  "wasteTonnes": z.number(),
+  "landfillTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+  "last30DiversionPercent": z.number().int().nullable(),
+  "previous30DiversionPercent": z.number().int().nullable(),
+  "carbonKg": z.number(),
+  "carbonLast30Kg": z.number(),
+  "carbonPrevious30Kg": z.number(),
+  "carbonChangePercent": z.number().int().nullable(),
+});
+export type SustainabilityTotals = z.infer<typeof SustainabilityTotalsSchema>;
+
+export const SustainabilityProjectSchema = z.intersection(ProjectSustainabilitySchema, z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "number": z.string().nullable(),
+  "status": z.string(),
+  "phase": z.string().nullable(),
+  "state": z.string().nullable(),
+  "attention": z.number().int(),
+}));
+export type SustainabilityProject = z.infer<typeof SustainabilityProjectSchema>;
+
+export const SustainabilityPortfolioSchema = z.object({
+  "totals": SustainabilityTotalsSchema,
+  "projects": z.array(SustainabilityProjectSchema),
+  "flags": z.array(SustainabilityFlagSchema),
+  "truncated": z.boolean(),
+});
+export type SustainabilityPortfolio = z.infer<typeof SustainabilityPortfolioSchema>;
 
 export const SwmsStatusSchema = z.enum(["submitted", "reviewed", "accepted", "rejected"]);
 export type SwmsStatus = z.infer<typeof SwmsStatusSchema>;

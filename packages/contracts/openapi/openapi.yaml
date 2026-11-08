@@ -4586,6 +4586,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/portfolio/sustainability:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSustainabilityPortfolio
+      tags: [reporting]
+      x-module: reporting
+      x-permission: reporting.portfolio.read
+      summary: Sustainability across projects, with company totals and Nova's flags.
+      description: |
+        One row per project the caller can see: open monitoring breaches, permit conditions non-compliant or overdue,
+        waste diverted from landfill (and whether it is trending down), and emissions against the 30 days before.
+        A project where the caller cannot read the environmental tools is `restricted` and counts nothing, and is left
+        out of the company totals. `flags` are rule-based checks across projects, most serious first (no model cost).
+        Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The sustainability portfolio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SustainabilityPortfolio' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/search:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16956,6 +16985,145 @@ components:
             type: boolean,
             description: 'True when more than 200 projects matched and the rest were left out.',
           }
+    ProjectSustainability:
+      type: object
+      required: [restricted, hasPlan, conditions, documentsLapsing, monitoring, waste, carbon]
+      properties:
+        restricted: { type: boolean }
+        hasPlan: { type: boolean }
+        conditions:
+          type: object
+          required: [nonCompliant, overdue, compliancePercent]
+          properties:
+            nonCompliant: { type: integer }
+            overdue: { type: integer }
+            compliancePercent: { type: [integer, 'null'] }
+        documentsLapsing: { type: integer }
+        monitoring:
+          type: object
+          required: [points, openBreaches, overdue]
+          properties:
+            points: { type: integer }
+            openBreaches: { type: integer }
+            overdue: { type: integer }
+        waste:
+          type: object
+          required:
+            [
+              totalTonnes,
+              divertedTonnes,
+              landfillTonnes,
+              diversionPercent,
+              last30Tonnes,
+              last30DivertedTonnes,
+              last30DiversionPercent,
+              previous30Tonnes,
+              previous30DivertedTonnes,
+              previous30DiversionPercent,
+              regulatedWithoutDocket,
+            ]
+          properties:
+            totalTonnes: { type: number }
+            divertedTonnes: { type: number }
+            landfillTonnes: { type: number }
+            diversionPercent: { type: [integer, 'null'] }
+            last30Tonnes: { type: number }
+            last30DivertedTonnes: { type: number }
+            last30DiversionPercent: { type: [integer, 'null'] }
+            previous30Tonnes: { type: number }
+            previous30DivertedTonnes: { type: number }
+            previous30DiversionPercent: { type: [integer, 'null'] }
+            regulatedWithoutDocket: { type: integer }
+        carbon:
+          type: object
+          required: [totalKg, last30Kg, previous30Kg, changePercent]
+          properties:
+            totalKg: { type: number }
+            last30Kg: { type: number }
+            previous30Kg: { type: number }
+            changePercent: { type: [integer, 'null'] }
+    SustainabilityProject:
+      allOf:
+        - $ref: '#/components/schemas/ProjectSustainability'
+        - type: object
+          required: [id, name, number, status, phase, state, attention]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            number: { type: [string, 'null'] }
+            status: { type: string }
+            phase: { type: [string, 'null'] }
+            state: { type: [string, 'null'] }
+            attention:
+              { type: integer, description: 'What needs chasing on the project; orders the list.' }
+    SustainabilityFlag:
+      type: object
+      required: [code, severity, projectId, projectName, message]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              breach_open,
+              conditions_non_compliant,
+              docket_missing,
+              diversion_falling,
+              diversion_low,
+              carbon_rising,
+              plan_missing,
+            ]
+        severity: { type: string, enum: [info, warning, critical] }
+        projectId: { type: string }
+        projectName: { type: string }
+        message: { type: string }
+    SustainabilityTotals:
+      type: object
+      required:
+        [
+          projectsCovered,
+          projectsRestricted,
+          projectsWithoutPlan,
+          openBreaches,
+          nonCompliantConditions,
+          overdueConditions,
+          documentsLapsing,
+          wasteTonnes,
+          landfillTonnes,
+          diversionPercent,
+          last30DiversionPercent,
+          previous30DiversionPercent,
+          carbonKg,
+          carbonLast30Kg,
+          carbonPrevious30Kg,
+          carbonChangePercent,
+        ]
+      properties:
+        projectsCovered: { type: integer }
+        projectsRestricted: { type: integer }
+        projectsWithoutPlan: { type: integer }
+        openBreaches: { type: integer }
+        nonCompliantConditions: { type: integer }
+        overdueConditions: { type: integer }
+        documentsLapsing: { type: integer }
+        wasteTonnes: { type: number }
+        landfillTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+        last30DiversionPercent: { type: [integer, 'null'] }
+        previous30DiversionPercent: { type: [integer, 'null'] }
+        carbonKg: { type: number }
+        carbonLast30Kg: { type: number }
+        carbonPrevious30Kg: { type: number }
+        carbonChangePercent: { type: [integer, 'null'] }
+    SustainabilityPortfolio:
+      type: object
+      required: [totals, projects, flags, truncated]
+      properties:
+        totals: { $ref: '#/components/schemas/SustainabilityTotals' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/SustainabilityProject' }
+        flags: { type: array, items: { $ref: '#/components/schemas/SustainabilityFlag' } }
+        truncated: { type: boolean }
     ReadinessPackPdf:
       type: object
       required: [filename, contentType, dataBase64]
@@ -30607,6 +30775,7 @@ components:
                 monitoring_overdue,
                 monitoring_trending,
                 waste_diversion_low,
+                waste_diversion_falling,
                 waste_docket_missing,
                 carbon_rising,
               ],

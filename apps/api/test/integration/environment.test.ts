@@ -475,3 +475,95 @@ describe('Waste and carbon', () => {
     expect((await s.pm.browser.get(`${s.base}/carbon/summary`)).json().totalKg).toBe(2500);
   });
 });
+
+describe('Sustainability portfolio', () => {
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  it('rolls up breaches, diversion and carbon per project, most to chase first, with flags', async () => {
+    const s = await setup();
+    const calm = await createProject(s.pm.browser, s.org.id, { name: 'Calm Court', state: 'VIC' });
+    const calmBase = `/v1/orgs/${s.org.id}/projects/${calm.id}/environment`;
+
+    // Tower E: an open dust breach, poor diversion, and a jump in diesel.
+    const point = (
+      await s.pm.browser.post(`${s.base}/monitoring-points`, {
+        name: 'North dust',
+        parameter: 'dust_pm10',
+        unit: 'ug/m3',
+        maxLimit: 50,
+      })
+    ).json();
+    expect(
+      (await s.site.browser.post(`${s.base}/monitoring-points/${point.id}/readings`, { value: 80 }))
+        .statusCode,
+    ).toBe(201);
+    await s.site.browser.post(`${s.base}/waste`, {
+      docketDate: today(),
+      wasteType: 'general',
+      destination: 'landfill',
+      tonnes: 30,
+    });
+    await s.site.browser.post(`${s.base}/waste`, {
+      docketDate: today(),
+      wasteType: 'concrete',
+      destination: 'recycled',
+      tonnes: 10,
+    });
+    await s.site.browser.post(`${s.base}/carbon`, {
+      entryDate: today(),
+      source: 'diesel_litres',
+      quantity: 1000,
+    });
+    // Calm Court: a plan and clean waste.
+    await s.pm.browser.post(`${calmBase}/plan`, { title: 'Calm EMP' });
+    await s.pm.browser.post(`${calmBase}/waste`, {
+      docketDate: today(),
+      wasteType: 'concrete',
+      destination: 'recycled',
+      tonnes: 20,
+    });
+
+    const res = await s.pm.browser.get(`/v1/orgs/${s.org.id}/portfolio/sustainability`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.projects.map((p: { name: string }) => p.name)).toEqual(['Tower E', 'Calm Court']);
+    expect(body.projects[0]).toMatchObject({
+      restricted: false,
+      hasPlan: false,
+      monitoring: { openBreaches: 1 },
+      waste: { totalTonnes: 40, divertedTonnes: 10, diversionPercent: 25 },
+      carbon: { last30Kg: 2700 },
+    });
+    expect(body.projects[0].attention).toBeGreaterThan(body.projects[1].attention);
+    expect(body.projects[1]).toMatchObject({ hasPlan: true, waste: { diversionPercent: 100 } });
+    expect(body.totals).toMatchObject({
+      projectsCovered: 2,
+      projectsRestricted: 0,
+      projectsWithoutPlan: 1,
+      openBreaches: 1,
+      wasteTonnes: 60,
+      landfillTonnes: 30,
+      diversionPercent: 50,
+      carbonKg: 2700,
+    });
+    const flags = body.flags.map(
+      (f: { code: string; projectName: string }) => `${f.projectName}:${f.code}`,
+    );
+    expect(flags).toEqual(expect.arrayContaining(['Tower E:breach_open', 'Tower E:diversion_low']));
+    expect(flags.some((f: string) => f.startsWith('Calm Court:diversion'))).toBe(false);
+    expect(body.flags[0].severity).toBe('critical');
+  });
+
+  it('is staff only, and never shows another company', async () => {
+    const s = await setup();
+    expect(
+      (await s.sub.browser.get(`/v1/orgs/${s.org.id}/portfolio/sustainability`)).statusCode,
+    ).toBe(403);
+    const other = await signUp(t.app, 'env-other');
+    const org2 = await createOrg(other.browser, 'Other Builders');
+    await createProject(other.browser, org2.id, { name: 'Zulu Plaza', state: 'VIC' });
+    const p = (await other.browser.get(`/v1/orgs/${org2.id}/portfolio/sustainability`)).json();
+    expect(p.projects.map((x: { name: string }) => x.name)).toEqual(['Zulu Plaza']);
+    expect(p.totals.openBreaches).toBe(0);
+  });
+});

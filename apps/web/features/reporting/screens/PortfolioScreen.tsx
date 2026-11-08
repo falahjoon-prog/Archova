@@ -6,10 +6,11 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useBranding, useSaveBranding } from '@/features/branding';
 import { DashboardEditor, type Tile, type TileContext } from '@/features/dashboard';
+import { Sustainability } from '../components/Sustainability';
 import { QualitySafety } from '../components/QualitySafety';
 import { ProjectOverviewTable } from '../components/ProjectOverviewTable';
 import { StatusReport } from '../components/StatusReport';
-import { usePortfolio } from '../hooks/useReporting';
+import { usePortfolio, useSustainabilityPortfolio } from '../hooks/useReporting';
 import { SAMPLE_PORTFOLIO } from '../tiles';
 
 /** The layout a company gets until it edits one: the widgets it switched on in Settings → Branding, four to a row. */
@@ -60,6 +61,7 @@ export function PortfolioScreen() {
   const [includeClosed, setIncludeClosed] = useState(false);
   const [view, setView] = useState('overview');
   const portfolio = usePortfolio(includeClosed);
+  const sustainability = useSustainabilityPortfolio(includeClosed, view === 'sustainability');
   const branding = useBranding().data;
   const save = useSaveBranding();
   const tiles =
@@ -92,11 +94,20 @@ export function PortfolioScreen() {
           { id: 'status', label: 'Status report' },
           { id: 'project-overview', label: 'Project overview' },
           { id: 'quality-safety', label: 'Quality & Safety' },
+          { id: 'sustainability', label: 'Sustainability' },
         ]}
         value={view}
         onValueChange={setView}
       >
-        {view === 'quality-safety' ? (
+        {view === 'sustainability' ? (
+          sustainability.data ? (
+            <Sustainability portfolio={sustainability.data} />
+          ) : sustainability.error ? (
+            <ErrorAlert error={sustainability.error} title="We couldn't load sustainability" />
+          ) : (
+            <SkeletonRows label="Loading sustainability…" />
+          )
+        ) : view === 'quality-safety' ? (
           portfolio.data ? (
             <QualitySafety portfolio={portfolio.data} />
           ) : (

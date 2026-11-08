@@ -66,6 +66,110 @@ const PROJECTS = '/v1/orgs/{orgId}/projects';
 
 beforeEach(() => fake.reset());
 
+const SUSTAINABILITY = '/v1/orgs/{orgId}/portfolio/sustainability';
+const sProject = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  number: null,
+  status: 'active',
+  phase: null,
+  state: null,
+  restricted: false,
+  hasPlan: true,
+  conditions: { nonCompliant: 0, overdue: 0, compliancePercent: 100 },
+  documentsLapsing: 0,
+  monitoring: { points: 1, openBreaches: 0, overdue: 0 },
+  waste: {
+    totalTonnes: 100,
+    divertedTonnes: 90,
+    landfillTonnes: 10,
+    diversionPercent: 90,
+    last30Tonnes: 20,
+    last30DivertedTonnes: 18,
+    last30DiversionPercent: 90,
+    previous30Tonnes: 20,
+    previous30DivertedTonnes: 18,
+    previous30DiversionPercent: 90,
+    regulatedWithoutDocket: 0,
+  },
+  carbon: { totalKg: 5000, last30Kg: 1000, previous30Kg: 1000, changePercent: 0 },
+  attention: 0,
+  ...over,
+});
+
+describe('Sustainability view', () => {
+  it('shows totals, Nova flags, and a row per project with the falling diversion called out', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {},
+      projects: [],
+      truncated: false,
+    }));
+    fake.on('GET', SUSTAINABILITY, () => ({
+      totals: {
+        projectsCovered: 2,
+        projectsRestricted: 1,
+        projectsWithoutPlan: 0,
+        openBreaches: 2,
+        nonCompliantConditions: 1,
+        overdueConditions: 0,
+        documentsLapsing: 0,
+        wasteTonnes: 300,
+        landfillTonnes: 90,
+        diversionPercent: 68,
+        last30DiversionPercent: 60,
+        previous30DiversionPercent: 80,
+        carbonKg: 9000,
+        carbonLast30Kg: 3000,
+        carbonPrevious30Kg: 2000,
+        carbonChangePercent: 50,
+      },
+      projects: [
+        sProject('prj_a', 'Alpha Tower', {
+          monitoring: { points: 2, openBreaches: 2, overdue: 0 },
+          conditions: { nonCompliant: 1, overdue: 0, compliancePercent: 50 },
+          waste: {
+            totalTonnes: 200,
+            divertedTonnes: 120,
+            landfillTonnes: 80,
+            diversionPercent: 60,
+            last30Tonnes: 20,
+            last30DivertedTonnes: 10,
+            last30DiversionPercent: 50,
+            previous30Tonnes: 20,
+            previous30DivertedTonnes: 16,
+            previous30DiversionPercent: 80,
+            regulatedWithoutDocket: 0,
+          },
+          attention: 8,
+        }),
+        sProject('prj_b', 'Bravo Lofts', { restricted: true }),
+      ],
+      flags: [
+        {
+          code: 'breach_open',
+          severity: 'critical',
+          projectId: 'prj_a',
+          projectName: 'Alpha Tower',
+          message: '2 monitoring breaches waiting for a response.',
+        },
+      ],
+      truncated: false,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PortfolioScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Sustainability' }));
+    const flags = await screen.findByLabelText('Nova flags');
+    expect(within(flags).getByText(/2 monitoring breaches waiting/)).toBeTruthy();
+    expect(screen.getByText('Down 20 points on the 30 days before')).toBeTruthy();
+    const table = await screen.findByRole('table', { name: 'Projects by sustainability' });
+    expect(within(table).getByRole('link', { name: 'Alpha Tower' })).toBeTruthy();
+    expect(within(table).getByText('Falling')).toBeTruthy();
+    expect(within(table).getByText('2 open')).toBeTruthy();
+    expect(within(table).getByText('No access')).toBeTruthy();
+    expect(screen.getByText(/1 project is left out/)).toBeTruthy();
+  });
+});
+
 describe('PortfolioScreen', () => {
   it('shows company totals and a row per project, with no access called out', async () => {
     fake.on('GET', PORTFOLIO, () => ({

@@ -84,6 +84,7 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     platform: {
       listProjects: async () => ({ data: [day('a'), day('b')], nextCursor: null }),
     } as unknown as ReportingDeps['platform'],
+    environment: { portfolioSummary: async () => ({ restricted: true }) as never },
     rfis: tool,
     defects: tool,
     submittals: tool,

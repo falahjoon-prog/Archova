@@ -2,7 +2,7 @@
 // check of the register against today's date. Pure, no IO.
 import { daysBetween } from '@archova/time';
 import { expiryState } from './document';
-import { DIVERSION_MIN_TONNES, DIVERSION_TARGET_PERCENT } from './waste';
+import { DIVERSION_MIN_TONNES, DIVERSION_TARGET_PERCENT, isDiversionFalling } from './waste';
 import { isConditionOverdue, conditionLabel, type ConditionStatus } from './condition';
 
 export type FlagSeverity = 'info' | 'warning' | 'critical';
@@ -20,6 +20,7 @@ export interface EnvironmentFlag {
     | 'monitoring_overdue'
     | 'monitoring_trending'
     | 'waste_diversion_low'
+    | 'waste_diversion_falling'
     | 'waste_docket_missing'
     | 'carbon_rising';
   severity: FlagSeverity;
@@ -40,7 +41,13 @@ interface FlagInput {
     overdue: { name: string }[];
     trending: { name: string }[];
   };
-  waste?: { totalTonnes: number; diversionPercent: number | null; regulatedWithoutDocket: number };
+  waste?: {
+    totalTonnes: number;
+    diversionPercent: number | null;
+    regulatedWithoutDocket: number;
+    last30?: { tonnes: number; diversionPercent: number | null };
+    previous30?: { tonnes: number; diversionPercent: number | null };
+  };
   carbon?: { last30Kg: number; previous30Kg: number; changePercent: number | null };
 }
 
@@ -160,6 +167,14 @@ export function environmentFlags(i: FlagInput): EnvironmentFlag[] {
       code: 'waste_diversion_low',
       severity: 'warning',
       message: `Only ${w.diversionPercent}% of waste has been diverted from landfill, against a target of ${DIVERSION_TARGET_PERCENT}%. Look at which streams are going to landfill.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  if (w?.last30 && w.previous30 && isDiversionFalling(w.last30, w.previous30))
+    flags.push({
+      code: 'waste_diversion_falling',
+      severity: 'warning',
+      message: `The diversion rate fell from ${w.previous30.diversionPercent}% to ${w.last30.diversionPercent}% in the last 30 days. Check what has started going to landfill.`,
       conditionIds: [],
       documentIds: [],
     });
