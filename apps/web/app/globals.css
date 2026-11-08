@@ -4047,7 +4047,7 @@ fieldset.worker-card > legend {
   --nav-fg: color-mix(in srgb, white 88%, transparent);
   --nav-fg-muted: var(--brand-slate-on-dark);
   --nav-hover: color-mix(in srgb, white 8%, transparent);
-  --nav-current: var(--brand-slate-deep);
+  --nav-current: color-mix(in srgb, white 16%, transparent);
 }
 .project-shell__side .project-nav {
   background: var(--nav-bg);
@@ -4068,7 +4068,9 @@ fieldset.worker-card > legend {
 }
 .project-shell__side .project-nav__link[aria-current='page'] {
   color: white;
+  font-weight: 700;
   background: var(--nav-current);
+  box-shadow: inset 3px 0 0 var(--brand-amber);
 }
 .project-shell__side .project-nav .cgroup__count {
   background: var(--nav-hover);
