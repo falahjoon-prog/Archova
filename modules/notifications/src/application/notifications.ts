@@ -24,6 +24,7 @@ const ENTITY_KIND: Record<NotificationEntity, IdKind> = {
   compliance_document: 'complianceDocument',
   conversation: 'conversation',
   announcement: 'announcement',
+  cover: 'cover',
 };
 
 type Row = typeof notifications.$inferSelect;

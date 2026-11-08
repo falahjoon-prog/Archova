@@ -13,6 +13,7 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  bookmarks: (orgSlug: string) => `/${enc(orgSlug)}/bookmarks`,
   /** Global search; `q` pre-fills the box. */
   search: (orgSlug: string, q?: string) =>
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
@@ -107,6 +108,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
     `${p(orgSlug, projectId)}/incidents${incidentId ? `?id=${enc(incidentId)}` : ''}`,
+  insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>

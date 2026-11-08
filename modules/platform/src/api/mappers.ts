@@ -1,14 +1,16 @@
-import { encodeId } from '@archova/domain';
+import { directionsUrl, encodeId } from '@archova/domain';
 import type {
   Company,
   KeyDateChange,
   KeyDates,
+  ProjectLocation,
   MembershipSummary,
   Org,
   Project,
   ProjectMember,
 } from '@archova/contracts';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
+import type { LocationRow } from '../application/locations';
 import type { companies, orgs, projectMembers, projects } from '../infra/tables';
 
 const iso = (d: Date) => d.toISOString();
@@ -111,3 +113,21 @@ export const toKeyDateChangeDto = (
       : null,
   changedAt: c.changedAt.toISOString(),
 });
+
+export const toProjectLocationDto = (l: LocationRow): ProjectLocation => {
+  const point = l.lat !== null && l.lng !== null ? { lat: l.lat, lng: l.lng } : null;
+  return {
+    id: encodeId('projectLocation', l.id),
+    name: l.name,
+    kind: l.kind,
+    address: l.address,
+    point,
+    directionsUrl: directionsUrl({ address: l.address, point }),
+    accessNote: l.accessNote,
+    contactName: l.contactName,
+    contactPhone: l.contactPhone,
+    usedFor: l.usedFor,
+    isDefault: l.isDefault,
+    version: l.version,
+  };
+};

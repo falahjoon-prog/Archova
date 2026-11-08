@@ -10,7 +10,8 @@ export type NotificationEntity =
   | 'incident'
   | 'compliance_document'
   | 'conversation'
-  | 'announcement';
+  | 'announcement'
+  | 'cover';
 
 export const notifications = notificationsSchema.table('notifications', {
   id: uuid('id').primaryKey(),

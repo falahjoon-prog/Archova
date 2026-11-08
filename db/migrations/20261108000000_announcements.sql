@@ -1,4 +1,4 @@
--- Composed from modules/announcements/db/migrations/20261107110000_announcements.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/announcements/db/migrations/20261108000000_announcements.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- announcements: a project-wide broadcast to everyone on the project or a chosen group, with a read receipt per
 -- person. Recipients are fixed when the announcement is posted (people added later are not retro-notified).
 -- `read_by_hours` is the author's "should have been read by" window; Nova flags key people past it, and the
