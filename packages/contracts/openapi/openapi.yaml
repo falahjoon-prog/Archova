@@ -25677,6 +25677,10 @@ components:
           managerUserId,
           finalApproverUserId,
           distributionUserIds,
+          approverDelegateUserId,
+          approverDelegateFrom,
+          approverDelegateUntil,
+          requireCloseEvidence,
           dueDate,
           isOverdue,
           raisedByCompanyId,
@@ -25720,6 +25724,14 @@ components:
           type: array
           description: Told about changes but not assigned.
           items: { type: string }
+        approverDelegateUserId:
+          type: [string, 'null']
+          description: Stand-in who may close, reject and reopen in place of the final approver between the two dates.
+        approverDelegateFrom: { type: [string, 'null'], format: date }
+        approverDelegateUntil: { type: [string, 'null'], format: date }
+        requireCloseEvidence:
+          type: boolean
+          description: Closing needs a note or a photo.
         dueDate: { type: [string, 'null'], format: date }
         isOverdue:
           {
@@ -25742,7 +25754,7 @@ components:
         version: { type: integer }
     DefectEvent:
       type: object
-      required: [id, defectId, action, fromStatus, toStatus, note, fileIds, actorId, at]
+      required: [id, defectId, action, fromStatus, toStatus, note, fileIds, actorId, onBehalfOf, at]
       properties:
         id: { type: string }
         defectId: { type: string }
@@ -25760,6 +25772,9 @@ components:
           type: array
           items: { type: string }
         actorId: { type: [string, 'null'] }
+        onBehalfOf:
+          type: [string, 'null']
+          description: The final approver a stand-in acted for, when they did.
         at: { type: string, format: date-time }
     DefectDetail:
       type: object
@@ -27539,6 +27554,10 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/UserRef' }
+        approverDelegateUserId: { $ref: '#/components/schemas/UserRef' }
+        approverDelegateFrom: { type: string, format: date }
+        approverDelegateUntil: { type: string, format: date }
+        requireCloseEvidence: { type: boolean }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
         aiSuggestionId:
@@ -27569,6 +27588,11 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/UserRef' }
+        approverDelegateUserId:
+          oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }]
+        approverDelegateFrom: { type: [string, 'null'], format: date }
+        approverDelegateUntil: { type: [string, 'null'], format: date }
+        requireCloseEvidence: { type: boolean }
         dueDate: { type: [string, 'null'], format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
     DefectTransitionRequest:
