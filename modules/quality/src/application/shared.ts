@@ -2,12 +2,14 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
+import type { DocumentsApi } from '@archova/mod-documents';
 import type { PlatformApi } from '@archova/mod-platform';
 import { observations } from '../infra/tables';
 
 export interface QualityDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
+  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
+  documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   /** The safety module's "stop work: SWMS not followed" (compliance 03 §4, r300). */
   safety: {
@@ -29,7 +31,8 @@ export async function checkFiles(
   fileIds: readonly string[],
   path = 'fileIds',
   ref?: { kind: PhotoRefKind; id: string },
-) {
+): Promise<{ id: string; isImage: boolean }[]> {
+  const out: { id: string; isImage: boolean }[] = [];
   for (const [i, fileId] of fileIds.entries()) {
     const f = await deps.files.getFile(scope, fileId);
     if (f.projectId !== projectId || f.status !== 'ready')
@@ -45,7 +48,9 @@ export async function checkFiles(
         { category: 'inspections', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
         'attach',
       );
+    out.push({ id: fileId, isImage: f.mime.startsWith('image/') });
   }
+  return out;
 }
 
 export async function viewerOf(deps: QualityDeps, scope: TenantScope, projectId: string) {
