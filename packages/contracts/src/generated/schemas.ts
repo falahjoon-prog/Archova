@@ -2473,6 +2473,25 @@ export const CreateMeetingSeriesRequestSchema = z.object({
 }).strict();
 export type CreateMeetingSeriesRequest = z.infer<typeof CreateMeetingSeriesRequestSchema>;
 
+export const MonitoringParameterSchema = z.enum(["dust_pm10", "dust_pm25", "dust_deposition", "noise_laeq", "noise_lamax", "vibration_ppv", "water_ph", "water_turbidity", "water_tss", "other"]);
+export type MonitoringParameter = z.infer<typeof MonitoringParameterSchema>;
+
+export const MonitoringFrequencySchema = z.enum(["daily", "weekly", "fortnightly", "monthly", "per_event"]);
+export type MonitoringFrequency = z.infer<typeof MonitoringFrequencySchema>;
+
+export const CreateMonitoringPointRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "parameter": MonitoringParameterSchema,
+  "unit": z.string().min(1).max(30),
+  "location": z.string().max(200).nullable().optional(),
+  "minLimit": z.number().nullable().optional(),
+  "maxLimit": z.number().nullable().optional(),
+  "warnMargin": z.number().min(0).max(0.5).optional(),
+  "frequency": MonitoringFrequencySchema.optional(),
+  "conditionId": z.string().nullable().optional(),
+}).strict();
+export type CreateMonitoringPointRequest = z.infer<typeof CreateMonitoringPointRequestSchema>;
+
 export const CreateOauthAppRequestSchema = z.object({
   "name": z.string().min(1).max(80),
   "description": z.string().max(500).optional(),
@@ -3765,7 +3784,7 @@ export const EnvironmentDocumentListSchema = z.object({
 export type EnvironmentDocumentList = z.infer<typeof EnvironmentDocumentListSchema>;
 
 export const EnvironmentFlagSchema = z.object({
-  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due"]),
+  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending"]),
   "severity": z.enum(["info", "warning", "critical"]),
   "message": z.string(),
   "conditionIds": z.array(z.string()),
@@ -3821,6 +3840,11 @@ export const EnvironmentSummarySchema = z.object({
   "total": z.number().int(),
   "expired": z.number().int(),
   "expiring": z.number().int(),
+}),
+  "monitoring": z.object({
+  "points": z.number().int(),
+  "openBreaches": z.number().int(),
+  "overdue": z.number().int(),
 }),
   "flags": z.array(EnvironmentFlagSchema),
 });
@@ -5262,6 +5286,14 @@ export const LogQuantityRequestSchema = z.object({
 });
 export type LogQuantityRequest = z.infer<typeof LogQuantityRequestSchema>;
 
+export const LogReadingRequestSchema = z.object({
+  "value": z.number(),
+  "takenAt": z.string().datetime({ offset: true }).optional(),
+  "note": z.string().max(2000).optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict();
+export type LogReadingRequest = z.infer<typeof LogReadingRequestSchema>;
+
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
   "password": z.string().min(1).max(256),
@@ -5536,6 +5568,59 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
+
+export const MonitoringReadingStatusSchema = z.enum(["ok", "warning", "breach"]);
+export type MonitoringReadingStatus = z.infer<typeof MonitoringReadingStatusSchema>;
+
+export const MonitoringReadingSchema = z.object({
+  "id": z.string(),
+  "pointId": z.string(),
+  "pointName": z.string().nullable(),
+  "unit": z.string().nullable(),
+  "value": z.number(),
+  "takenAt": z.string().datetime({ offset: true }),
+  "status": MonitoringReadingStatusSchema,
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "responseNote": z.string().nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedBy": z.string().nullable(),
+  "incidentId": z.string().nullable(),
+});
+export type MonitoringReading = z.infer<typeof MonitoringReadingSchema>;
+
+export const MonitoringPointSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "parameter": MonitoringParameterSchema,
+  "unit": z.string(),
+  "location": z.string().nullable(),
+  "minLimit": z.number().nullable(),
+  "maxLimit": z.number().nullable(),
+  "warnMargin": z.number(),
+  "frequency": MonitoringFrequencySchema,
+  "conditionId": z.string().nullable(),
+  "active": z.boolean(),
+  "latest": z.union([MonitoringReadingSchema, z.null()]),
+  "recent": z.array(z.number()),
+  "openBreaches": z.number().int(),
+  "isOverdue": z.boolean(),
+  "isTrending": z.boolean(),
+  "version": z.number().int(),
+});
+export type MonitoringPoint = z.infer<typeof MonitoringPointSchema>;
+
+export const MonitoringPointListSchema = z.object({
+  "data": z.array(MonitoringPointSchema),
+});
+export type MonitoringPointList = z.infer<typeof MonitoringPointListSchema>;
+
+export const MonitoringReadingPageSchema = z.object({
+  "data": z.array(MonitoringReadingSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type MonitoringReadingPage = z.infer<typeof MonitoringReadingPageSchema>;
 
 export const NccReferenceSchema = z.object({
   "provisionKey": z.string(),
@@ -7326,6 +7411,19 @@ export const RespondTenderAccessRequestSchema = z.object({
 }).strict();
 export type RespondTenderAccessRequest = z.infer<typeof RespondTenderAccessRequestSchema>;
 
+export const RespondToReadingRequestSchema = z.object({
+  "note": z.string().min(1).max(4000),
+  "raiseIncident": z.boolean().optional(),
+}).strict();
+export type RespondToReadingRequest = z.infer<typeof RespondToReadingRequestSchema>;
+
+export const RespondToReadingResultSchema = z.object({
+  "reading": MonitoringReadingSchema,
+  "incidentId": z.string().nullable(),
+  "incidentNumber": z.number().int().nullable(),
+});
+export type RespondToReadingResult = z.infer<typeof RespondToReadingResultSchema>;
+
 export const RespondToShiftRequestSchema = z.object({
   "status": z.enum(["accepted", "declined", "attended", "no_show"]),
 }).strict();
@@ -9074,6 +9172,20 @@ export const UpdateMeetingSeriesRequestSchema = z.object({
   "agenda": z.array(MeetingAgendaSectionSchema).min(1).max(40).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateMeetingSeriesRequest = z.infer<typeof UpdateMeetingSeriesRequestSchema>;
+
+export const UpdateMonitoringPointRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "parameter": MonitoringParameterSchema.optional(),
+  "unit": z.string().min(1).max(30).optional(),
+  "location": z.string().max(200).nullable().optional(),
+  "minLimit": z.number().nullable().optional(),
+  "maxLimit": z.number().nullable().optional(),
+  "warnMargin": z.number().min(0).max(0.5).optional(),
+  "frequency": MonitoringFrequencySchema.optional(),
+  "conditionId": z.string().nullable().optional(),
+  "active": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMonitoringPointRequest = z.infer<typeof UpdateMonitoringPointRequestSchema>;
 
 export const UpdateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema.optional(),

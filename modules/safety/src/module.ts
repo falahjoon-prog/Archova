@@ -30,6 +30,24 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
       reporting: reportingSources,
       /** "Stop work: SWMS not followed" (r300). Called by `quality` only, from an observation. */
       reopenForReview: swms.reopenForReview,
+      /**
+       * Reports an environmental incident for a monitoring breach. Called by `environment` only; the caller has
+       * already checked the person may respond to breaches, and the report is made as them.
+       */
+      reportEnvironmental: async (
+        scope: Parameters<typeof incidents.create>[0],
+        projectId: string,
+        input: { title: string; description: string; location: string | null; occurredAt: Date },
+      ) => {
+        const d = await incidents.create(scope, projectId, {
+          title: input.title,
+          type: 'environmental',
+          occurredAt: input.occurredAt,
+          description: input.description,
+          location: input.location,
+        });
+        return { id: d.incident.id, number: d.incident.number };
+      },
       /** Whether a SWMS is on the project, for observations that link to one. Called by `quality` only. */
       exists: swms.exists,
     },

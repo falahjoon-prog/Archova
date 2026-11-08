@@ -343,6 +343,46 @@ export function createConditionService(deps: EnvironmentDeps) {
     return detail(scope, projectId, id);
   }
 
+  /**
+   * A monitoring breach on a point linked to this condition flags it non-compliant, leaving a row in the trail.
+   * Done on the system's behalf (no permission check: the person logging the reading is not signing anything off);
+   * a condition already flagged or not applicable is left alone.
+   */
+  async function flagFromBreach(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    note: string,
+    fileIds: string[] = [],
+  ) {
+    const [current] = await scope.tx.select().from(conditions).where(live(projectId, id)).limit(1);
+    if (!current || current.status === 'non_compliant' || current.status === 'not_applicable')
+      return;
+    const at = now();
+    await scope.tx
+      .update(conditions)
+      .set({
+        status: 'non_compliant',
+        version: current.version + 1,
+        updatedBy: scope.ctx.userId,
+        updatedAt: at,
+      })
+      .where(and(eq(conditions.id, id), eq(conditions.version, current.version)));
+    await scope.tx.insert(conditionEvents).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      conditionId: id,
+      action: EVENT_ACTION.flagNonCompliant,
+      fromStatus: current.status,
+      toStatus: 'non_compliant',
+      note,
+      fileIds,
+      actorId: scope.ctx.userId,
+      at,
+    });
+  }
+
   /** Every live condition's roll-up fields, for the summary and Nova's flags. */
   async function allForSummary(scope: TenantScope, projectId: string) {
     return scope.tx
@@ -357,7 +397,17 @@ export function createConditionService(deps: EnvironmentDeps) {
       .where(and(eq(conditions.projectId, projectId), isNull(conditions.deletedAt)));
   }
 
-  return { list, create, detail, update, transition, applyStarterPack, allForSummary, caps };
+  return {
+    list,
+    create,
+    detail,
+    update,
+    transition,
+    applyStarterPack,
+    allForSummary,
+    flagFromBreach,
+    caps,
+  };
 }
 
 export type ConditionService = ReturnType<typeof createConditionService>;

@@ -98,4 +98,58 @@ describe('environment api', () => {
     expect(s.plan).toBeNull();
     expect(s.flags).toEqual([{ code: 'plan_missing', severity: 'warning', message: 'No EMP' }]);
   });
+
+  it('maps monitoring points and sends a reading with its evidence ids', async () => {
+    const reading = {
+      id: 'erd_1',
+      pointId: 'mpt_1',
+      pointName: null,
+      unit: null,
+      value: 61,
+      takenAt: '2026-11-08T01:00:00Z',
+      status: 'breach',
+      note: null,
+      fileIds: [],
+      responseNote: null,
+      respondedAt: null,
+      incidentId: null,
+    };
+    fake.on('GET', `${P}/monitoring-points`, () => ({
+      data: [
+        {
+          id: 'mpt_1',
+          projectId: 'prj_1',
+          name: 'North dust',
+          parameter: 'dust_pm10',
+          unit: 'µg/m³',
+          location: null,
+          minLimit: null,
+          maxLimit: 50,
+          warnMargin: 0.2,
+          frequency: 'daily',
+          conditionId: null,
+          active: true,
+          latest: reading,
+          recent: [40, 61],
+          openBreaches: 1,
+          isOverdue: false,
+          isTrending: false,
+          version: 1,
+        },
+      ],
+    }));
+    const points = await createEnvironmentApi('org_1').listPoints('prj_1');
+    expect(points[0]).toMatchObject({ name: 'North dust', openBreaches: 1 });
+    expect(points[0]!.latest).toMatchObject({ status: 'breach', evidenceCount: 0 });
+
+    fake.on('POST', `${P}/monitoring-points/{pointId}/readings`, () => reading);
+    const logged = await createEnvironmentApi('org_1').logReading('prj_1', points[0]!, {
+      value: 61,
+      note: 'Windy',
+    });
+    expect(logged.status).toBe('breach');
+    expect(fake.callsTo('POST', `${P}/monitoring-points/{pointId}/readings`)[0]!.init.body).toEqual(
+      { value: 61, note: 'Windy' },
+    );
+  });
 });
