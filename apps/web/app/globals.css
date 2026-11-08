@@ -3625,9 +3625,9 @@ fieldset.worker-card > legend {
 }
 .drw-group .ac-table {
   table-layout: fixed;
-  /* Fixed columns below total 58rem; the title column takes the rest, so keep
+  /* Fixed columns below total 63rem; the title column takes the rest, so keep
      min-width at fixed total + 16rem or the title collapses to one letter per line. */
-  min-width: 74rem;
+  min-width: 79rem;
 }
 .drw-group .drw-col-title {
   min-width: 16rem;
@@ -3636,7 +3636,8 @@ fieldset.worker-card > legend {
   width: 8rem;
 }
 .drw-group .drw-col-rev {
-  width: 6rem;
+  /* Holds the "Rev A (current)" pill, which doesn't wrap, plus cell padding. */
+  width: 11rem;
 }
 .drw-group .drw-col-status {
   width: 9rem;
