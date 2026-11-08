@@ -39,6 +39,7 @@ tags:
   - name: precon
   - name: insurance
   - name: safety
+  - name: permits
   - name: estimating
   - name: integrations
   - name: sync
@@ -454,6 +455,42 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/branding:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getOrgBranding
+      tags: [orgs]
+      x-module: platform
+      summary: The company's logo, accent colour and Portfolio widgets (members only).
+      responses:
+        '200':
+          description: Branding
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgBranding' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateOrgBranding
+      tags: [orgs]
+      x-module: platform
+      summary: Change the logo, accent colour or Portfolio widgets (org owners and admins).
+      description: |
+        Only the fields sent change. `accentColor: null` goes back to the Archova amber and `logoFileId: null` to the
+        Archova logo. The logo is an org-level image upload (`module: branding`, no project). The accent replaces the
+        brand amber only; buttons, links, status and safety colours never change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOrgBrandingRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgBranding' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access:
     parameters:
@@ -1809,6 +1846,85 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BimModel' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/site-captures:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSiteCaptures
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.read
+      summary: The project's 360 site captures, the most recently captured first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCaptureList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Embed a 360 tour in the project by its share link.
+      description: |
+        The link must be an https share link from Matterport, Kuula or Ricoh Tours; anything else is a 422. Archova
+        keeps the link, not the imagery, so the tour stays in the provider's account and follows its sharing settings.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSiteCaptureRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCapture' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SiteCaptureId'
+    patch:
+      operationId: updateSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Change a capture's title, date, area, note or link, or the RFI or issue it relates to.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSiteCaptureRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteCapture' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteSiteCapture
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.captures.manage
+      summary: Remove a capture from the project. The tour itself is untouched in the provider's account.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/coordination-issues:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -2525,6 +2641,26 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TransmittalRecipient' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/document-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDocumentRegister
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.manage
+      summary: |
+        The document control register: every drawing sheet and document with its current revision, who was sent
+        which revision, and acknowledgement status. `flags` are Nova's rule-based findings (outstanding
+        acknowledgements, superseded revisions still in use, distribution gaps); no model is called.
+      responses:
+        '200':
+          description: One row per sheet or document, in sheet/document number order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentRegister' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/transmittal-access:
     post:
       operationId: openTransmittalAccess
@@ -3098,6 +3234,120 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: scanCaptureViewWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.scan
+      summary: Ask Nova about a view from a 360 site capture.
+      description: |
+        The person takes a still from a 360 tour (a screenshot of the view), uploads it to the project and asks Nova
+        about it. Nova reads that still, not the live embedded tour, and lists what looks like a defect, missing
+        fire-stopping or incomplete work. Each observation has a category, one or two plain sentences saying what the
+        still shows, and a confidence. An observation is for a person to check against the plans: Nova does not say a
+        rule was broken, does not cite legislation, does not describe people and raises no issue. Wording that judges
+        is dropped (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+        `unsupportedNumbers`. The observations are kept as `open` for a person to confirm or dismiss. Costs a quarter
+        of a Nova credit. The still is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+        is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [still]
+              properties:
+                still:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Where the view is and what the person is checking. May be empty.
+      responses:
+        '200':
+          description: The observations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaCaptureScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCaptureObservations
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.review
+      summary: What Nova noticed in this project's 360 capture stills, newest first.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HazardSignalStatus' } }
+        - { name: fileId, in: query, schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: The observations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CaptureObservation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: observationId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^aco_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reviewCaptureObservation
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.captures.review
+      summary: Confirm or dismiss something Nova noticed in a capture view.
+      description: |
+        A person looks at the view and decides. `confirmed` means it is real; `dismissed` means it isn't (the still is
+        distorted, it was already dealt with). An observation is decided once; deciding it again is
+        `ai.capture_observation.already_reviewed`. Confirming raises no issue: the person raises a coordination issue
+        from the capture if it warrants it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [confirmed, dismissed] }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: The decided observation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureObservation' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns:
     parameters:
@@ -11655,6 +11905,173 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SwmsDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPermits
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: The permits and approvals register for a project, with each permit's status today.
+      parameters:
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/PermitKind' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PermitStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Add a permit or approval to the register. It is numbered PMT-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePermitRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPermitFlags
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: "Nova's rule-based flags for the project (no model): permits expiring or expired, required types missing, and wallet licences that have lapsed."
+      parameters:
+        - { name: windowDays, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/requirements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPermitRequirements
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: The permit types this project is expected to hold, with each one's reminder lead time in days.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setPermitRequirements
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Replace the expected permit types. An empty list switches the missing-permit flags off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetPermitRequirementsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PermitId'
+    get:
+      operationId: getPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.read
+      summary: A permit with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: Edit a permit's details.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePermitRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PermitId'
+    post:
+      operationId: transitionPermit
+      tags: [permits]
+      x-module: permits
+      x-permission: permits.permits.manage
+      summary: startRenewal, markRenewed (needs the new expiry date), close or reopen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PermitTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12723,6 +13140,175 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTmTickets
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: T&M (daywork) tickets, newest first, with the total of those not voided (ex GST).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Raise a T&M ticket for labour, equipment and material used on site. Lines can come from Nova's draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TmTicketRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Nova's draft lines for a day, from timesheets and equipment logs not already on a ticket. Unpriced; a person reviews before creating.
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    get:
+      operationId: getTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: One T&M ticket with its lines and signatures.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Replace a draft ticket. Refused from the first signature.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: signTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.sign
+      summary: Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: voidTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Void a ticket that has not been converted, with a reason.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: convertTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.convert
+      summary: Convert a signed ticket, once, into direct costs on a budget line or a draft variation on a contract.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConvertTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments:
     parameters:
@@ -14157,6 +14743,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
+    PermitId:
+      name: permitId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pmt_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -14232,6 +14823,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    SiteCaptureId:
+      name: captureId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^scp_[0-9A-Za-z]{26}$' }
     CoordinationIssueId:
       name: issueId
       in: path
@@ -14287,6 +14883,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
+    TmTicketId:
+      name: tmTicketId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tmt_[0-9A-Za-z]{26}$' }
     CommitmentId:
       name: commitmentId
       in: path
@@ -16365,6 +16966,59 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    OrgBranding:
+      type: object
+      required:
+        [logoFileId, accentColor, dashboardWidgets, dashboardLayout, availableWidgets, version]
+      properties:
+        logoFileId: { type: [string, 'null'] }
+        accentColor: { type: [string, 'null'], description: 'Six-digit hex such as #1F6FEB.' }
+        dashboardWidgets:
+          type: array
+          description: The Portfolio widgets that show, in order.
+          items: { type: string }
+        dashboardLayout:
+          type: [array, 'null']
+          description: The saved Portfolio tile layout, or null while the default one is used.
+          items: { $ref: '#/components/schemas/DashboardTile' }
+        availableWidgets:
+          type: array
+          items:
+            type: object
+            required: [key, label]
+            properties:
+              key: { type: string }
+              label: { type: string }
+        version: { type: integer }
+    UpdateOrgBrandingRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        logoFileId: { type: [string, 'null'] }
+        accentColor: { type: [string, 'null'], pattern: '^#[0-9a-fA-F]{6}$' }
+        dashboardWidgets:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string }
+        dashboardLayout:
+          type: [array, 'null']
+          maxItems: 40
+          description: Replaces the tile layout; null puts the default layout back.
+          items: { $ref: '#/components/schemas/DashboardTile' }
+    DashboardTile:
+      type: object
+      description: A tile on the 12-column dashboard grid. `type` is a tile from the web tile library.
+      required: [id, type, x, y, w, h]
+      additionalProperties: false
+      properties:
+        id: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+        type: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+        x: { type: integer, minimum: 0, maximum: 11 }
+        y: { type: integer, minimum: 0, maximum: 1000 }
+        w: { type: integer, minimum: 1, maximum: 12 }
+        h: { type: integer, minimum: 1, maximum: 40 }
+        config: { type: object, additionalProperties: true }
     SupportAccessGrant:
       type: object
       required: [id, ticketRef, level, projectIds, createdAt, expiresAt, grantedBy, status]
@@ -17226,6 +17880,7 @@ components:
           diary_summary,
           defect_tagging,
           safety_hazards,
+          site_capture,
           minutes,
           estimating,
           contract_review,
@@ -18363,6 +19018,56 @@ components:
           type: array
           items: { type: string }
         disclaimer: { type: string }
+    CaptureObservation:
+      type: object
+      required:
+        [
+          id,
+          fileId,
+          category,
+          categoryLabel,
+          observation,
+          confidence,
+          status,
+          reviewNote,
+          reviewedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, description: The observation (`aco_`) }
+        fileId: { type: string, description: The still it was noticed in (`fil_`) }
+        category: { type: string }
+        categoryLabel: { type: string }
+        observation:
+          {
+            type: string,
+            description: What the still shows,
+            as an observation and never a finding.,
+          }
+        confidence: { $ref: '#/components/schemas/HazardConfidence' }
+        status: { $ref: '#/components/schemas/HazardSignalStatus' }
+        reviewNote: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NovaCaptureScan:
+      type: object
+      required: [runId, scanId, observations, stillUnclear, dropped, unsupportedNumbers, disclaimer]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        scanId: { type: string, description: The scan (`acs_`); its observations share it }
+        observations:
+          type: array
+          items: { $ref: '#/components/schemas/CaptureObservation' }
+        stillUnclear:
+          type: boolean
+          description: The still was too dark, blurred, distorted or distant to judge, or isn't a building interior.
+        dropped:
+          type: integer
+          description: Observations left out because their wording judged instead of observing.
+        unsupportedNumbers:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
     HazardPattern:
       type: object
       required: [category, label, open, confirmed, dismissed, photos, isPattern, trend]
@@ -18768,6 +19473,69 @@ components:
         pageFrom: { type: integer, minimum: 1 }
         pageTo: { type: integer, minimum: 1 }
         revision: { type: [string, 'null'] }
+    SiteCapture:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          provider,
+          url,
+          capturedOn,
+          area,
+          note,
+          rfiId,
+          issueId,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        provider: { type: string, enum: [matterport, kuula, ricoh] }
+        url: { type: string, description: The share link as the tour is embedded. }
+        capturedOn: { type: string, format: date, description: The day the capture shows. }
+        area: { type: string, description: Where on site, for example Level 3 east. }
+        note: { type: string }
+        rfiId: { type: [string, 'null'] }
+        issueId:
+          { type: [string, 'null'], description: The coordination issue it relates to (`cis_`). }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SiteCaptureList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SiteCapture' }
+    CreateSiteCaptureRequest:
+      type: object
+      additionalProperties: false
+      required: [title, url, capturedOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, maxLength: 2000 }
+        capturedOn: { type: string, format: date }
+        area: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        issueId: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    UpdateSiteCaptureRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, maxLength: 2000 }
+        capturedOn: { type: string, format: date }
+        area: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        issueId: { type: [string, 'null'], pattern: '^cis_[0-9A-Za-z]{26}$' }
     BimDiscipline:
       type: string
       enum: [architectural, structural, mechanical, electrical, hydraulic, fire, civil, other]
@@ -19449,6 +20217,79 @@ components:
           items: { $ref: '#/components/schemas/MarkupShape' }
         locationConfirmed:
           { type: boolean, description: "true confirms a carried-forward markup's location" }
+    RegisterRecipientStatus:
+      type: string
+      enum: [acknowledged, cc, pending, outstanding, overdue, stale]
+      description: |
+        `stale`: last sent an earlier revision than the current one. `cc` recipients are not asked to acknowledge.
+    RegisterFlagKind:
+      type: string
+      enum: [ack_overdue, ack_outstanding, superseded_in_use, distribution_gap, not_distributed]
+    RegisterFlag:
+      type: object
+      required: [kind, severity, message, count]
+      properties:
+        kind: { $ref: '#/components/schemas/RegisterFlagKind' }
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        count: { type: integer, description: 'Recipients affected' }
+    RegisterRecipient:
+      type: object
+      required:
+        [
+          email,
+          name,
+          companyId,
+          role,
+          status,
+          rev,
+          revisionId,
+          transmittalId,
+          transmittalNumber,
+          sentAt,
+          openedAt,
+          downloadedAt,
+          acknowledgedAt,
+        ]
+      properties:
+        email: { type: string }
+        name: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+        role: { type: string, enum: [to, cc] }
+        status: { $ref: '#/components/schemas/RegisterRecipientStatus' }
+        rev: { type: string, description: 'The revision they were last sent' }
+        revisionId: { type: string }
+        transmittalId: { type: string }
+        transmittalNumber: { type: integer }
+        sentAt: { type: string, format: date-time }
+        openedAt: { type: [string, 'null'], format: date-time }
+        downloadedAt: { type: [string, 'null'], format: date-time }
+        acknowledgedAt: { type: [string, 'null'], format: date-time }
+    DocumentRegisterRow:
+      type: object
+      required:
+        [kind, id, number, title, discipline, currentRevisionId, currentRev, recipients, flags]
+      properties:
+        kind: { type: string, enum: [drawing, document] }
+        id: { type: string, description: 'Sheet or document id' }
+        number: { type: [string, 'null'] }
+        title: { type: string }
+        discipline: { type: [string, 'null'] }
+        currentRevisionId: { type: [string, 'null'] }
+        currentRev: { type: [string, 'null'] }
+        recipients:
+          type: array
+          items: { $ref: '#/components/schemas/RegisterRecipient' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/RegisterFlag' }
+    DocumentRegister:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentRegisterRow' }
     TransmittalPurpose:
       type: string
       enum: [for_information, for_review, for_construction, for_tender, other]
@@ -23666,6 +24507,160 @@ components:
         missingBackup:
           type: integer
           description: Backup items still missing across all claims.
+    TmKind:
+      type: string
+      enum: [labour, equipment, material]
+    TmSourceType:
+      type: string
+      enum: [timesheet_line, equipment_log]
+    TmTicketLine:
+      type: object
+      required: [kind, description, quantity, unit, rate, amount, sourceType, sourceId]
+      properties:
+        kind: { $ref: '#/components/schemas/TmKind' }
+        description: { type: string }
+        quantity: { type: string }
+        unit: { type: string }
+        rate: { $ref: '#/components/schemas/FinancialsMoney' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/TmSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'], format: uuid }
+    TmTicketSignoff:
+      type: object
+      description: Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature.
+      required:
+        [role, signerName, signerPosition, hasEvidence, evidenceFileId, contentHash, signedAt]
+      properties:
+        role: { type: string, enum: [contractor, principal_rep] }
+        signerName: { type: string }
+        signerPosition: { type: [string, 'null'] }
+        hasEvidence: { type: boolean }
+        evidenceFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        contentHash: { type: string }
+        signedAt: { type: string, format: date-time }
+    TmTicket:
+      type: object
+      required:
+        [
+          id,
+          number,
+          title,
+          description,
+          workDate,
+          location,
+          contractor,
+          instructedBy,
+          origin,
+          status,
+          total,
+          convertedTo,
+          convertedAt,
+          variationId,
+          voidReason,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^tmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        workDate: { type: string, format: date }
+        location: { type: [string, 'null'] }
+        contractor: { type: [string, 'null'] }
+        instructedBy: { type: [string, 'null'] }
+        origin: { type: string, enum: [manual, nova] }
+        status: { type: string, enum: [draft, part_signed, signed, converted, void] }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        convertedTo: { type: [string, 'null'], enum: [direct_cost, variation, null] }
+        convertedAt: { type: [string, 'null'], format: date-time }
+        variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
+        voidReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    TmTicketDetail:
+      allOf:
+        - $ref: '#/components/schemas/TmTicket'
+        - type: object
+          required: [lines, signoffs]
+          properties:
+            lines:
+              type: array
+              items: { $ref: '#/components/schemas/TmTicketLine' }
+            signoffs:
+              type: array
+              items: { $ref: '#/components/schemas/TmTicketSignoff' }
+    TmTicketList:
+      type: object
+      required: [data, total, awaitingSignature, unconverted]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicket' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        awaitingSignature: { type: integer }
+        unconverted: { type: integer }
+    TmTicketLineRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, description, quantity, unit, rate]
+      properties:
+        kind: { $ref: '#/components/schemas/TmKind' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        quantity: { type: string, pattern: '^[0-9]{1,8}(\.[0-9]{1,2})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        rate: { $ref: '#/components/schemas/FinancialsMoney' }
+        sourceType: { $ref: '#/components/schemas/TmSourceType' }
+        sourceId: { type: string, format: uuid }
+    TmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [title, workDate, lines]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        workDate: { type: string, format: date }
+        location: { type: string, minLength: 1, maxLength: 200 }
+        contractor: { type: string, minLength: 1, maxLength: 200 }
+        instructedBy: { type: string, minLength: 1, maxLength: 200 }
+        origin: { type: string, enum: [manual, nova] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/TmTicketLineRequest' }
+    TmTicketSuggestion:
+      type: object
+      required: [date, lines]
+      properties:
+        date: { type: string, format: date }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicketLineRequest' }
+    SignTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [role, signerName]
+      properties:
+        role: { type: string, enum: [contractor, principal_rep] }
+        signerName: { type: string, minLength: 1, maxLength: 200 }
+        signerPosition: { type: string, minLength: 1, maxLength: 200 }
+        evidenceFileId:
+          type: string
+          pattern: '^fil_[0-9A-Za-z]{26}$'
+          description: A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative.
+    VoidTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    ConvertTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [to]
+      properties:
+        to: { type: string, enum: [direct_cost, variation] }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
     CommitmentList:
       type: object
       required: [data]
@@ -27870,6 +28865,200 @@ components:
         dueDate: { type: [string, 'null'], format: date }
         source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
         status: { $ref: '#/components/schemas/CorrectiveStatus' }
+    PermitKind:
+      type: string
+      enum:
+        [
+          building_permit,
+          development_approval,
+          construction_certificate,
+          occupation_certificate,
+          council_approval,
+          planning_permit,
+          environmental_permit,
+          road_occupancy,
+          traffic_management,
+          crane_hoist,
+          demolition,
+          hot_work,
+          trade_licence,
+          other,
+        ]
+    PermitStatus:
+      type: string
+      description: Derived from the lifecycle and the expiry date in the project's own calendar day.
+      enum: [active, expiring_soon, expired, renewal_in_progress, closed]
+    PermitLifecycle:
+      type: string
+      enum: [active, renewal_in_progress, closed]
+    Permit:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          kind,
+          title,
+          issuingAuthority,
+          referenceNumber,
+          holderCompanyId,
+          issuedOn,
+          expiresOn,
+          lifecycle,
+          status,
+          daysToExpiry,
+          renewalStartedOn,
+          notes,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string }
+        issuingAuthority: { type: [string, 'null'] }
+        referenceNumber: { type: [string, 'null'] }
+        holderCompanyId: { type: [string, 'null'] }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        lifecycle: { $ref: '#/components/schemas/PermitLifecycle' }
+        status: { $ref: '#/components/schemas/PermitStatus' }
+        daysToExpiry: { type: [integer, 'null'], description: Negative once expired. }
+        renewalStartedOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    PermitEvent:
+      type: object
+      required: [id, action, fromLifecycle, toLifecycle, expiresOn, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromLifecycle:
+          { oneOf: [{ $ref: '#/components/schemas/PermitLifecycle' }, { type: 'null' }] }
+        toLifecycle: { $ref: '#/components/schemas/PermitLifecycle' }
+        expiresOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PermitDetail:
+      type: object
+      required: [permit, events]
+      properties:
+        permit: { $ref: '#/components/schemas/Permit' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PermitEvent' }
+    PermitPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Permit' }
+        nextCursor: { type: [string, 'null'] }
+    CreatePermitRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title]
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        issuingAuthority: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        holderCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdatePermitRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        issuingAuthority: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        holderCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    PermitTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [startRenewal, markRenewed, close, reopen] }
+        newExpiresOn:
+          type: [string, 'null']
+          format: date
+          description: Required for markRenewed; must be after the current expiry.
+        note: { type: [string, 'null'], maxLength: 1000 }
+    PermitRequirement:
+      type: object
+      required: [kind, leadDays]
+      properties:
+        kind: { $ref: '#/components/schemas/PermitKind' }
+        leadDays: { type: integer, minimum: 1, maximum: 365 }
+    PermitRequirementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PermitRequirement' }
+    SetPermitRequirementsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/PermitRequirement' }
+    PermitFlag:
+      type: object
+      required: [kind, severity, title, detail, permitId, permitKind, expiresOn, daysLeft]
+      properties:
+        kind:
+          {
+            type: string,
+            enum:
+              [expiring, expired, expired_while_renewing, missing_required, worker_licence_lapsed],
+          }
+        severity: { type: string, enum: [info, warn, high] }
+        title: { type: string }
+        detail: { type: string }
+        permitId: { type: [string, 'null'] }
+        permitKind: { oneOf: [{ $ref: '#/components/schemas/PermitKind' }, { type: 'null' }] }
+        expiresOn: { type: [string, 'null'], format: date }
+        daysLeft: { type: [integer, 'null'] }
+    PermitFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PermitFlag' }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]

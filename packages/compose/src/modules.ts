@@ -5,6 +5,7 @@ import {
   type KernelServices,
   type MessageSender,
   type RouteTable,
+  type TenantScope,
 } from '@archova/kernel';
 import {
   AI_PERMISSIONS,
@@ -31,6 +32,7 @@ import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
+import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -93,6 +95,7 @@ export const MODULE_PERMISSIONS = [
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
+  PERMITS_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
@@ -188,8 +191,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
   let access: ReturnType<typeof createAccessModule> | null = null;
+  let filesApi: ReturnType<typeof createFilesModule>['api'] | null = null;
   const platform = createPlatformModule(services, {
     identity: identity.api,
+    files: () => filesApi!,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
@@ -234,6 +239,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       correspondence: 'correspondence.items.respond',
     },
   });
+  filesApi = files.api;
 
   const documents = createDocumentsModule(services, {
     access: access.api,
@@ -319,6 +325,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
+    dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
+    getFile: (scope, fileId) => files.api.getFile(scope, fileId),
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -342,6 +350,14 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   qualityApi = quality.api;
 
+  // Wallet licences are read lazily: workforce is built later.
+  let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
+    null;
+  const permits = createPermitsModule(services, {
+    platform: platform.api,
+    files: files.api,
+    licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
+  });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -462,6 +478,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       logger: services.logger,
     },
   });
+  lapsedLicences = workforce.api.lapsedLicences;
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
@@ -543,6 +560,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quality,
     precon,
     safety,
+    permits,
     insurance,
     estimating,
     integrations,
@@ -586,6 +604,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quality,
     precon,
     safety,
+    permits,
     insurance,
     estimating,
     integrations,

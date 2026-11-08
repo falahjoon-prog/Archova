@@ -29,5 +29,9 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   // patterns is the builder's safety admin (same level as managing incidents).
   { key: 'ai.safety.scan', scope: 'project', tool: 'inspections', level: 'standard' },
   { key: 'ai.safety.review', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Site Capture "Ask Nova about this view": anyone who can add a capture can have Nova read a still from it; the
+  // people who coordinate issues decide on what Nova noticed.
+  { key: 'ai.captures.scan', scope: 'project', tool: 'coordination', level: 'standard' },
+  { key: 'ai.captures.review', scope: 'project', tool: 'coordination', level: 'standard' },
   { key: 'ai.contracts.review', scope: 'project', tool: 'commitments', level: 'admin' },
 ];

@@ -199,6 +199,9 @@ export const PROBLEM_CODES = {
   'submittal_step.not_found': 404,
   // bim
   'bim.model_not_found': 404,
+  'bim.capture_not_found': 404,
+  'ai.capture_observation.not_found': 404,
+  'ai.capture_observation.already_reviewed': 409,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
   // conversations
@@ -359,6 +362,10 @@ export const PROBLEM_CODES = {
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.tm_ticket.not_found': 404,
+  'financials.tm_ticket.bad_state': 409,
+  'financials.tm_ticket.duplicate_source': 409,
+  'financials.tm_ticket.reason_required': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,
@@ -381,6 +388,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // permits: project permits and approvals register
+  'permit.not_found': 404,
+  'permit.invalid_transition': 409,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,
