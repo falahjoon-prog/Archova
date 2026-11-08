@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ProjectLocation } from '../data/api';
+import type { LocationTreeNode } from '../data/api';
 import { buildTree, descendantIds, flatten } from '../lib/tree';
 
 let n = 0;
-const loc = (name: string, parentId: string | null, sort = 0): ProjectLocation => {
+const loc = (name: string, parentId: string | null, sort = 0): LocationTreeNode => {
   const id = `loc_${String(++n).padStart(26, '0')}`;
   return {
     id,

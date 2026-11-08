@@ -6,18 +6,18 @@ import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
 
 type S = components['schemas'];
-export type ProjectLocation = S['ProjectLocation'];
-export type LocationKind = S['LocationKind'];
+export type LocationTreeNode = S['LocationTreeNode'];
+export type LocationTreeKind = S['LocationTreeKind'];
 export type LocationSuggestion = S['LocationSuggestion'];
-export type CreateLocation = S['CreateLocationRequest'];
-export type UpdateLocation = S['UpdateLocationRequest'];
+export type CreateLocation = S['CreateLocationTreeNodeRequest'];
+export type UpdateLocation = S['UpdateLocationTreeNodeRequest'];
 
-const P = '/v1/orgs/{orgId}/projects/{projectId}/locations' as const;
+const P = '/v1/orgs/{orgId}/projects/{projectId}/location-tree' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 
 export function createLocationsApi(orgId: string) {
   return {
-    async list(projectId: string, includeArchived = false): Promise<ProjectLocation[]> {
+    async list(projectId: string, includeArchived = false): Promise<LocationTreeNode[]> {
       return unwrap(
         await api.GET(P, {
           params: {
@@ -27,7 +27,7 @@ export function createLocationsApi(orgId: string) {
         }),
       ).data;
     },
-    async create(projectId: string, body: CreateLocation): Promise<ProjectLocation> {
+    async create(projectId: string, body: CreateLocation): Promise<LocationTreeNode> {
       return unwrap(await api.POST(P, { params: { path: { orgId, projectId } }, body }));
     },
     async update(
@@ -35,7 +35,7 @@ export function createLocationsApi(orgId: string) {
       locationId: string,
       version: number,
       body: UpdateLocation,
-    ): Promise<ProjectLocation> {
+    ): Promise<LocationTreeNode> {
       return unwrap(
         await api.PATCH(`${P}/{locationId}`, {
           params: { path: { orgId, projectId, locationId }, header: ifMatch(version) },

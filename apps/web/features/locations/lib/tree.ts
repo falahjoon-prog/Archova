@@ -1,6 +1,6 @@
-import type { LocationKind, ProjectLocation } from '../data/api';
+import type { LocationTreeKind, LocationTreeNode } from '../data/api';
 
-export const KIND_LABELS: Record<LocationKind, string> = {
+export const KIND_LABELS: Record<LocationTreeKind, string> = {
   site: 'Site',
   building: 'Building',
   wing: 'Wing',
@@ -12,12 +12,12 @@ export const KIND_LABELS: Record<LocationKind, string> = {
 };
 
 export interface LocationNode {
-  location: ProjectLocation;
+  location: LocationTreeNode;
   children: LocationNode[];
 }
 
 /** Rows (any order) into a tree; a row whose parent is missing from the list sits at the top. */
-export function buildTree(rows: readonly ProjectLocation[]): LocationNode[] {
+export function buildTree(rows: readonly LocationTreeNode[]): LocationNode[] {
   const nodes = new Map<string, LocationNode>(
     rows.map((l) => [l.id, { location: l, children: [] }]),
   );
@@ -38,9 +38,9 @@ export function buildTree(rows: readonly ProjectLocation[]): LocationNode[] {
 
 /** Depth-first, each row with how deep it sits, ready to render as an indented list. */
 export function flatten(
-  rows: readonly ProjectLocation[],
-): Array<{ location: ProjectLocation; depth: number }> {
-  const out: Array<{ location: ProjectLocation; depth: number }> = [];
+  rows: readonly LocationTreeNode[],
+): Array<{ location: LocationTreeNode; depth: number }> {
+  const out: Array<{ location: LocationTreeNode; depth: number }> = [];
   const walk = (list: LocationNode[], depth: number) => {
     for (const n of list) {
       out.push({ location: n.location, depth });
@@ -52,7 +52,7 @@ export function flatten(
 }
 
 /** Ids of a location and everything inside it, so a move can never offer a place inside itself. */
-export function descendantIds(rows: readonly ProjectLocation[], id: string): Set<string> {
+export function descendantIds(rows: readonly LocationTreeNode[], id: string): Set<string> {
   const out = new Set<string>([id]);
   let grew = true;
   while (grew) {

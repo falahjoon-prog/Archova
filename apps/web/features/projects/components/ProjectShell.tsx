@@ -164,8 +164,8 @@ export function projectToolGroups(
       icon: DelaysIcon,
     },
     {
-      href: webRoutes.locations(orgSlug, projectId),
-      label: 'Locations',
+      href: webRoutes.locationTree(orgSlug, projectId),
+      label: 'Location tree',
       icon: LocationsIcon,
     },
     canRead('schedule') && {
@@ -337,7 +337,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Locations', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Location tree', 'Attendance'],
   },
   {
     id: 'quality-safety',

@@ -846,12 +846,12 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/KeyDateChangeList' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/orgs/{orgId}/projects/{projectId}/locations:
+  /v1/orgs/{orgId}/projects/{projectId}/location-tree:
     parameters:
       - $ref: '#/components/parameters/OrgId'
       - $ref: '#/components/parameters/ProjectId'
     get:
-      operationId: listProjectLocations
+      operationId: listLocationTree
       tags: [projects]
       x-module: platform
       x-permission: platform.projects.read
@@ -868,10 +868,10 @@ paths:
           description: Locations
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/LocationList' }
+              schema: { $ref: '#/components/schemas/LocationTreeList' }
         default: { $ref: '#/components/responses/Problem' }
     post:
-      operationId: createProjectLocation
+      operationId: createLocationTreeNode
       tags: [projects]
       x-module: platform
       x-permission: platform.projects.update
@@ -880,7 +880,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateLocationRequest' }
+            schema: { $ref: '#/components/schemas/CreateLocationTreeNodeRequest' }
       responses:
         '201':
           description: Created
@@ -888,14 +888,14 @@ paths:
             ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProjectLocation' }
+              schema: { $ref: '#/components/schemas/LocationTreeNode' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/orgs/{orgId}/projects/{projectId}/locations/suggest:
+  /v1/orgs/{orgId}/projects/{projectId}/location-tree/suggest:
     parameters:
       - $ref: '#/components/parameters/OrgId'
       - $ref: '#/components/parameters/ProjectId'
     get:
-      operationId: suggestProjectLocations
+      operationId: suggestLocationTreeNodes
       tags: [projects]
       x-module: platform
       x-permission: platform.projects.read
@@ -914,7 +914,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LocationSuggestionList' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}:
+  /v1/orgs/{orgId}/projects/{projectId}/location-tree/{locationId}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
       - $ref: '#/components/parameters/ProjectId'
@@ -925,7 +925,7 @@ paths:
           schema: { type: string, pattern: '^loc_[0-9A-Za-z]{26}$' },
         }
     patch:
-      operationId: updateProjectLocation
+      operationId: updateLocationTreeNode
       tags: [projects]
       x-module: platform
       x-permission: platform.projects.update
@@ -936,7 +936,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UpdateLocationRequest' }
+            schema: { $ref: '#/components/schemas/UpdateLocationTreeNodeRequest' }
       responses:
         '200':
           description: Updated
@@ -944,7 +944,7 @@ paths:
             ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProjectLocation' }
+              schema: { $ref: '#/components/schemas/LocationTreeNode' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/delay-register:
     parameters:
@@ -16281,21 +16281,21 @@ components:
         name: { type: string, minLength: 1, maxLength: 120 }
         targetDate: { type: [string, 'null'], format: date }
         actualDate: { type: [string, 'null'], format: date }
-    LocationKind:
+    LocationTreeKind:
       type: string
       enum: [site, building, wing, level, zone, room, area, external]
     LocationRef:
       type: string
       pattern: '^loc_[0-9A-Za-z]{26}$'
       description: A row of the project's location tree.
-    ProjectLocation:
+    LocationTreeNode:
       type: object
       required: [id, projectId, parentId, kind, name, code, path, depth, sort, archived, version]
       properties:
         id: { $ref: '#/components/schemas/LocationRef' }
         projectId: { type: string }
         parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
-        kind: { $ref: '#/components/schemas/LocationKind' }
+        kind: { $ref: '#/components/schemas/LocationTreeKind' }
         name: { type: string }
         code: { type: [string, 'null'] }
         path: { type: string, description: '"Building A › Level 2 › Unit 201"' }
@@ -16303,29 +16303,29 @@ components:
         sort: { type: integer }
         archived: { type: boolean }
         version: { type: integer }
-    LocationList:
+    LocationTreeList:
       type: object
       required: [data]
       properties:
         data:
           type: array
-          items: { $ref: '#/components/schemas/ProjectLocation' }
-    CreateLocationRequest:
+          items: { $ref: '#/components/schemas/LocationTreeNode' }
+    CreateLocationTreeNodeRequest:
       type: object
       additionalProperties: false
       required: [name]
       properties:
         parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
-        kind: { $ref: '#/components/schemas/LocationKind' }
+        kind: { $ref: '#/components/schemas/LocationTreeKind' }
         name: { type: string, minLength: 1, maxLength: 120 }
         code: { type: [string, 'null'], minLength: 1, maxLength: 30 }
-    UpdateLocationRequest:
+    UpdateLocationTreeNodeRequest:
       type: object
       additionalProperties: false
       minProperties: 1
       properties:
         parentId: { oneOf: [{ $ref: '#/components/schemas/LocationRef' }, { type: 'null' }] }
-        kind: { $ref: '#/components/schemas/LocationKind' }
+        kind: { $ref: '#/components/schemas/LocationTreeKind' }
         name: { type: string, minLength: 1, maxLength: 120 }
         code: { type: [string, 'null'], minLength: 1, maxLength: 30 }
         sort: { type: integer, minimum: 0, maximum: 1000000 }

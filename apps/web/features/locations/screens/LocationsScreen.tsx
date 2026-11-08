@@ -19,7 +19,7 @@ import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
-import type { LocationKind, ProjectLocation } from '../data/api';
+import type { LocationTreeKind, LocationTreeNode } from '../data/api';
 import { useCreateLocation, useLocations, useUpdateLocation } from '../hooks/useLocations';
 import { KIND_LABELS, MAX_DEPTH, descendantIds, flatten } from '../lib/tree';
 
@@ -29,7 +29,7 @@ interface Draft {
   id: string | null;
   version: number;
   parentId: string | null;
-  kind: LocationKind;
+  kind: LocationTreeKind;
   name: string;
   code: string;
 }
@@ -63,7 +63,7 @@ export function LocationsScreen() {
   const update = useUpdateLocation(project.projectId);
   const [draft, setDraft] = useState<Draft | null>(null);
 
-  const edit = (l: ProjectLocation) =>
+  const edit = (l: LocationTreeNode) =>
     setDraft({
       id: l.id,
       version: l.version,
@@ -103,7 +103,7 @@ export function LocationsScreen() {
   return (
     <div className="stack-lg">
       <PageHeader
-        title="Locations"
+        title="Location tree"
         description="Buildings, levels, zones and rooms. Defects, RFIs, inspections and observations point at one of these, so every register can be filtered and reported by place."
         actions={
           canEdit ? <Button onClick={() => setDraft(blank(null))}>Add location</Button> : undefined
@@ -137,7 +137,7 @@ export function LocationsScreen() {
             />
           }
         >
-          <ul className="location-tree" aria-label="Project locations">
+          <ul className="location-tree" aria-label="Project location tree">
             {flatten(rows).map(({ location: l, depth }) => (
               <li
                 key={l.id}
@@ -216,7 +216,7 @@ export function LocationsScreen() {
                 label="Type"
                 value={draft.kind}
                 options={KIND_OPTIONS}
-                onChange={(e) => setDraft({ ...draft, kind: e.target.value as LocationKind })}
+                onChange={(e) => setDraft({ ...draft, kind: e.target.value as LocationTreeKind })}
               />
               <TextField
                 label="Code (optional)"

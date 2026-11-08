@@ -39,17 +39,17 @@ describe('project locations', () => {
   it('builds a tree with full paths and rejects duplicates, cycles and archived parents', async () => {
     const s = await setup('loc-tree');
     const a = (
-      await s.pm.browser.post(`${s.base}/locations`, { name: 'Building A', kind: 'building' })
+      await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Building A', kind: 'building' })
     ).json();
     const l2 = (
-      await s.pm.browser.post(`${s.base}/locations`, {
+      await s.pm.browser.post(`${s.base}/location-tree`, {
         name: 'Level 2',
         kind: 'level',
         parentId: a.id,
       })
     ).json();
     const u = (
-      await s.pm.browser.post(`${s.base}/locations`, {
+      await s.pm.browser.post(`${s.base}/location-tree`, {
         name: 'Unit 201',
         kind: 'room',
         parentId: l2.id,
@@ -57,23 +57,23 @@ describe('project locations', () => {
     ).json();
     expect(u).toMatchObject({ path: 'Building A › Level 2 › Unit 201', depth: 3 });
 
-    const dup = await s.pm.browser.post(`${s.base}/locations`, {
+    const dup = await s.pm.browser.post(`${s.base}/location-tree`, {
       name: ' level 2 ',
       parentId: a.id,
     });
     expect(dup.statusCode).toBe(409);
     // The same name under another parent is fine.
     const l1 = (
-      await s.pm.browser.post(`${s.base}/locations`, { name: 'Level 1', parentId: a.id })
+      await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Level 1', parentId: a.id })
     ).json();
     expect(
-      (await s.pm.browser.post(`${s.base}/locations`, { name: 'Unit 201', parentId: l1.id }))
+      (await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Unit 201', parentId: l1.id }))
         .statusCode,
     ).toBe(201);
 
     // A place cannot move inside its own descendant.
     const cyc = await s.pm.browser.patch(
-      `${s.base}/locations/${a.id}`,
+      `${s.base}/location-tree/${a.id}`,
       { parentId: u.id },
       { 'if-match': '"1"' },
     );
@@ -81,41 +81,43 @@ describe('project locations', () => {
 
     // Renaming a level renames the path of everything under it.
     const renamed = await s.pm.browser.patch(
-      `${s.base}/locations/${l2.id}`,
+      `${s.base}/location-tree/${l2.id}`,
       { name: 'Level Two' },
       { 'if-match': '"1"' },
     );
     expect(renamed.statusCode, renamed.body).toBe(200);
-    const list = (await s.pm.browser.get(`${s.base}/locations`)).json().data;
+    const list = (await s.pm.browser.get(`${s.base}/location-tree`)).json().data;
     expect(list.find((x: { id: string }) => x.id === u.id).path).toBe(
       'Building A › Level Two › Unit 201',
     );
 
     // Stale version loses; a parent with live children cannot be archived.
     const stale = await s.pm.browser.patch(
-      `${s.base}/locations/${l2.id}`,
+      `${s.base}/location-tree/${l2.id}`,
       { name: 'Again' },
       { 'if-match': '"1"' },
     );
     expect(stale.statusCode).toBe(412);
     const busy = await s.pm.browser.patch(
-      `${s.base}/locations/${l2.id}`,
+      `${s.base}/location-tree/${l2.id}`,
       { archived: true },
       { 'if-match': '"2"' },
     );
     expect(busy.statusCode).toBe(409);
     const gone = await s.pm.browser.patch(
-      `${s.base}/locations/${u.id}`,
+      `${s.base}/location-tree/${u.id}`,
       { archived: true },
       { 'if-match': '"1"' },
     );
     expect(gone.statusCode, gone.body).toBe(200);
     expect(gone.json().archived).toBe(true);
     expect(
-      (await s.pm.browser.get(`${s.base}/locations`)).json().data.map((x: { id: string }) => x.id),
+      (await s.pm.browser.get(`${s.base}/location-tree`))
+        .json()
+        .data.map((x: { id: string }) => x.id),
     ).not.toContain(u.id);
     expect(
-      (await s.pm.browser.get(`${s.base}/locations?includeArchived=true`))
+      (await s.pm.browser.get(`${s.base}/location-tree?includeArchived=true`))
         .json()
         .data.map((x: { id: string }) => x.id),
     ).toContain(u.id);
@@ -124,22 +126,22 @@ describe('project locations', () => {
 
   it('only project admins change the tree; members read it', async () => {
     const s = await setup('loc-perm');
-    const denied = await s.sub.browser.post(`${s.base}/locations`, { name: 'Sneaky' });
+    const denied = await s.sub.browser.post(`${s.base}/location-tree`, { name: 'Sneaky' });
     expect(denied.statusCode).toBe(403);
-    await s.pm.browser.post(`${s.base}/locations`, { name: 'Building A' });
-    expect((await s.sub.browser.get(`${s.base}/locations`)).json().data).toHaveLength(1);
+    await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Building A' });
+    expect((await s.sub.browser.get(`${s.base}/location-tree`)).json().data).toHaveLength(1);
   });
 
   it('wires RFIs and defects to real locations', async () => {
     const s = await setup('loc-wire');
     const a = (
-      await s.pm.browser.post(`${s.base}/locations`, { name: 'Building A', kind: 'building' })
+      await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Building A', kind: 'building' })
     ).json();
     const l3 = (
-      await s.pm.browser.post(`${s.base}/locations`, { name: 'Level 3', parentId: a.id })
+      await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Level 3', parentId: a.id })
     ).json();
     const elsewhere = (
-      await s.pm.browser.post(`${s.otherBase}/locations`, { name: 'Tower B' })
+      await s.pm.browser.post(`${s.otherBase}/location-tree`, { name: 'Tower B' })
     ).json();
 
     const rfi = await s.pm.browser.post(`${s.base}/rfis`, {
@@ -184,13 +186,13 @@ describe('project locations', () => {
 
   it('Nova suggests places from the words of a new record', async () => {
     const s = await setup('loc-nova');
-    const a = (await s.pm.browser.post(`${s.base}/locations`, { name: 'Building A' })).json();
+    const a = (await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Building A' })).json();
     const l2 = (
-      await s.pm.browser.post(`${s.base}/locations`, { name: 'Level 2', parentId: a.id })
+      await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Level 2', parentId: a.id })
     ).json();
-    await s.pm.browser.post(`${s.base}/locations`, { name: 'Unit 201', parentId: l2.id });
+    await s.pm.browser.post(`${s.base}/location-tree`, { name: 'Unit 201', parentId: l2.id });
     const res = await s.pm.browser.get(
-      `${s.base}/locations/suggest?text=${encodeURIComponent('leak in unit 201')}`,
+      `${s.base}/location-tree/suggest?text=${encodeURIComponent('leak in unit 201')}`,
     );
     expect(res.statusCode, res.body).toBe(200);
     expect(res.json().data[0]).toMatchObject({ path: 'Building A › Level 2 › Unit 201' });

@@ -5,7 +5,7 @@ import type { IdentityApi } from '@archova/mod-identity';
 import { createAccountDeletionService } from './application/account-deletion';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
-import { createLocationService } from './application/locations';
+import { createLocationTreeService } from './application/location-tree';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
@@ -39,7 +39,7 @@ export function createPlatformModule(
   });
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
-  const locations = createLocationService({ projects });
+  const locations = createLocationTreeService({ projects });
   const companies = createCompanyService();
   const accountDeletion = createAccountDeletionService({
     database: services.database,

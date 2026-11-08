@@ -12,7 +12,7 @@ import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-iden
 import type { AccountDeletionService } from '../application/account-deletion';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
-import type { LocationService } from '../application/locations';
+import type { LocationTreeService } from '../application/location-tree';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
@@ -50,7 +50,7 @@ export interface PlatformRouteDeps {
   orgs: OrgService;
   projects: ProjectService;
   keyDates: KeyDateService;
-  locations: LocationService;
+  locations: LocationTreeService;
   companies: CompanyService;
   members: MemberService;
   accountDeletion: AccountDeletionService;
@@ -236,7 +236,7 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
     },
-    listProjectLocations: async (input) => {
+    listLocationTree: async (input) => {
       const id = projectUuid(input.params.projectId);
       const rows = await d.database.withTenantTx(
         requireTenant(input),
@@ -246,7 +246,7 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       return { status: 200, body: { data: rows.map(toLocationDto) } };
     },
-    createProjectLocation: async (input) => {
+    createLocationTreeNode: async (input) => {
       const id = projectUuid(input.params.projectId);
       const { parentId, ...rest } = input.body;
       const row = await d.database.withTenantTx(requireTenant(input), (s) =>
@@ -254,7 +254,7 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       return { status: 201, body: toLocationDto(row), headers: { etag: etag(row.version) } };
     },
-    suggestProjectLocations: async (input) => {
+    suggestLocationTreeNodes: async (input) => {
       const id = projectUuid(input.params.projectId);
       const rows = await d.database.withTenantTx(
         requireTenant(input),
@@ -272,7 +272,7 @@ export function platformRoutes(d: PlatformRouteDeps) {
         },
       };
     },
-    updateProjectLocation: async (input) => {
+    updateLocationTreeNode: async (input) => {
       const id = projectUuid(input.params.projectId);
       const locId = locationUuid(input.params.locationId)!;
       const expected = parseIfMatch(input.headers['if-match']);

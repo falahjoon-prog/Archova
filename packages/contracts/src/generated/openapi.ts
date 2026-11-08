@@ -696,7 +696,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/orgs/{orgId}/projects/{projectId}/locations": {
+    "/v1/orgs/{orgId}/projects/{projectId}/location-tree": {
         parameters: {
             query?: never;
             header?: never;
@@ -707,17 +707,17 @@ export interface paths {
             cookie?: never;
         };
         /** The project's location tree as a flat list (building, level, zone, room...), ordered for display. Each row carries its full path. */
-        get: operations["listProjectLocations"];
+        get: operations["listLocationTree"];
         put?: never;
         /** Add a location under a parent (or at the top level). */
-        post: operations["createProjectLocation"];
+        post: operations["createLocationTreeNode"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/v1/orgs/{orgId}/projects/{projectId}/locations/suggest": {
+    "/v1/orgs/{orgId}/projects/{projectId}/location-tree/suggest": {
         parameters: {
             query?: never;
             header?: never;
@@ -728,7 +728,7 @@ export interface paths {
             cookie?: never;
         };
         /** Nova suggests where a new record is, from the words in its title or description. Rule-based; the person confirms. */
-        get: operations["suggestProjectLocations"];
+        get: operations["suggestLocationTreeNodes"];
         put?: never;
         post?: never;
         delete?: never;
@@ -737,7 +737,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}": {
+    "/v1/orgs/{orgId}/projects/{projectId}/location-tree/{locationId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -755,7 +755,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Rename, re-code, move, reorder, archive or restore a location. Send `If-Match`. */
-        patch: operations["updateProjectLocation"];
+        patch: operations["updateLocationTreeNode"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/delay-register": {
@@ -11600,14 +11600,14 @@ export interface components {
             actualDate: string | null;
         };
         /** @enum {string} */
-        LocationKind: "site" | "building" | "wing" | "level" | "zone" | "room" | "area" | "external";
+        LocationTreeKind: "site" | "building" | "wing" | "level" | "zone" | "room" | "area" | "external";
         /** @description A row of the project's location tree. */
         LocationRef: string;
-        ProjectLocation: {
+        LocationTreeNode: {
             id: components["schemas"]["LocationRef"];
             projectId: string;
             parentId: components["schemas"]["LocationRef"] | null;
-            kind: components["schemas"]["LocationKind"];
+            kind: components["schemas"]["LocationTreeKind"];
             name: string;
             code: string | null;
             /** @description "Building A › Level 2 › Unit 201" */
@@ -11617,18 +11617,18 @@ export interface components {
             archived: boolean;
             version: number;
         };
-        LocationList: {
-            data: components["schemas"]["ProjectLocation"][];
+        LocationTreeList: {
+            data: components["schemas"]["LocationTreeNode"][];
         };
-        CreateLocationRequest: {
+        CreateLocationTreeNodeRequest: {
             parentId?: components["schemas"]["LocationRef"] | null;
-            kind?: components["schemas"]["LocationKind"];
+            kind?: components["schemas"]["LocationTreeKind"];
             name: string;
             code?: string | null;
         };
-        UpdateLocationRequest: {
+        UpdateLocationTreeNodeRequest: {
             parentId?: components["schemas"]["LocationRef"] | null;
-            kind?: components["schemas"]["LocationKind"];
+            kind?: components["schemas"]["LocationTreeKind"];
             name?: string;
             code?: string | null;
             sort?: number;
@@ -19784,7 +19784,7 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
-    listProjectLocations: {
+    listLocationTree: {
         parameters: {
             query?: {
                 includeArchived?: "true" | "false";
@@ -19804,13 +19804,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LocationList"];
+                    "application/json": components["schemas"]["LocationTreeList"];
                 };
             };
             default: components["responses"]["Problem"];
         };
     };
-    createProjectLocation: {
+    createLocationTreeNode: {
         parameters: {
             query?: never;
             header?: never;
@@ -19822,7 +19822,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateLocationRequest"];
+                "application/json": components["schemas"]["CreateLocationTreeNodeRequest"];
             };
         };
         responses: {
@@ -19833,13 +19833,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectLocation"];
+                    "application/json": components["schemas"]["LocationTreeNode"];
                 };
             };
             default: components["responses"]["Problem"];
         };
     };
-    suggestProjectLocations: {
+    suggestLocationTreeNodes: {
         parameters: {
             query: {
                 text: string;
@@ -19865,7 +19865,7 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
-    updateProjectLocation: {
+    updateLocationTreeNode: {
         parameters: {
             query?: never;
             header: {
@@ -19881,7 +19881,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateLocationRequest"];
+                "application/json": components["schemas"]["UpdateLocationTreeNodeRequest"];
             };
         };
         responses: {
@@ -19892,7 +19892,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectLocation"];
+                    "application/json": components["schemas"]["LocationTreeNode"];
                 };
             };
             default: components["responses"]["Problem"];

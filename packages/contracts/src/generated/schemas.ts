@@ -2157,16 +2157,16 @@ export const CreateLinkUploadRequestSchema = z.object({
 }).strict();
 export type CreateLinkUploadRequest = z.infer<typeof CreateLinkUploadRequestSchema>;
 
-export const LocationKindSchema = z.enum(["site", "building", "wing", "level", "zone", "room", "area", "external"]);
-export type LocationKind = z.infer<typeof LocationKindSchema>;
+export const LocationTreeKindSchema = z.enum(["site", "building", "wing", "level", "zone", "room", "area", "external"]);
+export type LocationTreeKind = z.infer<typeof LocationTreeKindSchema>;
 
-export const CreateLocationRequestSchema = z.object({
+export const CreateLocationTreeNodeRequestSchema = z.object({
   "parentId": z.union([LocationRefSchema, z.null()]).optional(),
-  "kind": LocationKindSchema.optional(),
+  "kind": LocationTreeKindSchema.optional(),
   "name": z.string().min(1).max(120),
   "code": z.string().min(1).max(30).nullable().optional(),
 }).strict();
-export type CreateLocationRequest = z.infer<typeof CreateLocationRequestSchema>;
+export type CreateLocationTreeNodeRequest = z.infer<typeof CreateLocationTreeNodeRequestSchema>;
 
 export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
 export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
@@ -4640,26 +4640,6 @@ export const LateSubmissionListSchema = z.object({
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
 
-export const ProjectLocationSchema = z.object({
-  "id": LocationRefSchema,
-  "projectId": z.string(),
-  "parentId": z.union([LocationRefSchema, z.null()]),
-  "kind": LocationKindSchema,
-  "name": z.string(),
-  "code": z.string().nullable(),
-  "path": z.string(),
-  "depth": z.number().int().min(1).max(8),
-  "sort": z.number().int(),
-  "archived": z.boolean(),
-  "version": z.number().int(),
-});
-export type ProjectLocation = z.infer<typeof ProjectLocationSchema>;
-
-export const LocationListSchema = z.object({
-  "data": z.array(ProjectLocationSchema),
-});
-export type LocationList = z.infer<typeof LocationListSchema>;
-
 export const LocationSuggestionSchema = z.object({
   "locationId": LocationRefSchema,
   "path": z.string(),
@@ -4671,6 +4651,26 @@ export const LocationSuggestionListSchema = z.object({
   "data": z.array(LocationSuggestionSchema).max(3),
 });
 export type LocationSuggestionList = z.infer<typeof LocationSuggestionListSchema>;
+
+export const LocationTreeNodeSchema = z.object({
+  "id": LocationRefSchema,
+  "projectId": z.string(),
+  "parentId": z.union([LocationRefSchema, z.null()]),
+  "kind": LocationTreeKindSchema,
+  "name": z.string(),
+  "code": z.string().nullable(),
+  "path": z.string(),
+  "depth": z.number().int().min(1).max(8),
+  "sort": z.number().int(),
+  "archived": z.boolean(),
+  "version": z.number().int(),
+});
+export type LocationTreeNode = z.infer<typeof LocationTreeNodeSchema>;
+
+export const LocationTreeListSchema = z.object({
+  "data": z.array(LocationTreeNodeSchema),
+});
+export type LocationTreeList = z.infer<typeof LocationTreeListSchema>;
 
 export const LogEquipmentHoursRequestSchema = z.object({
   "date": z.string().date(),
@@ -7953,15 +7953,15 @@ export const UpdateKeyDatesRequestSchema = z.object({
 }).strict();
 export type UpdateKeyDatesRequest = z.infer<typeof UpdateKeyDatesRequestSchema>;
 
-export const UpdateLocationRequestSchema = z.object({
+export const UpdateLocationTreeNodeRequestSchema = z.object({
   "parentId": z.union([LocationRefSchema, z.null()]).optional(),
-  "kind": LocationKindSchema.optional(),
+  "kind": LocationTreeKindSchema.optional(),
   "name": z.string().min(1).max(120).optional(),
   "code": z.string().min(1).max(30).nullable().optional(),
   "sort": z.number().int().min(0).max(1000000).optional(),
   "archived": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
-export type UpdateLocationRequest = z.infer<typeof UpdateLocationRequestSchema>;
+export type UpdateLocationTreeNodeRequest = z.infer<typeof UpdateLocationTreeNodeRequestSchema>;
 
 export const UpdateMarkupRequestSchema = z.object({
   "visibility": MarkupVisibilitySchema.optional(),

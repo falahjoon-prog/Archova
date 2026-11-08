@@ -1,18 +1,18 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
-import { projectLocations, type LocationKind } from '../infra/tables';
+import { projectLocationTree, type LocationTreeKind } from '../infra/tables';
 import { uniqueViolation } from './errors';
 import type { ProjectService } from './projects';
 
-export type LocationRow = typeof projectLocations.$inferSelect;
+export type TreeNodeRow = typeof projectLocationTree.$inferSelect;
 
 /** Depth of the deepest allowed node (site > building > wing > level > zone > room > area > detail). */
 export const MAX_LOCATION_DEPTH = 8;
 export const MAX_LOCATIONS_PER_PROJECT = 3000;
 export const PATH_SEPARATOR = ' › ';
 
-export interface LocationView extends LocationRow {
+export interface TreeNodeView extends TreeNodeRow {
   /** "Building A › Level 2 › Unit 201". Archived ancestors still count so old records read right. */
   path: string;
   depth: number;
@@ -20,14 +20,14 @@ export interface LocationView extends LocationRow {
 
 export interface CreateLocationInput {
   parentId?: string | null;
-  kind?: LocationKind;
+  kind?: LocationTreeKind;
   name: string;
   code?: string | null;
 }
 
 export interface UpdateLocationInput {
   parentId?: string | null;
-  kind?: LocationKind;
+  kind?: LocationTreeKind;
   name?: string;
   code?: string | null;
   sort?: number;
@@ -48,10 +48,10 @@ const bad = (path: string, message: string) =>
 const clean = (s: string) => s.trim().replace(/\s+/g, ' ');
 
 /** Adds `path` and `depth` to every row. Pure, so it is easy to test. */
-export function withPaths(rows: LocationRow[]): LocationView[] {
+export function withPaths(rows: TreeNodeRow[]): TreeNodeView[] {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const cache = new Map<string, { path: string; depth: number }>();
-  const walk = (r: LocationRow): { path: string; depth: number } => {
+  const walk = (r: TreeNodeRow): { path: string; depth: number } => {
     const hit = cache.get(r.id);
     if (hit) return hit;
     cache.set(r.id, { path: r.name, depth: 1 }); // guards a cycle that should never exist
@@ -75,7 +75,7 @@ const tokens = (s: string) => (s.toLowerCase().match(WORD) ?? []).filter((t) => 
  * "level 2"-style phrase on the path scores; deeper matches win ties. The person confirms; nothing is saved here.
  */
 export function suggestLocations(
-  views: LocationView[],
+  views: TreeNodeView[],
   text: string,
   limit = 3,
 ): LocationSuggestion[] {
@@ -90,7 +90,7 @@ export function suggestLocations(
     let score = 0;
     const hits: string[] = [];
     // Walk this node and its ancestors; a match on the node itself counts most.
-    let node: LocationView | undefined = v;
+    let node: TreeNodeView | undefined = v;
     let weight = 3;
     while (node) {
       const name = node.name.toLowerCase();
@@ -122,26 +122,30 @@ export function suggestLocations(
   return out.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, limit);
 }
 
-export function createLocationService(deps: { projects: ProjectService }) {
-  async function all(scope: TenantScope, projectId: string): Promise<LocationRow[]> {
+export function createLocationTreeService(deps: { projects: ProjectService }) {
+  async function all(scope: TenantScope, projectId: string): Promise<TreeNodeRow[]> {
     return scope.tx
       .select()
-      .from(projectLocations)
-      .where(eq(projectLocations.projectId, projectId))
-      .orderBy(asc(projectLocations.sort), asc(projectLocations.name), asc(projectLocations.id));
+      .from(projectLocationTree)
+      .where(eq(projectLocationTree.projectId, projectId))
+      .orderBy(
+        asc(projectLocationTree.sort),
+        asc(projectLocationTree.name),
+        asc(projectLocationTree.id),
+      );
   }
 
   async function list(
     scope: TenantScope,
     projectId: string,
     opts: { includeArchived?: boolean } = {},
-  ): Promise<LocationView[]> {
+  ): Promise<TreeNodeView[]> {
     await deps.projects.get(scope, projectId);
     const views = withPaths(await all(scope, projectId));
     return opts.includeArchived ? views : views.filter((v) => !v.archivedAt);
   }
 
-  async function get(scope: TenantScope, projectId: string, id: string): Promise<LocationView> {
+  async function get(scope: TenantScope, projectId: string, id: string): Promise<TreeNodeView> {
     const rows = await all(scope, projectId);
     const row = withPaths(rows).find((v) => v.id === id);
     if (!row) throw new AppError('location.not_found');
@@ -192,7 +196,7 @@ export function createLocationService(deps: { projects: ProjectService }) {
   async function checkParent(
     scope: TenantScope,
     projectId: string,
-    rows: LocationRow[],
+    rows: TreeNodeRow[],
     parentId: string | null,
     movingId?: string,
   ) {
@@ -204,7 +208,7 @@ export function createLocationService(deps: { projects: ProjectService }) {
     if (parent.archivedAt) throw bad('parentId', 'The parent location is archived.');
     if (movingId) {
       // Never move a place under itself or one of its own descendants.
-      let node: LocationRow | undefined = parent;
+      let node: TreeNodeRow | undefined = parent;
       const byId = new Map(rows.map((r) => [r.id, r]));
       while (node) {
         if (node.id === movingId)
@@ -220,8 +224,8 @@ export function createLocationService(deps: { projects: ProjectService }) {
       );
   }
 
-  function subtreeHeight(rows: LocationRow[], id: string): number {
-    const kids = new Map<string, LocationRow[]>();
+  function subtreeHeight(rows: TreeNodeRow[], id: string): number {
+    const kids = new Map<string, TreeNodeRow[]>();
     for (const r of rows)
       if (r.parentId) kids.set(r.parentId, [...(kids.get(r.parentId) ?? []), r]);
     const h = (n: string): number => Math.max(0, ...(kids.get(n) ?? []).map((k) => 1 + h(k.id)));
@@ -252,7 +256,7 @@ export function createLocationService(deps: { projects: ProjectService }) {
     const siblings = rows.filter((r) => r.parentId === parentId);
     const id = uuidv7();
     try {
-      await scope.tx.insert(projectLocations).values({
+      await scope.tx.insert(projectLocationTree).values({
         id,
         orgId: scope.ctx.orgId,
         projectId,
@@ -292,7 +296,7 @@ export function createLocationService(deps: { projects: ProjectService }) {
     const current = rows.find((r) => r.id === id);
     if (!current) throw new AppError('location.not_found');
     if (current.version !== expectedVersion) throw versionConflict();
-    const set: Partial<typeof projectLocations.$inferInsert> = {};
+    const set: Partial<typeof projectLocationTree.$inferInsert> = {};
     if (patch.name !== undefined) set.name = clean(patch.name);
     if (patch.code !== undefined) set.code = patch.code?.trim() || null;
     if (patch.kind !== undefined) set.kind = patch.kind;
@@ -317,15 +321,17 @@ export function createLocationService(deps: { projects: ProjectService }) {
     if (!Object.keys(set).length) return get(scope, projectId, id);
     try {
       const updated = await scope.tx
-        .update(projectLocations)
+        .update(projectLocationTree)
         .set({
           ...set,
           updatedAt: new Date(),
           updatedBy: scope.ctx.userId,
           version: current.version + 1,
         })
-        .where(and(eq(projectLocations.id, id), eq(projectLocations.version, expectedVersion)))
-        .returning({ id: projectLocations.id });
+        .where(
+          and(eq(projectLocationTree.id, id), eq(projectLocationTree.version, expectedVersion)),
+        )
+        .returning({ id: projectLocationTree.id });
       if (!updated.length) throw versionConflict();
     } catch (e) {
       if (uniqueViolation(e) !== null)
@@ -350,4 +356,4 @@ export function createLocationService(deps: { projects: ProjectService }) {
   return { list, get, create, update, resolve, paths, suggest };
 }
 
-export type LocationService = ReturnType<typeof createLocationService>;
+export type LocationTreeService = ReturnType<typeof createLocationTreeService>;

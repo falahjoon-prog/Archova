@@ -6,10 +6,10 @@ import type {
   MembershipSummary,
   Org,
   Project,
-  ProjectLocation,
+  LocationTreeNode,
   ProjectMember,
 } from '@archova/contracts';
-import type { LocationView } from '../application/locations';
+import type { TreeNodeView } from '../application/location-tree';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
 import type { companies, orgs, projectMembers, projects } from '../infra/tables';
 
@@ -114,7 +114,7 @@ export const toKeyDateChangeDto = (
   changedAt: c.changedAt.toISOString(),
 });
 
-export const toLocationDto = (l: LocationView): ProjectLocation => ({
+export const toLocationDto = (l: TreeNodeView): LocationTreeNode => ({
   id: encodeId('location', l.id),
   projectId: encodeId('project', l.projectId),
   parentId: l.parentId ? encodeId('location', l.parentId) : null,

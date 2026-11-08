@@ -20,7 +20,7 @@ describe('projectToolGroups', () => {
       'Site diary',
       'Delay register',
       'Programme',
-      'Locations',
+      'Location tree',
       'Attendance',
       'Defects',
       'Inspections',
@@ -53,7 +53,7 @@ describe('projectToolGroups', () => {
       'Drawings',
       'Specifications',
       'Transmittals',
-      'Locations',
+      'Location tree',
       'Defects',
       'Tender packages',
       'Estimates',
@@ -72,7 +72,7 @@ describe('projectToolGroups', () => {
       toolLevels: { defects: 'read' },
     });
     expect(groups.filter((g) => g.id).map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
-      ['Site & programme', ['Locations']],
+      ['Site & programme', ['Location tree']],
       ['Quality & safety', ['Defects']],
       ['Estimating', ['Tender packages', 'Estimates', 'Cost library']],
     ]);

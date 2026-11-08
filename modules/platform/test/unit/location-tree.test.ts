@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { suggestLocations, withPaths, type LocationRow } from '../../src/application/locations';
+import { suggestLocations, withPaths, type TreeNodeRow } from '../../src/application/location-tree';
 
 let n = 0;
 const row = (
   name: string,
   parentId: string | null,
-  extra: Partial<LocationRow> = {},
-): LocationRow => ({
+  extra: Partial<TreeNodeRow> = {},
+): TreeNodeRow => ({
   id: `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`,
   orgId: 'o',
   projectId: 'p',
