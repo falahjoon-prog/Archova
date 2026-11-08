@@ -59,6 +59,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
               ? [
                   {

@@ -16,6 +16,7 @@ import {
   TextField,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useSheetPicker } from '@/features/drawings';
@@ -155,6 +156,13 @@ function DefectView({ d }: { d: Defect }) {
 
   const actions = (
     <>
+      <BookmarkButton
+        entityType="defect"
+        entityId={d.id}
+        projectId={project.projectId}
+        title={`${formatDefectNumber(d.number)} ${d.title}`}
+        subtitle={STATUS_LABELS[d.status]}
+      />
       {defectCan(d, 'issue') && d.assigneeCompanyId ? (
         <Button disabled={m.issue.isPending} onClick={() => m.issue.mutate(d.id)}>
           Send to company

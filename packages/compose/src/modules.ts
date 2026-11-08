@@ -29,6 +29,7 @@ import {
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
+import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
@@ -51,6 +52,7 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
@@ -91,6 +93,7 @@ export const MODULE_PERMISSIONS = [
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
+  INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -306,6 +309,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
@@ -337,6 +341,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     safety: safety.api,
   });
   qualityApi = quality.api;
+
+  const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
@@ -531,11 +537,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
     financials,
     quality,
     precon,
     safety,
+    insurance,
     estimating,
     integrations,
     diary,
@@ -572,11 +580,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
     financials,
     quality,
     precon,
     safety,
+    insurance,
     estimating,
     integrations,
     sync,
