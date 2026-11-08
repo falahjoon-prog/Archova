@@ -3017,6 +3017,20 @@ export const GetBudgetReviewChecksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetBudgetForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SaveBudgetForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SaveBudgetForecastBody = z.object({
+  "lines": z.array(z.object({
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "entries": z.record(z.string(), s.FinancialsMoneySchema),
+}).strict()).max(400),
+}).strict();
 export const GetBudgetCostReportParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -10164,6 +10178,30 @@ export const operations = {
     params: GetBudgetReviewChecksParams,
     query: null,
     body: null,
+  },
+  getBudgetForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetForecastParams,
+    query: null,
+    body: null,
+  },
+  saveBudgetForecast: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveBudgetForecastParams,
+    query: null,
+    body: SaveBudgetForecastBody,
   },
   getBudgetCostReport: {
     method: 'GET',

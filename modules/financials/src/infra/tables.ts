@@ -320,6 +320,18 @@ export const budgetLines = financialsSchema.table('budget_lines', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const budgetForecastEntries = financialsSchema.table('budget_forecast_entries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  /** First day of the month. */
+  month: date('month').notNull(),
+  amount: money('amount').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
 export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
