@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, EmptyState, Select, StatGrid, ToneBars } from '@archova/ui';
+import { Card, EmptyState, FlowBars, Select, StatGrid, ToneBars } from '@archova/ui';
 import { formatMoney } from '@/shared/lib/format';
 import type { Portfolio } from '../lib/types';
+import { cashFlow } from '../lib/cashFlow';
 import {
   costRollup,
   scheduleSummary,
@@ -30,6 +31,7 @@ export function StatusReport({ portfolio }: { portfolio: Portfolio }) {
   const cost = costRollup(projects);
   const counts = statusCount(projects);
   const sched = scheduleSummary(projects);
+  const flow = cashFlow(projects);
   const over = cost.overUnder.startsWith('-');
   return (
     <div className="stack-lg">
@@ -64,6 +66,32 @@ export function StatusReport({ portfolio }: { portfolio: Portfolio }) {
           description="Projects with a budget you can read appear here."
         />
       )}
+      <Card title="Cash flow by month">
+        {flow.length > 0 ? (
+          <div className="stack">
+            <FlowBars
+              ariaLabel="Spend by month with running total"
+              rows={flow.map((m) => ({
+                id: m.month,
+                label: m.label,
+                value: Number(m.spent),
+                formatted: aud(m.spent),
+                cumulative: aud(m.cumulative),
+              }))}
+            />
+            <p className="u-muted">
+              Subcontract claims by the month their period ends, plus direct costs by the month
+              incurred. The latest 12 months; the running total starts from the first month with
+              spend.
+            </p>
+          </div>
+        ) : (
+          <EmptyState
+            title="No spend recorded yet"
+            description="Claims and direct costs on projects you can read appear here by month."
+          />
+        )}
+      </Card>
       <div className="chart-grid">
         <Card title="Project count by status">
           <ToneBars bars={statusBars(counts)} ariaLabel="Projects by budget and schedule status" />

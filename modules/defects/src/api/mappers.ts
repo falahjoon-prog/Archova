@@ -34,6 +34,10 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   managerUserId: userOrNull(r.managerUserId),
   finalApproverUserId: userOrNull(r.finalApproverUserId),
   distributionUserIds: r.distributionUserIds.map((u) => encodeId('user', u)),
+  approverDelegateUserId: userOrNull(r.approverDelegateUserId),
+  approverDelegateFrom: r.approverDelegateFrom,
+  approverDelegateUntil: r.approverDelegateUntil,
+  requireCloseEvidence: r.requireCloseEvidence,
   dueDate: r.dueDate,
   isOverdue: r.isOverdue,
   raisedByCompanyId: companyOrNull(r.raisedByCompanyId),
@@ -44,8 +48,10 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   source: r.source,
   warrantyItemId: r.warrantyItemId ? encodeId('warrantyItem', r.warrantyItemId) : null,
   availableActions: [
-    ...new Set(actorsFor(r, viewer).flatMap((a) => availableDefectActions(r.status, a))),
-  ].filter((a) => defectApproverRule(r, a, viewer.userId)),
+    ...new Set(
+      actorsFor(r, viewer, r.localToday).flatMap((a) => availableDefectActions(r.status, a)),
+    ),
+  ].filter((a) => defectApproverRule(r, a, viewer.userId, r.localToday)),
   createdBy: userOrNull(r.createdBy),
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),
@@ -61,6 +67,7 @@ export const toEventDto = (e: EventRow): DefectEvent => ({
   note: e.note,
   fileIds: e.fileIds.map((f) => encodeId('file', f)),
   actorId: userOrNull(e.actorId),
+  onBehalfOf: userOrNull(e.onBehalfOf),
   at: e.at.toISOString(),
 });
 

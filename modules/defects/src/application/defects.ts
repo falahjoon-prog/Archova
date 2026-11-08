@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-
 import {
   DEFECT_ACTIONS,
   defectLabel,
+  isActiveDelegate,
   hasDefectLocation,
   uuidv7,
   type DefectAction,
@@ -33,7 +34,7 @@ import { defects, events, warrantyItems } from '../infra/tables';
 
 export type DefectRow = typeof defects.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
-export type DefectView = DefectRow & { isOverdue: boolean };
+export type DefectView = DefectRow & { isOverdue: boolean; localToday: string };
 
 export interface DefectsDeps {
   access: AccessService;
@@ -60,6 +61,12 @@ export interface DefectFields {
   finalApproverUserId?: string | null;
   /** Notified of changes but not assigned. */
   distributionUserIds?: string[];
+  /** A stand-in for the final approver between two project-local dates (inclusive). */
+  approverDelegateUserId?: string | null;
+  approverDelegateFrom?: string | null;
+  approverDelegateUntil?: string | null;
+  /** Closing needs a note or photo as evidence. */
+  requireCloseEvidence?: boolean;
   dueDate?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
   /** The warranty item a liability-period claim is against; null clears it. */
@@ -95,6 +102,7 @@ export function createDefectService(deps: DefectsDeps) {
 
   const view = (r: DefectRow, localToday: string): DefectView => ({
     ...r,
+    localToday,
     isOverdue:
       (r.status === 'open' || r.status === 'disputed') &&
       r.dueDate !== null &&
@@ -109,7 +117,7 @@ export function createDefectService(deps: DefectsDeps) {
       ? sql`(${defects.createdBy} = ${v.userId} or ${defects.raisedByCompanyId} = ${company})`
       : sql`${defects.createdBy} = ${v.userId}`;
     const assigned = company ? sql`${defects.assigneeCompanyId} = ${company}` : sql`false`;
-    const named = sql`(${defects.managerUserId} = ${v.userId} or ${defects.finalApproverUserId} = ${v.userId}
+    const named = sql`(${defects.managerUserId} = ${v.userId} or ${defects.finalApproverUserId} = ${v.userId} or ${defects.approverDelegateUserId} = ${v.userId}
              or ${v.userId}::uuid = any(${defects.assigneeUserIds}) or ${v.userId}::uuid = any(${defects.distributionUserIds}))`;
     return sql`((${defects.status} = 'draft' and ${defects.createdBy} = ${v.userId})
              or (${defects.status} <> 'draft' and (${raised} or ${assigned} or ${named})))`;
@@ -277,7 +285,13 @@ export function createDefectService(deps: DefectsDeps) {
   async function recordEvent(
     scope: TenantScope,
     row: DefectRow,
-    e: { action: string; from: DefectStatus | null; note?: string | null; fileIds?: string[] },
+    e: {
+      action: string;
+      from: DefectStatus | null;
+      note?: string | null;
+      fileIds?: string[];
+      onBehalfOf?: string | null;
+    },
   ) {
     await scope.tx.insert(events).values({
       id: uuidv7(),
@@ -290,6 +304,7 @@ export function createDefectService(deps: DefectsDeps) {
       note: e.note ?? null,
       fileIds: e.fileIds ?? [],
       actorId: scope.ctx.userId,
+      onBehalfOf: e.onBehalfOf ?? null,
       at: now(),
     });
   }
@@ -299,6 +314,7 @@ export function createDefectService(deps: DefectsDeps) {
     const all = new Set<string>([
       ...(r.managerUserId ? [r.managerUserId] : []),
       ...(r.finalApproverUserId ? [r.finalApproverUserId] : []),
+      ...(r.approverDelegateUserId ? [r.approverDelegateUserId] : []),
       ...r.assigneeUserIds,
       ...r.distributionUserIds,
     ]);
@@ -357,6 +373,21 @@ export function createDefectService(deps: DefectsDeps) {
         await checkMember(scope, projectId, f.finalApproverUserId, 'finalApproverUserId');
       v.finalApproverUserId = f.finalApproverUserId;
     }
+    if (f.approverDelegateUserId !== undefined) {
+      if (f.approverDelegateUserId)
+        await checkMember(scope, projectId, f.approverDelegateUserId, 'approverDelegateUserId');
+      v.approverDelegateUserId = f.approverDelegateUserId;
+      // Clearing the stand-in clears their dates unless the caller sends new ones.
+      if (!f.approverDelegateUserId) {
+        v.approverDelegateFrom = f.approverDelegateFrom ?? null;
+        v.approverDelegateUntil = f.approverDelegateUntil ?? null;
+      }
+    }
+    if (f.approverDelegateUserId !== null) {
+      if (f.approverDelegateFrom !== undefined) v.approverDelegateFrom = f.approverDelegateFrom;
+      if (f.approverDelegateUntil !== undefined) v.approverDelegateUntil = f.approverDelegateUntil;
+    }
+    if (f.requireCloseEvidence !== undefined) v.requireCloseEvidence = f.requireCloseEvidence;
     if (f.distributionUserIds !== undefined) {
       const ids = [...new Set(f.distributionUserIds)];
       for (const [i, id] of ids.entries())
@@ -389,6 +420,14 @@ export function createDefectService(deps: DefectsDeps) {
     return v;
   }
 
+  /** The stand-in's dates must run forwards. */
+  function checkDelegateDates(from: string | null | undefined, until: string | null | undefined) {
+    if (from && until && from > until)
+      throw new AppError('validation_failed', 'The stand-in dates must run forwards.', [
+        { path: 'approverDelegateUntil', message: 'Must be on or after the start date' },
+      ]);
+  }
+
   async function create(
     scope: TenantScope,
     projectId: string,
@@ -397,6 +436,7 @@ export function createDefectService(deps: DefectsDeps) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
     const values = await fieldValues(scope, projectId, input);
+    checkDelegateDates(values.approverDelegateFrom, values.approverDelegateUntil);
     if (!hasDefectLocation({ sheetId: values.sheetId, pinX: values.pinX, pinY: values.pinY }))
       throw new AppError('defect.location_required', 'Pin the defect on a drawing.', [
         { path: 'pin', message: 'A drawing pin is required' },
@@ -463,6 +503,12 @@ export function createDefectService(deps: DefectsDeps) {
       throw new AppError('access.denied', "You can't change this defect.");
     if (defect.version !== expectedVersion) throw versionConflict();
     const values = await fieldValues(scope, projectId, patch);
+    checkDelegateDates(
+      'approverDelegateFrom' in values ? values.approverDelegateFrom : defect.approverDelegateFrom,
+      'approverDelegateUntil' in values
+        ? values.approverDelegateUntil
+        : defect.approverDelegateUntil,
+    );
     const company =
       'assigneeCompanyId' in values ? (values.assigneeCompanyId ?? null) : defect.assigneeCompanyId;
     for (const u of values.assigneeUserIds ?? [])
@@ -523,11 +569,17 @@ export function createDefectService(deps: DefectsDeps) {
     // Photos the phone attached one by one before this step (`attachPhoto`) count as its "after" evidence.
     const attachedAfter =
       input.action === 'markReadyForReview' ? await attachedPhotos(scope, defectId, 'after') : 0;
-    const result = resolveTransition(defect, v, {
-      action: input.action,
-      reason: input.reason ?? null,
-      photoCount: fileIds.length + attachedAfter,
-    });
+    const localToday = await today(scope, projectId);
+    const result = resolveTransition(
+      defect,
+      v,
+      {
+        action: input.action,
+        reason: input.reason ?? null,
+        photoCount: fileIds.length + attachedAfter,
+      },
+      localToday,
+    );
     if (!result.ok) {
       const messages: Record<typeof result.code, string> = {
         'defect.invalid_transition': `A defect that is ${defect.status} can't be ${verb(input.action)}.`,
@@ -537,13 +589,14 @@ export function createDefectService(deps: DefectsDeps) {
             : `You can't ${input.action} this defect.`,
         'defect.reason_required': 'Give a reason.',
         'defect.photo_required': 'Attach an "after" photo before marking it ready.',
+        'defect.evidence_required': 'Add a note or a photo as evidence before closing.',
       };
       throw new AppError(
         result.code,
         messages[result.code],
         result.code === 'defect.reason_required'
           ? [{ path: 'reason', message: 'Required' }]
-          : result.code === 'defect.photo_required'
+          : result.code === 'defect.photo_required' || result.code === 'defect.evidence_required'
             ? [{ path: 'fileIds', message: 'At least one photo is required' }]
             : undefined,
         { status: defect.status },
@@ -595,6 +648,14 @@ export function createDefectService(deps: DefectsDeps) {
         ? `${input.lateNote}${input.reason ? `. The sender wrote: ${input.reason}` : ''}`
         : (input.reason ?? null),
       fileIds,
+      // A stand-in acting for the named approver: the history says whose call it was.
+      onBehalfOf:
+        defect.finalApproverUserId &&
+        defect.finalApproverUserId !== scope.ctx.userId &&
+        ['close', 'reject', 'reopen'].includes(input.action) &&
+        isActiveDelegate(defect, scope.ctx.userId, localToday)
+          ? defect.finalApproverUserId
+          : null,
     });
     await changed(scope, row);
     scope.events.add({
@@ -758,7 +819,7 @@ export function createDefectService(deps: DefectsDeps) {
   /** Portfolio dashboard (`reporting`): defects the caller can see that are still open, and those past their due date. */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const date = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -772,10 +833,16 @@ export function createDefectService(deps: DefectsDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} >= ${date}::date and ${defects.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(defects)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): defects the caller can see, one flat row each. `state` open = not yet closed. */
