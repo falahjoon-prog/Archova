@@ -148,6 +148,26 @@ export const ListKeyDateChangesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const ListProjectLocationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectLocationBody = s.CreateProjectLocationRequestSchema;
+export const UpdateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^plc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectLocationBody = s.UpdateProjectLocationRequestSchema;
+export const DeleteProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^plc_[0-9A-Za-z]{26}$")),
+});
 export const GetDelayRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3219,6 +3239,60 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListCoversParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCoversQuery = z.object({
+  "kind": s.CoverKindSchema.optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.CoverStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCoverBody = s.CreateCoverRequestSchema;
+export const ListCoverFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCoverFlagsQuery = z.object({
+  "windowDays": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const GetCoverRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetCoverRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetCoverRequirementsBody = s.SetCoverRequirementsRequestSchema;
+export const GetCompanyClearanceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")),
+});
+export const GetCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoverBody = s.UpdateCoverRequestSchema;
+export const TransitionCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const TransitionCoverBody = s.CoverTransitionRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -3775,6 +3849,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ListKeyDateChangesParams,
+    query: null,
+    body: null,
+  },
+  listProjectLocations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectLocationsParams,
+    query: null,
+    body: null,
+  },
+  createProjectLocation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectLocationParams,
+    query: null,
+    body: CreateProjectLocationBody,
+  },
+  updateProjectLocation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectLocationParams,
+    query: null,
+    body: UpdateProjectLocationBody,
+  },
+  deleteProjectLocation: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: null,
+    params: DeleteProjectLocationParams,
     query: null,
     body: null,
   },
@@ -10313,6 +10435,114 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listCovers: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: ListCoversParams,
+    query: ListCoversQuery,
+    body: null,
+  },
+  createCover: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCoverParams,
+    query: null,
+    body: CreateCoverBody,
+  },
+  listCoverFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/flags',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: ListCoverFlagsParams,
+    query: ListCoverFlagsQuery,
+    body: null,
+  },
+  getCoverRequirements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/requirements',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCoverRequirementsParams,
+    query: null,
+    body: null,
+  },
+  setCoverRequirements: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/requirements',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetCoverRequirementsParams,
+    query: null,
+    body: SetCoverRequirementsBody,
+  },
+  getCompanyClearance: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/companies/{companyId}/clearance',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCompanyClearanceParams,
+    query: null,
+    body: null,
+  },
+  getCover: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCoverParams,
+    query: null,
+    body: null,
+  },
+  updateCover: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCoverParams,
+    query: null,
+    body: UpdateCoverBody,
+  },
+  transitionCover: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}/transition',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionCoverParams,
+    query: null,
+    body: TransitionCoverBody,
   },
 } as const satisfies Record<string, OperationDef>;
 

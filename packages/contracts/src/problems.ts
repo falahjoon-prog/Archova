@@ -78,6 +78,7 @@ export const PROBLEM_CODES = {
   'project_member.user_not_found': 422,
   'project_member.not_found': 404,
   'project_member.cannot_remove_self': 422,
+  'project_location.not_found': 404,
   'company.not_found': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
@@ -374,6 +375,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // insurance: subcontractor insurance and bonds register
+  'cover.not_found': 404,
+  'cover.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,

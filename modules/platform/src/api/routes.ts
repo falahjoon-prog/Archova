@@ -17,6 +17,7 @@ import {
 } from '../application/branding';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
+import type { LocationService } from '../application/locations';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
@@ -24,6 +25,7 @@ import {
   toCompanyDto,
   toKeyDateChangeDto,
   toKeyDatesDto,
+  toProjectLocationDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
@@ -54,6 +56,7 @@ export interface PlatformRouteDeps {
   branding: BrandingService;
   projects: ProjectService;
   keyDates: KeyDateService;
+  locations: LocationService;
   companies: CompanyService;
   members: MemberService;
   accountDeletion: AccountDeletionService;
@@ -71,6 +74,12 @@ const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) =>
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
   if (!uuid) throw new AppError('project.not_found');
+  return uuid;
+};
+
+const locationUuid = (id: string) => {
+  const uuid = decodeId('projectLocation', id);
+  if (!uuid) throw new AppError('project_location.not_found');
   return uuid;
 };
 
@@ -280,6 +289,47 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       const names = new Map([...users].map(([uid, u]) => [uid, u.name]));
       return { status: 200, body: { data: rows.map((r) => toKeyDateChangeDto(r, names)) } };
+    },
+    listProjectLocations: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.locations.list(s, id),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toProjectLocationDto) } };
+    },
+    createProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.create(s, id, input.body),
+      );
+      return {
+        status: 201,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    updateProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.update(s, id, locationId, expected, input.body),
+      );
+      return {
+        status: 200,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    deleteProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.remove(s, id, locationId),
+      );
+      return { status: 204 };
     },
     listProjectMembers: async (input) => {
       const id = projectUuid(input.params.projectId);

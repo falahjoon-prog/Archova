@@ -6,6 +6,7 @@ import { createAccountDeletionService } from './application/account-deletion';
 import { createBrandingService, type BrandingFilesPort } from './application/branding';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
+import { createLocationService } from './application/locations';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
@@ -42,6 +43,7 @@ export function createPlatformModule(
   const branding = createBrandingService(() => deps.files?.());
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
+  const locations = createLocationService({ projects });
   const companies = createCompanyService();
   const accountDeletion = createAccountDeletionService({
     database: services.database,
@@ -59,6 +61,7 @@ export function createPlatformModule(
       branding,
       projects,
       keyDates,
+      locations,
       companies,
       members,
       accountDeletion,
