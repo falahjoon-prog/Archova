@@ -4,7 +4,8 @@ import type { EligibilityReason } from './attendance';
 // record, their wallet cards, the site induction and the SWMS their company works under. Pure rules; the
 // service gathers the facts. Rule-based on purpose: no model call and no credit cost, so it can run on every scan.
 
-export type ClearanceCheckKey = 'worker' | 'white_card' | 'licences' | 'induction' | 'swms';
+export type ClearanceCheckKey =
+  'worker' | 'white_card' | 'licences' | 'induction' | 'swms' | 'insurance';
 export type ClearanceStatus = 'pass' | 'warn' | 'fail' | 'na';
 export type ClearanceResult = 'cleared' | 'warning' | 'blocked';
 
@@ -37,6 +38,14 @@ export interface ClearanceSwms {
   acknowledged: boolean | null;
 }
 
+/** What `insurance` reports about the worker's company on this project: certificates of currency and bonds. */
+export interface ClearanceInsurance {
+  state: 'cleared' | 'warning' | 'blocked';
+  /** False when the project has set no requirements and nothing is recorded, so there is nothing to check. */
+  checked: boolean;
+  messages: { level: 'blocking' | 'warning'; text: string }[];
+}
+
 export interface ClearanceFacts {
   /** Today in the project's time zone, `yyyy-mm-dd`. */
   today: string;
@@ -45,6 +54,8 @@ export interface ClearanceFacts {
   /** Reasons from the induction source (X54): `induction.*` and `white_card.missing`; null if no site is set up. */
   inductionReasons: EligibilityReason[] | null;
   swms: ClearanceSwms[];
+  /** Null when the worker has no company or the insurance register is not connected. */
+  insurance?: ClearanceInsurance | null;
 }
 
 export interface ClearanceOutcome {
@@ -200,6 +211,33 @@ export function evaluateClearance(f: ClearanceFacts): ClearanceOutcome {
         : 'Read and acknowledged',
     });
 
+  // The worker's company's insurance and bonds: a missing or expired certificate blocks the company's workers.
+  const ins = f.insurance;
+  if (!ins || !ins.checked)
+    checks.push({
+      key: 'insurance',
+      label: 'Company insurance',
+      status: 'na',
+      detail: ins ? 'No insurance requirements set for this project' : 'No company on record',
+    });
+  else if (ins.state === 'cleared')
+    checks.push({
+      key: 'insurance',
+      label: 'Company insurance',
+      status: 'pass',
+      detail: 'Certificates and bonds in date',
+    });
+  else
+    checks.push({
+      key: 'insurance',
+      label: 'Company insurance',
+      status: ins.state === 'blocked' ? 'fail' : 'warn',
+      detail: ins.messages
+        .filter((m) => (ins.state === 'blocked' ? m.level === 'blocking' : true))
+        .map((m) => m.text.replace(/\.$/, ''))
+        .join('; '),
+    });
+
   const failed = checks.filter((c) => c.status === 'fail');
   const warned = checks.filter((c) => c.status === 'warn');
   const result: ClearanceResult = failed.length ? 'blocked' : warned.length ? 'warning' : 'cleared';
@@ -211,6 +249,7 @@ const ACTION: Record<ClearanceCheckKey, string> = {
   white_card: 'Hold at the gate until a current white card is recorded.',
   licences: 'Stop high-risk work for this person until the licence is renewed and recorded.',
   induction: 'Send them the site induction link and hold entry until it is signed.',
+  insurance: 'Hold the company at the gate until a current certificate or bond is recorded.',
   swms: 'Have them open and acknowledge the SWMS on their phone before starting work.',
 };
 

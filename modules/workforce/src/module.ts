@@ -8,7 +8,7 @@ import { createSiteActivityService } from './application/site-activity';
 import { createRosterService } from './application/roster';
 import { createBadgeService } from './application/badge';
 import { createClearanceService } from './application/clearance';
-import type { ClearanceSwms } from './domain/clearance';
+import type { ClearanceInsurance, ClearanceSwms } from './domain/clearance';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -28,6 +28,12 @@ export function createWorkforceModule(
       projectId: string,
       worker: { companyId: string | null; userId: string | null },
     ) => Promise<ClearanceSwms[]>;
+    /** Site clearance: the worker's company's insurance and bonds, read from `insurance`. */
+    clearanceInsurance?: (
+      scope: Parameters<ComplianceSource>[0],
+      projectId: string,
+      companyId: string,
+    ) => Promise<ClearanceInsurance>;
   },
 ) {
   // The induction rules join the X54 compliance interface ahead of any sources passed in.
@@ -53,6 +59,7 @@ export function createWorkforceModule(
     files: deps.files,
     inductionSource: inductions.gateSource,
     ...(deps.clearanceSwms ? { swms: deps.clearanceSwms } : {}),
+    ...(deps.clearanceInsurance ? { insurance: deps.clearanceInsurance } : {}),
     ...(deps.now ? { now: deps.now } : {}),
   });
   const roster = createRosterService({

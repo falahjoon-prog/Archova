@@ -28070,7 +28070,8 @@ components:
             type: object
             required: [key, label, status, detail]
             properties:
-              key: { type: string, enum: [worker, white_card, licences, induction, swms] }
+              key:
+                { type: string, enum: [worker, white_card, licences, induction, swms, insurance] }
               label: { type: string }
               status: { type: string, enum: [pass, warn, fail, na] }
               detail: { type: string }

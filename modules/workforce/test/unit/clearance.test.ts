@@ -75,4 +75,42 @@ describe('evaluateClearance', () => {
   it('blocks an inactive worker', () => {
     expect(evaluateClearance({ ...base, workerActive: false }).result).toBe('blocked');
   });
+
+  describe('company insurance', () => {
+    const ins = (
+      state: 'cleared' | 'warning' | 'blocked',
+      messages: { level: 'blocking' | 'warning'; text: string }[] = [],
+      checked = true,
+    ) => ({ ...base, insurance: { state, checked, messages } });
+
+    it('is not applicable without a company or without anything to check', () => {
+      expect(status(base, 'insurance')).toBe('na');
+      expect(status(ins('cleared', [], false), 'insurance')).toBe('na');
+      expect(evaluateClearance(ins('cleared', [], false)).result).toBe('cleared');
+    });
+    it('passes when certificates and bonds are in date', () => {
+      expect(status(ins('cleared'), 'insurance')).toBe('pass');
+    });
+    it('warns without blocking when a certificate is about to expire', () => {
+      const r = evaluateClearance(
+        ins('warning', [{ level: 'warning', text: 'INS-0001 expires in 9 days.' }]),
+      );
+      expect(r.result).toBe('warning');
+      expect(r.checks.find((c) => c.key === 'insurance')!.detail).toBe(
+        'INS-0001 expires in 9 days',
+      );
+    });
+    it('blocks the worker when the company has an expired or missing certificate', () => {
+      const r = evaluateClearance(
+        ins('blocked', [
+          { level: 'blocking', text: 'No workers compensation insurance on the register.' },
+          { level: 'warning', text: 'Public liability is below the minimum.' },
+        ]),
+      );
+      expect(r.result).toBe('blocked');
+      expect(r.flag?.title).toContain('Company insurance');
+      expect(r.flag?.suggestedAction).toContain('current certificate or bond');
+      expect(r.checks.find((c) => c.key === 'insurance')!.detail).not.toContain('minimum');
+    });
+  });
 });

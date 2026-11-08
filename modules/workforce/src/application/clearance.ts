@@ -4,7 +4,12 @@ import { AppError, type TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import { workerCredentials, type workers } from '../infra/tables';
-import { evaluateClearance, type ClearanceOutcome, type ClearanceSwms } from '../domain/clearance';
+import {
+  evaluateClearance,
+  type ClearanceInsurance,
+  type ClearanceOutcome,
+  type ClearanceSwms,
+} from '../domain/clearance';
 import type { AttendanceService, ComplianceSource } from './attendance';
 import type { InductionDeps } from './inductions';
 
@@ -20,6 +25,12 @@ export interface ClearanceDeps {
     projectId: string,
     worker: { companyId: string | null; userId: string | null },
   ) => Promise<ClearanceSwms[]>;
+  /** The worker's company's insurance and bonds on the project, from `insurance`. Absent: the check is skipped. */
+  insurance?: (
+    scope: TenantScope,
+    projectId: string,
+    companyId: string,
+  ) => Promise<ClearanceInsurance>;
   now?: () => Date;
 }
 
@@ -72,7 +83,7 @@ export function createClearanceService(deps: ClearanceDeps) {
       : (sites.find((s) => s.site.active !== false) ?? sites[0]);
     if (input.siteId && !site) throw new AppError('workforce_site.not_found');
 
-    const [creds, companies, inductionResult, swms] = await Promise.all([
+    const [creds, companies, inductionResult, swms, insurance] = await Promise.all([
       scope.tx
         .select()
         .from(workerCredentials)
@@ -87,6 +98,9 @@ export function createClearanceService(deps: ClearanceDeps) {
       worker.kind === 'worker' && deps.swms
         ? deps.swms(scope, projectId, { companyId: worker.companyId, userId: worker.userId })
         : Promise.resolve([] as ClearanceSwms[]),
+      worker.kind === 'worker' && worker.companyId && deps.insurance
+        ? deps.insurance(scope, projectId, worker.companyId)
+        : Promise.resolve(null),
     ]);
     const photo = worker.photoFileId
       ? await deps.files
@@ -100,6 +114,7 @@ export function createClearanceService(deps: ClearanceDeps) {
       credentials: creds.map((c) => ({ kind: c.kind, expiresOn: c.expiresOn })),
       inductionReasons: inductionResult ? inductionResult.reasons : null,
       swms,
+      insurance,
     });
     return {
       ...outcome,

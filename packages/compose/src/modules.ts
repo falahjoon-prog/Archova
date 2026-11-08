@@ -483,6 +483,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
     clearanceSwms: safety.api.workerSwms,
+    clearanceInsurance: async (scope, projectId, companyId) => {
+      const c = await insurance.api.companyClearance(scope, projectId, companyId);
+      return {
+        state: c.state,
+        // Nothing to check when the project sets no requirements and the company has nothing recorded.
+        checked: c.requirementsSet || c.coverCount > 0,
+        messages: c.issues.map((i) => ({ level: i.level, text: i.message })),
+      };
+    },
     links: {
       access: access.api,
       platform: platform.api,
