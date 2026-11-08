@@ -78,6 +78,7 @@ export const PROBLEM_CODES = {
   'project_member.user_not_found': 422,
   'project_member.not_found': 404,
   'project_member.cannot_remove_self': 422,
+  'project_location.not_found': 404,
   'company.not_found': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
@@ -290,6 +291,9 @@ export const PROBLEM_CODES = {
   'ownerportal.item_not_found': 404,
   // notifications
   'notification.not_found': 404,
+  // bookmarks
+  'bookmark.invalid_target': 422,
+  'bookmark.limit_reached': 409,
   // recents
   'recent.invalid_target': 422,
   // scheduling (programme)

@@ -617,6 +617,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's bookmarks, newest first.
+         * @description Only the caller's own bookmarks are ever returned (at most 200). Pass `projectId` to list one project's.
+         */
+        get: operations["listBookmarks"];
+        put?: never;
+        /**
+         * Bookmark a record (idempotent; saving it again refreshes the title).
+         * @description `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+         *     record's own module. A person can keep up to 200 bookmarks (`bookmark.limit_reached`, 409).
+         */
+        post: operations["saveBookmark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bookmarks/{bookmarkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one of the caller's bookmarks (idempotent). */
+        delete: operations["deleteBookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -694,6 +741,49 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's pinned locations (site office, gates, laydown, parking, nearest hospital), each with a Get Directions link and its site-access note. */
+        get: operations["listProjectLocations"];
+        put?: never;
+        /** Pin a location. The first one becomes the default; at most 30 per project. */
+        post: operations["createProjectLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a location. If it was the default, the next one takes over. */
+        delete: operations["deleteProjectLocation"];
+        options?: never;
+        head?: never;
+        /** Change a location. Send `If-Match`. Making it the default clears the previous default. */
+        patch: operations["updateProjectLocation"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/delay-register": {
@@ -11632,6 +11722,51 @@ export interface components {
         KeyDateChangeList: {
             data: components["schemas"]["KeyDateChange"][];
         };
+        /** @enum {string} */
+        LocationKind: "site_office" | "gate" | "laydown" | "parking" | "hospital" | "other";
+        ProjectLocation: {
+            id: string;
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address: string | null;
+            point: components["schemas"]["GeoPoint"] | null;
+            /** @description A plain maps link to the point (or address). No maps key is involved. */
+            directionsUrl: string | null;
+            /** @description Gate code, parking instructions, site contact. */
+            accessNote: string | null;
+            contactName: string | null;
+            contactPhone: string | null;
+            /** @description What the point is for ("deliveries", "visitors"); Nova matches arrivals to these. */
+            usedFor: string[];
+            isDefault: boolean;
+            version: number;
+        };
+        ProjectLocationList: {
+            data: components["schemas"]["ProjectLocation"][];
+        };
+        /** @description Give an address, a map point, or both. */
+        CreateProjectLocationRequest: {
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address?: string | null;
+            point?: components["schemas"]["GeoPoint"] | null;
+            accessNote?: string | null;
+            contactName?: string | null;
+            contactPhone?: string | null;
+            usedFor?: string[];
+            isDefault?: boolean;
+        };
+        UpdateProjectLocationRequest: {
+            name?: string;
+            kind?: components["schemas"]["LocationKind"];
+            address?: string | null;
+            point?: components["schemas"]["GeoPoint"] | null;
+            accessNote?: string | null;
+            contactName?: string | null;
+            contactPhone?: string | null;
+            usedFor?: string[];
+            isDefault?: boolean;
+        };
         DelayRegisterRow: {
             id: string;
             /** @enum {string} */
@@ -11859,6 +11994,29 @@ export interface components {
         };
         RecentViewList: {
             data: components["schemas"]["RecentView"][];
+        };
+        /** @enum {string} */
+        BookmarkEntityType: "rfi" | "submittal" | "defect" | "drawing_sheet" | "meeting";
+        BookmarkInput: {
+            entityType: components["schemas"]["BookmarkEntityType"];
+            /** @description Public id of the record */
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle?: string;
+        };
+        Bookmark: {
+            id: string;
+            entityType: components["schemas"]["BookmarkEntityType"];
+            entityId: string;
+            projectId: string;
+            title: string;
+            subtitle: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BookmarkList: {
+            data: components["schemas"]["Bookmark"][];
         };
         FeatureFlags: {
             orgId: string;
@@ -18638,6 +18796,7 @@ export interface components {
         EstimateLineId: string;
         ApiTokenId: string;
         NotificationId: string;
+        BookmarkId: string;
         AccountingProvider: "xero" | "myob";
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
@@ -19529,6 +19688,80 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listBookmarks: {
+        parameters: {
+            query?: {
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bookmarks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookmarkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookmarkInput"];
+            };
+        };
+        responses: {
+            /** @description The bookmark */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bookmark"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bookmarkId: components["parameters"]["BookmarkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listProjects: {
         parameters: {
             query?: {
@@ -19718,6 +19951,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeyDateChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations, in the order the project set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProjectLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectLocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLocation"];
                 };
             };
             default: components["responses"]["Problem"];

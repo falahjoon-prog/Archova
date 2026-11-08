@@ -52,6 +52,7 @@ import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meeting
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
+import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
@@ -308,6 +309,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const notifications = createNotificationsModule(services);
+  const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
   const financials = createFinancialsModule(services, {
@@ -536,6 +538,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
     financials,
     quality,
@@ -578,6 +581,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ownerportal,
     bim,
     notifications,
+    bookmarks,
     recents,
     financials,
     quality,

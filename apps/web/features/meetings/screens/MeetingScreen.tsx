@@ -13,6 +13,7 @@ import {
   StatusPill,
   TextField,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -69,6 +70,13 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
         description={`${formatInstant(m.heldAt, project.timezone)}${m.location ? `, ${m.location}` : ''}`}
         actions={
           <>
+            <BookmarkButton
+              entityType="meeting"
+              entityId={m.id}
+              projectId={project.projectId}
+              title={m.title}
+              subtitle={`${m.seriesName}, meeting ${m.number}`}
+            />
             {d.viewer.canEdit ? (
               <Button variant="secondary" onClick={() => setDrafting(true)}>
                 Draft with Nova
