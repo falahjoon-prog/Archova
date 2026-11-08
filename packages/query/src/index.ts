@@ -60,6 +60,7 @@ export type ProjectTool =
   | 'attendance'
   | 'roster'
   | 'equipment'
+  | 'deliveries'
   | 'timesheets'
   | 'observations'
   | 'swms'

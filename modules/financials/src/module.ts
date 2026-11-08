@@ -10,7 +10,9 @@ import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
 import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
+import { createProductionService } from './application/production';
 import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
@@ -37,6 +39,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const productivity = createProductivityService({
     access: deps.access,
     timesheetMinutes: deps.timesheetMinutes,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const production = createProductionService({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
@@ -91,6 +98,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...tmTicketRoutes(services.database, tmTickets),
       ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
+      ...productionRoutes(services.database, production),
     },
     api: {
       ledgerSource: service.ledgerSource,
@@ -102,6 +110,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** Material delivery scheduling (`logistics`): look up a purchase order to link a delivery to. */
+      purchaseOrderRef: commitments.purchaseOrderRef,
       /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
       laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */

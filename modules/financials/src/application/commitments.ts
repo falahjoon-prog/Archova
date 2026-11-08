@@ -277,7 +277,24 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
     return { commitment: updated, lines };
   }
 
+  /** For `logistics`: the purchase orders on a project, so a delivery can name the order it fulfils. No permission check; the caller has its own. */
+  async function purchaseOrderRef(scope: TenantScope, projectId: string, id: string) {
+    const [r] = await scope.tx
+      .select({
+        id: commitments.id,
+        number: commitments.number,
+        title: commitments.title,
+        kind: commitments.kind,
+        vendorCompanyId: commitments.vendorCompanyId,
+      })
+      .from(commitments)
+      .where(and(eq(commitments.id, id), eq(commitments.projectId, projectId)))
+      .limit(1);
+    return r && r.kind === 'purchase_order' ? r : null;
+  }
+
   return {
+    purchaseOrderRef,
     createCommitment,
     commitmentForQuote,
     listCommitments,

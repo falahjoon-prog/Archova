@@ -27,6 +27,15 @@ export function usePortfolio(includeClosed: boolean) {
   });
 }
 
+export function useDbpInsights(includeClosed: boolean) {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({
+    queryKey: ['orgs', orgId, 'dbp-insights', { includeClosed }],
+    queryFn: () => api.dbpInsights(includeClosed),
+  });
+}
+
 export function useSustainabilityPortfolio(includeClosed: boolean, enabled: boolean) {
   const { orgId } = useCurrentOrg();
   const api = useApi();
