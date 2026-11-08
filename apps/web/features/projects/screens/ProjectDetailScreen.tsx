@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { BookmarksCard } from '@/features/bookmarks';
+import { RecentsCard } from '@/features/recents';
 import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
@@ -13,6 +15,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { CollapsibleGroup, useGroupState } from '@/shared/layout/CollapsibleGroup';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { DirectionsCard } from '../components/DirectionsCard';
 import { PhotosCard } from '../components/PhotosCard';
 import { ProjectHero } from '../components/ProjectHero';
 import { ProjectStatusCard } from '../components/ProjectStatusCard';
@@ -114,6 +117,8 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           timeZone={p.timezone}
           permissions={permissions.data as EffectivePermissions | undefined}
         />
+        <BookmarksCard projectId={projectId} />
+        <RecentsCard projectId={projectId} />
         <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         <ErrorAlert error={updateProject.error} title="We couldn't change the project photo" />
         <PhotosCard
@@ -126,6 +131,10 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
                   updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
               : undefined
           }
+        />
+        <DirectionsCard
+          projectId={projectId}
+          permissions={permissions.data as EffectivePermissions | undefined}
         />
         <section aria-labelledby="tools-heading" className="stack">
           <div className="tool-sections__bar">

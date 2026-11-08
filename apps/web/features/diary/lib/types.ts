@@ -175,3 +175,10 @@ export interface NovaWeekSummary {
   truncated: boolean;
   unmentionedDelays: number;
 }
+
+/** A day with site activity and no submitted daily log (Nova's rule-based flag). */
+export interface DiaryGap {
+  date: LocalDate;
+  state: 'missing' | 'draft';
+  sources: Array<'attendance' | 'equipment'>;
+}
