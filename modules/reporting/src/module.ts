@@ -12,7 +12,7 @@ import { REPORTING_PERMISSIONS } from './permissions';
 /**
  * Reporting: the portfolio dashboard (open and overdue RFIs, defects and submittals per project) and the report
  * builder (saved definitions run live), and the tender-readiness pack (company licences and insurance, prequalification, safety record and
- * retention-trust standing in one page or PDF), and My Work (one person's due items across projects, and their bookmarks). Both read the tool modules through their public interfaces, so every number
+ * retention-trust standing in one page or PDF), and My Work (one person's due items across projects, and what was raised lately). Both read the tool modules through their public interfaces, so every number
  * and row is limited to what the person asking may open on that project.
  */
 export function createReportingModule(

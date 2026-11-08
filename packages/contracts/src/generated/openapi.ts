@@ -3273,56 +3273,17 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The caller's open RFIs, defects and submittals due across their projects, recent items and bookmarks.
+         * The caller's open RFIs, defects and submittals due across their projects, and recently raised items.
          * @description The My Work page. Across the active, tender and on-hold projects the caller can see, lists open items that are
          *     overdue, due today or due in the next 7 days (dates in each project's own time zone), most urgent first, with
          *     a count per bucket. `recent` is open items raised in the last 14 days, newest first. Every item is read as the
          *     caller: a project where they cannot read a tool counts in `restrictedProjects` and shows nothing from it.
-         *     `bookmarks` are the caller's own and are never shown to anyone else. Staff only.
+         *     Staff only.
          */
         get: operations["getMyWork"];
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/orgs/{orgId}/my-work/bookmarks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: components["parameters"]["OrgId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bookmark a page. Saving the same path again returns the existing bookmark. */
-        post: operations["createBookmark"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/orgs/{orgId}/my-work/bookmarks/{bookmarkId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: components["parameters"]["OrgId"];
-                bookmarkId: components["parameters"]["BookmarkId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove one of the caller's own bookmarks. */
-        delete: operations["deleteBookmark"];
         options?: never;
         head?: never;
         patch?: never;
@@ -10726,20 +10687,6 @@ export interface components {
             expiresAt: string;
             filename: string;
         };
-        Bookmark: {
-            id: string;
-            label: string;
-            /** @description An in-app page, starting with a single "/". */
-            path: string;
-            projectId: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        BookmarkInput: {
-            label: string;
-            path: string;
-            projectId?: string;
-        };
         MyWorkItem: {
             /** @enum {string} */
             source: "rfis" | "defects" | "submittals";
@@ -10763,7 +10710,6 @@ export interface components {
             };
             items: components["schemas"]["MyWorkItem"][];
             recent: components["schemas"]["MyWorkItem"][];
-            bookmarks: components["schemas"]["Bookmark"][];
             restrictedProjects: number;
             truncated: boolean;
             /** Format: date-time */
@@ -18863,7 +18809,6 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
-        BookmarkId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -23788,57 +23733,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MyWork"];
                 };
-            };
-            default: components["responses"]["Problem"];
-        };
-    };
-    createBookmark: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
-            };
-            path: {
-                orgId: components["parameters"]["OrgId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BookmarkInput"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Bookmark"];
-                };
-            };
-            default: components["responses"]["Problem"];
-        };
-    };
-    deleteBookmark: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: components["parameters"]["OrgId"];
-                bookmarkId: components["parameters"]["BookmarkId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             default: components["responses"]["Problem"];
         };

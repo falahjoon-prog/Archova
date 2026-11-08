@@ -19,7 +19,6 @@ import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { formatMoney } from '@/shared/lib/format';
-import { BookmarkButton } from './BookmarkButton';
 import { StatusReport } from '../components/StatusReport';
 import { PortfolioCharts } from '../components/PortfolioCharts';
 import { usePortfolio } from '../hooks/useReporting';
@@ -151,7 +150,6 @@ export function PortfolioScreen() {
       <PageHeader
         eyebrow="Company"
         title="Portfolio"
-        actions={<BookmarkButton label="Portfolio" />}
         description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />

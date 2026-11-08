@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bucketOf, isAppPath, orderItems, orderRecent } from '../../src/domain/mywork';
+import { bucketOf, orderItems, orderRecent } from '../../src/domain/mywork';
 
 describe('bucketOf', () => {
   const today = '2026-11-06';
@@ -41,16 +41,5 @@ describe('ordering', () => {
       { createdAt: '2026-11-05T00:00:00Z', ref: 'b' },
     ]);
     expect(out.map((i) => i.ref)).toEqual(['b', 'a']);
-  });
-});
-
-describe('isAppPath', () => {
-  it('accepts in-app paths', () => {
-    expect(isAppPath('/acme/projects/prj_1')).toBe(true);
-    expect(isAppPath('/acme/reports?x=1')).toBe(true);
-  });
-  it('refuses other sites, schemes and control characters', () => {
-    for (const p of ['//evil.com', 'https://evil.com', 'javascript:alert(1)', '', '/a\\b', '/a\nb'])
-      expect(isAppPath(p)).toBe(false);
   });
 });

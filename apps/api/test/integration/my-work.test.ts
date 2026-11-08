@@ -8,7 +8,7 @@ import {
   type TestContext,
 } from './helpers';
 
-// My Work: due items across projects, narrowed to what the caller can open, and per-person bookmarks.
+// My Work: due items across projects, narrowed to what the caller can open.
 let t: TestContext;
 beforeAll(async () => {
   t = await createTestContext();
@@ -20,7 +20,6 @@ type MyWork = {
   counts: { overdue: number; today: number; next7: number };
   items: Item[];
   recent: Item[];
-  bookmarks: Array<{ id: string; label: string; path: string; projectId: string | null }>;
   restrictedProjects: number;
 };
 
@@ -76,27 +75,5 @@ describe('My Work', () => {
   it('is staff only', async () => {
     const s = await setup('mw2');
     expect((await s.other.browser.get(s.root)).statusCode).toBe(403);
-  });
-
-  it('saves bookmarks per person: idempotent on path, private, removable, in-app paths only', async () => {
-    const s = await setup('mw3');
-    const body = { label: 'Alpha RFIs', path: '/my-work-co/projects/x/rfis', projectId: s.a.id };
-    const first = await s.pm.browser.post(`${s.root}/bookmarks`, body);
-    expect(first.statusCode).toBe(201);
-    const again = await s.pm.browser.post(`${s.root}/bookmarks`, body);
-    expect(again.json().id).toBe(first.json().id);
-
-    const w = (await s.pm.browser.get(s.root)).json() as MyWork;
-    expect(w.bookmarks).toHaveLength(1);
-    expect(w.bookmarks[0]).toMatchObject({ label: 'Alpha RFIs', projectId: s.a.id });
-
-    for (const path of ['//evil.example', 'https://evil.example', 'javascript:alert(1)']) {
-      const bad = await s.pm.browser.post(`${s.root}/bookmarks`, { label: 'x', path });
-      expect(bad.statusCode).toBe(422);
-    }
-
-    expect((await s.pm.browser.del(`${s.root}/bookmarks/${first.json().id}`)).statusCode).toBe(204);
-    expect((await s.pm.browser.del(`${s.root}/bookmarks/${first.json().id}`)).statusCode).toBe(404);
-    expect(((await s.pm.browser.get(s.root)).json() as MyWork).bookmarks).toHaveLength(0);
   });
 });

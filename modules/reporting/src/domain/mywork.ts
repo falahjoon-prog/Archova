@@ -13,7 +13,6 @@ export const WORK_ROWS_PER_PROJECT = 200;
 export const WORK_ITEMS_MAX = 100;
 export const RECENT_MAX = 15;
 export const RECENT_DAYS = 14;
-export const BOOKMARKS_MAX = 50;
 
 /** Overdue (before today), today, or in the 7 days after today; null when there is no due date or it is later. */
 export function bucketOf(dueDate: string | null, today: string): Bucket | null {
@@ -54,16 +53,3 @@ export const orderRecent = <T extends Pick<WorkItem, 'createdAt' | 'ref'>>(
   items: readonly T[],
 ): T[] =>
   [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.ref.localeCompare(b.ref));
-
-/** A bookmark is an in-app path: it must start with one slash, never `//` (another site) or a scheme. */
-export function isAppPath(path: string): boolean {
-  return (
-    path.length >= 1 &&
-    path.length <= 300 &&
-    path.startsWith('/') &&
-    !path.startsWith('//') &&
-    !path.includes('\\') &&
-    // eslint-disable-next-line no-control-regex
-    !/[\u0000-\u001f]/.test(path)
-  );
-}

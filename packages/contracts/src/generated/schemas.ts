@@ -4953,6 +4953,33 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
 
+export const MyWorkItemSchema = z.object({
+  "source": z.enum(["rfis", "defects", "submittals"]),
+  "projectId": z.string(),
+  "project": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "dueDate": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "bucket": z.enum(["overdue", "today", "next7"]).nullable(),
+});
+export type MyWorkItem = z.infer<typeof MyWorkItemSchema>;
+
+export const MyWorkSchema = z.object({
+  "counts": z.object({
+  "overdue": z.number().int(),
+  "today": z.number().int(),
+  "next7": z.number().int(),
+}),
+  "items": z.array(MyWorkItemSchema),
+  "recent": z.array(MyWorkItemSchema),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+  "generatedAt": z.string().datetime({ offset: true }),
+});
+export type MyWork = z.infer<typeof MyWorkSchema>;
+
 export const NccReferenceSchema = z.object({
   "provisionKey": z.string(),
   "edition": z.string(),

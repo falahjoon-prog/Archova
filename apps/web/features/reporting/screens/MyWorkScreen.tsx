@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import {
   Alert,
-  Button,
   Card,
   DataTable,
   EmptyState,
@@ -13,12 +12,13 @@ import {
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
-import { Bookmark, Calendar, Trash2 } from '@archova/ui/icons';
+import { Calendar } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { useMyWork, useRemoveBookmark } from '../hooks/useReporting';
+import { BookmarksCard } from '@/features/bookmarks';
+import { useMyWork } from '../hooks/useReporting';
 import { SOURCE_LABELS, type MyWorkItem } from '../lib/types';
 
 const BUCKET_LABELS = { overdue: 'Overdue', today: 'Due today', next7: 'Next 7 days' } as const;
@@ -28,7 +28,6 @@ const BUCKET_TONES = { overdue: 'danger', today: 'warning', next7: 'info' } as c
 export function MyWorkScreen() {
   const org = useCurrentOrg();
   const work = useMyWork();
-  const remove = useRemoveBookmark();
   const data = work.data;
 
   const columns = (dateHeader: string): DataTableColumn<MyWorkItem>[] => [
@@ -79,7 +78,7 @@ export function MyWorkScreen() {
         title="My Work"
         description="Open RFIs, defects and submittals due across every project you can open. Only what you are allowed to see on each project is shown."
       />
-      <ErrorAlert error={work.error ?? remove.error} title="We couldn't load My Work" />
+      <ErrorAlert error={work.error} title="We couldn't load My Work" />
       {data ? (
         <StatGrid
           items={[
@@ -138,35 +137,9 @@ export function MyWorkScreen() {
               }
             />
           </Card>
-          <Card title="Bookmarks">
-            {data?.bookmarks.length ? (
-              <ul className="stack-sm" aria-label="Your bookmarks">
-                {data.bookmarks.map((b) => (
-                  <li key={b.id} className="row-actions">
-                    <Link className="link" href={b.path}>
-                      {b.label}
-                    </Link>
-                    <Button
-                      variant="secondary"
-                      aria-label={`Remove bookmark ${b.label}`}
-                      loading={remove.isPending && remove.variables === b.id}
-                      onClick={() => remove.mutate(b.id)}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState
-                icon={Bookmark}
-                title="No bookmarks yet"
-                description="Use “Bookmark this page” on the Portfolio page to keep a page here."
-              />
-            )}
-          </Card>
         </>
       )}
+      <BookmarksCard />
     </div>
   );
 }

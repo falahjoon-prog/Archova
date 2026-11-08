@@ -15,13 +15,3 @@ export const reports = reportingSchema.table('reports', {
   updatedBy: uuid('updated_by'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
-
-export const bookmarks = reportingSchema.table('bookmarks', {
-  id: uuid('id').primaryKey(),
-  orgId: uuid('org_id').notNull(),
-  userId: uuid('user_id').notNull(),
-  projectId: uuid('project_id'),
-  label: text('label').notNull(),
-  path: text('path').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});

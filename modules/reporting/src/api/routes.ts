@@ -33,25 +33,11 @@ export function reportingRoutes(
     return v;
   };
 
-  const bookmarkId = (p: { bookmarkId: string }) => {
-    const v = decodeId('bookmark', p.bookmarkId);
-    if (!v) throw new AppError('bookmark.not_found');
-    return v;
-  };
-
   return defineRoutes({
     getMyWork: async (input) => ({
       status: 200,
       body: await read(input, (s) => myWork.get(s)),
     }),
-    createBookmark: async (input) => ({
-      status: 201,
-      body: await tx(input, (s) => myWork.addBookmark(s, input.body)),
-    }),
-    deleteBookmark: async (input) => {
-      await tx(input, (s) => myWork.removeBookmark(s, bookmarkId(input.params)));
-      return { status: 204 };
-    },
     listAuditLog: async (input) => ({
       status: 200,
       body: await read(input, (s) => audit.list(s, input.query ?? {})),

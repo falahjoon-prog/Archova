@@ -20,13 +20,6 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
   },
   // My Work is one person's own page: staff only, and every row is still narrowed by their project permissions.
   { key: 'reporting.mywork.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
-  {
-    key: 'reporting.mywork.manage',
-    scope: 'org',
-    tool: null,
-    level: 'standard',
-    orgRoles: ['member'],
-  },
   { key: 'reporting.reports.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   {
     key: 'reporting.reports.manage',

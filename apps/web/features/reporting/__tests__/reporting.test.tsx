@@ -448,13 +448,25 @@ describe('MyWorkScreen', () => {
     counts: { overdue: 0, today: 0, next7: 0 },
     items: [],
     recent: [],
-    bookmarks: [],
     restrictedProjects: 0,
     truncated: false,
     generatedAt: '2026-11-06T00:00:00.000Z',
   };
 
   it('shows counts, what is due across projects, and bookmarks', async () => {
+    fake.on('GET', '/v1/orgs/{orgId}/bookmarks', () => ({
+      data: [
+        {
+          id: 'bmk_1',
+          entityType: 'rfi',
+          entityId: 'rfi_1',
+          projectId: 'prj_a',
+          title: 'RFI-001 Slab edge detail',
+          subtitle: '',
+          createdAt: '2026-11-05T00:00:00.000Z',
+        },
+      ],
+    }));
     fake.on('GET', '/v1/orgs/{orgId}/my-work', () => ({
       ...empty,
       counts: { overdue: 1, today: 0, next7: 1 },
@@ -463,15 +475,6 @@ describe('MyWorkScreen', () => {
         item({ ref: 'DEF-002', source: 'defects', dueDate: '2026-11-08', bucket: 'next7' }),
       ],
       recent: [item()],
-      bookmarks: [
-        {
-          id: 'bkm_1',
-          label: 'Portfolio',
-          path: '/acme/portfolio',
-          projectId: null,
-          createdAt: '2026-11-05T00:00:00.000Z',
-        },
-      ],
       restrictedProjects: 1,
     }));
     const { MyWorkScreen } = await import('../screens/MyWorkScreen');
@@ -480,13 +483,12 @@ describe('MyWorkScreen', () => {
     expect(within(due).getByText('Overdue')).toBeTruthy();
     expect(within(due).getByText('Next 7 days')).toBeTruthy();
     expect(within(due).getAllByRole('link', { name: 'Alpha Tower' }).length).toBe(2);
-    expect(screen.getByRole('link', { name: 'Portfolio' }).getAttribute('href')).toBe(
-      '/acme/portfolio',
-    );
+    expect(await screen.findByRole('link', { name: 'RFI-001 Slab edge detail' })).toBeTruthy();
     expect(screen.getByText('Some projects are partly hidden')).toBeTruthy();
   });
 
   it('shows empty states when nothing is due', async () => {
+    fake.on('GET', '/v1/orgs/{orgId}/bookmarks', () => ({ data: [] }));
     fake.on('GET', '/v1/orgs/{orgId}/my-work', () => empty);
     const { MyWorkScreen } = await import('../screens/MyWorkScreen');
     renderInProject(<MyWorkScreen />);
