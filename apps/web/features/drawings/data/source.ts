@@ -387,6 +387,8 @@ export const drawingsSource = {
 /** Reasons a set can't publish yet: untouched low-confidence fields, or a backwards revision without a reason. */
 export function publishBlockers(set: DrawingSet): string[] {
   const out: string[] = [];
+  if (!set.sheets.length)
+    out.push('No sheets were found in this upload. Check the files and upload the set again.');
   for (const row of set.sheets) {
     const fields = [row.sheetNumber, row.title, row.rev, row.discipline];
     if (fields.some(needsCheck)) {
