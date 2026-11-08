@@ -11428,6 +11428,62 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InspectionDetail' }
         default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.close
+      summary: Delete an inspection. It is hidden everywhere; the change history keeps a record.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: reopenInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReopenInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    get:
+      operationId: listInspectionHistory
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: The change history of an inspection, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionHistoryList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -28691,6 +28747,10 @@ components:
           specSection,
           description,
           fileIds,
+          isPrivate,
+          distributionIds,
+          drawingRevisionIds,
+          reopenCount,
           createdAt,
           updatedAt,
           version,
@@ -28718,6 +28778,15 @@ components:
           type: array
           description: Files attached to the inspection itself.
           items: { type: string }
+        isPrivate:
+          {
+            type: boolean,
+            description: Only the creator,
+            assignees and people who can close it can see it.,
+          }
+        distributionIds: { type: array, items: { type: string } }
+        drawingRevisionIds: { type: array, items: { type: string } }
+        reopenCount: { type: integer }
         completedAt: { type: [string, 'null'], format: date-time }
         signedBy:
           oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
@@ -28750,6 +28819,8 @@ components:
           responses,
           missingRequiredItemIds,
           failedItemIds,
+          summary,
+          reopenFlag,
         ]
       properties:
         inspection: { $ref: '#/components/schemas/Inspection' }
@@ -28776,6 +28847,53 @@ components:
         failedItemIds:
           type: array
           items: { type: string }
+        summary: { $ref: '#/components/schemas/InspectionStatusCounts' }
+        reopenFlag:
+          oneOf: [{ $ref: '#/components/schemas/InspectionReopenFlag' }, { type: 'null' }]
+    InspectionStatusCounts:
+      type: object
+      required: [pass, fail, na, answered, unanswered, total]
+      properties:
+        pass: { type: integer }
+        fail: { type: integer }
+        na: { type: integer }
+        answered: { type: integer }
+        unanswered: { type: integer }
+        total: { type: integer }
+    InspectionReopenFlag:
+      type: object
+      required: [code, count, message]
+      properties:
+        code: { type: string, enum: [reopened_repeatedly] }
+        count: { type: integer }
+        message: { type: string }
+    InspectionHistoryEvent:
+      type: object
+      required: [id, inspectionId, kind, detail, actorId, at]
+      properties:
+        id: { type: string }
+        inspectionId: { type: string }
+        kind:
+          {
+            type: string,
+            enum: [created, updated, section_na, signed, submitted, reopened, closed, deleted],
+          }
+        detail: { type: object, additionalProperties: true }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    InspectionHistoryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionHistoryEvent' }
+    ReopenInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 2000 }
     InspectionSection:
       type: object
       required: [section, items, answered, pass, fail, na, unanswered, isNa]
@@ -28827,6 +28945,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     UpdateInspectionRequest:
       type: object
       additionalProperties: false
@@ -28852,6 +28979,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     SetInspectionSectionNaRequest:
       type: object
       additionalProperties: false

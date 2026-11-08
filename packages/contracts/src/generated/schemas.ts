@@ -2336,6 +2336,9 @@ export const CreateInspectionRequestSchema = z.object({
   "specSection": z.string().min(1).max(200).optional(),
   "description": z.string().max(5000).optional(),
   "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "isPrivate": z.boolean().optional(),
+  "distributionIds": z.array(UserRefSchema).max(50).optional(),
+  "drawingRevisionIds": z.array(z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$"))).max(50).optional(),
 }).strict();
 export type CreateInspectionRequest = z.infer<typeof CreateInspectionRequestSchema>;
 
@@ -4808,6 +4811,10 @@ export const InspectionSchema = z.object({
   "specSection": z.string().nullable(),
   "description": z.string(),
   "fileIds": z.array(z.string()),
+  "isPrivate": z.boolean(),
+  "distributionIds": z.array(z.string()),
+  "drawingRevisionIds": z.array(z.string()),
+  "reopenCount": z.number().int(),
   "completedAt": z.string().datetime({ offset: true }).nullable(),
   "signedBy": z.union([InspectionSignatureSchema, z.null()]),
   "createdAt": z.string().datetime({ offset: true }),
@@ -4872,6 +4879,23 @@ export const InspectionItemResponseSchema = z.object({
 });
 export type InspectionItemResponse = z.infer<typeof InspectionItemResponseSchema>;
 
+export const InspectionStatusCountsSchema = z.object({
+  "pass": z.number().int(),
+  "fail": z.number().int(),
+  "na": z.number().int(),
+  "answered": z.number().int(),
+  "unanswered": z.number().int(),
+  "total": z.number().int(),
+});
+export type InspectionStatusCounts = z.infer<typeof InspectionStatusCountsSchema>;
+
+export const InspectionReopenFlagSchema = z.object({
+  "code": z.enum(["reopened_repeatedly"]),
+  "count": z.number().int(),
+  "message": z.string(),
+});
+export type InspectionReopenFlag = z.infer<typeof InspectionReopenFlagSchema>;
+
 export const InspectionDetailSchema = z.object({
   "inspection": InspectionSchema,
   "itemActivity": z.array(InspectionItemActivitySchema),
@@ -4881,8 +4905,25 @@ export const InspectionDetailSchema = z.object({
   "responses": z.array(InspectionItemResponseSchema),
   "missingRequiredItemIds": z.array(z.string()),
   "failedItemIds": z.array(z.string()),
+  "summary": InspectionStatusCountsSchema,
+  "reopenFlag": z.union([InspectionReopenFlagSchema, z.null()]),
 });
 export type InspectionDetail = z.infer<typeof InspectionDetailSchema>;
+
+export const InspectionHistoryEventSchema = z.object({
+  "id": z.string(),
+  "inspectionId": z.string(),
+  "kind": z.enum(["created", "updated", "section_na", "signed", "submitted", "reopened", "closed", "deleted"]),
+  "detail": z.record(z.string(), z.unknown()),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type InspectionHistoryEvent = z.infer<typeof InspectionHistoryEventSchema>;
+
+export const InspectionHistoryListSchema = z.object({
+  "data": z.array(InspectionHistoryEventSchema),
+});
+export type InspectionHistoryList = z.infer<typeof InspectionHistoryListSchema>;
 
 export const InspectionItemEventSchema = z.object({
   "id": z.string(),
@@ -7139,6 +7180,11 @@ export const RemoveProjectMemberRequestSchema = z.object({
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
 
+export const ReopenInspectionRequestSchema = z.object({
+  "reason": z.string().min(1).max(2000),
+}).strict();
+export type ReopenInspectionRequest = z.infer<typeof ReopenInspectionRequestSchema>;
+
 export const ReplaceSpecSectionsRequestSchema = z.object({
   "sections": z.array(z.object({
   "sectionNumber": z.string().min(1).max(20),
@@ -8829,6 +8875,9 @@ export const UpdateInspectionRequestSchema = z.object({
   "specSection": z.string().min(1).max(200).nullable().optional(),
   "description": z.string().max(5000).optional(),
   "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "isPrivate": z.boolean().optional(),
+  "distributionIds": z.array(UserRefSchema).max(50).optional(),
+  "drawingRevisionIds": z.array(z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$"))).max(50).optional(),
 }).strict();
 export type UpdateInspectionRequest = z.infer<typeof UpdateInspectionRequestSchema>;
 

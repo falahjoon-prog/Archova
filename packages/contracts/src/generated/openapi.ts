@@ -8377,11 +8377,54 @@ export interface paths {
         get: operations["getInspection"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an inspection. It is hidden everywhere; the change history keeps a record. */
+        delete: operations["deleteInspection"];
         options?: never;
         head?: never;
         /** Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted. */
         patch: operations["updateInspection"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen). */
+        post: operations["reopenInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        /** The change history of an inspection, oldest first. */
+        get: operations["listInspectionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na": {
@@ -19428,6 +19471,11 @@ export interface components {
             description: string;
             /** @description Files attached to the inspection itself. */
             fileIds: string[];
+            /** @description Only the creator */
+            isPrivate: boolean;
+            distributionIds: string[];
+            drawingRevisionIds: string[];
+            reopenCount: number;
             /** Format: date-time */
             completedAt: string | null;
             signedBy: components["schemas"]["InspectionSignature"] | null;
@@ -19459,6 +19507,40 @@ export interface components {
             responses: components["schemas"]["InspectionItemResponse"][];
             missingRequiredItemIds: string[];
             failedItemIds: string[];
+            summary: components["schemas"]["InspectionStatusCounts"];
+            reopenFlag: components["schemas"]["InspectionReopenFlag"] | null;
+        };
+        InspectionStatusCounts: {
+            pass: number;
+            fail: number;
+            na: number;
+            answered: number;
+            unanswered: number;
+            total: number;
+        };
+        InspectionReopenFlag: {
+            /** @enum {string} */
+            code: "reopened_repeatedly";
+            count: number;
+            message: string;
+        };
+        InspectionHistoryEvent: {
+            id: string;
+            inspectionId: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "section_na" | "signed" | "submitted" | "reopened" | "closed" | "deleted";
+            detail: {
+                [key: string]: unknown;
+            };
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        InspectionHistoryList: {
+            data: components["schemas"]["InspectionHistoryEvent"][];
+        };
+        ReopenInspectionRequest: {
+            reason: string;
         };
         InspectionSection: {
             section: string;
@@ -19493,6 +19575,9 @@ export interface components {
             specSection?: string;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         /** @description Header fields. Send only what changes; null clears an optional field. */
         UpdateInspectionRequest: {
@@ -19510,6 +19595,9 @@ export interface components {
             specSection?: string | null;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         SetInspectionSectionNaRequest: {
             section: string;
@@ -34139,6 +34227,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    deleteInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     updateInspection: {
         parameters: {
             query?: never;
@@ -34167,6 +34281,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reopenInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionHistoryList"];
                 };
             };
             default: components["responses"]["Problem"];

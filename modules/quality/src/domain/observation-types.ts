@@ -130,7 +130,11 @@ export function resolveTypes(rows: readonly TypeRow[], projectId: string): Resol
     const org = applies.find((r) => r.key === b.key && r.projectId === null);
     const own = applies.find((r) => r.key === b.key && r.projectId === projectId);
     const pick = <T>(f: (r: TypeRow) => T | null | undefined, base: T): T =>
-      (own && f(own) != null ? f(own) : org && f(org) != null ? f(org) : base) as T;
+      (own && f(own) !== null && f(own) !== undefined
+        ? f(own)
+        : org && f(org) !== null && f(org) !== undefined
+          ? f(org)
+          : base) as T;
     return {
       key: b.key,
       group: b.group,

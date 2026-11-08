@@ -13,6 +13,7 @@ import type { HeaderInput, InspectionService } from '../application/inspections'
 import type { ObservationFields, ObservationService } from '../application/observations';
 import type { ObservationTypeService } from '../application/observation-types';
 import {
+  toHistoryEvent,
   toInspectionDetail,
   toItemEvent,
   toInspectionDto,
@@ -75,6 +76,9 @@ type HeaderBody = {
   specSection?: string | null;
   description?: string;
   fileIds?: string[];
+  isPrivate?: boolean;
+  distributionIds?: string[];
+  drawingRevisionIds?: string[];
 };
 
 function headerFields(b: HeaderBody): HeaderInput {
@@ -99,6 +103,13 @@ function headerFields(b: HeaderBody): HeaderInput {
   if (b.description !== undefined) out.description = b.description;
   if (b.fileIds !== undefined)
     out.fileIds = b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`));
+  if (b.isPrivate !== undefined) out.isPrivate = b.isPrivate;
+  if (b.distributionIds !== undefined)
+    out.distributionIds = b.distributionIds.map((u, i) => ref('user', u, `distributionIds/${i}`));
+  if (b.drawingRevisionIds !== undefined)
+    out.drawingRevisionIds = b.drawingRevisionIds.map((d, i) =>
+      ref('drawingRevision', d, `drawingRevisionIds/${i}`),
+    );
   return out;
 }
 
@@ -382,6 +393,34 @@ export function qualityRoutes(
           }),
         ),
       );
+    },
+    reopenInspection: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return okInspection(
+        200,
+        await tx(input, (s) =>
+          inspections.reopen(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            expected,
+            input.body.reason,
+          ),
+        ),
+      );
+    },
+    deleteInspection: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) =>
+        inspections.remove(s, project(input.params), inspectionId(input.params), expected),
+      );
+      return { status: 204 };
+    },
+    listInspectionHistory: async (input) => {
+      const rows = await read(input, (s) =>
+        inspections.changeHistory(s, project(input.params), inspectionId(input.params)),
+      );
+      return { status: 200, body: { data: rows.map(toHistoryEvent) } };
     },
     closeInspection: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
