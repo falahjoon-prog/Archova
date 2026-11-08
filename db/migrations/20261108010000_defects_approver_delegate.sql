@@ -1,4 +1,4 @@
--- Composed from modules/defects/db/migrations/20261107140000_defects_approver_delegate.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/defects/db/migrations/20261108010000_defects_approver_delegate.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Final approver extras: a stand-in for a date range, evidence required to close, and who an action was taken
 -- on behalf of (history is append-only, so the column is nullable and written once with the event).
 alter table defects.defects
