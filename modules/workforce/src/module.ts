@@ -104,6 +104,8 @@ export function createWorkforceModule(
       credentialSummary: wallet.readinessSummary,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
+      dayActivity: sheets.dayActivity,
       /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */
       siteActivityDays: siteActivity.siteActivityDays,
     },

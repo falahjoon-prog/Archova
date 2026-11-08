@@ -12871,6 +12871,175 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DirectCost' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTmTickets
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: T&M (daywork) tickets, newest first, with the total of those not voided (ex GST).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Raise a T&M ticket for labour, equipment and material used on site. Lines can come from Nova's draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TmTicketRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Nova's draft lines for a day, from timesheets and equipment logs not already on a ticket. Unpriced; a person reviews before creating.
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    get:
+      operationId: getTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: One T&M ticket with its lines and signatures.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Replace a draft ticket. Refused from the first signature.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: signTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.sign
+      summary: Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: voidTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Void a ticket that has not been converted, with a reason.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: convertTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.convert
+      summary: Convert a signed ticket, once, into direct costs on a budget line or a draft variation on a contract.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConvertTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14439,6 +14608,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
+    TmTicketId:
+      name: tmTicketId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tmt_[0-9A-Za-z]{26}$' }
     CommitmentId:
       name: commitmentId
       in: path
@@ -23985,6 +24159,160 @@ components:
         missingBackup:
           type: integer
           description: Backup items still missing across all claims.
+    TmKind:
+      type: string
+      enum: [labour, equipment, material]
+    TmSourceType:
+      type: string
+      enum: [timesheet_line, equipment_log]
+    TmTicketLine:
+      type: object
+      required: [kind, description, quantity, unit, rate, amount, sourceType, sourceId]
+      properties:
+        kind: { $ref: '#/components/schemas/TmKind' }
+        description: { type: string }
+        quantity: { type: string }
+        unit: { type: string }
+        rate: { $ref: '#/components/schemas/FinancialsMoney' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/TmSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'], format: uuid }
+    TmTicketSignoff:
+      type: object
+      description: Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature.
+      required:
+        [role, signerName, signerPosition, hasEvidence, evidenceFileId, contentHash, signedAt]
+      properties:
+        role: { type: string, enum: [contractor, principal_rep] }
+        signerName: { type: string }
+        signerPosition: { type: [string, 'null'] }
+        hasEvidence: { type: boolean }
+        evidenceFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        contentHash: { type: string }
+        signedAt: { type: string, format: date-time }
+    TmTicket:
+      type: object
+      required:
+        [
+          id,
+          number,
+          title,
+          description,
+          workDate,
+          location,
+          contractor,
+          instructedBy,
+          origin,
+          status,
+          total,
+          convertedTo,
+          convertedAt,
+          variationId,
+          voidReason,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^tmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        workDate: { type: string, format: date }
+        location: { type: [string, 'null'] }
+        contractor: { type: [string, 'null'] }
+        instructedBy: { type: [string, 'null'] }
+        origin: { type: string, enum: [manual, nova] }
+        status: { type: string, enum: [draft, part_signed, signed, converted, void] }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        convertedTo: { type: [string, 'null'], enum: [direct_cost, variation, null] }
+        convertedAt: { type: [string, 'null'], format: date-time }
+        variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
+        voidReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    TmTicketDetail:
+      allOf:
+        - $ref: '#/components/schemas/TmTicket'
+        - type: object
+          required: [lines, signoffs]
+          properties:
+            lines:
+              type: array
+              items: { $ref: '#/components/schemas/TmTicketLine' }
+            signoffs:
+              type: array
+              items: { $ref: '#/components/schemas/TmTicketSignoff' }
+    TmTicketList:
+      type: object
+      required: [data, total, awaitingSignature, unconverted]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicket' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        awaitingSignature: { type: integer }
+        unconverted: { type: integer }
+    TmTicketLineRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, description, quantity, unit, rate]
+      properties:
+        kind: { $ref: '#/components/schemas/TmKind' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        quantity: { type: string, pattern: '^[0-9]{1,8}(\.[0-9]{1,2})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        rate: { $ref: '#/components/schemas/FinancialsMoney' }
+        sourceType: { $ref: '#/components/schemas/TmSourceType' }
+        sourceId: { type: string, format: uuid }
+    TmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [title, workDate, lines]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        workDate: { type: string, format: date }
+        location: { type: string, minLength: 1, maxLength: 200 }
+        contractor: { type: string, minLength: 1, maxLength: 200 }
+        instructedBy: { type: string, minLength: 1, maxLength: 200 }
+        origin: { type: string, enum: [manual, nova] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/TmTicketLineRequest' }
+    TmTicketSuggestion:
+      type: object
+      required: [date, lines]
+      properties:
+        date: { type: string, format: date }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicketLineRequest' }
+    SignTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [role, signerName]
+      properties:
+        role: { type: string, enum: [contractor, principal_rep] }
+        signerName: { type: string, minLength: 1, maxLength: 200 }
+        signerPosition: { type: string, minLength: 1, maxLength: 200 }
+        evidenceFileId:
+          type: string
+          pattern: '^fil_[0-9A-Za-z]{26}$'
+          description: A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative.
+    VoidTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    ConvertTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [to]
+      properties:
+        to: { type: string, enum: [direct_cost, variation] }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
     CommitmentList:
       type: object
       required: [data]

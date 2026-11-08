@@ -362,6 +362,10 @@ export const PROBLEM_CODES = {
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.tm_ticket.not_found': 404,
+  'financials.tm_ticket.bad_state': 409,
+  'financials.tm_ticket.duplicate_source': 409,
+  'financials.tm_ticket.reason_required': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,

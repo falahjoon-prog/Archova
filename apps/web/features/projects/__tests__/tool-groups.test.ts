@@ -30,6 +30,7 @@ describe('projectToolGroups', () => {
       'Inductions',
       'Contracts',
       'Payment claims',
+      'T&M tickets',
       'Budget',
       'Owner portal',
       'Tender packages',

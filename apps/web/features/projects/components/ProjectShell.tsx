@@ -192,6 +192,11 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('payment_claims') && {
+      href: webRoutes.tmTickets(orgSlug, projectId),
+      label: 'T&M tickets',
+      icon: ContractsIcon,
+    },
     canRead('budget') && {
       href: webRoutes.budget(orgSlug, projectId),
       label: 'Budget',
@@ -351,7 +356,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
   },
   {
     id: 'estimating',
