@@ -281,6 +281,9 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  'warranty.not_found': 404,
+  'warranty.responsible_required': 422,
+  'warranty.item_not_on_project': 422,
   // meetings
   'meeting.series_not_found': 404,
   'meeting.not_found': 404,
@@ -305,6 +308,12 @@ export const PROBLEM_CODES = {
   'bookmark.limit_reached': 409,
   // recents
   'recent.invalid_target': 422,
+  // logistics (material deliveries)
+  'logistics_resource.not_found': 404,
+  'logistics_resource.name_taken': 409,
+  'logistics_delivery.not_found': 404,
+  'logistics_delivery.bad_state': 409,
+  'logistics_delivery.commitment_not_found': 422,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -353,6 +362,8 @@ export const PROBLEM_CODES = {
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
   'financials.production.no_plan': 409,
+  'financials.production.item_not_found': 404,
+  'financials.production.item_archived': 409,
   'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,

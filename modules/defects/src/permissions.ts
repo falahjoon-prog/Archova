@@ -9,4 +9,8 @@ export const DEFECTS_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'defects.defects.create', scope: 'project', tool: 'defects', level: 'standard' },
   { key: 'defects.defects.respond', scope: 'project', tool: 'defects', level: 'standard' },
   { key: 'defects.defects.close', scope: 'project', tool: 'defects', level: 'admin' },
+  // Post-handover warranty register. Read is open to anyone who reads the tool (owners and clients included); the
+  // register itself is kept by builder staff with `admin`.
+  { key: 'defects.warranty.read', scope: 'project', tool: 'defects', level: 'read' },
+  { key: 'defects.warranty.manage', scope: 'project', tool: 'defects', level: 'admin' },
 ];
