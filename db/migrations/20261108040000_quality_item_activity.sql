@@ -1,4 +1,4 @@
--- Composed from modules/quality/db/migrations/20261107120000_quality_item_activity.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/quality/db/migrations/20261108040000_quality_item_activity.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- quality: inspection header, section N/A, date items and N/A on any item; per-item activity on an inspection and the observations raised from an item (Procore parity gap check, 7 Nov).
 
 alter table quality.inspection_template_items
