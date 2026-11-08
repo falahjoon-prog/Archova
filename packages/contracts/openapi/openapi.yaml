@@ -12321,6 +12321,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentInvoices' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: getCommitmentInvoice
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: One invoice as a payment application, with its schedule-of-values breakdown and Nova's proofread.
+      description: >
+        Read-only, over the same claim data as the Invoices tab. `findings` is Nova's proofread: every figure is
+        re-added from the claim lines and the dates and the step up on the last period are checked by code, not a
+        model. Nothing is sent or changed from here; the person reads the findings and decides. Needs
+        `financials.commitments.read` as well, and builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentApplication' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    post:
+      operationId: getCommitmentInvoicePdf
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: The payment application as a PDF, laid out the way the person chooses.
+      description: >
+        A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered
+        from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column).
+        The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff
+        only.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentInvoicePdfRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentInvoicePdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -22345,6 +22398,176 @@ components:
         paymentDueOn: { type: [string, 'null'], format: date }
         balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         percentComplete: { type: string }
+    PaymentApplicationRow:
+      type: object
+      required:
+        [
+          key,
+          code,
+          description,
+          kind,
+          costCode,
+          scheduledValue,
+          previous,
+          thisPeriod,
+          completedToDate,
+          percentComplete,
+          balanceToFinish,
+        ]
+      properties:
+        key: { type: string }
+        code: { type: string }
+        description: { type: string }
+        kind: { type: string, enum: [sov, variation] }
+        costCode: { type: [string, 'null'] }
+        scheduledValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        previous: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        percentComplete: { type: string }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    PaymentApplicationFinding:
+      type: object
+      required: [code, severity, message, itemCode]
+      properties:
+        code: { type: string }
+        severity: { type: string, enum: [error, warning, info] }
+        message: { type: string }
+        itemCode: { type: [string, 'null'] }
+    PaymentApplicationSummary:
+      type: object
+      required:
+        [
+          originalSum,
+          netChange,
+          revisedSum,
+          completedToDate,
+          retainage,
+          earnedLessRetainage,
+          lessPrevious,
+          thisPeriod,
+          gst,
+          currentPaymentDue,
+          scheduledAmount,
+          paid,
+          balanceToFinish,
+          percentComplete,
+        ]
+      properties:
+        originalSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        netChange: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        revisedSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsMoney' }
+        earnedLessRetainage: { $ref: '#/components/schemas/FinancialsMoney' }
+        lessPrevious: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        currentPaymentDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        scheduledAmount: { type: [string, 'null'] }
+        paid: { $ref: '#/components/schemas/FinancialsMoney' }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        percentComplete: { type: string }
+    PaymentApplication:
+      type: object
+      required:
+        [
+          claimId,
+          commitmentTitle,
+          contractNumber,
+          contractTitle,
+          claimNumber,
+          status,
+          periodStart,
+          periodEnd,
+          receivedAt,
+          paymentDueOn,
+          scheduleDueOn,
+          summary,
+          changeOrders,
+          retentionPct,
+          rows,
+          prior,
+          findings,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        commitmentTitle: { type: string }
+        contractNumber: { type: integer }
+        contractTitle: { type: string }
+        claimNumber: { type: integer }
+        status: { type: string }
+        periodStart: { type: [string, 'null'], format: date }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        scheduleDueOn: { type: [string, 'null'], format: date }
+        summary: { $ref: '#/components/schemas/PaymentApplicationSummary' }
+        changeOrders:
+          type: object
+          required: [previousAdditions, previousDeductions, thisAdditions, thisDeductions, net]
+          properties:
+            previousAdditions: { $ref: '#/components/schemas/FinancialsMoney' }
+            previousDeductions: { $ref: '#/components/schemas/FinancialsMoney' }
+            thisAdditions: { $ref: '#/components/schemas/FinancialsMoney' }
+            thisDeductions: { $ref: '#/components/schemas/FinancialsMoney' }
+            net: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        retentionPct: { type: string }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentApplicationRow' }
+        prior:
+          oneOf:
+            - type: object
+              required: [number, periodEnd, thisPeriod, percentComplete]
+              properties:
+                number: { type: integer }
+                periodEnd: { type: string, format: date }
+                thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+                percentComplete: { type: string }
+            - { type: 'null' }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentApplicationFinding' }
+    CommitmentInvoicePdfRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sections:
+          type: array
+          maxItems: 5
+          items: { type: string, enum: [g702, summary, breakdown, payment, proofread] }
+        columns:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            enum:
+              [
+                code,
+                description,
+                scheduledValue,
+                previous,
+                thisPeriod,
+                completedToDate,
+                percentComplete,
+                balanceToFinish,
+              ]
+        paper: { type: string, enum: [a4, letter] }
+        orientation: { type: string, enum: [portrait, landscape] }
+        notes: { type: string, maxLength: 500 }
+        signatureBlock: { type: boolean }
+        amountCertified:
+          type: string
+          pattern: '^\d{1,12}(\.\d{1,2})?$'
+          description: The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for.
+    CommitmentInvoicePdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
     CommitmentInvoiceSummary:
       type: object
       required:

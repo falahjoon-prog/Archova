@@ -10,6 +10,20 @@ export type CommitmentDetail = S['CommitmentDetail'];
 export type CommitmentInvoices = S['CommitmentInvoices'];
 export type CommitmentInvoice = S['CommitmentInvoice'];
 export type CommitmentInvoiceSummary = S['CommitmentInvoiceSummary'];
+export type PaymentApplication = S['PaymentApplication'];
+export type PaymentApplicationRow = S['PaymentApplicationRow'];
+export type PaymentApplicationFinding = S['PaymentApplicationFinding'];
+
+/** What the person chose for the PDF; anything left out takes the server default. */
+export interface InvoicePdfOptions {
+  sections?: string[];
+  columns?: string[];
+  paper?: 'a4' | 'letter';
+  orientation?: 'portrait' | 'landscape';
+  notes?: string;
+  signatureBlock?: boolean;
+  amountCertified?: string;
+}
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 
@@ -32,6 +46,40 @@ export function createCommitmentsApi(orgId: string) {
           params: { path: { orgId, projectId, commitmentId } },
         }),
       );
+    },
+    async invoice(
+      projectId: string,
+      commitmentId: string,
+      claimId: string,
+    ): Promise<PaymentApplication> {
+      return unwrap(
+        await api.GET(`${P}/commitments/{commitmentId}/invoices/{claimId}`, {
+          params: { path: { orgId, projectId, commitmentId, claimId } },
+        }),
+      );
+    },
+    async invoicePdf(
+      projectId: string,
+      commitmentId: string,
+      claimId: string,
+      o: InvoicePdfOptions,
+    ): Promise<File> {
+      const r = unwrap(
+        await api.POST(`${P}/commitments/{commitmentId}/invoices/{claimId}/pdf`, {
+          params: { path: { orgId, projectId, commitmentId, claimId } },
+          body: {
+            ...(o.sections?.length ? { sections: o.sections as never } : {}),
+            ...(o.columns?.length ? { columns: o.columns as never } : {}),
+            ...(o.paper ? { paper: o.paper } : {}),
+            ...(o.orientation ? { orientation: o.orientation } : {}),
+            ...(o.notes?.trim() ? { notes: o.notes.trim() } : {}),
+            ...(o.signatureBlock ? { signatureBlock: true } : {}),
+            ...(o.amountCertified ? { amountCertified: o.amountCertified } : {}),
+          },
+        }),
+      );
+      const bytes = Uint8Array.from(atob(r.dataBase64), (c) => c.charCodeAt(0));
+      return new File([bytes], r.filename, { type: r.contentType });
     },
     async linkContract(
       projectId: string,
