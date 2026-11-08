@@ -549,6 +549,7 @@ export type AwardedSubcontract = z.infer<typeof AwardedSubcontractSchema>;
 export const BallInCourtSchema = z.object({
   "side": z.enum(["assignees", "builder"]).nullable(),
   "userIds": z.array(z.string()),
+  "since": z.string().datetime({ offset: true }).nullable(),
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
 
@@ -2228,6 +2229,10 @@ export const CreateDefectRequestSchema = z.object({
   "managerUserId": UserRefSchema.optional(),
   "finalApproverUserId": UserRefSchema.optional(),
   "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
+  "approverDelegateUserId": UserRefSchema.optional(),
+  "approverDelegateFrom": z.string().date().optional(),
+  "approverDelegateUntil": z.string().date().optional(),
+  "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().optional(),
   "pin": DrawingPinSchema,
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
@@ -3295,6 +3300,10 @@ export const DefectSchema = z.object({
   "managerUserId": z.string().nullable(),
   "finalApproverUserId": z.string().nullable(),
   "distributionUserIds": z.array(z.string()),
+  "approverDelegateUserId": z.string().nullable(),
+  "approverDelegateFrom": z.string().date().nullable(),
+  "approverDelegateUntil": z.string().date().nullable(),
+  "requireCloseEvidence": z.boolean(),
   "dueDate": z.string().date().nullable(),
   "isOverdue": z.boolean(),
   "raisedByCompanyId": z.string().nullable(),
@@ -3320,6 +3329,7 @@ export const DefectEventSchema = z.object({
   "note": z.string().nullable(),
   "fileIds": z.array(z.string()),
   "actorId": z.string().nullable(),
+  "onBehalfOf": z.string().nullable(),
   "at": z.string().datetime({ offset: true }),
 });
 export type DefectEvent = z.infer<typeof DefectEventSchema>;
@@ -9336,6 +9346,10 @@ export const UpdateDefectRequestSchema = z.object({
   "managerUserId": z.union([UserRefSchema, z.null()]).optional(),
   "finalApproverUserId": z.union([UserRefSchema, z.null()]).optional(),
   "distributionUserIds": z.array(UserRefSchema).max(50).optional(),
+  "approverDelegateUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "approverDelegateFrom": z.string().date().nullable().optional(),
+  "approverDelegateUntil": z.string().date().nullable().optional(),
+  "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().nullable().optional(),
   "pin": DrawingPinSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
