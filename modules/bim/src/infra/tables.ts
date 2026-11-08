@@ -63,3 +63,19 @@ export const issueComments = bimSchema.table('issue_comments', {
   body: text('body').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const siteCaptures = bimSchema.table('site_captures', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  title: text('title').notNull(),
+  provider: text('provider').$type<'matterport' | 'kuula' | 'ricoh'>().notNull(),
+  url: text('url').notNull(),
+  capturedOn: date('captured_on').notNull(),
+  area: text('area').notNull().default(''),
+  note: text('note').notNull().default(''),
+  rfiId: uuid('rfi_id'),
+  issueId: uuid('issue_id'),
+  ...audit,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});

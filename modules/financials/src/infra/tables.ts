@@ -426,6 +426,74 @@ export const directCosts = financialsSchema.table('direct_costs', {
   version: integer('version').notNull().default(1),
 });
 
+export const tmTickets = financialsSchema.table('tm_tickets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  workDate: date('work_date').notNull(),
+  location: text('location'),
+  contractor: text('contractor'),
+  instructedBy: text('instructed_by'),
+  origin: text('origin').$type<'manual' | 'nova'>().notNull().default('manual'),
+  status: text('status')
+    .$type<'draft' | 'part_signed' | 'signed' | 'converted' | 'void'>()
+    .notNull()
+    .default('draft'),
+  total: money('total').notNull().default('0'),
+  convertedTo: text('converted_to').$type<'direct_cost' | 'variation'>(),
+  convertedAt: timestamp('converted_at', { withTimezone: true }),
+  convertedBy: uuid('converted_by'),
+  variationId: uuid('variation_id'),
+  voidReason: text('void_reason'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const tmTicketLines = financialsSchema.table('tm_ticket_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  sort: integer('sort').notNull(),
+  kind: text('kind').$type<'labour' | 'equipment' | 'material'>().notNull(),
+  description: text('description').notNull(),
+  quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
+  unit: text('unit').notNull(),
+  rate: money('rate').notNull(),
+  amount: money('amount').notNull(),
+  sourceType: text('source_type').$type<'timesheet_line' | 'equipment_log'>(),
+  sourceId: uuid('source_id'),
+});
+
+export const tmTicketSignoffs = financialsSchema.table('tm_ticket_signoffs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  role: text('role').$type<'contractor' | 'principal_rep'>().notNull(),
+  signerName: text('signer_name').notNull(),
+  signerPosition: text('signer_position'),
+  signedBy: uuid('signed_by').notNull(),
+  contentHash: text('content_hash').notNull(),
+  esignRequestId: uuid('esign_request_id'),
+  evidenceFileId: uuid('evidence_file_id'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const tmTicketDirectCosts = financialsSchema.table('tm_ticket_direct_costs', {
+  orgId: uuid('org_id').notNull(),
+  ticketId: uuid('ticket_id').notNull(),
+  directCostId: uuid('direct_cost_id').notNull(),
+});
+
 export const trustAccounts = financialsSchema.table('trust_accounts', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

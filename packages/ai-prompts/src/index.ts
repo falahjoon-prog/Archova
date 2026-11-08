@@ -29,3 +29,4 @@ export * from './contract-review/ask';
 export * from './contract-review/compare';
 export * from './takeoff-detect/prompt';
 export * from './labor-productivity/prompt';
+export * from './capture-scan/prompt';

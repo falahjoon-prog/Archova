@@ -2,7 +2,9 @@ import { encodeId } from '@archova/domain';
 import type {
   Inspection,
   InspectionDetail,
+  InspectionItemEvent,
   InspectionItemResponse,
+  InspectionSignature,
   InspectionTemplate,
   InspectionTemplateDetail,
   InspectionTemplateItem,
@@ -14,7 +16,16 @@ import {
   observationLabel,
   type ObservationViewer,
 } from '../domain/observation';
-import type { InspectionRow, ItemRow, ResponseRow, TemplateRow } from '../application/inspections';
+import type {
+  InspectionRow,
+  ItemEventRow,
+  ItemRow,
+  ResponseRow,
+  SignatureRow,
+  TemplateRow,
+} from '../application/inspections';
+import type { SectionSummary } from '../domain/inspection';
+import type { ItemSuggestion } from '../domain/item-activity';
 import type { ObservationView } from '../application/observations';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -41,6 +52,7 @@ export const toItemDto = (i: ItemRow): InspectionTemplateItem => ({
   options: i.options,
   required: i.required,
   createsDefectOnFail: i.createsDefectOnFail,
+  helpText: i.helpText,
 });
 
 export const toTemplateDetail = (d: {
@@ -63,6 +75,14 @@ export const toInspectionDto = (r: InspectionRow): Inspection => ({
   status: r.status,
   inspectorId: userOrNull(r.inspectorId),
   scheduledFor: r.scheduledFor,
+  dueDate: r.dueDate,
+  assigneeIds: r.assigneeIds.map((u) => encodeId('user', u)),
+  responsibleCompanyId: companyOrNull(r.responsibleCompanyId),
+  pointOfContactId: userOrNull(r.pointOfContactId),
+  trade: r.trade,
+  specSection: r.specSection,
+  description: r.description,
+  fileIds: r.fileIds.map((f) => encodeId('file', f)),
   completedAt: isoOrNull(r.completedAt),
   signedBy: r.signedBy
     ? {
@@ -86,15 +106,53 @@ const toResponseDto = (r: ResponseRow): InspectionItemResponse => ({
   updatedAt: r.updatedAt.toISOString(),
 });
 
+export const toSignature = (g: {
+  name: string;
+  fileId: string | null;
+  at: Date;
+}): InspectionSignature => ({
+  name: g.name,
+  fileId: g.fileId ? encodeId('file', g.fileId) : null,
+  at: g.at.toISOString(),
+});
+
+export const toItemEvent = (e: ItemEventRow): InspectionItemEvent => ({
+  id: e.id,
+  kind: e.kind,
+  body: e.body,
+  result: e.result,
+  fileIds: e.fileIds.map((f) => encodeId('file', f)),
+  observationId: e.observationId ? encodeId('observation', e.observationId) : null,
+  actorId: userOrNull(e.actorId),
+  at: e.at.toISOString(),
+});
+
 export const toInspectionDetail = (d: {
   inspection: InspectionRow;
   items: ItemRow[];
+  itemActivity: {
+    templateItemId: string;
+    responseChanges: number;
+    attachments: number;
+    photos: number;
+    comments: number;
+    observations: number;
+    suggestion: ItemSuggestion | null;
+  }[];
+  sections: SectionSummary[];
+  signatures: SignatureRow[];
   responses: ResponseRow[];
   missingRequiredItemIds: string[];
   failedItemIds: string[];
 }): InspectionDetail => ({
   inspection: toInspectionDto(d.inspection),
   items: d.items.map(toItemDto),
+  itemActivity: d.itemActivity.map((a) => ({
+    ...a,
+    templateItemId: encodeId('inspectionItem', a.templateItemId),
+  })),
+  sections: d.sections,
+  signatures: d.signatures.map(toSignature),
   responses: d.responses.map(toResponseDto),
   missingRequiredItemIds: d.missingRequiredItemIds.map((i) => encodeId('inspectionItem', i)),
   failedItemIds: d.failedItemIds.map((i) => encodeId('inspectionItem', i)),
@@ -119,6 +177,9 @@ export const toObservationDto = (
   status: r.status,
   dueDate: r.dueDate,
   isOverdue: r.isOverdue,
+  typeKey: r.typeKey,
+  inspectionId: r.inspectionId ? encodeId('inspection', r.inspectionId) : null,
+  inspectionItemId: r.inspectionItemId ? encodeId('inspectionItem', r.inspectionItemId) : null,
   swmsId: r.swmsId ? encodeId('swms', r.swmsId) : null,
   resolutionNote: r.resolutionNote,
   fileIds: r.fileIds.map((f) => encodeId('file', f)),
