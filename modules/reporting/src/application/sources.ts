@@ -25,8 +25,9 @@ export interface ReportingDeps {
   claims: Tool;
   variations: Tool;
   incidents: Tool<IncidentCounts>;
-  observations: Tool;
-  inspections: Tool;
+  /** Counts only for the dashboard: neither is a report-builder source yet. */
+  observations: CountsOnly;
+  inspections: CountsOnly;
   programme: Tool<ProgrammeCounts>;
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
@@ -94,6 +95,8 @@ export interface ReportingDeps {
     }>;
   };
 }
+
+type CountsOnly = Pick<Tool, 'portfolioCounts'>;
 
 interface Tool<C extends ToolCounts = ToolCounts> {
   portfolioCounts(scope: TenantScope, projectId: string): Promise<C>;
