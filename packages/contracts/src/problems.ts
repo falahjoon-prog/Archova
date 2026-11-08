@@ -374,6 +374,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // insurance: subcontractor insurance and bonds register
+  'cover.not_found': 404,
+  'cover.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,
