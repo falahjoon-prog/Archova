@@ -1,4 +1,4 @@
--- Composed from modules/environment/db/migrations/20261108060000_environment_monitoring.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/environment/db/migrations/20261108060100_environment_monitoring.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- environment: monitoring points (dust, noise, vibration, water) with limits, and the readings logged against them.
 -- A reading's status (ok / warning / breach) is fixed when it is logged; a breach is answered with a corrective
 -- note and, optionally, an environmental incident.

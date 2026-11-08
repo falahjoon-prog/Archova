@@ -3,6 +3,8 @@ import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
 import { uploadFile } from '@/shared/lib/uploads';
 import type {
+  CarbonEntry,
+  CarbonSummary,
   Condition,
   ConditionDetail,
   EnvironmentDocument,
@@ -10,6 +12,8 @@ import type {
   Plan,
   Reading,
   Summary,
+  WasteDocket,
+  WasteSummary,
 } from '../lib/types';
 import type { EnvironmentSource } from './source';
 
@@ -20,6 +24,8 @@ type ApiPlan = components['schemas']['EnvironmentPlan'];
 type ApiSummary = components['schemas']['EnvironmentSummary'];
 type ApiReading = components['schemas']['MonitoringReading'];
 type ApiPoint = components['schemas']['MonitoringPoint'];
+type ApiDocket = components['schemas']['WasteDocket'];
+type ApiCarbonEntry = components['schemas']['CarbonEntry'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/environment' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
@@ -113,11 +119,38 @@ export const toPoint = (p: ApiPoint): MonitoringPoint => ({
   version: p.version,
 });
 
+export const toDocket = (d: ApiDocket): WasteDocket => ({
+  id: d.id,
+  docketDate: d.docketDate,
+  wasteType: d.wasteType,
+  destination: d.destination,
+  tonnes: d.tonnes,
+  docketNumber: d.docketNumber,
+  contractor: d.contractor,
+  facility: d.facility,
+  note: d.note,
+  evidenceCount: d.fileIds.length,
+});
+
+export const toCarbonEntry = (e: ApiCarbonEntry): CarbonEntry => ({
+  id: e.id,
+  entryDate: e.entryDate,
+  source: e.source,
+  scope: e.scope as 1 | 2 | 3,
+  quantity: e.quantity,
+  factor: e.factor,
+  kgCo2e: e.kgCo2e,
+  description: e.description,
+  note: e.note,
+});
+
 const toSummary = (s: ApiSummary): Summary => ({
   plan: s.plan ? toPlan(s.plan) : null,
   conditions: s.conditions,
   documents: s.documents,
   monitoring: s.monitoring,
+  waste: s.waste,
+  carbon: s.carbon,
   flags: s.flags.map((f) => ({ code: f.code, severity: f.severity, message: f.message })),
 });
 
@@ -306,6 +339,69 @@ export function createEnvironmentApi(orgId: string): EnvironmentSource {
         }),
       );
       return { reading: toReading(r.reading), incidentNumber: r.incidentNumber };
+    },
+    async listDockets(projectId) {
+      const r = unwrap(
+        await api.GET(`${P}/waste`, { params: { path: path(projectId), query: { limit: 100 } } }),
+      );
+      return r.data.map(toDocket);
+    },
+    async createDocket(projectId, input) {
+      const fileIds: string[] = [];
+      for (const file of input.files ?? []) {
+        fileIds.push((await uploadFile(orgId, { file, projectId, module: 'environment' })).id);
+      }
+      const { files: _files, ...rest } = input;
+      return toDocket(
+        unwrap(
+          await api.POST(`${P}/waste`, {
+            params: { path: path(projectId), header: idempotencyKey() },
+            body: { ...rest, ...(fileIds.length ? { fileIds } : {}) },
+          }),
+        ),
+      );
+    },
+    async deleteDocket(projectId, d) {
+      unwrap(
+        await api.DELETE(`${P}/waste/{wasteDocketId}`, {
+          params: { path: { ...path(projectId), wasteDocketId: d.id } },
+        }),
+      );
+    },
+    async wasteSummary(projectId) {
+      return unwrap(
+        await api.GET(`${P}/waste/summary`, { params: { path: path(projectId) } }),
+      ) as WasteSummary;
+    },
+    async listCarbon(projectId) {
+      const r = unwrap(
+        await api.GET(`${P}/carbon`, { params: { path: path(projectId), query: { limit: 100 } } }),
+      );
+      return r.data.map(toCarbonEntry);
+    },
+    async createCarbon(projectId, input) {
+      return toCarbonEntry(
+        unwrap(
+          await api.POST(`${P}/carbon`, {
+            params: { path: path(projectId), header: idempotencyKey() },
+            body: input,
+          }),
+        ),
+      );
+    },
+    async deleteCarbon(projectId, e) {
+      unwrap(
+        await api.DELETE(`${P}/carbon/{carbonEntryId}`, {
+          params: { path: { ...path(projectId), carbonEntryId: e.id } },
+        }),
+      );
+    },
+    async carbonSummary(projectId) {
+      const r = unwrap(await api.GET(`${P}/carbon/summary`, { params: { path: path(projectId) } }));
+      return {
+        ...r,
+        byScope: { 1: r.byScope['1'], 2: r.byScope['2'], 3: r.byScope['3'] },
+      } as CarbonSummary;
     },
   };
 }

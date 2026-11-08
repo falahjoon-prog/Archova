@@ -2,6 +2,7 @@
 // check of the register against today's date. Pure, no IO.
 import { daysBetween } from '@archova/time';
 import { expiryState } from './document';
+import { DIVERSION_MIN_TONNES, DIVERSION_TARGET_PERCENT } from './waste';
 import { isConditionOverdue, conditionLabel, type ConditionStatus } from './condition';
 
 export type FlagSeverity = 'info' | 'warning' | 'critical';
@@ -17,7 +18,10 @@ export interface EnvironmentFlag {
     | 'plan_review_due'
     | 'monitoring_breach_open'
     | 'monitoring_overdue'
-    | 'monitoring_trending';
+    | 'monitoring_trending'
+    | 'waste_diversion_low'
+    | 'waste_docket_missing'
+    | 'carbon_rising';
   severity: FlagSeverity;
   message: string;
   /** Ids (internal uuids; the route encodes them) of the conditions or documents the flag is about. */
@@ -36,7 +40,13 @@ interface FlagInput {
     overdue: { name: string }[];
     trending: { name: string }[];
   };
+  waste?: { totalTonnes: number; diversionPercent: number | null; regulatedWithoutDocket: number };
+  carbon?: { last30Kg: number; previous30Kg: number; changePercent: number | null };
 }
+
+/** The last 30 days of emissions must be this far above the 30 before (and the base big enough) to be flagged. */
+export const CARBON_RISE_PERCENT = 25;
+export const CARBON_RISE_MIN_BASE_KG = 1000;
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -136,6 +146,42 @@ export function environmentFlags(i: FlagInput): EnvironmentFlag[] {
       code: 'monitoring_trending',
       severity: 'warning',
       message: `Readings are rising towards the limit at ${names(m.trending)}. Act before it breaches.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  const w = i.waste;
+  if (
+    w &&
+    w.diversionPercent !== null &&
+    w.totalTonnes >= DIVERSION_MIN_TONNES &&
+    w.diversionPercent < DIVERSION_TARGET_PERCENT
+  )
+    flags.push({
+      code: 'waste_diversion_low',
+      severity: 'warning',
+      message: `Only ${w.diversionPercent}% of waste has been diverted from landfill, against a target of ${DIVERSION_TARGET_PERCENT}%. Look at which streams are going to landfill.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  if (w && w.regulatedWithoutDocket > 0)
+    flags.push({
+      code: 'waste_docket_missing',
+      severity: 'critical',
+      message: `${plural(w.regulatedWithoutDocket, 'hazardous or asbestos docket')} without a copy attached. Attach the signed docket.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  const c = i.carbon;
+  if (
+    c &&
+    c.changePercent !== null &&
+    c.previous30Kg >= CARBON_RISE_MIN_BASE_KG &&
+    c.changePercent >= CARBON_RISE_PERCENT
+  )
+    flags.push({
+      code: 'carbon_rising',
+      severity: 'warning',
+      message: `Emissions in the last 30 days are up ${c.changePercent}% on the 30 days before. Check fuel use and plant hours.`,
       conditionIds: [],
       documentIds: [],
     });

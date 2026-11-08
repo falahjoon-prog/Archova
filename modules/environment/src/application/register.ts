@@ -12,6 +12,8 @@ import { expiryState, type DocumentType } from '../domain/document';
 import { environmentFlags } from '../domain/flags';
 import { documents, plans } from '../infra/tables';
 import type { ConditionService } from './conditions';
+import type { CarbonService } from './carbon';
+import type { WasteService } from './waste';
 import type { MonitoringService } from './monitoring';
 import { checkFiles, projectToday, type EnvironmentDeps } from './shared';
 
@@ -50,6 +52,8 @@ export function createRegisterService(
   deps: EnvironmentDeps,
   conditions: ConditionService,
   monitoring: MonitoringService,
+  waste: WasteService,
+  carbon: CarbonService,
 ) {
   const now = deps.now ?? (() => new Date());
 
@@ -233,6 +237,10 @@ export function createRegisterService(
   async function summary(scope: TenantScope, projectId: string) {
     const today = await projectToday(deps, scope, projectId);
     const mon = await monitoring.summaryInputs(scope, projectId);
+    const [wasteView, carbonView] = [
+      await waste.overview(scope, projectId),
+      await carbon.overview(scope, projectId),
+    ];
     const [plan, conds, docs] = await Promise.all([
       getPlan(scope, projectId),
       conditions.allForSummary(scope, projectId),
@@ -288,12 +296,19 @@ export function createRegisterService(
         openBreaches: mon.openBreaches,
         overdue: mon.overdue.length,
       },
+      waste: {
+        totalTonnes: wasteView.totalTonnes,
+        diversionPercent: wasteView.diversionPercent,
+      },
+      carbon: { totalKg: carbonView.totalKg, last30Kg: carbonView.last30Kg },
       flags: environmentFlags({
         today,
         plan: plan ? { status: plan.status, nextReviewDate: plan.nextReviewDate } : null,
         conditions: conds,
         documents: docs,
         monitoring: mon,
+        waste: wasteView,
+        carbon: carbonView,
       }),
     };
   }

@@ -12136,6 +12136,155 @@ paths:
       responses:
         '204': { description: No content }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWasteDockets
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.read
+      summary: 'Waste dockets, newest first.'
+      parameters:
+        - { name: wasteType, in: query, schema: { $ref: '#/components/schemas/WasteType' } }
+        - {
+            name: destination,
+            in: query,
+            schema: { $ref: '#/components/schemas/WasteDestination' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteDocketPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWasteDocket
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.log
+      summary: 'Record a waste docket: how many tonnes of what left site, and whether it was recycled, reused, landfilled or treated.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWasteDocketRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteDocket' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getWasteSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.read
+      summary: 'Tonnes by type and destination, the diversion rate against the target, a six-month trend, and the last 30 days against the 30 before.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste/{wasteDocketId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/WasteDocketId'
+    delete:
+      operationId: deleteWasteDocket
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.delete
+      summary: 'Remove a docket entered by mistake.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCarbonEntries
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.read
+      summary: 'Carbon entries (fuel, electricity, materials), newest first.'
+      parameters:
+        - { name: source, in: query, schema: { $ref: '#/components/schemas/CarbonSource' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonEntryPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCarbonEntry
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.log
+      summary: "Log an activity (litres of diesel, kWh, m3 of concrete...). It is converted to kg CO2-e with the source's default factor, or the factor given, which is kept on the entry."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCarbonEntryRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getCarbonSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.read
+      summary: 'Total kg CO2-e by scope and source, a six-month trend, and the last 30 days against the 30 before.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon/{carbonEntryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CarbonEntryId'
+    delete:
+      operationId: deleteCarbonEntry
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.delete
+      summary: 'Remove an entry logged by mistake.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15833,6 +15982,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^erd_[0-9A-Za-z]{26}$' }
+    WasteDocketId:
+      name: wasteDocketId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wdk_[0-9A-Za-z]{26}$' }
+    CarbonEntryId:
+      name: carbonEntryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cbe_[0-9A-Za-z]{26}$' }
     ToolboxTopicId:
       name: topicId
       in: path
@@ -30185,6 +30344,9 @@ components:
                 monitoring_breach_open,
                 monitoring_overdue,
                 monitoring_trending,
+                waste_diversion_low,
+                waste_docket_missing,
+                carbon_rising,
               ],
           }
         severity: { type: string, enum: [info, warning, critical] }
@@ -30200,9 +30362,240 @@ components:
         compliant: { type: integer }
         nonCompliant: { type: integer }
         overdue: { type: integer }
+    WasteType:
+      type: string
+      enum:
+        [
+          general,
+          concrete,
+          bricks_masonry,
+          timber,
+          metals,
+          plastics,
+          plasterboard,
+          soil_fill,
+          cardboard_paper,
+          glass,
+          green_waste,
+          hazardous,
+          asbestos,
+          other,
+        ]
+    WasteDestination:
+      type: string
+      enum: [recycled, reused, landfill, treatment]
+      description: 'Recycled and reused count as diverted from landfill.'
+    WasteDocket:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          docketDate,
+          wasteType,
+          destination,
+          tonnes,
+          docketNumber,
+          contractor,
+          facility,
+          note,
+          fileIds,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        docketDate: { type: string, format: date }
+        wasteType: { $ref: '#/components/schemas/WasteType' }
+        destination: { $ref: '#/components/schemas/WasteDestination' }
+        tonnes: { type: number }
+        docketNumber: { type: [string, 'null'] }
+        contractor: { type: [string, 'null'] }
+        facility: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    WasteDocketPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WasteDocket' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateWasteDocketRequest:
+      type: object
+      required: [docketDate, wasteType, destination, tonnes]
+      additionalProperties: false
+      properties:
+        docketDate: { type: string, format: date }
+        wasteType: { $ref: '#/components/schemas/WasteType' }
+        destination: { $ref: '#/components/schemas/WasteDestination' }
+        tonnes: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        docketNumber: { type: string, maxLength: 100 }
+        contractor: { type: string, maxLength: 200 }
+        facility: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    WasteWindow:
+      type: object
+      required: [tonnes, divertedTonnes, diversionPercent]
+      properties:
+        tonnes: { type: number }
+        divertedTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+    WasteSummary:
+      type: object
+      required:
+        [
+          totalTonnes,
+          divertedTonnes,
+          diversionPercent,
+          targetPercent,
+          byDestination,
+          byType,
+          monthly,
+          last30,
+          previous30,
+          regulatedWithoutDocket,
+        ]
+      properties:
+        totalTonnes: { type: number }
+        divertedTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+        targetPercent: { type: integer }
+        byDestination:
+          type: object
+          required: [recycled, reused, landfill, treatment]
+          properties:
+            recycled: { type: number }
+            reused: { type: number }
+            landfill: { type: number }
+            treatment: { type: number }
+        byType:
+          type: array
+          items:
+            type: object
+            required: [wasteType, tonnes, divertedTonnes]
+            properties:
+              wasteType: { $ref: '#/components/schemas/WasteType' }
+              tonnes: { type: number }
+              divertedTonnes: { type: number }
+        monthly:
+          type: array
+          description: 'The last six months, oldest first.'
+          items:
+            type: object
+            required: [month, tonnes, divertedTonnes, diversionPercent]
+            properties:
+              month: { type: string, description: 'YYYY-MM' }
+              tonnes: { type: number }
+              divertedTonnes: { type: number }
+              diversionPercent: { type: [integer, 'null'] }
+        last30: { $ref: '#/components/schemas/WasteWindow' }
+        previous30: { $ref: '#/components/schemas/WasteWindow' }
+        regulatedWithoutDocket:
+          { type: integer, description: 'Hazardous or asbestos dockets with no copy attached.' }
+    CarbonSource:
+      type: string
+      enum:
+        [
+          diesel_litres,
+          petrol_litres,
+          lpg_litres,
+          electricity_kwh,
+          concrete_m3,
+          steel_tonnes,
+          other,
+        ]
+    CarbonEntry:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryDate,
+          source,
+          scope,
+          quantity,
+          factor,
+          kgCo2e,
+          description,
+          note,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entryDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/CarbonSource' }
+        scope: { type: integer, minimum: 1, maximum: 3 }
+        quantity: { type: number }
+        factor: { type: number, description: 'kg CO2-e per unit, as used for this entry.' }
+        kgCo2e: { type: number }
+        description: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    CarbonEntryPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/CarbonEntry' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateCarbonEntryRequest:
+      type: object
+      required: [entryDate, source, quantity]
+      additionalProperties: false
+      properties:
+        entryDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/CarbonSource' }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        factor:
+          {
+            type: number,
+            minimum: 0,
+            description: "kg CO2-e per unit. The source's default when left out.",
+          }
+        description: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+    CarbonSummary:
+      type: object
+      required: [totalKg, byScope, bySource, monthly, last30Kg, previous30Kg, changePercent]
+      properties:
+        totalKg: { type: number }
+        byScope:
+          type: object
+          required: ['1', '2', '3']
+          properties:
+            '1': { type: number }
+            '2': { type: number }
+            '3': { type: number }
+        bySource:
+          type: array
+          items:
+            type: object
+            required: [source, quantity, kg]
+            properties:
+              source: { $ref: '#/components/schemas/CarbonSource' }
+              quantity: { type: number }
+              kg: { type: number }
+        monthly:
+          type: array
+          description: 'The last six months, oldest first.'
+          items:
+            type: object
+            required: [month, kg]
+            properties:
+              month: { type: string, description: 'YYYY-MM' }
+              kg: { type: number }
+        last30Kg: { type: number }
+        previous30Kg: { type: number }
+        changePercent:
+          {
+            type: [integer, 'null'],
+            description: 'Last 30 days against the 30 before; null without a base.',
+          }
     EnvironmentSummary:
       type: object
-      required: [today, plan, conditions, documents, monitoring, flags]
+      required: [today, plan, conditions, documents, monitoring, waste, carbon, flags]
       properties:
         today:
           {
@@ -30250,6 +30643,22 @@ components:
             points: { type: integer }
             openBreaches: { type: integer, description: 'Breaches not yet answered.' }
             overdue: { type: integer, description: 'Active points without a recent reading.' }
+        waste:
+          type: object
+          required: [totalTonnes, diversionPercent]
+          properties:
+            totalTonnes: { type: number }
+            diversionPercent:
+              {
+                type: [integer, 'null'],
+                description: 'Share recycled or reused; null with no dockets.',
+              }
+        carbon:
+          type: object
+          required: [totalKg, last30Kg]
+          properties:
+            totalKg: { type: number }
+            last30Kg: { type: number }
         flags: { type: array, items: { $ref: '#/components/schemas/EnvironmentFlag' } }
     ObservationPage:
       type: object

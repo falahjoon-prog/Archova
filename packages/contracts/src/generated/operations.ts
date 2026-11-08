@@ -2829,6 +2829,53 @@ export const DeleteEnvironmentDocumentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "environmentDocumentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
 });
+export const ListWasteDocketsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWasteDocketsQuery = z.object({
+  "wasteType": s.WasteTypeSchema.optional(),
+  "destination": s.WasteDestinationSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateWasteDocketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateWasteDocketBody = s.CreateWasteDocketRequestSchema;
+export const GetWasteSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DeleteWasteDocketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "wasteDocketId": z.string().regex(new RegExp("^wdk_[0-9A-Za-z]{26}$")),
+});
+export const ListCarbonEntriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCarbonEntriesQuery = z.object({
+  "source": s.CarbonSourceSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCarbonEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCarbonEntryBody = s.CreateCarbonEntryRequestSchema;
+export const GetCarbonSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DeleteCarbonEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "carbonEntryId": z.string().regex(new RegExp("^cbe_[0-9A-Za-z]{26}$")),
+});
 export const ListMonitoringPointsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -10029,6 +10076,102 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteEnvironmentDocumentParams,
+    query: null,
+    body: null,
+  },
+  listWasteDockets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/waste',
+    module: "environment",
+    auth: "required",
+    permission: "environment.waste.read",
+    internal: false,
+    contentType: null,
+    params: ListWasteDocketsParams,
+    query: ListWasteDocketsQuery,
+    body: null,
+  },
+  createWasteDocket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/waste',
+    module: "environment",
+    auth: "required",
+    permission: "environment.waste.log",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWasteDocketParams,
+    query: null,
+    body: CreateWasteDocketBody,
+  },
+  getWasteSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/waste/summary',
+    module: "environment",
+    auth: "required",
+    permission: "environment.waste.read",
+    internal: false,
+    contentType: null,
+    params: GetWasteSummaryParams,
+    query: null,
+    body: null,
+  },
+  deleteWasteDocket: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/waste/{wasteDocketId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.waste.delete",
+    internal: false,
+    contentType: null,
+    params: DeleteWasteDocketParams,
+    query: null,
+    body: null,
+  },
+  listCarbonEntries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/carbon',
+    module: "environment",
+    auth: "required",
+    permission: "environment.carbon.read",
+    internal: false,
+    contentType: null,
+    params: ListCarbonEntriesParams,
+    query: ListCarbonEntriesQuery,
+    body: null,
+  },
+  createCarbonEntry: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/carbon',
+    module: "environment",
+    auth: "required",
+    permission: "environment.carbon.log",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCarbonEntryParams,
+    query: null,
+    body: CreateCarbonEntryBody,
+  },
+  getCarbonSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/summary',
+    module: "environment",
+    auth: "required",
+    permission: "environment.carbon.read",
+    internal: false,
+    contentType: null,
+    params: GetCarbonSummaryParams,
+    query: null,
+    body: null,
+  },
+  deleteCarbonEntry: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/{carbonEntryId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.carbon.delete",
+    internal: false,
+    contentType: null,
+    params: DeleteCarbonEntryParams,
     query: null,
     body: null,
   },

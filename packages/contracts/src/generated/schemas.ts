@@ -883,6 +883,52 @@ export const CaptureObservationSchema = z.object({
 });
 export type CaptureObservation = z.infer<typeof CaptureObservationSchema>;
 
+export const CarbonSourceSchema = z.enum(["diesel_litres", "petrol_litres", "lpg_litres", "electricity_kwh", "concrete_m3", "steel_tonnes", "other"]);
+export type CarbonSource = z.infer<typeof CarbonSourceSchema>;
+
+export const CarbonEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "entryDate": z.string().date(),
+  "source": CarbonSourceSchema,
+  "scope": z.number().int().min(1).max(3),
+  "quantity": z.number(),
+  "factor": z.number(),
+  "kgCo2e": z.number(),
+  "description": z.string().nullable(),
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type CarbonEntry = z.infer<typeof CarbonEntrySchema>;
+
+export const CarbonEntryPageSchema = z.object({
+  "data": z.array(CarbonEntrySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type CarbonEntryPage = z.infer<typeof CarbonEntryPageSchema>;
+
+export const CarbonSummarySchema = z.object({
+  "totalKg": z.number(),
+  "byScope": z.object({
+  "1": z.number(),
+  "2": z.number(),
+  "3": z.number(),
+}),
+  "bySource": z.array(z.object({
+  "source": CarbonSourceSchema,
+  "quantity": z.number(),
+  "kg": z.number(),
+})),
+  "monthly": z.array(z.object({
+  "month": z.string(),
+  "kg": z.number(),
+})),
+  "last30Kg": z.number(),
+  "previous30Kg": z.number(),
+  "changePercent": z.number().int().nullable(),
+});
+export type CarbonSummary = z.infer<typeof CarbonSummarySchema>;
+
 export const ClaimEvidenceDeliverySchema = z.object({
   "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
   "sendProof": z.object({
@@ -1896,6 +1942,16 @@ export const CreateBudgetSnapshotRequestSchema = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
 export type CreateBudgetSnapshotRequest = z.infer<typeof CreateBudgetSnapshotRequestSchema>;
+
+export const CreateCarbonEntryRequestSchema = z.object({
+  "entryDate": z.string().date(),
+  "source": CarbonSourceSchema,
+  "quantity": z.number(),
+  "factor": z.number().min(0).optional(),
+  "description": z.string().max(200).optional(),
+  "note": z.string().max(2000).optional(),
+}).strict();
+export type CreateCarbonEntryRequest = z.infer<typeof CreateCarbonEntryRequestSchema>;
 
 export const CreateCommitmentFromAwardRequestSchema = z.object({
   "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
@@ -2980,6 +3036,25 @@ export const CreateVariationRequestSchema = z.object({
 }).strict();
 export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
 
+export const WasteTypeSchema = z.enum(["general", "concrete", "bricks_masonry", "timber", "metals", "plastics", "plasterboard", "soil_fill", "cardboard_paper", "glass", "green_waste", "hazardous", "asbestos", "other"]);
+export type WasteType = z.infer<typeof WasteTypeSchema>;
+
+export const WasteDestinationSchema = z.enum(["recycled", "reused", "landfill", "treatment"]);
+export type WasteDestination = z.infer<typeof WasteDestinationSchema>;
+
+export const CreateWasteDocketRequestSchema = z.object({
+  "docketDate": z.string().date(),
+  "wasteType": WasteTypeSchema,
+  "destination": WasteDestinationSchema,
+  "tonnes": z.number().max(100000),
+  "docketNumber": z.string().max(100).optional(),
+  "contractor": z.string().max(200).optional(),
+  "facility": z.string().max(200).optional(),
+  "note": z.string().max(2000).optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict();
+export type CreateWasteDocketRequest = z.infer<typeof CreateWasteDocketRequestSchema>;
+
 export const CreateWebhookRequestSchema = z.object({
   "url": z.string().max(2000),
   "description": z.string().max(200).optional(),
@@ -3784,7 +3859,7 @@ export const EnvironmentDocumentListSchema = z.object({
 export type EnvironmentDocumentList = z.infer<typeof EnvironmentDocumentListSchema>;
 
 export const EnvironmentFlagSchema = z.object({
-  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending"]),
+  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending", "waste_diversion_low", "waste_docket_missing", "carbon_rising"]),
   "severity": z.enum(["info", "warning", "critical"]),
   "message": z.string(),
   "conditionIds": z.array(z.string()),
@@ -3845,6 +3920,14 @@ export const EnvironmentSummarySchema = z.object({
   "points": z.number().int(),
   "openBreaches": z.number().int(),
   "overdue": z.number().int(),
+}),
+  "waste": z.object({
+  "totalTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+}),
+  "carbon": z.object({
+  "totalKg": z.number(),
+  "last30Kg": z.number(),
 }),
   "flags": z.array(EnvironmentFlagSchema),
 });
@@ -9483,6 +9566,63 @@ export const VoidTmTicketRequestSchema = z.object({
   "note": z.string().min(1).max(5000),
 }).strict();
 export type VoidTmTicketRequest = z.infer<typeof VoidTmTicketRequestSchema>;
+
+export const WasteDocketSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "docketDate": z.string().date(),
+  "wasteType": WasteTypeSchema,
+  "destination": WasteDestinationSchema,
+  "tonnes": z.number(),
+  "docketNumber": z.string().nullable(),
+  "contractor": z.string().nullable(),
+  "facility": z.string().nullable(),
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type WasteDocket = z.infer<typeof WasteDocketSchema>;
+
+export const WasteDocketPageSchema = z.object({
+  "data": z.array(WasteDocketSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type WasteDocketPage = z.infer<typeof WasteDocketPageSchema>;
+
+export const WasteWindowSchema = z.object({
+  "tonnes": z.number(),
+  "divertedTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+});
+export type WasteWindow = z.infer<typeof WasteWindowSchema>;
+
+export const WasteSummarySchema = z.object({
+  "totalTonnes": z.number(),
+  "divertedTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+  "targetPercent": z.number().int(),
+  "byDestination": z.object({
+  "recycled": z.number(),
+  "reused": z.number(),
+  "landfill": z.number(),
+  "treatment": z.number(),
+}),
+  "byType": z.array(z.object({
+  "wasteType": WasteTypeSchema,
+  "tonnes": z.number(),
+  "divertedTonnes": z.number(),
+})),
+  "monthly": z.array(z.object({
+  "month": z.string(),
+  "tonnes": z.number(),
+  "divertedTonnes": z.number(),
+  "diversionPercent": z.number().int().nullable(),
+})),
+  "last30": WasteWindowSchema,
+  "previous30": WasteWindowSchema,
+  "regulatedWithoutDocket": z.number().int(),
+});
+export type WasteSummary = z.infer<typeof WasteSummarySchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),

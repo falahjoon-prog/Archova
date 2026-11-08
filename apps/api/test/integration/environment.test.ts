@@ -361,3 +361,117 @@ describe('Monitoring', () => {
     expect(future.statusCode).toBe(422);
   });
 });
+
+describe('Waste and carbon', () => {
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  it('measures diversion from landfill and flags a low rate and a missing hazardous docket', async () => {
+    const s = await setup();
+    const docket = (body: Record<string, unknown>) =>
+      s.site.browser.post(`${s.base}/waste`, { docketDate: today(), ...body });
+    expect(
+      (await docket({ wasteType: 'concrete', destination: 'recycled', tonnes: 80 })).statusCode,
+    ).toBe(201);
+    expect(
+      (await docket({ wasteType: 'general', destination: 'landfill', tonnes: 20 })).statusCode,
+    ).toBe(201);
+    let summary = (await s.pm.browser.get(`${s.base}/waste/summary`)).json();
+    expect(summary).toMatchObject({
+      totalTonnes: 100,
+      divertedTonnes: 80,
+      diversionPercent: 80,
+      targetPercent: 80,
+      regulatedWithoutDocket: 0,
+    });
+    expect(summary.byDestination).toMatchObject({ recycled: 80, landfill: 20 });
+    let flags = (await s.pm.browser.get(`${s.base}/summary`))
+      .json()
+      .flags.map((f: { code: string }) => f.code);
+    expect(flags).not.toContain('waste_diversion_low');
+
+    const asbestos = await docket({ wasteType: 'asbestos', destination: 'treatment', tonnes: 5 });
+    expect(asbestos.statusCode).toBe(201);
+    summary = (await s.pm.browser.get(`${s.base}/waste/summary`)).json();
+    expect(summary.diversionPercent).toBe(76);
+    expect(summary.regulatedWithoutDocket).toBe(1);
+    const all = (await s.pm.browser.get(`${s.base}/summary`)).json();
+    flags = all.flags.map((f: { code: string }) => f.code);
+    expect(flags).toEqual(expect.arrayContaining(['waste_diversion_low', 'waste_docket_missing']));
+    expect(all.waste).toMatchObject({ totalTonnes: 105, diversionPercent: 76 });
+
+    // A docket entered by mistake can be removed, by someone allowed to.
+    const id = asbestos.json().id;
+    expect((await s.site.browser.del(`${s.base}/waste/${id}`)).statusCode).toBe(403);
+    expect((await s.pm.browser.del(`${s.base}/waste/${id}`)).statusCode).toBe(204);
+    expect((await s.pm.browser.del(`${s.base}/waste/${id}`)).statusCode).toBe(404);
+    expect((await s.pm.browser.get(`${s.base}/waste/summary`)).json().regulatedWithoutDocket).toBe(
+      0,
+    );
+  });
+
+  it('refuses a docket dated in the future and lists newest first', async () => {
+    const s = await setup();
+    const url = `${s.base}/waste`;
+    const future = await s.site.browser.post(url, {
+      docketDate: '2099-01-01',
+      wasteType: 'timber',
+      destination: 'recycled',
+      tonnes: 2,
+    });
+    expect(future.statusCode).toBe(422);
+    await s.site.browser.post(url, {
+      docketDate: '2026-10-01',
+      wasteType: 'timber',
+      destination: 'recycled',
+      tonnes: 2,
+    });
+    await s.site.browser.post(url, {
+      docketDate: '2026-10-05',
+      wasteType: 'glass',
+      destination: 'recycled',
+      tonnes: 1,
+    });
+    const list = (await s.pm.browser.get(url)).json();
+    expect(list.data.map((d: { docketDate: string }) => d.docketDate)).toEqual([
+      '2026-10-05',
+      '2026-10-01',
+    ]);
+    const onlyGlass = (await s.pm.browser.get(`${url}?wasteType=glass`)).json();
+    expect(onlyGlass.data).toHaveLength(1);
+  });
+
+  it('converts activity to kg CO2-e with the default or an overridden factor', async () => {
+    const s = await setup();
+    const url = `${s.base}/carbon`;
+    const diesel = await s.site.browser.post(url, {
+      entryDate: today(),
+      source: 'diesel_litres',
+      quantity: 1000,
+    });
+    expect(diesel.statusCode).toBe(201);
+    expect(diesel.json()).toMatchObject({ scope: 1, factor: 2.7, kgCo2e: 2700 });
+    const power = await s.site.browser.post(url, {
+      entryDate: today(),
+      source: 'electricity_kwh',
+      quantity: 5000,
+      factor: 0.5,
+    });
+    expect(power.json()).toMatchObject({ scope: 2, factor: 0.5, kgCo2e: 2500 });
+    const summary = (await s.pm.browser.get(`${s.base}/carbon/summary`)).json();
+    expect(summary.totalKg).toBe(5200);
+    expect(summary.byScope).toMatchObject({ '1': 2700, '2': 2500, '3': 0 });
+    expect(summary.bySource[0]).toMatchObject({ source: 'diesel_litres', kg: 2700 });
+    expect(summary.monthly).toHaveLength(6);
+    expect((await s.pm.browser.get(`${s.base}/summary`)).json().carbon.totalKg).toBe(5200);
+
+    const future = await s.site.browser.post(url, {
+      entryDate: '2099-01-01',
+      source: 'diesel_litres',
+      quantity: 1,
+    });
+    expect(future.statusCode).toBe(422);
+    expect((await s.site.browser.del(`${url}/${diesel.json().id}`)).statusCode).toBe(403);
+    expect((await s.pm.browser.del(`${url}/${diesel.json().id}`)).statusCode).toBe(204);
+    expect((await s.pm.browser.get(`${s.base}/carbon/summary`)).json().totalKg).toBe(2500);
+  });
+});
