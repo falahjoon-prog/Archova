@@ -10576,6 +10576,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Monthly spend forecast per budget line, beside what each line is projected to cost.
+         * @description `months` are the months that have any forecast, oldest first (`YYYY-MM`). Per line, `entries` holds the
+         *     amount forecast for each month, `scheduled` is their sum and `unscheduled` is projected cost not yet placed
+         *     in a month. Margin lines follow the same rule as the budget. Builder staff only.
+         */
+        get: operations["getBudgetForecast"];
+        /**
+         * Replace the monthly forecast of the named lines (cell edits, or a spread over a date range).
+         * @description Each named line's forecast is replaced by `entries` (month to amount, zero or more). Lines not named are
+         *     left alone. At most 1200 entries in one save.
+         */
+        put: operations["saveBudgetForecast"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/cost-report": {
         parameters: {
             query?: never;
@@ -18018,6 +18048,29 @@ export interface components {
             figures: {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
+        };
+        BudgetForecast: {
+            hasBudget: boolean;
+            months: string[];
+            lines: {
+                lineId: string;
+                code: string;
+                codeDescription: string;
+                description: string;
+                original: components["schemas"]["FinancialsSignedMoney"];
+                approvedChanges: components["schemas"]["FinancialsSignedMoney"];
+                revised: components["schemas"]["FinancialsSignedMoney"];
+                approved: components["schemas"]["FinancialsSignedMoney"];
+                pending: components["schemas"]["FinancialsSignedMoney"];
+                nonCommitted: components["schemas"]["FinancialsSignedMoney"];
+                projected: components["schemas"]["FinancialsSignedMoney"];
+                variance: components["schemas"]["FinancialsSignedMoney"];
+                entries: {
+                    [key: string]: components["schemas"]["FinancialsMoney"];
+                };
+                scheduled: components["schemas"]["FinancialsSignedMoney"];
+                unscheduled: components["schemas"]["FinancialsSignedMoney"];
+            }[];
         };
         BudgetCostReport: {
             hasBudget: boolean;
@@ -39799,6 +39852,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetReviewChecks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetForecast"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveBudgetForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    lines: {
+                        lineId: string;
+                        entries: {
+                            [key: string]: components["schemas"]["FinancialsMoney"];
+                        };
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The forecast after the save */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetForecast"];
                 };
             };
             default: components["responses"]["Problem"];

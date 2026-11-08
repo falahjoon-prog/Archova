@@ -14490,6 +14490,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BudgetReviewChecks' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/forecast:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetForecast
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Monthly spend forecast per budget line, beside what each line is projected to cost.
+      description: |
+        `months` are the months that have any forecast, oldest first (`YYYY-MM`). Per line, `entries` holds the
+        amount forecast for each month, `scheduled` is their sum and `unscheduled` is projected cost not yet placed
+        in a month. Margin lines follow the same rule as the budget. Builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetForecast' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveBudgetForecast
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Replace the monthly forecast of the named lines (cell edits, or a spread over a date range).
+      description: |
+        Each named line's forecast is replaced by `entries` (month to amount, zero or more). Lines not named are
+        left alone. At most 1200 entries in one save.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [lines]
+              properties:
+                lines:
+                  type: array
+                  maxItems: 400
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [lineId, entries]
+                    properties:
+                      lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+                      entries:
+                        type: object
+                        additionalProperties: { $ref: '#/components/schemas/FinancialsMoney' }
+      responses:
+        '200':
+          description: The forecast after the save
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetForecast' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/cost-report:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -26277,6 +26335,52 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    BudgetForecast:
+      type: object
+      required: [hasBudget, months, lines]
+      properties:
+        hasBudget: { type: boolean }
+        months: { type: array, items: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' } }
+        lines:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                lineId,
+                code,
+                codeDescription,
+                description,
+                original,
+                approvedChanges,
+                revised,
+                approved,
+                pending,
+                nonCommitted,
+                projected,
+                variance,
+                entries,
+                scheduled,
+                unscheduled,
+              ]
+            properties:
+              lineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              codeDescription: { type: string }
+              description: { type: string }
+              original: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approvedChanges: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              approved: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              pending: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              nonCommitted: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              projected: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              entries:
+                type: object
+                additionalProperties: { $ref: '#/components/schemas/FinancialsMoney' }
+              scheduled: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              unscheduled: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     BudgetCostReport:
       type: object
       required: [hasBudget, status, lines]

@@ -756,6 +756,29 @@ export const BudgetFindingSchema = z.object({
 });
 export type BudgetFinding = z.infer<typeof BudgetFindingSchema>;
 
+export const BudgetForecastSchema = z.object({
+  "hasBudget": z.boolean(),
+  "months": z.array(z.string().regex(new RegExp("^\\d{4}-(0[1-9]|1[0-2])$"))),
+  "lines": z.array(z.object({
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "description": z.string(),
+  "original": FinancialsSignedMoneySchema,
+  "approvedChanges": FinancialsSignedMoneySchema,
+  "revised": FinancialsSignedMoneySchema,
+  "approved": FinancialsSignedMoneySchema,
+  "pending": FinancialsSignedMoneySchema,
+  "nonCommitted": FinancialsSignedMoneySchema,
+  "projected": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+  "entries": z.record(z.string(), FinancialsMoneySchema),
+  "scheduled": FinancialsSignedMoneySchema,
+  "unscheduled": FinancialsSignedMoneySchema,
+})),
+});
+export type BudgetForecast = z.infer<typeof BudgetForecastSchema>;
+
 export const BudgetReviewTurnSchema = z.object({
   "role": z.enum(["user", "nova"]),
   "text": z.string().min(1).max(1500),

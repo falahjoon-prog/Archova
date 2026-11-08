@@ -1134,6 +1134,39 @@ describe('Budget and cost codes', () => {
     expect((await s.sub.browser.get(`${s.base}/budget/cost-report`)).statusCode).toBe(403);
   });
 
+  it('keeps a monthly spend forecast per line, replacing it on save and refusing bad input', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const put = (path: string, body: unknown) => s.pm.browser.put(`${s.base}${path}`, body);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '1000.00' })).json();
+
+    const saved = await put('/budget/forecast', {
+      lines: [{ lineId: l1.id, entries: { '2026-11': '400.00', '2026-12': '300.00' } }],
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    expect(saved.json().months).toEqual(['2026-11', '2026-12']);
+    expect(saved.json().lines[0]).toMatchObject({ scheduled: '700.00' });
+
+    const replaced = await put('/budget/forecast', {
+      lines: [{ lineId: l1.id, entries: { '2027-01': '250.00' } }],
+    });
+    expect(replaced.json().months).toEqual(['2027-01']);
+    expect((await s.pm.browser.get(`${s.base}/budget/forecast`)).json().lines[0].entries).toEqual({
+      '2027-01': '250.00',
+    });
+
+    const bad = await put('/budget/forecast', {
+      lines: [{ lineId: l1.id, entries: { '2026-13': '1.00' } }],
+    });
+    expect(bad.statusCode).toBe(422);
+    expect((await s.sub.browser.get(`${s.base}/budget/forecast`)).statusCode).toBe(403);
+    expect((await s.sub.browser.put(`${s.base}/budget/forecast`, { lines: [] })).statusCode).toBe(
+      403,
+    );
+  });
+
   it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
     const s = await setup('NSW');
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
