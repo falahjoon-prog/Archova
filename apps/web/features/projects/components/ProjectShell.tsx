@@ -10,6 +10,7 @@ import {
   InspectionsIcon,
   SwmsIcon,
   IncidentsIcon,
+  InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   FolderLinksIcon,
@@ -82,7 +83,7 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         companyId: perms?.companyId ?? null,
       }}
     >
-      <ShellFrame projectName={p.name} groups={groups}>
+      <ShellFrame projectName={p.name} groups={groups} favouritesScope={org.user.id}>
         {children}
       </ShellFrame>
     </CurrentProjectProvider>
@@ -104,6 +105,11 @@ export function projectToolGroups(
     perms.orgRole === 'owner' ||
     perms.orgRole === 'admin' ||
     atLeast(perms.toolLevels[tool], 'read');
+  const canCreate = (tool: Tool) =>
+    !perms ||
+    perms.orgRole === 'owner' ||
+    perms.orgRole === 'admin' ||
+    atLeast(perms.toolLevels[tool], 'standard');
   const canAdmin = (tool: Tool) =>
     !perms ||
     perms.orgRole === 'owner' ||
@@ -191,6 +197,11 @@ export function projectToolGroups(
       label: 'Budget',
       icon: BudgetIcon,
     },
+    canRead('commitments') && {
+      href: webRoutes.commitments(orgSlug, projectId),
+      label: 'Commitments',
+      icon: BudgetIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
@@ -215,6 +226,11 @@ export function projectToolGroups(
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.insurance(orgSlug, projectId),
+      label: 'Insurance & bonds',
+      icon: InsuranceIcon,
     },
     canAdmin('inspections') && {
       href: webRoutes.safetySignals(orgSlug, projectId),
@@ -257,6 +273,20 @@ export function projectToolGroups(
   ];
   const byLabel = new Map<string, ProjectNavItem>();
   for (const item of [...core, ...estimating]) if (item) byLabel.set(item.label, item);
+  // Quick-add "+" for tools with a create form, only for callers who can create in that tool (design 03 §3).
+  const quickAdd: ReadonlyArray<[label: string, tool: Tool, noun: string, href: string]> = [
+    ['Transmittals', 'documents', 'transmittal', webRoutes.newTransmittal(orgSlug, projectId)],
+    ['RFIs', 'rfis', 'RFI', webRoutes.newRfi(orgSlug, projectId)],
+    ['Submittals', 'submittals', 'submittal', webRoutes.newSubmittal(orgSlug, projectId)],
+    ['Correspondence', 'correspondence', 'letter', webRoutes.newCorrespondence(orgSlug, projectId)],
+    ['Defects', 'defects', 'defect', webRoutes.newDefect(orgSlug, projectId)],
+    ['Contracts', 'payment_claims', 'contract', webRoutes.newContract(orgSlug, projectId)],
+  ];
+  for (const [label, tool, noun, href] of quickAdd) {
+    const item = byLabel.get(label);
+    if (item && canCreate(tool))
+      byLabel.set(label, { ...item, createHref: href, createLabel: `New ${noun}` });
+  }
   const categorised = TOOL_CATEGORIES.map(({ id, label, icon, tools }) => ({
     id,
     label,
@@ -343,10 +373,12 @@ const SIDEBAR_KEY = 'archova.sidebar.collapsed';
 function ShellFrame({
   projectName,
   groups,
+  favouritesScope,
   children,
 }: {
   projectName: string;
   groups: ProjectNavGroup[];
+  favouritesScope?: string;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -370,7 +402,7 @@ function ShellFrame({
   return (
     <div className="project-shell" data-collapsed={collapsed}>
       <div className="project-shell__side">
-        <ProjectNav projectName={projectName} groups={groups} />
+        <ProjectNav projectName={projectName} groups={groups} favouritesScope={favouritesScope} />
         <button
           type="button"
           className="project-shell__edge ac-focusable"

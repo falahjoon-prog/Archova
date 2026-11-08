@@ -10,6 +10,7 @@ import {
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
 import { InboxLink } from '@/features/notifications';
+import { SearchLink } from '@/features/search';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -58,6 +59,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
               ? [
                   {
@@ -66,6 +68,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
                       { href: webRoutes.dbpInsights(orgSlug), label: 'DBP Act insights' },
+                      ...(membership.role === 'owner' || membership.role === 'admin'
+                        ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]
+                        : []),
                     ],
                   },
                   {
@@ -121,6 +126,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           ]}
           actions={
             <>
+              <SearchLink />
               <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />

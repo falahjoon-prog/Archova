@@ -4,6 +4,7 @@ import type { DbpInspection, DbpObservation } from '../domain/dbp';
 import {
   PROJECT_LIMIT,
   type BudgetSummary,
+  type ProgrammeCounts,
   type ReportSource,
   type SourceRow,
   type ToolCounts,
@@ -24,7 +25,7 @@ export interface ReportingDeps {
   claims: Tool;
   variations: Tool;
   incidents: Tool;
-  programme: Tool;
+  programme: Tool<ProgrammeCounts>;
   /** Inspection and observation rows for the DBP Act insights view (`quality`); restricted unless the caller may read them. */
   quality: {
     dbpRows(
@@ -104,8 +105,8 @@ export interface ReportingDeps {
   };
 }
 
-interface Tool {
-  portfolioCounts(scope: TenantScope, projectId: string): Promise<ToolCounts>;
+interface Tool<C extends ToolCounts = ToolCounts> {
+  portfolioCounts(scope: TenantScope, projectId: string): Promise<C>;
   reportRows(
     scope: TenantScope,
     projectId: string,
@@ -120,6 +121,8 @@ export interface ProjectRef {
   name: string;
   number: string | null;
   status: string;
+  phase: string | null;
+  siteLocation: { lat: number; lng: number } | null;
 }
 
 /** The projects the caller can see, in name order, up to the limit; `truncated` when there were more. */
@@ -142,7 +145,15 @@ export async function visibleProjects(
         truncated = true;
         break;
       }
-      out.push({ id: p.id, name: p.name, number: p.number, status: p.status });
+      out.push({
+        id: p.id,
+        name: p.name,
+        number: p.number,
+        status: p.status,
+        phase: p.phase ?? null,
+        siteLocation:
+          p.siteLat !== null && p.siteLng !== null ? { lat: p.siteLat, lng: p.siteLng } : null,
+      });
     }
     if (truncated || !page.nextCursor) break;
     cursor = page.nextCursor;

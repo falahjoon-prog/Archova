@@ -38,12 +38,16 @@ export function parseRedirect(url: string): URLSearchParams {
   return new URLSearchParams(url.slice(q + 1, hash < 0 ? undefined : hash));
 }
 
-export async function signInWithPkce(deps: SignInDeps): Promise<SignInResult> {
+/** `prompt: 'login'` asks for a fresh sign-in even if the browser still has a session (account deletion needs one). */
+export async function signInWithPkce(
+  deps: SignInDeps,
+  opts: { prompt?: 'login' } = {},
+): Promise<SignInResult> {
   const { verifier, challenge } = await createPkce(deps.randomBytes, deps.sha256);
   const state = base64url(deps.randomBytes(16));
 
   const result = await deps.openAuthSession(
-    authorizeUrl(deps.appOrigin, { challenge, state }),
+    authorizeUrl(deps.appOrigin, { challenge, state, ...opts }),
     MOBILE_REDIRECT_URI,
   );
   if (result.type !== 'success' || !('url' in result)) return { status: 'cancelled' };

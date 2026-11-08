@@ -12,7 +12,14 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { Address } from '@archova/contracts';
-import type { AuState, CompanyType, OrgKind, ProjectStatus } from '@archova/domain';
+import type {
+  AuState,
+  CompanyType,
+  LocationKind,
+  OrgKind,
+  ProjectPhase,
+  ProjectStatus,
+} from '@archova/domain';
 import type { OrgRole } from '@archova/domain/permissions';
 
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -80,6 +87,7 @@ export const projects = platform.table('projects', {
   name: text('name').notNull(),
   number: text('number'),
   status: text('status').$type<ProjectStatus>().notNull(),
+  phase: text('phase').$type<ProjectPhase>(),
   address: jsonb('address').$type<Address>(),
   state: text('state').$type<AuState>(),
   timezone: text('timezone').notNull(),
@@ -150,4 +158,23 @@ export const keyDateChanges = platform.table('key_date_changes', {
   note: text('note'),
   changedBy: uuid('changed_by'),
   changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Project locations: pinned points with an address and a site-access note. */
+export const projectLocations = platform.table('project_locations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  kind: text('kind').$type<LocationKind>().notNull(),
+  address: text('address'),
+  lat: doublePrecision('lat'),
+  lng: doublePrecision('lng'),
+  accessNote: text('access_note'),
+  contactName: text('contact_name'),
+  contactPhone: text('contact_phone'),
+  usedFor: text('used_for').array().notNull().default([]),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...audit,
 });

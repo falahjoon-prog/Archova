@@ -69,8 +69,17 @@ export const workers = workforceSchema.table('workers', {
   email: citext('email'),
   kind: text('kind').$type<'worker' | 'visitor' | 'delivery'>().notNull().default('worker'),
   status: text('status').$type<'active' | 'inactive'>().notNull().default('active'),
+  /** Entered by the worker for their Safety ID badge. Never shown in lists; only the worker reads it back. */
+  emergencyContact: jsonb('emergency_contact').$type<EmergencyContact>(),
+  photoFileId: uuid('photo_file_id'),
   ...audit,
 });
+
+export interface EmergencyContact {
+  name: string;
+  relationship: string | null;
+  phone: string;
+}
 
 export const eligibilityChecks = workforceSchema.table('eligibility_checks', {
   id: uuid('id').primaryKey(),

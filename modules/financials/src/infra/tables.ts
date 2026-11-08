@@ -331,6 +331,29 @@ export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   createdBy: uuid('created_by'),
 });
 
+export interface SnapshotLine {
+  costCodeId: string;
+  code: string;
+  codeDescription: string;
+  description: string;
+  original: string;
+  approvedChanges: string;
+  revised: string;
+  isMargin: boolean;
+}
+
+export const budgetSnapshots = financialsSchema.table('budget_snapshots', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetId: uuid('budget_id').notNull(),
+  name: text('name').notNull(),
+  note: text('note'),
+  lines: jsonb('lines').$type<SnapshotLine[]>().notNull(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  takenBy: uuid('taken_by'),
+});
+
 export const forecastAdjustments = financialsSchema.table('forecast_adjustments', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -473,4 +496,60 @@ export const retentionReleases = financialsSchema.table('retention_releases', {
   note: text('note'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   recordedBy: uuid('recorded_by'),
+});
+
+export const costCodeProduction = financialsSchema.table('cost_code_production', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  uom: text('uom').notNull(),
+  budgetedHours: numeric('budgeted_hours', { precision: 12, scale: 2 }).notNull(),
+  budgetedQuantity: numeric('budgeted_quantity', { precision: 14, scale: 2 }).notNull(),
+  quantityComplete: numeric('quantity_complete', { precision: 14, scale: 2 })
+    .notNull()
+    .default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const productionLog = financialsSchema.table('production_log', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  loggedOn: date('logged_on').notNull(),
+  quantity: numeric('quantity', { precision: 14, scale: 2 }).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const ownerInvoices = financialsSchema.table('owner_invoices', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  number: integer('number').notNull(),
+  periodEnd: date('period_end').notNull(),
+  markupPct: numeric('markup_pct', { precision: 6, scale: 2 }).notNull(),
+  subTotal: money('sub_total').notNull(),
+  markupAmount: money('markup_amount').notNull(),
+  total: money('total').notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const ownerInvoiceSources = financialsSchema.table('owner_invoice_sources', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  ownerInvoiceId: uuid('owner_invoice_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  amount: money('amount').notNull(),
+  flags: jsonb('flags').$type<{ code: string; message: string }[]>().notNull(),
+  flagsConfirmedBy: uuid('flags_confirmed_by'),
+  flagsConfirmedAt: timestamp('flags_confirmed_at', { withTimezone: true }),
 });

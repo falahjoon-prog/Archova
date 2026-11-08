@@ -78,6 +78,7 @@ export const PROBLEM_CODES = {
   'project_member.user_not_found': 422,
   'project_member.not_found': 404,
   'project_member.cannot_remove_self': 422,
+  'project_location.not_found': 404,
   'company.not_found': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
@@ -200,6 +201,8 @@ export const PROBLEM_CODES = {
   'bim.model_not_found': 404,
   'bim.issue_not_found': 404,
   'bim.invalid_transition': 409,
+  // conversations
+  'conversation.not_found': 404,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -288,6 +291,11 @@ export const PROBLEM_CODES = {
   'ownerportal.item_not_found': 404,
   // notifications
   'notification.not_found': 404,
+  // bookmarks
+  'bookmark.invalid_target': 422,
+  'bookmark.limit_reached': 409,
+  // recents
+  'recent.invalid_target': 422,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -335,12 +343,19 @@ export const PROBLEM_CODES = {
   'financials.budget.locked': 409,
   'financials.budget.not_locked': 409,
   'financials.budget.line_not_found': 404,
+  'financials.production.no_plan': 409,
+  'financials.budget.snapshot_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,
   'financials.commitment.not_found': 404,
   'financials.commitment.bad_state': 409,
   'financials.commitment.reason_required': 422,
   'financials.commitment.over_budget': 422,
+  'financials.owner_invoice.not_found': 404,
+  'financials.owner_invoice.not_head_contract': 422,
+  'financials.owner_invoice.claim_not_eligible': 422,
+  'financials.owner_invoice.flags_unconfirmed': 422,
+  'financials.owner_invoice.claim_taken': 409,
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
@@ -363,6 +378,9 @@ export const PROBLEM_CODES = {
   'swms.not_allowed': 403,
   'swms.incomplete': 422,
   'swms.reason_required': 422,
+  // insurance: subcontractor insurance and bonds register
+  'cover.not_found': 404,
+  'cover.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,

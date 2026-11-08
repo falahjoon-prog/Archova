@@ -90,7 +90,15 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     claims: tool,
     variations: tool,
     incidents: tool,
-    programme: tool,
+    programme: {
+      ...tool,
+      portfolioCounts: async () => ({
+        ...(await tool.portfolioCounts()),
+        notStarted: 0,
+        completed: 0,
+        lateDays: 0,
+      }),
+    },
     quality: {
       dbpRows: async () => ({
         restricted: true,
@@ -105,6 +113,7 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         hasBudget: false,
         revisedCents: 0,
         forecastFinalCents: 0,
+        spentCents: 0,
         varianceCents: 0,
         overBudgetCodes: 0,
       }),

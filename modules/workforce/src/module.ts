@@ -4,7 +4,9 @@ import { createAttendanceService, type ComplianceSource } from './application/at
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
 import { createTimesheetService } from './application/timesheet';
 import { createEquipmentService } from './application/equipment';
+import { createSiteActivityService } from './application/site-activity';
 import { createRosterService } from './application/roster';
+import { createBadgeService } from './application/badge';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -22,12 +24,18 @@ export function createWorkforceModule(
 ) {
   // The induction rules join the X54 compliance interface ahead of any sources passed in.
   const sources: ComplianceSource[] = [...(deps.complianceSources ?? [])];
+  const siteActivity = createSiteActivityService();
   const attendance = createAttendanceService({ ...deps, complianceSources: sources });
   const inductions = createInductionService(deps, attendance);
   sources.unshift(inductions.gateSource);
   const wallet = createWalletService({ files: deps.files, vault: deps.vault });
   const grants = createWalletGrantService({
     access: deps.access,
+    platform: deps.platform,
+    files: deps.files,
+  });
+  const badge = createBadgeService({
+    attendance,
     platform: deps.platform,
     files: deps.files,
   });
@@ -77,6 +85,7 @@ export function createWorkforceModule(
       roster,
       equipment,
       sheets,
+      badge,
       {
         logger: services.logger,
         ...deps.hooks,
@@ -93,6 +102,10 @@ export function createWorkforceModule(
       insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
+      /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
+      timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */
+      siteActivityDays: siteActivity.siteActivityDays,
     },
   };
 }
