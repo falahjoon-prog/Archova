@@ -105,6 +105,9 @@ export const webRoutes = {
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
+  warranty: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/warranty`,
+  warrantyItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/warranty/${enc(itemId)}`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
   inductions: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/inductions`,
