@@ -482,6 +482,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
+    clearanceSwms: safety.api.workerSwms,
     links: {
       access: access.api,
       platform: platform.api,

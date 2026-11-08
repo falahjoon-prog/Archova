@@ -9399,6 +9399,38 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SignInResult' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/clearance:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: checkWorkerClearance
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Is this worker cleared to be on site today? One answer from their Safety ID.'
+      description: |
+        Scan a worker's Safety ID badge (or type the worker id) and get one pass, warning or blocked answer built from
+        what is already recorded: the worker record, white card and licence expiry, the site induction for this
+        project, and the SWMS their company works under. Read only: it does not sign anyone in or out. `flag` is the
+        rule-based line for the gate or supervisor (no model call). Subcontractors reach their own company's workers only.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: The badge QR text (`archova:badge:wkr_...`) or the worker id.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: siteId
+          in: query
+          description: Check against this site's induction. Defaults to the project's first active site.
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerClearance' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -28002,6 +28034,57 @@ components:
               title: { type: string }
               completedAt: { type: string, format: date-time }
               expiresOn: { type: [string, 'null'], format: date }
+    WorkerClearance:
+      type: object
+      required:
+        [
+          workerId,
+          fullName,
+          kind,
+          companyName,
+          photoUrl,
+          siteId,
+          localDate,
+          checkedAt,
+          result,
+          checks,
+          flag,
+        ]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        fullName: { type: string }
+        kind: { type: string, enum: [worker, visitor, delivery] }
+        companyName: { type: [string, 'null'] }
+        photoUrl:
+          {
+            type: [string, 'null'],
+            description: 'Short-lived link for matching the face at the gate.',
+          }
+        siteId: { type: [string, 'null'] }
+        localDate: { type: string, format: date, description: "Today in the project's time zone." }
+        checkedAt: { type: string, format: date-time }
+        result: { type: string, enum: [cleared, warning, blocked] }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [key, label, status, detail]
+            properties:
+              key: { type: string, enum: [worker, white_card, licences, induction, swms] }
+              label: { type: string }
+              status: { type: string, enum: [pass, warn, fail, na] }
+              detail: { type: string }
+        flag:
+          description: The rule-based line for the gate; null when everything is clear.
+          oneOf:
+            - type: object
+              required: [severity, title, detail, suggestedAction]
+              properties:
+                severity: { type: string, enum: [warning, blocking] }
+                title: { type: string }
+                detail: { type: string }
+                suggestedAction: { type: string }
+            - type: 'null'
     WorkerList:
       type: object
       required: [data]
