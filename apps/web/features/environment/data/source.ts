@@ -13,7 +13,16 @@ import {
   type ConditionStatus,
   type DocumentInput,
   type EnvironmentDocument,
+  type CarbonEntry,
+  type CarbonInput,
+  type CarbonSummary,
+  type DocketInput,
   type Flag,
+  type WasteDocket,
+  type WasteSummary,
+  isDiverted,
+  isRegulatedWaste,
+  CARBON_SOURCE_INFO,
   type MonitoringPoint,
   type PointInput,
   type Reading,
@@ -48,6 +57,14 @@ export interface EnvironmentSource {
     reading: Reading,
     input: RespondInput,
   ): Promise<{ reading: Reading; incidentNumber: number | null }>;
+  listDockets(projectId: string): Promise<WasteDocket[]>;
+  createDocket(projectId: string, input: DocketInput): Promise<WasteDocket>;
+  deleteDocket(projectId: string, docket: WasteDocket): Promise<void>;
+  wasteSummary(projectId: string): Promise<WasteSummary>;
+  listCarbon(projectId: string): Promise<CarbonEntry[]>;
+  createCarbon(projectId: string, input: CarbonInput): Promise<CarbonEntry>;
+  deleteCarbon(projectId: string, entry: CarbonEntry): Promise<void>;
+  carbonSummary(projectId: string): Promise<CarbonSummary>;
 }
 
 /** Today in the preview, fixed so the seeded dates stay overdue or current. */
@@ -62,6 +79,8 @@ interface Store {
     Omit<MonitoringPoint, 'latest' | 'recent' | 'openBreaches' | 'isOverdue' | 'isTrending'>
   >;
   readings: Reading[];
+  dockets: WasteDocket[];
+  carbon: CarbonEntry[];
   next: number;
 }
 
@@ -255,6 +274,45 @@ const stores = projectStores<Store>(() => ({
       incidentId: null,
     })),
   ],
+  dockets: [
+    ['2026-10-12', 'concrete', 'recycled', 18.4],
+    ['2026-10-19', 'timber', 'recycled', 3.1],
+    ['2026-10-26', 'general', 'landfill', 6.8],
+    ['2026-11-02', 'metals', 'recycled', 2.2],
+    ['2026-11-04', 'plasterboard', 'landfill', 4.5],
+    ['2026-11-05', 'soil_fill', 'reused', 22],
+    ['2026-11-06', 'asbestos', 'treatment', 0.6],
+  ].map(([docketDate, wasteType, destination, tonnes], i) => ({
+    id: `wdk_000${i + 1}`,
+    docketDate: docketDate as string,
+    wasteType: wasteType as WasteDocket['wasteType'],
+    destination: destination as WasteDocket['destination'],
+    tonnes: tonnes as number,
+    docketNumber: `D-${1040 + i}`,
+    contractor: 'Metro Waste',
+    facility: null,
+    note: null,
+    evidenceCount: wasteType === 'asbestos' ? 0 : 1,
+  })),
+  carbon: [
+    ['2026-10-14', 'diesel_litres', 1800],
+    ['2026-10-28', 'diesel_litres', 2100],
+    ['2026-11-03', 'electricity_kwh', 6200],
+    ['2026-11-05', 'concrete_m3', 40],
+  ].map(([entryDate, source, quantity], i) => {
+    const info = CARBON_SOURCE_INFO[source as CarbonEntry['source']];
+    return {
+      id: `cbe_000${i + 1}`,
+      entryDate: entryDate as string,
+      source: source as CarbonEntry['source'],
+      scope: info.scope,
+      quantity: quantity as number,
+      factor: info.factor,
+      kgCo2e: Math.round((quantity as number) * info.factor * 1000) / 1000,
+      description: null,
+      note: null,
+    };
+  }),
   documents: [
     {
       id: 'edc_0001',
@@ -290,8 +348,109 @@ const withStats = (s: Store, p: Store['points'][number]): MonitoringPoint => {
   };
 };
 
+const round1 = (n: number) => Math.round(n * 10) / 10;
+const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
+const TARGET = 80;
+
+function lastSixMonths(): string[] {
+  const [y, m] = TODAY.split('-').map(Number) as [number, number];
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - (5 - i), 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  });
+}
+
+function wasteOverview(s: Store): WasteSummary {
+  const sum = (rows: WasteDocket[]) => rows.reduce((a, d) => a + d.tonnes, 0);
+  const div = (rows: WasteDocket[]) => sum(rows.filter((d) => isDiverted(d.destination)));
+  const win = (from: string, to: string) => {
+    const rows = s.dockets.filter((d) => d.docketDate >= from && d.docketDate <= to);
+    return {
+      tonnes: round1(sum(rows)),
+      divertedTonnes: round1(div(rows)),
+      diversionPercent: pct(div(rows), sum(rows)),
+    };
+  };
+  const types = [...new Set(s.dockets.map((d) => d.wasteType))].map((wasteType) => {
+    const rows = s.dockets.filter((d) => d.wasteType === wasteType);
+    return { wasteType, tonnes: round1(sum(rows)), divertedTonnes: round1(div(rows)) };
+  });
+  const dest = (d: WasteDocket['destination']) =>
+    round1(sum(s.dockets.filter((x) => x.destination === d)));
+  return {
+    totalTonnes: round1(sum(s.dockets)),
+    divertedTonnes: round1(div(s.dockets)),
+    diversionPercent: pct(div(s.dockets), sum(s.dockets)),
+    targetPercent: TARGET,
+    byDestination: {
+      recycled: dest('recycled'),
+      reused: dest('reused'),
+      landfill: dest('landfill'),
+      treatment: dest('treatment'),
+    },
+    byType: types.sort((a, b) => b.tonnes - a.tonnes),
+    monthly: lastSixMonths().map((month) => {
+      const rows = s.dockets.filter((d) => d.docketDate.startsWith(month));
+      return {
+        month,
+        tonnes: round1(sum(rows)),
+        divertedTonnes: round1(div(rows)),
+        diversionPercent: pct(div(rows), sum(rows)),
+      };
+    }),
+    last30: win(addDays(TODAY, -29), TODAY),
+    previous30: win(addDays(TODAY, -59), addDays(TODAY, -30)),
+    regulatedWithoutDocket: s.dockets.filter(
+      (d) => isRegulatedWaste(d.wasteType) && d.evidenceCount === 0,
+    ).length,
+  };
+}
+
+function carbonOverview(s: Store): CarbonSummary {
+  const kg = (rows: CarbonEntry[]) => rows.reduce((a, e) => a + e.kgCo2e, 0);
+  const win = (from: string, to: string) =>
+    kg(s.carbon.filter((e) => e.entryDate >= from && e.entryDate <= to));
+  const last30 = win(addDays(TODAY, -29), TODAY);
+  const previous30 = win(addDays(TODAY, -59), addDays(TODAY, -30));
+  const scope = (n: 1 | 2 | 3) => round1(kg(s.carbon.filter((e) => e.scope === n)));
+  return {
+    totalKg: round1(kg(s.carbon)),
+    byScope: { 1: scope(1), 2: scope(2), 3: scope(3) },
+    bySource: [...new Set(s.carbon.map((e) => e.source))]
+      .map((source) => {
+        const rows = s.carbon.filter((e) => e.source === source);
+        return {
+          source,
+          quantity: round1(rows.reduce((a, e) => a + e.quantity, 0)),
+          kg: round1(kg(rows)),
+        };
+      })
+      .sort((a, b) => b.kg - a.kg),
+    monthly: lastSixMonths().map((month) => ({
+      month,
+      kg: round1(kg(s.carbon.filter((e) => e.entryDate.startsWith(month)))),
+    })),
+    last30Kg: round1(last30),
+    previous30Kg: round1(previous30),
+    changePercent: previous30 > 0 ? Math.round(((last30 - previous30) / previous30) * 100) : null,
+  };
+}
+
 const flagsFor = (s: Store): Flag[] => {
   const flags: Flag[] = [];
+  const w = wasteOverview(s);
+  if (w.diversionPercent !== null && w.totalTonnes >= 1 && w.diversionPercent < TARGET)
+    flags.push({
+      code: 'waste_diversion_low',
+      severity: 'warning',
+      message: `Only ${w.diversionPercent}% of waste has been diverted from landfill, against a target of ${TARGET}%. Look at which streams are going to landfill.`,
+    });
+  if (w.regulatedWithoutDocket > 0)
+    flags.push({
+      code: 'waste_docket_missing',
+      severity: 'critical',
+      message: `${w.regulatedWithoutDocket} hazardous or asbestos ${w.regulatedWithoutDocket === 1 ? 'docket' : 'dockets'} without a copy attached. Attach the signed docket.`,
+    });
   const openBreaches = s.readings.filter((r) => r.status === 'breach' && !r.respondedAt);
   if (openBreaches.length)
     flags.push({
@@ -381,6 +540,11 @@ export const environmentPreview: EnvironmentSource = {
           applicable === 0 ? null : Math.round((byStatus.compliant / applicable) * 100),
         byCategory: [...cats.values()],
       },
+      waste: {
+        totalTonnes: wasteOverview(s).totalTonnes,
+        diversionPercent: wasteOverview(s).diversionPercent,
+      },
+      carbon: { totalKg: carbonOverview(s).totalKg, last30Kg: carbonOverview(s).last30Kg },
       monitoring: {
         points: s.points.filter((p) => p.active).length,
         openBreaches: s.readings.filter((r) => r.status === 'breach' && !r.respondedAt).length,
@@ -613,6 +777,63 @@ export const environmentPreview: EnvironmentSource = {
     if (input.raiseIncident) hit!.incidentId = mockId('inx');
     return delay({ reading: { ...hit! }, incidentNumber: input.raiseIncident ? 12 : null });
   },
+  listDockets: (projectId) =>
+    delay(
+      [...stores.get(projectId).dockets]
+        .sort((a, b) => b.docketDate.localeCompare(a.docketDate))
+        .map((d) => ({ ...d })),
+    ),
+  createDocket: (projectId, input) => {
+    const d: WasteDocket = {
+      id: mockId('wdk'),
+      docketDate: input.docketDate,
+      wasteType: input.wasteType,
+      destination: input.destination,
+      tonnes: input.tonnes,
+      docketNumber: input.docketNumber ?? null,
+      contractor: input.contractor ?? null,
+      facility: input.facility ?? null,
+      note: input.note ?? null,
+      evidenceCount: input.files?.length ?? 0,
+    };
+    stores.get(projectId).dockets.push(d);
+    return delay({ ...d });
+  },
+  deleteDocket: (projectId, d) => {
+    const s = stores.get(projectId);
+    s.dockets = s.dockets.filter((x) => x.id !== d.id);
+    return delay(undefined);
+  },
+  wasteSummary: (projectId) => delay(wasteOverview(stores.get(projectId))),
+  listCarbon: (projectId) =>
+    delay(
+      [...stores.get(projectId).carbon]
+        .sort((a, b) => b.entryDate.localeCompare(a.entryDate))
+        .map((e) => ({ ...e })),
+    ),
+  createCarbon: (projectId, input) => {
+    const info = CARBON_SOURCE_INFO[input.source];
+    const factor = input.factor ?? info.factor;
+    const e: CarbonEntry = {
+      id: mockId('cbe'),
+      entryDate: input.entryDate,
+      source: input.source,
+      scope: info.scope,
+      quantity: input.quantity,
+      factor,
+      kgCo2e: Math.round(input.quantity * factor * 1000) / 1000,
+      description: input.description ?? null,
+      note: input.note ?? null,
+    };
+    stores.get(projectId).carbon.push(e);
+    return delay({ ...e });
+  },
+  deleteCarbon: (projectId, e) => {
+    const s = stores.get(projectId);
+    s.carbon = s.carbon.filter((x) => x.id !== e.id);
+    return delay(undefined);
+  },
+  carbonSummary: (projectId) => delay(carbonOverview(stores.get(projectId))),
 };
 
 export function resetEnvironmentPreview() {

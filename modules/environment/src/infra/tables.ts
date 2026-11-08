@@ -4,6 +4,7 @@ import {
   integer,
   numeric,
   pgSchema,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -15,6 +16,8 @@ import type {
   ConditionStatus,
 } from '../domain/condition';
 import type { DocumentType } from '../domain/document';
+import type { CarbonScope, CarbonSource } from '../domain/carbon';
+import type { WasteDestination, WasteType } from '../domain/waste';
 import type { MonitoringFrequency, Parameter, ReadingStatus } from '../domain/monitoring';
 
 export const environmentSchema = pgSchema('environment');
@@ -133,4 +136,39 @@ export const readings = environmentSchema.table('readings', {
   incidentId: uuid('incident_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const wasteDockets = environmentSchema.table('waste_dockets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  docketDate: date('docket_date').notNull(),
+  wasteType: text('waste_type').$type<WasteType>().notNull(),
+  destination: text('destination').$type<WasteDestination>().notNull(),
+  tonnes: numeric('tonnes').notNull(),
+  docketNumber: text('docket_number'),
+  contractor: text('contractor'),
+  facility: text('facility'),
+  note: text('note'),
+  fileIds: uuid('file_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const carbonEntries = environmentSchema.table('carbon_entries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  entryDate: date('entry_date').notNull(),
+  source: text('source').$type<CarbonSource>().notNull(),
+  scope: smallint('scope').$type<CarbonScope>().notNull(),
+  quantity: numeric('quantity').notNull(),
+  factor: numeric('factor').notNull(),
+  kgCo2e: numeric('kg_co2e').notNull(),
+  description: text('description'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });

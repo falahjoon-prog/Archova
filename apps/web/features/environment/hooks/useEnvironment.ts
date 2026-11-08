@@ -9,9 +9,12 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createEnvironmentApi } from '../data/api';
 import { environmentPreview, type EnvironmentSource } from '../data/source';
 import type {
+  CarbonEntry,
+  CarbonInput,
   Condition,
   ConditionFilters,
   ConditionInput,
+  DocketInput,
   DocumentInput,
   EnvironmentDocument,
   MonitoringPoint,
@@ -23,6 +26,7 @@ import type {
   RespondInput,
   PlanInput,
   TransitionInput,
+  WasteDocket,
 } from '../lib/types';
 
 function useSource(): EnvironmentSource {
@@ -97,6 +101,36 @@ export function useReadings(filters: ReadingFilters) {
   });
 }
 
+export function useWaste() {
+  const source = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const dockets = useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'waste' }),
+    queryFn: () => source.listDockets(projectId),
+  });
+  const summary = useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'waste-summary' }),
+    queryFn: () => source.wasteSummary(projectId),
+  });
+  return { dockets, summary };
+}
+
+export function useCarbon() {
+  const source = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const entries = useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'carbon' }),
+    queryFn: () => source.listCarbon(projectId),
+  });
+  const summary = useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'carbon-summary' }),
+    queryFn: () => source.carbonSummary(projectId),
+  });
+  return { entries, summary };
+}
+
 /** Status changes are seen by others and feed the summary, so none is optimistic. */
 export function useEnvironmentMutations() {
   const source = useSource();
@@ -146,6 +180,20 @@ export function useEnvironmentMutations() {
     respond: useMutation({
       mutationFn: async (v: { reading: Reading; input: RespondInput }) =>
         await settle(await source.respond(projectId, v.reading, v.input)),
+    }),
+    createDocket: useMutation({
+      mutationFn: async (input: DocketInput) =>
+        await settle(await source.createDocket(projectId, input)),
+    }),
+    deleteDocket: useMutation({
+      mutationFn: async (d: WasteDocket) => await settle(await source.deleteDocket(projectId, d)),
+    }),
+    createCarbon: useMutation({
+      mutationFn: async (input: CarbonInput) =>
+        await settle(await source.createCarbon(projectId, input)),
+    }),
+    deleteCarbon: useMutation({
+      mutationFn: async (e: CarbonEntry) => await settle(await source.deleteCarbon(projectId, e)),
     }),
   };
 }

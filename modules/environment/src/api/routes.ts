@@ -9,6 +9,8 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { CarbonService } from '../application/carbon';
+import type { WasteService } from '../application/waste';
 import type { ConditionFields, ConditionService } from '../application/conditions';
 import type { MonitoringService, PointFields } from '../application/monitoring';
 import type { DocumentFields, RegisterService } from '../application/register';
@@ -17,9 +19,13 @@ import {
   toDocumentDto,
   toEventDto,
   toPlanDto,
+  toCarbonEntryDto,
+  toCarbonSummaryDto,
+  toDocketDto,
   toPointDto,
   toReadingDto,
   toSummaryDto,
+  toWasteSummaryDto,
 } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
@@ -82,6 +88,8 @@ export function environmentRoutes(
   conditions: ConditionService,
   register: RegisterService,
   monitoring: MonitoringService,
+  waste: WasteService,
+  carbon: CarbonService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -108,6 +116,10 @@ export function environmentRoutes(
     headers: { etag: etag(d.version) },
   });
 
+  const docketId = (p: { wasteDocketId: string }) =>
+    notFound('wasteDocket', p.wasteDocketId, 'environment.docket_not_found');
+  const carbonId = (p: { carbonEntryId: string }) =>
+    notFound('carbonEntry', p.carbonEntryId, 'environment.carbon_entry_not_found');
   const pointId = (p: { pointId: string }) =>
     notFound('monitoringPoint', p.pointId, 'environment.point_not_found');
   const readingId = (p: { readingId: string }) =>
@@ -352,6 +364,84 @@ export function environmentRoutes(
           nextCursor: page.nextCursor,
         },
       };
+    },
+    listWasteDockets: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        waste.listDockets(s, project(input.params), {
+          ...(q.wasteType ? { wasteType: q.wasteType } : {}),
+          ...(q.destination ? { destination: q.destination } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toDocketDto), nextCursor: page.nextCursor },
+      };
+    },
+    createWasteDocket: async (input) => {
+      const b = input.body;
+      const d = await tx(input, (s) =>
+        waste.createDocket(s, project(input.params), {
+          docketDate: b.docketDate,
+          wasteType: b.wasteType,
+          destination: b.destination,
+          tonnes: b.tonnes,
+          ...(b.docketNumber ? { docketNumber: b.docketNumber } : {}),
+          ...(b.contractor ? { contractor: b.contractor } : {}),
+          ...(b.facility ? { facility: b.facility } : {}),
+          ...(b.note ? { note: b.note } : {}),
+          ...(b.fileIds
+            ? { fileIds: b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)) }
+            : {}),
+        }),
+      );
+      return { status: 201, body: toDocketDto(d) };
+    },
+    getWasteSummary: async (input) => ({
+      status: 200,
+      body: toWasteSummaryDto(await read(input, (s) => waste.overview(s, project(input.params)))),
+    }),
+    deleteWasteDocket: async (input) => {
+      await tx(input, (s) => waste.deleteDocket(s, project(input.params), docketId(input.params)));
+      return { status: 204 };
+    },
+    listCarbonEntries: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        carbon.listEntries(s, project(input.params), {
+          ...(q.source ? { source: q.source } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toCarbonEntryDto), nextCursor: page.nextCursor },
+      };
+    },
+    createCarbonEntry: async (input) => {
+      const b = input.body;
+      const e = await tx(input, (s) =>
+        carbon.createEntry(s, project(input.params), {
+          entryDate: b.entryDate,
+          source: b.source,
+          quantity: b.quantity,
+          ...(b.factor !== undefined ? { factor: b.factor } : {}),
+          ...(b.description ? { description: b.description } : {}),
+          ...(b.note ? { note: b.note } : {}),
+        }),
+      );
+      return { status: 201, body: toCarbonEntryDto(e) };
+    },
+    getCarbonSummary: async (input) => ({
+      status: 200,
+      body: toCarbonSummaryDto(await read(input, (s) => carbon.overview(s, project(input.params)))),
+    }),
+    deleteCarbonEntry: async (input) => {
+      await tx(input, (s) => carbon.deleteEntry(s, project(input.params), carbonId(input.params)));
+      return { status: 204 };
     },
     respondToReading: async (input) => {
       const r = await tx(input, (s) =>

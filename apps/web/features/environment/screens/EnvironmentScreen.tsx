@@ -27,7 +27,9 @@ import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { CarbonTab } from './CarbonTab';
 import { MonitoringTab } from './MonitoringTab';
+import { WasteTab } from './WasteTab';
 import {
   useConditionDetail,
   useConditions,
@@ -62,6 +64,8 @@ const DOC_TYPES = Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[];
 const TABS = [
   { id: 'conditions', label: 'Conditions' },
   { id: 'monitoring', label: 'Monitoring' },
+  { id: 'waste', label: 'Waste' },
+  { id: 'carbon', label: 'Carbon' },
   { id: 'documents', label: 'Documents' },
   { id: 'plan', label: 'Plan' },
 ] as const;
@@ -161,6 +165,17 @@ export function EnvironmentScreen() {
                 tone: s.monitoring.openBreaches > 0 ? 'danger' : 'neutral',
               },
               {
+                label: 'Waste diverted',
+                value: s.waste.diversionPercent === null ? '—' : `${s.waste.diversionPercent}%`,
+                hint: 'Recycled or reused, not landfilled',
+                tone:
+                  s.waste.diversionPercent === null
+                    ? 'neutral'
+                    : s.waste.diversionPercent >= 80
+                      ? 'success'
+                      : 'warning',
+              },
+              {
                 label: 'Documents lapsing',
                 value: s.documents.expired + s.documents.expiring,
                 hint: `${s.documents.expired} expired · ${s.documents.expiring} within 30 days`,
@@ -198,6 +213,10 @@ export function EnvironmentScreen() {
           />
         ) : tab === 'monitoring' ? (
           <MonitoringTab />
+        ) : tab === 'waste' ? (
+          <WasteTab />
+        ) : tab === 'carbon' ? (
+          <CarbonTab />
         ) : tab === 'documents' ? (
           <DocumentsTab onAdd={() => setDialog({ kind: 'document' })} />
         ) : (

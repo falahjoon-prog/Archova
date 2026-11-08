@@ -8871,6 +8871,130 @@ export interface paths {
         patch: operations["updateEnvironmentDocument"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Waste dockets, newest first. */
+        get: operations["listWasteDockets"];
+        put?: never;
+        /** Record a waste docket: how many tonnes of what left site, and whether it was recycled, reused, landfilled or treated. */
+        post: operations["createWasteDocket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Tonnes by type and destination, the diversion rate against the target, a six-month trend, and the last 30 days against the 30 before. */
+        get: operations["getWasteSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste/{wasteDocketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                wasteDocketId: components["parameters"]["WasteDocketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a docket entered by mistake. */
+        delete: operations["deleteWasteDocket"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Carbon entries (fuel, electricity, materials), newest first. */
+        get: operations["listCarbonEntries"];
+        put?: never;
+        /** Log an activity (litres of diesel, kWh, m3 of concrete...). It is converted to kg CO2-e with the source's default factor, or the factor given, which is kept on the entry. */
+        post: operations["createCarbonEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Total kg CO2-e by scope and source, a six-month trend, and the last 30 days against the 30 before. */
+        get: operations["getCarbonSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/{carbonEntryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                carbonEntryId: components["parameters"]["CarbonEntryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an entry logged by mistake. */
+        delete: operations["deleteCarbonEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points": {
         parameters: {
             query?: never;
@@ -20369,7 +20493,7 @@ export interface components {
         };
         EnvironmentFlag: {
             /** @enum {string} */
-            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending";
+            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending" | "waste_diversion_low" | "waste_docket_missing" | "carbon_rising";
             /** @enum {string} */
             severity: "info" | "warning" | "critical";
             message: string;
@@ -20382,6 +20506,134 @@ export interface components {
             compliant: number;
             nonCompliant: number;
             overdue: number;
+        };
+        /** @enum {string} */
+        WasteType: "general" | "concrete" | "bricks_masonry" | "timber" | "metals" | "plastics" | "plasterboard" | "soil_fill" | "cardboard_paper" | "glass" | "green_waste" | "hazardous" | "asbestos" | "other";
+        /**
+         * @description Recycled and reused count as diverted from landfill.
+         * @enum {string}
+         */
+        WasteDestination: "recycled" | "reused" | "landfill" | "treatment";
+        WasteDocket: {
+            id: string;
+            projectId: string;
+            /** Format: date */
+            docketDate: string;
+            wasteType: components["schemas"]["WasteType"];
+            destination: components["schemas"]["WasteDestination"];
+            tonnes: number;
+            docketNumber: string | null;
+            contractor: string | null;
+            facility: string | null;
+            note: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WasteDocketPage: {
+            data: components["schemas"]["WasteDocket"][];
+            nextCursor: string | null;
+        };
+        CreateWasteDocketRequest: {
+            /** Format: date */
+            docketDate: string;
+            wasteType: components["schemas"]["WasteType"];
+            destination: components["schemas"]["WasteDestination"];
+            tonnes: number;
+            docketNumber?: string;
+            contractor?: string;
+            facility?: string;
+            note?: string;
+            fileIds?: string[];
+        };
+        WasteWindow: {
+            tonnes: number;
+            divertedTonnes: number;
+            diversionPercent: number | null;
+        };
+        WasteSummary: {
+            totalTonnes: number;
+            divertedTonnes: number;
+            diversionPercent: number | null;
+            targetPercent: number;
+            byDestination: {
+                recycled: number;
+                reused: number;
+                landfill: number;
+                treatment: number;
+            };
+            byType: {
+                wasteType: components["schemas"]["WasteType"];
+                tonnes: number;
+                divertedTonnes: number;
+            }[];
+            /** @description The last six months, oldest first. */
+            monthly: {
+                /** @description YYYY-MM */
+                month: string;
+                tonnes: number;
+                divertedTonnes: number;
+                diversionPercent: number | null;
+            }[];
+            last30: components["schemas"]["WasteWindow"];
+            previous30: components["schemas"]["WasteWindow"];
+            /** @description Hazardous or asbestos dockets with no copy attached. */
+            regulatedWithoutDocket: number;
+        };
+        /** @enum {string} */
+        CarbonSource: "diesel_litres" | "petrol_litres" | "lpg_litres" | "electricity_kwh" | "concrete_m3" | "steel_tonnes" | "other";
+        CarbonEntry: {
+            id: string;
+            projectId: string;
+            /** Format: date */
+            entryDate: string;
+            source: components["schemas"]["CarbonSource"];
+            scope: number;
+            quantity: number;
+            /** @description kg CO2-e per unit, as used for this entry. */
+            factor: number;
+            kgCo2e: number;
+            description: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CarbonEntryPage: {
+            data: components["schemas"]["CarbonEntry"][];
+            nextCursor: string | null;
+        };
+        CreateCarbonEntryRequest: {
+            /** Format: date */
+            entryDate: string;
+            source: components["schemas"]["CarbonSource"];
+            quantity: number;
+            /** @description kg CO2-e per unit. The source's default when left out. */
+            factor?: number;
+            description?: string;
+            note?: string;
+        };
+        CarbonSummary: {
+            totalKg: number;
+            byScope: {
+                1: number;
+                2: number;
+                3: number;
+            };
+            bySource: {
+                source: components["schemas"]["CarbonSource"];
+                quantity: number;
+                kg: number;
+            }[];
+            /** @description The last six months, oldest first. */
+            monthly: {
+                /** @description YYYY-MM */
+                month: string;
+                kg: number;
+            }[];
+            last30Kg: number;
+            previous30Kg: number;
+            /** @description Last 30 days against the 30 before; null without a base. */
+            changePercent: number | null;
         };
         EnvironmentSummary: {
             /**
@@ -20415,6 +20667,15 @@ export interface components {
                 openBreaches: number;
                 /** @description Active points without a recent reading. */
                 overdue: number;
+            };
+            waste: {
+                totalTonnes: number;
+                /** @description Share recycled or reused; null with no dockets. */
+                diversionPercent: number | null;
+            };
+            carbon: {
+                totalKg: number;
+                last30Kg: number;
             };
             flags: components["schemas"]["EnvironmentFlag"][];
         };
@@ -21289,6 +21550,8 @@ export interface components {
         CompanyId: string;
         MonitoringPointId: string;
         EnvironmentReadingId: string;
+        WasteDocketId: string;
+        CarbonEntryId: string;
         ToolboxTopicId: string;
         ToolboxTalkId: string;
         ToolboxAttendeeId: string;
@@ -35861,6 +36124,217 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EnvironmentDocument"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWasteDockets: {
+        parameters: {
+            query?: {
+                wasteType?: components["schemas"]["WasteType"];
+                destination?: components["schemas"]["WasteDestination"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteDocketPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWasteDocket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWasteDocketRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteDocket"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWasteSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWasteDocket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                wasteDocketId: components["parameters"]["WasteDocketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCarbonEntries: {
+        parameters: {
+            query?: {
+                source?: components["schemas"]["CarbonSource"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonEntryPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCarbonEntry: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCarbonEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonEntry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCarbonSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteCarbonEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                carbonEntryId: components["parameters"]["CarbonEntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
