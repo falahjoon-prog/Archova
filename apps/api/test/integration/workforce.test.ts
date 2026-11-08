@@ -656,3 +656,59 @@ describe('Timesheets (ATT-US9)', () => {
     expect((await s.sm.browser.get(sp)).json().status).toBe('exported');
   });
 });
+
+describe('digital Safety ID badge', () => {
+  it('shows a worker their own badge, keeps their emergency contact, and nobody else sees it', async () => {
+    const s = await setup('wf-badge');
+    const url = `${s.base}/attendance/me/badge`;
+
+    const first = await s.sub.browser.get(url);
+    expect(first.statusCode).toBe(200);
+    const badge = first.json();
+    expect(badge.fullName).toBeTruthy();
+    expect(badge.companyName).toBe('Formco');
+    expect(badge.status).toBe('active');
+    expect(badge.qrValue).toBe(`archova:badge:${badge.workerId}`);
+    expect(badge.emergencyContact).toBeNull();
+    expect(badge.photoUrl).toBeNull();
+    expect(first.headers['cache-control']).toBe('no-store');
+
+    const put = await s.sub.browser.put(`${s.base}/attendance/me/emergency-contact`, {
+      contact: { name: ' Sam Tran ', relationship: 'Partner', phone: '0412 345 678' },
+    });
+    expect(put.statusCode).toBe(200);
+    expect(put.json().emergencyContact).toEqual({
+      name: 'Sam Tran',
+      relationship: 'Partner',
+      phone: '0412345678',
+    });
+    expect((await s.sub.browser.get(url)).json().emergencyContact.name).toBe('Sam Tran');
+
+    // A badge belongs to its worker: a second worker gets their own, with no contact.
+    const other = (await s.sub2.browser.get(url)).json();
+    expect(other.workerId).not.toBe(badge.workerId);
+    expect(other.emergencyContact).toBeNull();
+
+    // The site manager's worker list never carries the emergency contact.
+    const list = await s.sm.browser.get(`${s.base}/attendance/workers`);
+    expect(JSON.stringify(list.json())).not.toContain('Sam Tran');
+
+    const bad = await s.sub.browser.put(`${s.base}/attendance/me/emergency-contact`, {
+      contact: { name: 'X', phone: '12' },
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const cleared = await s.sub.browser.put(`${s.base}/attendance/me/emergency-contact`, {
+      contact: null,
+    });
+    expect(cleared.json().emergencyContact).toBeNull();
+  });
+
+  it('refuses a photo that is not a ready upload of the caller', async () => {
+    const s = await setup('wf-badge-photo');
+    const res = await s.sub.browser.put(`${s.base}/attendance/me/photo`, {
+      fileId: '0190c0de-0000-7000-8000-000000000001',
+    });
+    expect(res.statusCode).toBe(422);
+  });
+});

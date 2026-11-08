@@ -109,6 +109,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
     `${p(orgSlug, projectId)}/incidents${incidentId ? `?id=${enc(incidentId)}` : ''}`,
+  insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
@@ -185,7 +186,22 @@ export const mobileRoutes = {
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
+  documents: (projectId: string) => `/project/${enc(projectId)}/documents`,
+  document: (projectId: string, documentId: string) =>
+    `/project/${enc(projectId)}/documents/${enc(documentId)}`,
+  specifications: (projectId: string) => `/project/${enc(projectId)}/specifications`,
+  specBook: (projectId: string, bookId: string) =>
+    `/project/${enc(projectId)}/specifications/${enc(bookId)}`,
+  submittals: (projectId: string) => `/project/${enc(projectId)}/submittals`,
+  submittal: (projectId: string, submittalId: string) =>
+    `/project/${enc(projectId)}/submittals/${enc(submittalId)}`,
+  timesheets: (projectId: string) => `/project/${enc(projectId)}/timesheets`,
+  timesheet: (projectId: string, timesheetId: string) =>
+    `/project/${enc(projectId)}/timesheets/${enc(timesheetId)}`,
+  crews: (projectId: string) => `/project/${enc(projectId)}/crews`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
+  /** My digital Safety ID badge for a project. */
+  safetyBadge: (projectId: string) => `/project/${enc(projectId)}/badge`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (
     projectId: string,
