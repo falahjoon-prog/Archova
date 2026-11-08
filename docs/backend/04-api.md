@@ -110,6 +110,7 @@ Workflow transitions are explicit `POST` sub-resources (`…/close`), never a st
 | CRUD | `{p}/submittal-packages`, `{p}/submittals` | |
 | POST | `{p}/submittals/{id}/submit`, `/respond`, `/revise` | workflow steps |
 | CRUD | `{o}/correspondence-types`, `{p}/correspondence`; `POST …/{id}/send`, `/respond` | evidential types create evidence records |
+| GET/PUT, GET | `{p}/correspondence/{id}/access`, `…/history` | **As built:** an item can be private (seen only by its author, admins and the people listed, once sent); only the author or an admin reads or changes the list (listed people must be on the project). A type carries up to 12 extra `fields` (`text`, `date`, `number`, `yesNo`; `required` ones are checked at send) and items hold `fieldValues`. `history` is append-only (created, edited with from/to per field, sent, responded, closed, voided, access_changed), readable by anyone who can open the item; long text is cut at 300 characters. The detail carries `canManageAccess` for the lock icon and Permissions tab. The Emails tab is a separate change. |
 | CRUD | `{p}/meeting-series`, `{p}/meetings`, `{p}/meetings/{id}/items`, `/attendees` | |
 | POST | `{p}/meetings/{id}/issue-minutes` | locks, PDFs, emails |
 | POST | `{p}/meetings/{id}/next` | next meeting with open items carried |

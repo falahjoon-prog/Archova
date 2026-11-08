@@ -12,6 +12,7 @@ import type {
   ReportConfig,
   ReportInput,
   ReportResult,
+  SustainabilityPortfolio,
 } from '../lib/types';
 
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -29,6 +30,13 @@ export function createReportingApi(orgId: string) {
     async dbpInsights(includeClosed: boolean): Promise<DbpInsights> {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/dbp-insights', {
+          params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
+        }),
+      );
+    },
+    async sustainability(includeClosed: boolean): Promise<SustainabilityPortfolio> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/portfolio/sustainability', {
           params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
         }),
       );

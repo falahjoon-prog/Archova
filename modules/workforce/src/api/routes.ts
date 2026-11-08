@@ -21,6 +21,7 @@ import type { RosterService } from '../application/roster';
 import { toBookingDto, toEquipmentDto, toLogDto } from './equipment-mappers';
 import { toShiftDto } from './roster-mappers';
 import type { BadgeService } from '../application/badge';
+import type { ClearanceService } from '../application/clearance';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
 import {
@@ -52,6 +53,7 @@ import {
   toSessionDto,
   toSignInDto,
   toSiteDto,
+  toWorkerClearanceDto,
   toWorkerDto,
 } from './mappers';
 
@@ -108,6 +110,7 @@ export function workforceRoutes(
   equip: EquipmentService,
   sheets: TimesheetService,
   badge: BadgeService,
+  clearance: ClearanceService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -143,6 +146,20 @@ export function workforceRoutes(
     id('equipmentBooking', p.bookingId, 'workforce_equipment.booking_not_found');
 
   return defineRoutes({
+    checkWorkerClearance: async (input) => ({
+      status: 200,
+      body: toWorkerClearanceDto(
+        await read(input, (s) =>
+          clearance.check(s, project(input.params), {
+            code: input.query.code,
+            ...(input.query.siteId
+              ? { siteId: ref('workforceSite', input.query.siteId, 'siteId') }
+              : {}),
+          }),
+        ),
+      ),
+      headers: { 'cache-control': 'no-store' },
+    }),
     getMySafetyBadge: async (input) => ({
       status: 200,
       body: toSafetyBadgeDto(await tx(input, (s) => badge.view(s, project(input.params)))),

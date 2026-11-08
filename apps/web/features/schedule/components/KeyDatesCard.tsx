@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { Button, Card, Dialog, SkeletonRows, StatusPill } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { formatInstant, formatLocalDate } from '@/shared/lib/format';
+import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import type { KeyDates } from '../data/api';
 import { useKeyDateChanges, useKeyDates } from '../hooks/useSchedule';
 import {
@@ -15,6 +15,7 @@ import {
   pcCountdown,
 } from '../lib/labels';
 import { KeyDatesForm } from './KeyDatesForm';
+import { MilestoneStrip } from './MilestoneStrip';
 
 const date = (d: string | null) => (d ? formatLocalDate(d) : 'Not set');
 
@@ -74,6 +75,7 @@ export function KeyDatesCard({
               {rate ? <span className="u-caption">A day over costs {rate}.</span> : null}
             </p>
           ) : null}
+          <MilestoneStrip dates={k} today={todayIn(timeZone)} />
           <dl className="details">
             <div>
               <dt>Site possession</dt>

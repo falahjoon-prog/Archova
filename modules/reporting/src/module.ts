@@ -4,6 +4,7 @@ import { createAuditService, type AuditDeps } from './application/audit';
 import { createDbpService } from './application/dbp';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
+import { createSustainabilityService } from './application/sustainability';
 import { createReadinessService } from './application/readiness';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
@@ -23,10 +24,20 @@ export function createReportingModule(
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
   const audit = createAuditService(deps);
+  const sustainability = createSustainabilityService(deps);
   const dbp = createDbpService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
-    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness, audit, dbp),
+    routes: reportingRoutes(
+      deps.database,
+      portfolio,
+      reports,
+      risk,
+      readiness,
+      audit,
+      sustainability,
+      dbp,
+    ),
     api: {},
   };
 }

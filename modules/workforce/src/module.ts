@@ -7,6 +7,8 @@ import { createEquipmentService } from './application/equipment';
 import { createSiteActivityService } from './application/site-activity';
 import { createRosterService } from './application/roster';
 import { createBadgeService } from './application/badge';
+import { createClearanceService } from './application/clearance';
+import type { ClearanceInsurance, ClearanceSwms } from './domain/clearance';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
@@ -20,6 +22,18 @@ export function createWorkforceModule(
     hooks?: InductionHooks;
     /** Access links (X45): what the link flow needs beyond the attendance and induction services. */
     links: Omit<InductionLinkDeps, 'database' | 'attendance' | 'inductions'>;
+    /** Site clearance: the SWMS a worker's company works under, read from `safety`. */
+    clearanceSwms?: (
+      scope: Parameters<ComplianceSource>[0],
+      projectId: string,
+      worker: { companyId: string | null; userId: string | null },
+    ) => Promise<ClearanceSwms[]>;
+    /** Site clearance: the worker's company's insurance and bonds, read from `insurance`. */
+    clearanceInsurance?: (
+      scope: Parameters<ComplianceSource>[0],
+      projectId: string,
+      companyId: string,
+    ) => Promise<ClearanceInsurance>;
   },
 ) {
   // The induction rules join the X54 compliance interface ahead of any sources passed in.
@@ -38,6 +52,15 @@ export function createWorkforceModule(
     attendance,
     platform: deps.platform,
     files: deps.files,
+  });
+  const clearance = createClearanceService({
+    attendance,
+    platform: deps.platform,
+    files: deps.files,
+    inductionSource: inductions.gateSource,
+    ...(deps.clearanceSwms ? { swms: deps.clearanceSwms } : {}),
+    ...(deps.clearanceInsurance ? { insurance: deps.clearanceInsurance } : {}),
+    ...(deps.now ? { now: deps.now } : {}),
   });
   const roster = createRosterService({
     access: deps.access,
@@ -86,6 +109,7 @@ export function createWorkforceModule(
       equipment,
       sheets,
       badge,
+      clearance,
       {
         logger: services.logger,
         ...deps.hooks,
@@ -102,8 +126,12 @@ export function createWorkforceModule(
       insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
+      /** For `permits` (Nova flags): licences in the wallet that have lapsed or are about to. */
+      lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
+      dayActivity: sheets.dayActivity,
       /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */
       siteActivityDays: siteActivity.siteActivityDays,
     },
