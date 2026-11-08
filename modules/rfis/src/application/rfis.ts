@@ -549,6 +549,8 @@ export function createRfiService(deps: RfisDeps) {
     const values = fieldValues(patch);
     values.version = rfi.version + 1;
     values.updatedBy = scope.ctx.userId;
+    // Handing an open RFI to someone else restarts the wait.
+    if (patch.assigneeIds !== undefined && rfi.status === 'open') values.ballSince = now();
     const [row] = await scope.tx
       .update(rfis)
       .set(values)
@@ -591,7 +593,13 @@ export function createRfiService(deps: RfisDeps) {
         : and(eq(rfis.id, rfi.id), eq(rfis.version, expectedVersion));
     const [row] = await scope.tx
       .update(rfis)
-      .set({ ...values, version: rfi.version + 1, updatedBy: scope.ctx.userId })
+      .set({
+        // The ball changes hands whenever the RFI is sent, answered or reopened.
+        ...(values.status === 'open' || values.status === 'answered' ? { ballSince: now() } : {}),
+        ...values,
+        version: rfi.version + 1,
+        updatedBy: scope.ctx.userId,
+      })
       .where(where)
       .returning();
     if (!row) throw versionConflict();
