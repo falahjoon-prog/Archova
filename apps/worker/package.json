@@ -30,6 +30,7 @@
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-workforce": "workspace:*",
     "@archova/mod-meetings": "workspace:*",
+    "@archova/mod-insurance": "workspace:*",
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-sync": "workspace:*",
