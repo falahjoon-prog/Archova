@@ -60,6 +60,9 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/transmittals/new`,
   transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>
     `${p(orgSlug, projectId)}/transmittals/${enc(transmittalId)}`,
+  /** Who was sent which revision of each drawing and document, and what still needs acknowledging. */
+  documentRegister: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/document-register`,
   rfis: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis`,
   newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
   rfi: (orgSlug: string, projectId: string, rfiId: string) =>

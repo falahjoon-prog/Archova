@@ -2022,6 +2022,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/document-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The document control register: every drawing sheet and document with its current revision, who was sent
+         *     which revision, and acknowledgement status. `flags` are Nova's rule-based findings (outstanding
+         *     acknowledgements, superseded revisions still in use, distribution gaps); no model is called.
+         */
+        get: operations["getDocumentRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/transmittal-access": {
         parameters: {
             query?: never;
@@ -14026,6 +14050,58 @@ export interface components {
             /** @description true confirms a carried-forward markup's location */
             locationConfirmed?: boolean;
         };
+        /**
+         * @description `stale`: last sent an earlier revision than the current one. `cc` recipients are not asked to acknowledge.
+         * @enum {string}
+         */
+        RegisterRecipientStatus: "acknowledged" | "cc" | "pending" | "outstanding" | "overdue" | "stale";
+        /** @enum {string} */
+        RegisterFlagKind: "ack_overdue" | "ack_outstanding" | "superseded_in_use" | "distribution_gap" | "not_distributed";
+        RegisterFlag: {
+            kind: components["schemas"]["RegisterFlagKind"];
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            /** @description Recipients affected */
+            count: number;
+        };
+        RegisterRecipient: {
+            email: string;
+            name: string | null;
+            companyId: string | null;
+            /** @enum {string} */
+            role: "to" | "cc";
+            status: components["schemas"]["RegisterRecipientStatus"];
+            /** @description The revision they were last sent */
+            rev: string;
+            revisionId: string;
+            transmittalId: string;
+            transmittalNumber: number;
+            /** Format: date-time */
+            sentAt: string;
+            /** Format: date-time */
+            openedAt: string | null;
+            /** Format: date-time */
+            downloadedAt: string | null;
+            /** Format: date-time */
+            acknowledgedAt: string | null;
+        };
+        DocumentRegisterRow: {
+            /** @enum {string} */
+            kind: "drawing" | "document";
+            /** @description Sheet or document id */
+            id: string;
+            number: string | null;
+            title: string;
+            discipline: string | null;
+            currentRevisionId: string | null;
+            currentRev: string | null;
+            recipients: components["schemas"]["RegisterRecipient"][];
+            flags: components["schemas"]["RegisterFlag"][];
+        };
+        DocumentRegister: {
+            data: components["schemas"]["DocumentRegisterRow"][];
+        };
         /** @enum {string} */
         TransmittalPurpose: "for_information" | "for_review" | "for_construction" | "for_tender" | "other";
         Transmittal: {
@@ -23183,6 +23259,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransmittalRecipient"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDocumentRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per sheet or document, in sheet/document number order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRegister"];
                 };
             };
             default: components["responses"]["Problem"];

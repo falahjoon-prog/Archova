@@ -3233,6 +3233,55 @@ export const DocumentPageSchema = z.object({
 });
 export type DocumentPage = z.infer<typeof DocumentPageSchema>;
 
+export const RegisterRecipientStatusSchema = z.enum(["acknowledged", "cc", "pending", "outstanding", "overdue", "stale"]);
+export type RegisterRecipientStatus = z.infer<typeof RegisterRecipientStatusSchema>;
+
+export const RegisterRecipientSchema = z.object({
+  "email": z.string(),
+  "name": z.string().nullable(),
+  "companyId": z.string().nullable(),
+  "role": z.enum(["to", "cc"]),
+  "status": RegisterRecipientStatusSchema,
+  "rev": z.string(),
+  "revisionId": z.string(),
+  "transmittalId": z.string(),
+  "transmittalNumber": z.number().int(),
+  "sentAt": z.string().datetime({ offset: true }),
+  "openedAt": z.string().datetime({ offset: true }).nullable(),
+  "downloadedAt": z.string().datetime({ offset: true }).nullable(),
+  "acknowledgedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type RegisterRecipient = z.infer<typeof RegisterRecipientSchema>;
+
+export const RegisterFlagKindSchema = z.enum(["ack_overdue", "ack_outstanding", "superseded_in_use", "distribution_gap", "not_distributed"]);
+export type RegisterFlagKind = z.infer<typeof RegisterFlagKindSchema>;
+
+export const RegisterFlagSchema = z.object({
+  "kind": RegisterFlagKindSchema,
+  "severity": z.enum(["high", "medium", "low"]),
+  "message": z.string(),
+  "count": z.number().int(),
+});
+export type RegisterFlag = z.infer<typeof RegisterFlagSchema>;
+
+export const DocumentRegisterRowSchema = z.object({
+  "kind": z.enum(["drawing", "document"]),
+  "id": z.string(),
+  "number": z.string().nullable(),
+  "title": z.string(),
+  "discipline": z.string().nullable(),
+  "currentRevisionId": z.string().nullable(),
+  "currentRev": z.string().nullable(),
+  "recipients": z.array(RegisterRecipientSchema),
+  "flags": z.array(RegisterFlagSchema),
+});
+export type DocumentRegisterRow = z.infer<typeof DocumentRegisterRowSchema>;
+
+export const DocumentRegisterSchema = z.object({
+  "data": z.array(DocumentRegisterRowSchema),
+});
+export type DocumentRegister = z.infer<typeof DocumentRegisterSchema>;
+
 export const DownloadLinkSchema = z.object({
   "url": z.string(),
   "expiresAt": z.string().datetime({ offset: true }),
