@@ -35,6 +35,16 @@ export function useTmTicket(projectId: string, id: string | null) {
   });
 }
 
+/** Nova's checks on one ticket (diary, timesheets, equipment logs, where it was signed). Advice only. */
+export function useTmChecks(projectId: string, id: string, version: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useTmApi();
+  return useQuery({
+    queryKey: queryKeys.toolItem(orgId, projectId, 'tm-tickets', `${id}:checks:${version}`),
+    queryFn: () => source.checks(projectId, id),
+  });
+}
+
 /** Nova's draft for a day. Fetched on demand, never cached: it changes as timesheets and logs come in. */
 export function useTmSuggestion(projectId: string) {
   const source = useTmApi();

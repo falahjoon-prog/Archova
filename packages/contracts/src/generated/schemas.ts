@@ -6562,6 +6562,7 @@ export const PortfolioToolSchema = z.object({
   "restricted": z.boolean(),
   "open": z.number().int(),
   "overdue": z.number().int(),
+  "dueSoon": z.number().int(),
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
 

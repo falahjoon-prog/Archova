@@ -18,8 +18,8 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useBudget } from '@/features/budget';
 import { useContracts } from '@/features/claims';
 import type { TmTicketDetail } from '../data/api';
-import { useTmMutations, useTmTicket } from '../hooks/useTmTickets';
-import { aud, KIND_LABEL } from '../lib/tm';
+import { useTmChecks, useTmMutations, useTmTicket } from '../hooks/useTmTickets';
+import { aud, currentFix, GEO_LABEL, KIND_LABEL } from '../lib/tm';
 
 type Line = TmTicketDetail['lines'][number];
 
@@ -82,6 +82,11 @@ export function TmTicketDetailCard({
   const project = useCurrentProject();
   const q = useTmTicket(project.projectId, id);
   const { sign, convert, voidTicket } = useTmMutations(project.projectId);
+  const checks = useTmChecks(
+    project.projectId,
+    id,
+    q.data ? `${q.data.status}:${q.data.signoffs.length}` : '',
+  );
   const budget = useBudget(project.projectId);
   const contracts = useContracts(project.projectId);
   const [signerName, setSignerName] = useState('');
@@ -107,7 +112,7 @@ export function TmTicketDetailCard({
     : role;
   const open = t.status === 'draft' || t.status === 'part_signed';
 
-  function doSign(e: FormEvent) {
+  async function doSign(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!signerName.trim()) return setError('Type the signer’s full name.');
@@ -115,9 +120,11 @@ export function TmTicketDetailCard({
       return setError(
         'Attach a photo of the docket signed on site by the principal’s representative.',
       );
+    const fix = await currentFix();
     sign.mutate({
       id,
       body: {
+        ...(fix ? { fix } : {}),
         role: activeRole,
         signerName: signerName.trim(),
         ...(position.trim() ? { signerPosition: position.trim() } : {}),
@@ -187,6 +194,24 @@ export function TmTicketDetailCard({
           <strong className="u-mono">Total {aud(t.total)}</strong> ex GST
         </p>
 
+        {checks.data && checks.data.findings.length > 0 ? (
+          <section aria-label="Nova checks" className="stack-md">
+            <h3 className="u-m-0">
+              <StatusPill tone="ai">Nova</StatusPill> Checks
+            </h3>
+            <ul className="u-m-0">
+              {checks.data.findings.map((f) => (
+                <li key={`${f.code}-${f.line ?? 'x'}`}>
+                  <StatusPill tone={f.severity === 'warn' ? 'warning' : 'neutral'}>
+                    {f.severity === 'warn' ? 'Check' : 'Note'}
+                  </StatusPill>{' '}
+                  {f.message}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         <section aria-label="Signatures" className="stack-md">
           <h3 className="u-m-0">Signatures</h3>
           {t.signoffs.length === 0 ? <p className="u-m-0">Not signed yet.</p> : null}
@@ -197,8 +222,8 @@ export function TmTicketDetailCard({
               {formatLocalDate(s.signedAt.slice(0, 10))}
               <span className="u-caption">
                 {' '}
-                · recorded by builder staff{s.hasEvidence ? ', docket photo attached' : ''} ·
-                fingerprint {s.contentHash.slice(0, 12)}
+                · recorded by builder staff{s.hasEvidence ? ', docket photo attached' : ''} ·{' '}
+                {GEO_LABEL[s.geofenceStatus]} · fingerprint {s.contentHash.slice(0, 12)}
               </span>
             </p>
           ))}

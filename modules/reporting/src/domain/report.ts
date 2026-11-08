@@ -86,6 +86,8 @@ export interface ToolCounts {
   restricted: boolean;
   open: number;
   overdue: number;
+  /** Open and due from today through the next 7 days (not overdue). Open items with no due date are in neither. */
+  dueSoon: number;
 }
 
 /** Programme activities, with the split the schedule insights need on top of open and late. */
