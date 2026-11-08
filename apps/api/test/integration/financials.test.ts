@@ -1082,6 +1082,57 @@ describe('Budget and cost codes', () => {
     expect((await s.sub.browser.post(`${s.base}/ai/budget-reviews`, {})).statusCode).toBe(403);
   });
 
+  it('reports approved, pending and non-committed cost per line, with the items behind each figure', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const get = async (path: string) => (await s.pm.browser.get(`${s.base}${path}`)).json();
+    expect((await get('/budget/cost-report')).hasBudget).toBe(false);
+    const c1 = (await post('/cost-codes', { code: '03-100', description: 'Concrete' })).json();
+    const c2 = (await post('/cost-codes', { code: '99-000', description: 'Margin' })).json();
+    await post('/budget');
+    const l1 = (await post('/budget/lines', { costCodeId: c1.id, original: '100000.00' })).json();
+    await post('/budget/lines', { costCodeId: c2.id, original: '5000.00', isMargin: true });
+    const mk = async (title: string, amount: string) =>
+      (
+        await post('/commitments', {
+          kind: 'subcontract',
+          title,
+          lines: [{ budgetLineId: l1.id, description: `${title} work`, amount }],
+        })
+      ).json().commitment.id;
+    const approved = await mk('Slab', '60000.00');
+    await post(`/commitments/${approved}/submit`);
+    await post(`/commitments/${approved}/approve`, {});
+    const pending = await mk('Footings', '30000.00');
+    await post(`/commitments/${pending}/submit`);
+    await mk('Draft only', '9000.00');
+    await post('/direct-costs', {
+      budgetLineId: l1.id,
+      category: 'materials',
+      description: 'Ties',
+      incurredOn: '2026-11-01',
+      amount: '20000.00',
+    });
+
+    const r = await get('/budget/cost-report');
+    expect(r.lines.find((l: { lineId: string }) => l.lineId === l1.id)).toMatchObject({
+      lineId: l1.id,
+      approved: '60000.00',
+      pending: '30000.00',
+      nonCommitted: '20000.00',
+      projected: '110000.00',
+      variance: '-10000.00',
+    });
+    const items = await get(`/budget/lines/${l1.id}/cost-report-items?column=pending`);
+    expect(items.total).toBe('30000.00');
+    expect(items.groups[0]).toMatchObject({ label: 'SC-2 - Footings', kind: 'subcontract' });
+    expect(items.groups[0].items[0].description).toBe('Footings work');
+    expect(
+      (await get(`/budget/lines/${l1.id}/cost-report-items?column=direct`)).groups[0].items,
+    ).toHaveLength(1);
+    expect((await s.sub.browser.get(`${s.base}/budget/cost-report`)).statusCode).toBe(403);
+  });
+
   it('imports budget lines from rows, all or nothing, creating the cost codes they name', async () => {
     const s = await setup('NSW');
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
@@ -1434,6 +1485,96 @@ describe('Commitments against the budget', () => {
     });
     expect(bad.statusCode).toBe(404);
     expect((await s.sub.browser.get(`${s.base}/commitments`)).statusCode).toBe(403);
+  });
+});
+
+describe('Owner invoice pre-fill', () => {
+  it('compiles approved subcontractor claims, holds flagged ones for confirmation, and frees them on discard', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const head = (
+      await post('contracts', {
+        kind: 'head',
+        title: 'Head contract',
+        originalValue: '900000.00',
+        retentionPct: '5.00',
+        sov: [{ code: 'H1', description: 'Works', value: '900000.00' }],
+      })
+    ).json();
+    const sub = (await post('contracts', contractBody(s.subCo.companyId))).json();
+    const claim = async (periodEnd: string) => {
+      const r = await post(`contracts/${sub.contract.id}/claims`, {
+        periodEnd,
+        receivedAt: '2026-10-13T23:00:00Z',
+        statesAct: true,
+        lines: [{ sovItemId: sub.sov[0].id, thisClaim: '20000.00' }],
+      });
+      expect(r.statusCode).toBe(201);
+      return r.json().claim;
+    };
+    const first = await claim('2026-09-30');
+    const twin = await claim('2026-09-30');
+    const unscheduled = await claim('2026-10-31');
+    for (const c of [first, twin]) {
+      const issued = await post(`payment-claims/${c.id}/schedule`, {
+        scheduledAmount: c.claimedNet,
+      });
+      expect(issued.statusCode).toBe(201);
+    }
+    const base = `contracts/${head.contract.id}`;
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+
+    // Only scheduled claims up to the period end are offered; the same-period twin is flagged.
+    const pre = (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json();
+    expect(pre.candidates.map((c: { claimId: string }) => c.claimId).sort()).toEqual(
+      [first.id, twin.id].sort(),
+    );
+    expect(unscheduled.status).toBe('submitted');
+    for (const c of pre.candidates) {
+      expect(c.flags.map((f: { code: string }) => f.code)).toContain('duplicate');
+      expect(c.amount).toBe('19000.00');
+      expect(c.backup.find((b: { kind: string }) => b.kind === 'claim_pdf').status).toBe(
+        'attached',
+      );
+    }
+    expect(
+      (await get(`contracts/${sub.contract.id}/owner-invoice-prefill?periodEnd=2026-10-31`)).json()
+        .code,
+    ).toBe('financials.owner_invoice.not_head_contract');
+
+    const body = (confirmed: string[]) => ({
+      periodEnd: '2026-10-31',
+      markupPct: '10.00',
+      claimIds: [first.id, twin.id],
+      confirmedClaimIds: confirmed,
+    });
+    const held = await post(`${base}/owner-invoices`, body([first.id]));
+    expect(held.statusCode).toBe(422);
+    expect(held.json().code).toBe('financials.owner_invoice.flags_unconfirmed');
+    const made = await post(`${base}/owner-invoices`, body([first.id, twin.id]));
+    expect(made.statusCode).toBe(201);
+    expect(made.json().invoice).toMatchObject({
+      number: 1,
+      subTotal: '38000.00',
+      markupAmount: '3800.00',
+      total: '41800.00',
+    });
+    expect(made.json().lines[0].flagsConfirmedAt).not.toBeNull();
+
+    // Taken claims aren't offered again; discarding the draft gives them back.
+    expect(
+      (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json().candidates,
+    ).toEqual([]);
+    expect((await get(`${base}/owner-invoices`)).json().data).toHaveLength(1);
+    expect(
+      (await s.sub.browser.get(`${s.base}/${base}/owner-invoice-prefill?periodEnd=2026-10-31`))
+        .statusCode,
+    ).toBe(403);
+    const del = await s.pm.browser.del(`${s.base}/owner-invoices/${made.json().invoice.id}`);
+    expect(del.statusCode).toBe(204);
+    expect(
+      (await get(`${base}/owner-invoice-prefill?periodEnd=2026-10-31`)).json().candidates,
+    ).toHaveLength(2);
   });
 });
 

@@ -59,6 +59,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
               ? [
                   {
@@ -66,6 +67,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                     items: [
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                      ...(membership.role === 'owner' || membership.role === 'admin'
+                        ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]
+                        : []),
                     ],
                   },
                   {

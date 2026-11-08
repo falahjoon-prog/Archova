@@ -14,6 +14,11 @@ export type ToolId =
   | 'rollCall'
   | 'meetings'
   | 'tenders'
+  | 'documents'
+  | 'specifications'
+  | 'submittals'
+  | 'timesheets'
+  | 'crews'
   | 'ownerPortal';
 
 export interface ToolDef {
@@ -99,6 +104,42 @@ export const TOOLS: readonly ToolDef[] = [
     label: 'Tenders',
     icon: ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 13h6', 'M9 17h6'],
     route: mobileRoutes.tenders,
+  },
+  {
+    id: 'documents',
+    label: 'Documents',
+    icon: ['M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z'],
+    route: mobileRoutes.documents,
+  },
+  {
+    id: 'specifications',
+    label: 'Specs',
+    icon: ['M5 3h10l4 4v14H5z', 'M15 3v4h4', 'M8 11h8', 'M8 15h8', 'M8 19h5'],
+    route: mobileRoutes.specifications,
+  },
+  {
+    id: 'submittals',
+    label: 'Submittals',
+    icon: ['M4 4h16v16H4z', 'M8 12l3 3 5-6'],
+    route: mobileRoutes.submittals,
+  },
+  {
+    id: 'timesheets',
+    label: 'Timesheets',
+    icon: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 7v5l3 2'],
+    route: mobileRoutes.timesheets,
+  },
+  {
+    id: 'crews',
+    label: 'Crews',
+    icon: [
+      'M4 20c0-3 2.5-5 5-5s5 2 5 5',
+      'M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+      'M16 6h5',
+      'M16 10h5',
+      'M16 14h5',
+    ],
+    route: mobileRoutes.crews,
   },
   {
     id: 'ownerPortal',

@@ -11,6 +11,7 @@ import {
   type BudgetReviewTurn,
   type CostCodeProduction,
   type CreateCostCode,
+  type CostReportColumn,
   type ImportBudgetLinesRequest,
   type LaborTurn,
   type LogQuantity,
@@ -58,6 +59,28 @@ export function useCreateSnapshot(projectId: string) {
   return useMutation({
     mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useCostReport(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costReport: true }),
+    queryFn: () => source.costReport(projectId),
+  });
+}
+
+export function useCostReportItems(
+  projectId: string,
+  target: { lineId: string; column: CostReportColumn } | null,
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costReportItems: target }),
+    queryFn: () => source.costReportItems(projectId, target!.lineId, target!.column),
+    enabled: target !== null,
   });
 }
 
