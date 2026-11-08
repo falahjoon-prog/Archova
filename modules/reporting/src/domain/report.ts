@@ -121,6 +121,8 @@ export interface BudgetSummary {
   varianceCents: number;
   /** Cost codes whose own forecast is over their revised budget. */
   overBudgetCodes: number;
+  /** Spend by calendar month, oldest first, quiet months as zero. Empty when there is no spend. */
+  monthly: { month: string; spentCents: number }[];
 }
 
 const money = (cents: number) => {
@@ -137,6 +139,10 @@ export const budgetView = (b: BudgetSummary) => ({
   spent: money(b.restricted || !b.hasBudget ? 0 : b.spentCents),
   variance: money(b.restricted || !b.hasBudget ? 0 : b.varianceCents),
   overBudgetCodes: b.restricted || !b.hasBudget ? 0 : b.overBudgetCodes,
+  monthly:
+    b.restricted || !b.hasBudget
+      ? []
+      : b.monthly.map((m) => ({ month: m.month, spent: money(m.spentCents) })),
 });
 
 /** Company-wide budget position over the projects that have a budget the caller can see. */

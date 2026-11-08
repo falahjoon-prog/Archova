@@ -122,6 +122,7 @@ describe('budget against forecast', () => {
     spentCents: 0,
     varianceCents: revised - forecast,
     overBudgetCodes: over,
+    monthly: [{ month: '2026-09', spentCents: 12_345 }],
   });
   const none = { ...b(0, 0), hasBudget: false };
   const locked = { ...b(900_000, 100), restricted: true };
@@ -135,6 +136,7 @@ describe('budget against forecast', () => {
       spent: '0.00',
       variance: '-1999.50',
       overBudgetCodes: 2,
+      monthly: [{ month: '2026-09', spent: '123.45' }],
     });
   });
 
@@ -148,6 +150,7 @@ describe('budget against forecast', () => {
       hasBudget: false,
       revised: '0.00',
       overBudgetCodes: 0,
+      monthly: [],
     });
   });
 

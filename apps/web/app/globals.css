@@ -3719,6 +3719,49 @@ fieldset.worker-card > legend {
   gap: var(--space-2);
 }
 
+.milestones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  border-top: 2px solid var(--c-border-divider);
+  padding-top: var(--space-3);
+}
+.milestones__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  position: relative;
+  min-width: 0;
+}
+.milestones__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  margin-top: calc(-1 * var(--space-3) - 0.4rem);
+  background: var(--c-border-strong, var(--c-border-divider));
+}
+.milestones__item--done .milestones__dot {
+  background: var(--c-status-success);
+}
+.milestones__item--late .milestones__dot {
+  background: var(--c-status-danger);
+}
+.milestones__item--next .milestones__dot {
+  background: var(--c-status-info);
+}
+.milestones__label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.milestones__date {
+  font-size: var(--font-sm);
+  color: var(--c-text-muted);
+}
+
 /* White-label: the company's own logo in the top bar, never taller than the bar's logo slot. */
 .app-shell__org-logo {
   display: block;

@@ -29,6 +29,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const budget = createBudgetService({
     access: deps.access,
     forecastInputs: forecast.inputsByCode,
+    monthlySpend: forecast.monthlySpend,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const productivity = createProductivityService({

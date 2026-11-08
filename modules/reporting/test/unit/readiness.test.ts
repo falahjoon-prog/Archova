@@ -108,6 +108,7 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         spentCents: 0,
         varianceCents: 0,
         overBudgetCodes: 0,
+        monthly: [],
       }),
     },
     access: { can: async () => true },

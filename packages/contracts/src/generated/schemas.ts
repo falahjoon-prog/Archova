@@ -6546,6 +6546,10 @@ export const PortfolioBudgetSchema = z.object({
   "spent": FinancialsSignedMoneySchema,
   "variance": FinancialsSignedMoneySchema,
   "overBudgetCodes": z.number().int(),
+  "monthly": z.array(z.object({
+  "month": z.string().regex(new RegExp("^\\d{4}-(0[1-9]|1[0-2])$")),
+  "spent": FinancialsSignedMoneySchema,
+})),
 });
 export type PortfolioBudget = z.infer<typeof PortfolioBudgetSchema>;
 

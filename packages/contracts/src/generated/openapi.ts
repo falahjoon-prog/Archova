@@ -11394,6 +11394,12 @@ export interface components {
             variance: components["schemas"]["FinancialsSignedMoney"];
             /** @description Cost codes whose forecast is over their revised budget. */
             overBudgetCodes: number;
+            /** @description Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend. */
+            monthly: {
+                /** @description Calendar month, YYYY-MM. */
+                month: string;
+                spent: components["schemas"]["FinancialsSignedMoney"];
+            }[];
         };
         PortfolioProject: {
             id: string;
