@@ -104,3 +104,16 @@ Bundle check without a device: `npx expo export --platform ios --output-dir /tmp
   store via `@archova/sync-core` in later phases (mobile 02).
 - Not done yet: app icon and splash assets, EAS config (`eas.json`), Sentry, i18n strings (`@archova/i18n`), the
   realtime socket, and universal links / App Links on the web domain.
+
+## Testing on your own phone (Android APK)
+
+The app needs SQLCipher and native speech modules, so it does **not** run in Expo Go. Use the `phone-test` EAS profile:
+
+1. Make a free account at expo.dev, then on your PC: `npm i -g eas-cli && eas login`.
+2. In `eas.json`, set `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_APP_ORIGIN` under `build.phone-test.env` to the public
+   HTTPS addresses of the API and the web app (the web app hosts the sign-in page). Both must be reachable from the phone.
+3. From `apps/mobile`: `eas init` (first time only), then `eas build --platform android --profile phone-test`.
+4. Open the link EAS prints on the phone, download the APK and allow "install unknown apps". Sign in with the demo login.
+
+The app id is `com.archova.app.preview`, so it installs beside any other build. iPhone builds need an Apple Developer
+account and a registered device (`eas device:create`), then `--platform ios`.

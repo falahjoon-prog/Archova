@@ -21,15 +21,23 @@ import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
-import { todayIn } from '@/shared/lib/format';
+import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { ImpactChip, RfiDue, RfiStatusPill, ballInCourtLabel } from '../components/RfiChips';
+import {
+  ImpactChip,
+  RfiDue,
+  RfiStatusPill,
+  StaleBallFlag,
+  ballInCourtLabel,
+  ballWaitingDays,
+} from '../components/RfiChips';
 import { useRfiList } from '../hooks/useRfis';
 import {
   RFI_STATUSES,
+  STALE_BALL_BUSINESS_DAYS,
   STATUS_LABELS,
   formatRfiNumber,
   type Rfi,
@@ -56,7 +64,14 @@ export function RfiListScreen() {
         }
       : {}),
   });
-  const [params, setParams] = useUrlState(['status', 'waiting', 'overdue', 'impact', 'q'] as const);
+  const [params, setParams] = useUrlState([
+    'status',
+    'waiting',
+    'stale',
+    'overdue',
+    'impact',
+    'q',
+  ] as const);
   const status = (RFI_STATUSES as readonly string[]).includes(params.status)
     ? (params.status as RfiStatus)
     : undefined;
@@ -67,8 +82,12 @@ export function RfiListScreen() {
     impact: params.impact ? 'yes' : undefined,
     q: params.q || undefined,
   });
+  const waited = (r: Rfi) => ballWaitingDays(r, today, project.timezone);
+  const rows = (list.data ?? []).filter(
+    (r) => !params.stale || (waited(r) ?? 0) >= STALE_BALL_BUSINESS_DAYS,
+  );
   const filtered = Boolean(
-    params.status || params.waiting || params.overdue || params.impact || params.q,
+    params.status || params.waiting || params.stale || params.overdue || params.impact || params.q,
   );
 
   const columns: DataTableColumn<Rfi>[] = [
@@ -91,9 +110,57 @@ export function RfiListScreen() {
       cell: (r) => <RfiStatusPill status={r.status} />,
     },
     {
+      id: 'contractor',
+      header: 'Responsible contractor',
+      sortValue: (r) => (r.assigneeCompanyId ? dir.companyName(r.assigneeCompanyId) : ''),
+      cell: (r) =>
+        r.assigneeCompanyId ? (
+          dir.companyName(r.assigneeCompanyId)
+        ) : (
+          <span className="u-muted">—</span>
+        ),
+    },
+    {
+      id: 'receivedFrom',
+      header: 'Received from',
+      sortValue: (r) => (r.receivedFromCompanyId ? dir.companyName(r.receivedFromCompanyId) : ''),
+      cell: (r) =>
+        r.receivedFromCompanyId ? (
+          dir.companyName(r.receivedFromCompanyId)
+        ) : (
+          <span className="u-muted">—</span>
+        ),
+    },
+    {
+      id: 'initiated',
+      header: 'Date initiated',
+      sortValue: (r) => r.createdAt,
+      cell: (r) => formatLocalDate(todayIn(project.timezone, new Date(r.createdAt))),
+    },
+    {
+      id: 'manager',
+      header: 'RFI manager',
+      sortValue: (r) => dir.personName(r.managerId),
+      cell: (r) => dir.personName(r.managerId),
+    },
+    {
+      id: 'assignee',
+      header: 'Assignee',
+      sortValue: (r) => (r.assigneeId ? dir.personName(r.assigneeId) : ''),
+      cell: (r) =>
+        r.assigneeId ? dir.personName(r.assigneeId) : <span className="u-muted">—</span>,
+    },
+    {
       id: 'waiting',
       header: 'Ball in court',
-      cell: (r) => ballInCourtLabel(r, actor, dir) ?? <span className="u-muted">—</span>,
+      // Longest wait first when sorted descending; RFIs nobody holds sort as no wait.
+      sortValue: (r) => waited(r) ?? -1,
+      cell: (r) => (
+        <span className="stack-sm">
+          {ballInCourtLabel(r, actor, dir) ?? <span className="u-muted">—</span>}
+          <StaleBallFlag days={waited(r)} />
+        </span>
+      ),
     },
     {
       id: 'due',
@@ -142,6 +209,11 @@ export function RfiListScreen() {
           onChange={(e) => setParams({ waiting: e.target.value })}
         />
         <Checkbox
+          label={`Ball held ${STALE_BALL_BUSINESS_DAYS}+ days`}
+          checked={Boolean(params.stale)}
+          onChange={(e) => setParams({ stale: e.target.checked ? '1' : null })}
+        />
+        <Checkbox
           label="Overdue only"
           checked={Boolean(params.overdue)}
           onChange={(e) => setParams({ overdue: e.target.checked ? '1' : null })}
@@ -159,7 +231,7 @@ export function RfiListScreen() {
         <DataTable
           caption="RFIs"
           columns={columns}
-          rows={list.data ?? []}
+          rows={rows}
           getRowId={(r) => r.id}
           defaultSort={{ columnId: 'number', direction: 'desc' }}
           rowClassName={(r) => (r.status === 'void' ? 'row--muted' : undefined)}

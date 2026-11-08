@@ -41,6 +41,10 @@ export const emptyDefectInput = (): DefectInput => ({
   managerUserId: null,
   finalApproverUserId: null,
   distributionUserIds: [],
+  approverDelegateUserId: null,
+  approverDelegateFrom: null,
+  approverDelegateUntil: null,
+  requireCloseEvidence: false,
   dueDate: null,
   category: null,
   photos: [],
@@ -314,6 +318,32 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           options={dir.people.map((p) => ({ value: p.id, label: p.name }))}
           onChange={(e) => set('finalApproverUserId', e.target.value || null)}
         />
+        <Select
+          label="Stand-in while away (optional)"
+          value={v.approverDelegateUserId ?? ''}
+          placeholder="No stand-in"
+          disabled={!v.finalApproverUserId}
+          options={dir.people
+            .filter((p) => p.id !== v.finalApproverUserId)
+            .map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(e) => set('approverDelegateUserId', e.target.value || null)}
+        />
+        {v.approverDelegateUserId ? (
+          <>
+            <TextField
+              label="Stand-in from"
+              type="date"
+              value={v.approverDelegateFrom ?? ''}
+              onChange={(e) => set('approverDelegateFrom', e.target.value || null)}
+            />
+            <TextField
+              label="Stand-in until"
+              type="date"
+              value={v.approverDelegateUntil ?? ''}
+              onChange={(e) => set('approverDelegateUntil', e.target.value || null)}
+            />
+          </>
+        ) : null}
         <TextField
           label="Due date"
           type="date"
@@ -340,6 +370,11 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           onChange={(e) => set('priority', e.target.value as DefectPriority)}
         />
       </div>
+      <Checkbox
+        label="Require a note or photo to close"
+        checked={v.requireCloseEvidence}
+        onChange={(e) => set('requireCloseEvidence', e.target.checked)}
+      />
       <fieldset className="fieldset">
         <legend>Assignees</legend>
         {people.length ? (

@@ -10,7 +10,7 @@ import { resolveCitation } from '@/shared/lib/citations';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { askNova, sendAnswerFeedback } from '../data/ask';
+import { askNova, askNovaHelp, sendAnswerFeedback } from '../data/ask';
 import { actionRedirect } from '../data/actions';
 import { startersFor } from '../data/starters';
 import { errorHelpAnswer, navHelpAnswer } from '../data/help';
@@ -57,6 +57,32 @@ function recordLabel(r: NonNullable<AssistantScope['record']>): string {
 }
 
 /** Starters that work with what Nova can read: the preview's records, or what the project holds (documents, drawings, RFIs, defects, the site diary). */
+/**
+ * Model-written help from the ai module, or the built-in rule-based answer for an error when it can't be reached
+ * (preview data, Nova off, credits used, network). Null for a plain question that failed, so the caller carries on.
+ */
+async function helpFromNova(
+  orgId: string,
+  question: string,
+  error: ErrorView | undefined,
+  signal: AbortSignal,
+): Promise<NovaAnswer | null> {
+  if (!previewDataOnly) {
+    try {
+      return await askNovaHelp(
+        orgId,
+        error
+          ? { error: { status: error.status, code: error.code, message: error.message } }
+          : { question },
+        signal,
+      );
+    } catch {
+      /* fall through to the built-in answer */
+    }
+  }
+  return error ? errorHelpAnswer(error) : null;
+}
+
 const SUGGESTIONS = previewDataOnly
   ? [
       'Which RFIs are overdue?',
@@ -138,15 +164,18 @@ export function AssistantPanel() {
     try {
       // Without a project there is nothing to search; the preview answers from the screens' own data.
       const answer =
-        (error ? errorHelpAnswer(error) : null) ??
+        (error ? await helpFromNova(org.orgId, question, error, controller.signal) : null) ??
         actionRedirect(question, s) ??
         navHelpAnswer(question) ??
         (previewDataOnly || !s.projectId
-          ? await previewAnswer(
+          ? ((!s.projectId && !previewDataOnly
+              ? await helpFromNova(org.orgId, question, undefined, controller.signal)
+              : null) ??
+            (await previewAnswer(
               question,
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
-            )
+            )))
           : await askNova(org.orgId, s.projectId, question, controller.signal));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
