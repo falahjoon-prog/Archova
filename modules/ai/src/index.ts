@@ -17,6 +17,7 @@ import { createProjectIndexService, type SourceRevision } from './application/pr
 import type { DefectSource } from './domain/defect-source';
 import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
+import { createHelpService } from './application/help';
 import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
@@ -26,8 +27,10 @@ import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-ans
 import { createRfiDraftService } from './application/rfi-draft';
 import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
+import { createCaptureScanService } from './application/capture-scan';
 import { createHazardScanService } from './application/hazard-scan';
 import { createImportMappingService } from './application/import-mapping';
+import { createAnnouncementDraftService } from './application/announcement-draft';
 import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
@@ -419,6 +422,12 @@ export function createAiModule(
     projectCompanies: deps.projectCompanies,
     openDefectsNear: deps.openDefectsNear,
   });
+  const captureScans = createCaptureScanService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const hazardScans = createHazardScanService({
     database: services.database,
     gateway,
@@ -451,6 +460,11 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
+  });
+  const announcementDrafts = createAnnouncementDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
   });
   const laborProductivity = createLaborProductivityService({
     database: services.database,
@@ -505,6 +519,7 @@ export function createAiModule(
     gateway,
     meeting: deps.meetingForMinutes,
   });
+  const help = createHelpService({ gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -533,6 +548,7 @@ export function createAiModule(
       quoteReads,
       quoteNegotiations,
       laborProductivity,
+      announcementDrafts,
       budgetReviews,
       contractPlaybooks,
       contractReviews,
@@ -541,6 +557,8 @@ export function createAiModule(
       minutesExtract,
       swmsDrafts,
       hazardScans,
+      captureScans,
+      help,
     ),
     permissions: AI_PERMISSIONS,
     provider,

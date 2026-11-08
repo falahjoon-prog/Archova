@@ -606,12 +606,19 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
             body: { fileId: stored.id },
           }),
         );
-        const sheets = read.suggestions
-          .map((s) => ({ id: s.id, p: s.payload as unknown as TitleBlockPayload }))
+        const parsed = read.suggestions.map((s) => ({
+          id: s.id,
+          p: s.payload as unknown as TitleBlockPayload,
+        }));
+        const sheets = parsed
           .filter(({ p }) => p.isDrawing)
           .map(({ id, p }) => ({ page: p.page, fields: p.fields, suggestionId: id }));
-        // Scanned pages Nova couldn't read still go in the set, for a person to fill in.
-        for (const page of read.skippedPages) {
+        // Pages Nova couldn't read (scans, or the read was refused) still go in the set, for a person to
+        // fill in, so an upload never silently turns into an empty set.
+        const placeholders = new Set<number>([...read.skippedPages, ...read.refusedPages]);
+        // If Nova decided no page of this file is a drawing, keep them all for a person to judge.
+        if (!sheets.length) for (const { p } of parsed) placeholders.add(p.page);
+        for (const page of placeholders) {
           sheets.push({ page, fields: undefined as never, suggestionId: undefined as never });
         }
         for (const sheet of sheets.sort((a, b) => a.page - b.page)) {
