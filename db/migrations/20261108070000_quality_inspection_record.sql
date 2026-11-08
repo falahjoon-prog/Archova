@@ -1,4 +1,4 @@
--- Composed from modules/quality/db/migrations/20261108060000_quality_inspection_record.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/quality/db/migrations/20261108070000_quality_inspection_record.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- quality: the inspection record page. Private flag, distribution list, linked drawings, how often it was reopened, and an append-only change history.
 
 alter table quality.inspections
