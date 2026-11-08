@@ -500,7 +500,39 @@ export function createObservationService(deps: QualityDeps) {
     return getVisible(scope, projectId, id);
   }
 
-  return { list, create, createFromItem, detail: getVisible, update, transition };
+  /**
+   * Portfolio dashboard (`reporting`): observations the caller can see that are still open, those past their due date
+   * and those due in the next 7 days. `restricted` when the caller cannot read observations on the project.
+   */
+  async function portfolioCounts(scope: TenantScope, projectId: string) {
+    if (!(await deps.access.can(scope, 'quality.observations.read', { projectId })))
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
+    const date = await today(scope, projectId);
+    const v = await viewerOf(deps, scope, projectId);
+    const conditions: SQL[] = [
+      eq(observations.projectId, projectId),
+      isNull(observations.deletedAt),
+      eq(observations.status, 'open'),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const [row] = await scope.tx
+      .select({
+        open: sql<number>`count(*)::int`,
+        overdue: sql<number>`(count(*) filter (where ${observations.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${observations.dueDate} >= ${date}::date and ${observations.dueDate} <= ${date}::date + 7))::int`,
+      })
+      .from(observations)
+      .where(and(...conditions));
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
+  }
+
+  return { list, create, createFromItem, detail: getVisible, update, transition, portfolioCounts };
 }
 
 export type ObservationService = ReturnType<typeof createObservationService>;

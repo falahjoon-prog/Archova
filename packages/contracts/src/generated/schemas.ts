@@ -6734,6 +6734,15 @@ export const PortfolioToolSchema = z.object({
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
 
+export const PortfolioIncidentsSchema = z.intersection(PortfolioToolSchema, z.object({
+  "lastInjuryOn": z.string().date().nullable(),
+  "lastIncidentOn": z.string().date().nullable(),
+  "daysSinceInjury": z.number().int().nullable(),
+  "daysSinceIncident": z.number().int().nullable(),
+  "last12Months": z.number().int(),
+}));
+export type PortfolioIncidents = z.infer<typeof PortfolioIncidentsSchema>;
+
 export const PortfolioProgrammeSchema = z.intersection(PortfolioToolSchema, z.object({
   "notStarted": z.number().int(),
   "completed": z.number().int(),
@@ -6762,13 +6771,16 @@ export const PortfolioProjectSchema = z.object({
   "number": z.string().nullable(),
   "status": z.string(),
   "phase": z.union([ProjectPhaseSchema, z.null()]),
+  "state": z.union([AuStateSchema, z.null()]),
   "siteLocation": z.union([GeoPointSchema, z.null()]),
+  "observations": PortfolioToolSchema,
+  "inspections": PortfolioToolSchema,
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
   "claims": PortfolioToolSchema,
   "variations": PortfolioToolSchema,
-  "incidents": PortfolioToolSchema,
+  "incidents": PortfolioIncidentsSchema,
   "programme": PortfolioProgrammeSchema,
   "budget": PortfolioBudgetSchema,
   "attention": z.number().int(),

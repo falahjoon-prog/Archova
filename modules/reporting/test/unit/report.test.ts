@@ -24,7 +24,16 @@ const counts = (r: [number, number], d: [number, number], s: [number, number]): 
   submittals: tool(...s),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
   programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
 });
 

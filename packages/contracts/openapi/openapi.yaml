@@ -16539,6 +16539,35 @@ components:
             type: integer,
             description: 'Open and due from today through the next 7 days in the project zone. Open items with no due date are in neither this nor overdue.',
           }
+    PortfolioIncidents:
+      allOf:
+        - $ref: '#/components/schemas/PortfolioTool'
+        - type: object
+          required: [lastInjuryOn, lastIncidentOn, daysSinceInjury, daysSinceIncident, last12Months]
+          properties:
+            lastInjuryOn:
+              type: [string, 'null']
+              format: date
+              description: 'Project-local date of the latest injury; null when none is recorded or the caller cannot read incidents.'
+            lastIncidentOn:
+              type: [string, 'null']
+              format: date
+              description: 'Latest incident of any type except a near miss, same rule.'
+            daysSinceInjury:
+              {
+                type: [integer, 'null'],
+                description: 'Whole days from the latest injury to today in the project zone; null when none is recorded.',
+              }
+            daysSinceIncident:
+              {
+                type: [integer, 'null'],
+                description: 'Same for the latest incident other than a near miss.',
+              }
+            last12Months:
+              {
+                type: integer,
+                description: 'Incidents of any type, near misses included, in the last 12 months.',
+              }
     PortfolioProgramme:
       allOf:
         - $ref: '#/components/schemas/PortfolioTool'
@@ -16602,8 +16631,11 @@ components:
           number,
           status,
           phase,
+          state,
           siteLocation,
           rfis,
+          observations,
+          inspections,
           defects,
           submittals,
           claims,
@@ -16619,7 +16651,22 @@ components:
         number: { type: [string, 'null'] }
         status: { type: string }
         phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        state:
+          {
+            oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }],
+            description: 'The state the site is in, for grouping by region.',
+          }
         siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
+        observations:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Open observations the caller can see; overdue means past the due date.',
+          }
+        inspections:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Inspections not yet closed, builder staff only; overdue means past the due date.',
+          }
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
@@ -16635,7 +16682,7 @@ components:
           }
         incidents:
           {
-            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            allOf: [{ $ref: '#/components/schemas/PortfolioIncidents' }],
             description: 'Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded.',
           }
         programme:
