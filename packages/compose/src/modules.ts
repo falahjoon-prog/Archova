@@ -30,6 +30,7 @@ import {
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
+import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
@@ -56,6 +57,7 @@ import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-o
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
+import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -73,6 +75,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -83,6 +86,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
@@ -93,6 +97,7 @@ export const MODULE_PERMISSIONS = [
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
@@ -101,6 +106,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -280,6 +286,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
   });
 
+  const announcements = createAnnouncementsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    access: access.api,
+  });
+
   const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -327,6 +339,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
     dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
     getFile: (scope, fileId) => files.api.getFile(scope, fileId),
+    // diary is built later; this is only called at request time.
+    diaryEntryExists: async (scope, projectId, date) =>
+      (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
@@ -345,11 +360,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const quality = createQualityModule(services, {
     access: access.api,
     platform: platform.api,
+    documents: documents.api,
     files: files.api,
     safety: safety.api,
   });
   qualityApi = quality.api;
 
+  const environment = createEnvironmentModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    safety: safety.api,
+  });
   // Wallet licences are read lazily: workforce is built later.
   let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
     null;
@@ -454,6 +476,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
+  const plant = createPlantModule(services, { access: access.api });
+
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -462,6 +486,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
+    clearanceSwms: safety.api.workerSwms,
+    clearanceInsurance: async (scope, projectId, companyId) => {
+      const c = await insurance.api.companyClearance(scope, projectId, companyId);
+      return {
+        state: c.state,
+        // Nothing to check when the project sets no requirements and the company has nothing recorded.
+        checked: c.requirementsSet || c.coverCount > 0,
+        messages: c.issues.map((i) => ({ level: i.level, text: i.message })),
+      };
+    },
     links: {
       access: access.api,
       platform: platform.api,
@@ -486,12 +520,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     platform: platform.api,
     access: access.api,
+    environment: environment.api,
     rfis: rfis.api,
     defects: defects.api,
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
     incidents: safety.api.reporting,
+    observations: quality.api.reporting.observations,
+    inspections: quality.api.reporting.inspections,
     programme: scheduling.api.reporting,
     budget: { portfolioSummary: financials.api.budgetSummary },
     precon: precon.api,
@@ -549,6 +586,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,
@@ -556,8 +594,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     bookmarks,
     recents,
+    plant,
     financials,
     quality,
+    environment,
     precon,
     safety,
     permits,
@@ -593,6 +633,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    announcements,
     defects,
     meetings,
     ownerportal,
@@ -600,8 +641,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     bookmarks,
     recents,
+    plant,
     financials,
     quality,
+    environment,
     precon,
     safety,
     permits,

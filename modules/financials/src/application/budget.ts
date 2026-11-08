@@ -54,12 +54,19 @@ const NO_BUDGET = {
   spentCents: 0,
   varianceCents: 0,
   overBudgetCodes: 0,
+  monthly: [] as { month: string; spentCents: number }[],
 };
 
 export function createBudgetService(
   deps: BudgetDeps & {
     /** Forecast inputs for the budget comparison; the forecast service owns how they're read. */
     forecastInputs?: (scope: TenantScope, projectId: string) => Promise<ForecastInputs>;
+    /** Spend by month for the portfolio cash-flow chart; the forecast service owns the queries. */
+    monthlySpend?: (
+      scope: TenantScope,
+      projectId: string,
+      hidden: ReadonlySet<string>,
+    ) => Promise<{ month: string; spentCents: number }[]>;
   },
 ) {
   const now = deps.now ?? (() => new Date());
@@ -606,7 +613,7 @@ export function createBudgetService(
       hidden,
       inputs.direct,
     );
-    return { budget, ...r, byId };
+    return { budget, ...r, byId, hidden };
   }
 
   /**
@@ -631,6 +638,7 @@ export function createBudgetService(
       spentCents: r.totals.claimedCents + r.totals.directCents,
       varianceCents: r.totals.varianceCents,
       overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
+      monthly: deps.monthlySpend ? await deps.monthlySpend(scope, projectId, r.hidden) : [],
     };
   }
 

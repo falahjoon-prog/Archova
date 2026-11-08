@@ -148,7 +148,7 @@ export function createObservationTypeService(deps: QualityDeps) {
             ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
             ...(patch.group !== undefined ? { group: patch.group.trim() || 'Custom' } : {}),
             ...(patch.category !== undefined ? { category: patch.category } : {}),
-            ...(patch.requiresAttachment != null
+            ...(patch.requiresAttachment !== undefined && patch.requiresAttachment !== null
               ? { requiresAttachment: patch.requiresAttachment }
               : {}),
             ...(patch.hidden !== undefined ? { hidden: patch.hidden } : {}),

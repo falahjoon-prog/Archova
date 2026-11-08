@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { AnnouncementsCard } from '@/features/announcements';
 import { BookmarksCard } from '@/features/bookmarks';
 import { RecentsCard } from '@/features/recents';
 import { ConversationsCard } from '@/features/conversations';
@@ -138,6 +139,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         </div>
         <div className="project-overview__col">
+          <AnnouncementsCard projectId={projectId} timeZone={p.timezone} />
           <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
           <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
           <DirectionsCard

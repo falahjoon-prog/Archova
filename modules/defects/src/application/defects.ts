@@ -732,7 +732,7 @@ export function createDefectService(deps: DefectsDeps) {
   /** Portfolio dashboard (`reporting`): defects the caller can see that are still open, and those past their due date. */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const date = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -746,10 +746,16 @@ export function createDefectService(deps: DefectsDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} >= ${date}::date and ${defects.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(defects)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): defects the caller can see, one flat row each. `state` open = not yet closed. */

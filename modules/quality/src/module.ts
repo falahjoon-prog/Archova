@@ -249,6 +249,11 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     api: {
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
+      /** Portfolio dashboard (`reporting`): open and overdue counts of observations and inspections per project. */
+      reporting: {
+        observations: { portfolioCounts: observations.portfolioCounts },
+        inspections: { portfolioCounts: inspections.portfolioCounts },
+      },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (
         scope: TenantScope,

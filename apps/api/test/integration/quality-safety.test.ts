@@ -160,6 +160,78 @@ describe('Inspections (quality-safety schema)', () => {
   });
 });
 
+describe('Inspection record', () => {
+  it('counts statuses, reopens with a reason and flags repeats, keeps history, and deletes', async () => {
+    const s = await setup();
+    const tpl = (
+      await s.pm.browser.post(`${s.base}/inspection-templates`, {
+        name: 'Record check',
+        type: 'general',
+        items: [
+          { section: 'A', prompt: 'Clean', responseType: 'pass_fail_na' },
+          { section: 'A', prompt: 'Tidy', responseType: 'pass_fail_na' },
+        ],
+      })
+    ).json();
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.template.id}/publish`);
+    const started = await s.pm.browser.post(`${s.base}/inspections`, {
+      templateId: tpl.template.id,
+      isPrivate: true,
+    });
+    expect(started.statusCode).toBe(201);
+    const ins = started.json().inspection;
+    expect(ins).toMatchObject({ isPrivate: true, reopenCount: 0 });
+    expect(started.json().summary).toMatchObject({ total: 2, unanswered: 2 });
+
+    // A private inspection is hidden from people who aren't on it.
+    expect((await s.sub.browser.get(`${s.base}/inspections/${ins.id}`)).statusCode).toBe(404);
+
+    const ids = tpl.items.map((i: { id: string }) => i.id);
+    let cur = await s.pm.browser.put(`${s.base}/inspections/${ins.id}/responses`, {
+      responses: [
+        { templateItemId: ids[0], result: 'pass' },
+        { templateItemId: ids[1], result: 'fail', note: 'Rubbish' },
+      ],
+    });
+    expect(cur.json().summary).toMatchObject({ pass: 1, fail: 1, unanswered: 0 });
+
+    const early = await s.pm.browser.post(
+      `${s.base}/inspections/${ins.id}/reopen`,
+      { reason: 'x' },
+      { 'if-match': etagOf(cur) },
+    );
+    expect(early.json().code).toBe('inspection.invalid_state');
+
+    for (let n = 1; n <= 2; n++) {
+      const sub = await s.pm.browser.post(
+        `${s.base}/inspections/${ins.id}/submit`,
+        { signedByName: 'Pat' },
+        { 'if-match': etagOf(cur) },
+      );
+      expect(sub.statusCode).toBe(200);
+      cur = await s.pm.browser.post(
+        `${s.base}/inspections/${ins.id}/reopen`,
+        { reason: `Missed a spot ${n}` },
+        { 'if-match': etagOf(sub) },
+      );
+      expect(cur.statusCode).toBe(200);
+      expect(cur.json().inspection).toMatchObject({ status: 'in_progress', reopenCount: n });
+    }
+    expect(cur.json().reopenFlag).toMatchObject({ code: 'reopened_repeatedly', count: 2 });
+
+    const hist = await s.pm.browser.get(`${s.base}/inspections/${ins.id}/history`);
+    const kinds = hist.json().data.map((h: { kind: string }) => h.kind);
+    expect(kinds[0]).toBe('created');
+    expect(kinds.filter((k: string) => k === 'reopened')).toHaveLength(2);
+
+    const gone = await s.pm.browser.del(`${s.base}/inspections/${ins.id}`, {
+      'if-match': etagOf(cur),
+    });
+    expect(gone.statusCode).toBe(204);
+    expect((await s.pm.browser.get(`${s.base}/inspections/${ins.id}`)).statusCode).toBe(404);
+  });
+});
+
 describe('Observations', () => {
   it('logs item activity, raises an observation from an item, and rolls up sections', async () => {
     const s = await setup();

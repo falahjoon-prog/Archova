@@ -689,6 +689,250 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/plant/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's fleet of plant and equipment.
+         * @description Daily rates are returned only to those who may manage the register; for everyone else `dailyRateCents` is null.
+         */
+        get: operations["listPlantAssets"];
+        put?: never;
+        /** Add a machine to the fleet register. */
+        post: operations["createPlantAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a machine's details, rate or status (active, in the workshop, retired).
+         * @description A machine with allocations still to come can't be retired.
+         */
+        patch: operations["updatePlantAsset"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where machines are allocated, in date order.
+         * @description Filter to allocations that touch `[from, to]`, one machine or one project. Up to 1000 are returned.
+         */
+        get: operations["listPlantAllocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allocate a machine to a project for a date range.
+         * @description Refused with `plant.allocation_conflict` when the machine is already allocated on any day in the range, and with `plant.bad_state` when it is in the workshop or retired.
+         */
+        post: operations["createPlantAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/allocations/{allocationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                allocationId: components["parameters"]["PlantAllocationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an allocation, freeing the machine for those days. */
+        post: operations["cancelPlantAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Service, inspection and certification schedules, soonest due first. */
+        get: operations["listPlantMaintenancePlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule a service, inspection or certificate for a machine.
+         * @description With `intervalDays` the plan recurs, and finishing it sets the next due date; without it the plan is a one-off (for example a crane certificate).
+         */
+        post: operations["createPlantMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                planId: components["parameters"]["PlantPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a service, inspection or certificate was done.
+         * @description A recurring plan's next due date becomes the done date plus its interval. A one-off plan is finished.
+         */
+        post: operations["completePlantMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        /** What has been done to a machine, newest first. */
+        get: operations["listPlantMaintenanceRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/utilisation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * How much of a date range each machine, and the fleet, is allocated.
+         * @description Counts days covered by at least one active allocation. Retired machines are left out. Cost figures
+         *     (`costCents`, `idleCostCents`) are each machine's daily rate times booked or idle days, and are null without a
+         *     rate or without permission to see rates. `projects` shows allocated days and cost per project.
+         */
+        get: operations["getPlantUtilisation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What Nova flags about the fleet (rule-based, no model).
+         * @description Overdue or soon-due maintenance, expired or expiring certificates, a machine booked twice, a machine allocated
+         *     while in the workshop, a service that falls inside a booking, and machines idle for `idleDays` (default 14).
+         *     Most urgent first.
+         */
+        get: operations["listPlantFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -2143,6 +2387,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/ai/help": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova where to find something in Archova, or what an error means and what to do about it.
+         * @description Sends the person's question and, for an error, only its HTTP status, code and message, plus the name of the
+         *     screen they are on. No project records are read and nothing is stored beyond the usual run accounting. The
+         *     answer is a few plain sentences and steps, and up to three tools from a fixed list to open next; it never
+         *     contains links. Counts against the Ask Nova feature switch and credits (a fraction of one credit), and each
+         *     person's request rate limit. Processed in Australia like every Nova task.
+         */
+        post: operations["askNovaForHelp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/runs/{runId}/feedback": {
         parameters: {
             query?: never;
@@ -3429,6 +3699,32 @@ export interface paths {
          *     is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
          */
         get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/portfolio/sustainability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Sustainability across projects, with company totals and Nova's flags.
+         * @description One row per project the caller can see: open monitoring breaches, permit conditions non-compliant or overdue,
+         *     waste diverted from landfill (and whether it is trending down), and emissions against the 30 days before.
+         *     A project where the caller cannot read the environmental tools is `restricted` and counts nothing, and is left
+         *     out of the company totals. `flags` are rule-based checks across projects, most serious first (no model cost).
+         *     Staff only.
+         */
+        get: operations["getSustainabilityPortfolio"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5246,6 +5542,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+         * @description Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+         *     (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+         *     returned to the sender and managers.
+         */
+        get: operations["listAnnouncements"];
+        put?: never;
+        /**
+         * Post an announcement to everyone on the project or a chosen group.
+         * @description The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+         *     subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+         *     recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+         *     read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+         */
+        post: operations["createAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        /** One announcement. The sender and managers also get the read receipts and Nova's overdue flags. */
+        get: operations["getAnnouncement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the caller's copy as read. The first read time is kept. */
+        post: operations["markAnnouncementRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+         * @description Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+         *     four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+         *     (`announcements.announcements.manage`) may send reminders.
+         */
+        post: operations["nudgeAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+         * @description Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+         *     Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+         *     and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+         *     themselves. Costs half a Nova credit.
+         */
+        post: operations["draftAnnouncementWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
         parameters: {
             query?: never;
@@ -5289,6 +5711,54 @@ export interface paths {
         patch: operations["updateCorrespondence"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** Whether the item is private and who is listed to open it. Author and admins only. */
+        get: operations["getCorrespondenceAccess"];
+        /**
+         * Make the item private or not, and replace the list of people who may open it.
+         * @description Author and admins only, at any stage except void. A private item is seen only by its author, admins and the
+         *     people listed here, and only once it has been sent. Listed people must be on the project. The change is
+         *     recorded in the item's history.
+         */
+        put: operations["setCorrespondenceAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** Who did what to the item and when, oldest first. */
+        get: operations["listCorrespondenceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send": {
         parameters: {
             query?: never;
@@ -5325,6 +5795,28 @@ export interface paths {
         put?: never;
         /** Reply to a sent item. A reply from a receiving company marks it responded. */
         post: operations["respondToCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** The emails sent about the item and whether they went out. */
+        get: operations["listCorrespondenceEmails"];
+        put?: never;
+        /** Email a sent item to people on the project who can open it. The email names the item and carries the note and a link, not the item's text. */
+        post: operations["emailCorrespondence"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6676,6 +7168,32 @@ export interface paths {
          * @description Asks the compliance check first. A blocked sign-in is recorded and returns `outcome: blocked` with the reasons (ATT-AC7).
          */
         post: operations["signInSelf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Is this worker cleared to be on site today? One answer from their Safety ID.
+         * @description Scan a worker's Safety ID badge (or type the worker id) and get one pass, warning or blocked answer built from
+         *     what is already recorded: the worker record, white card and licence expiry, the site induction for this
+         *     project, and the SWMS their company works under. Read only: it does not sign anyone in or out. `flag` is the
+         *     rule-based line for the gate or supervisor (no model call). Subcontractors reach their own company's workers only.
+         */
+        get: operations["checkWorkerClearance"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8225,11 +8743,54 @@ export interface paths {
         get: operations["getInspection"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an inspection. It is hidden everywhere; the change history keeps a record. */
+        delete: operations["deleteInspection"];
         options?: never;
         head?: never;
         /** Edit the header (dates, people, company, trade, spec section, description, attachments) until the inspection is submitted. */
         patch: operations["updateInspection"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen). */
+        post: operations["reopenInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        /** The change history of an inspection, oldest first. */
+        get: operations["listInspectionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na": {
@@ -8465,6 +9026,424 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The environmental register at a glance: condition counts by status and category, document expiry, plan state, and the rule-based flags Nova raises (no model, no credit cost). */
+        get: operations["getEnvironmentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's Environmental Management Plan, or null before one is set up. */
+        get: operations["getEnvironmentPlan"];
+        put?: never;
+        /** Set up the project's EMP (one per project). It starts as a draft. */
+        post: operations["createEnvironmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit the EMP header. */
+        patch: operations["updateEnvironmentPlan"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/plan/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the EMP: it becomes active and the next review is set one review interval out. */
+        post: operations["approveEnvironmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The compliance-condition register in number order. */
+        get: operations["listEnvironmentConditions"];
+        put?: never;
+        /** Add a compliance condition. It is numbered EMC-0001 per project. */
+        post: operations["createEnvironmentCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/starter-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Load the standard Australian construction conditions (dust, noise, sediment, discharge, waste, heritage and more). Conditions already in the register are skipped, so applying it twice adds nothing. */
+        post: operations["applyEnvironmentStarterPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        /** One condition with its sign-off trail. */
+        get: operations["getEnvironmentCondition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a condition. */
+        patch: operations["updateEnvironmentCondition"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** start and flagNonCompliant (site team), signOff, markNotApplicable and reopen (the person accountable for compliance). Sign-off needs evidence or a note; flagging, exemption and reopening need a note. The server checks the caller's level for the action. */
+        post: operations["transitionEnvironmentCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Permits, licences, plans and audit reports with their expiry state. */
+        get: operations["listEnvironmentDocuments"];
+        put?: never;
+        /** Register an environmental document against an uploaded file. */
+        post: operations["createEnvironmentDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a document from the register. */
+        delete: operations["deleteEnvironmentDocument"];
+        options?: never;
+        head?: never;
+        /** Edit a document, for example a renewed expiry date or a new file. */
+        patch: operations["updateEnvironmentDocument"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Waste dockets, newest first. */
+        get: operations["listWasteDockets"];
+        put?: never;
+        /** Record a waste docket: how many tonnes of what left site, and whether it was recycled, reused, landfilled or treated. */
+        post: operations["createWasteDocket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Tonnes by type and destination, the diversion rate against the target, a six-month trend, and the last 30 days against the 30 before. */
+        get: operations["getWasteSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/waste/{wasteDocketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                wasteDocketId: components["parameters"]["WasteDocketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a docket entered by mistake. */
+        delete: operations["deleteWasteDocket"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Carbon entries (fuel, electricity, materials), newest first. */
+        get: operations["listCarbonEntries"];
+        put?: never;
+        /** Log an activity (litres of diesel, kWh, m3 of concrete...). It is converted to kg CO2-e with the source's default factor, or the factor given, which is kept on the entry. */
+        post: operations["createCarbonEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Total kg CO2-e by scope and source, a six-month trend, and the last 30 days against the 30 before. */
+        get: operations["getCarbonSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/carbon/{carbonEntryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                carbonEntryId: components["parameters"]["CarbonEntryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an entry logged by mistake. */
+        delete: operations["deleteCarbonEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Monitoring points with their latest reading, recent values for a sparkline, open breaches, and whether a reading is overdue or rising towards the limit. */
+        get: operations["listMonitoringPoints"];
+        put?: never;
+        /** Add a monitoring point (a place and parameter with its limits). A point can be linked to an EMP condition, which a breach then flags non-compliant. */
+        post: operations["createMonitoringPoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a point's limits, frequency or linked condition, or switch it off. */
+        patch: operations["updateMonitoringPoint"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        /** Readings at a point, newest first. */
+        get: operations["listPointReadings"];
+        put?: never;
+        /** Log a reading. Its status (ok, warning, breach) is fixed against the point's limits; a breach flags the linked condition non-compliant. Readings are not edited afterwards. */
+        post: operations["logReading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Recent readings across the project, newest first. Use status=breach and open=true for the breach register. */
+        get: operations["listEnvironmentReadings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                readingId: components["parameters"]["EnvironmentReadingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a breach with a corrective-action note, and optionally report it as an environmental incident in the incident register. A breach is answered once. */
+        post: operations["respondToReading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incidents": {
         parameters: {
             query?: never;
@@ -8570,6 +9549,199 @@ export interface paths {
         head?: never;
         /** The assigned company or person marks an action done; the builder edits it and verifies it (or sends it back to open). */
         patch: operations["updateIncidentAction"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's toolbox topic library with when each was last run. Inactive topics only with includeInactive. */
+        get: operations["listToolboxTopics"];
+        put?: never;
+        /** Add a topic to the library. */
+        post: operations["createToolboxTopic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics/{topicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                topicId: components["parameters"]["ToolboxTopicId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a topic or retire it (isActive false). Past talks keep their topic. */
+        patch: operations["updateToolboxTopic"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Toolbox talks, newest first. People who are not builder staff see the talks they started and the ones their company attended. */
+        get: operations["listToolboxTalks"];
+        put?: never;
+        /** Record a talk that was held. It is numbered TBT-0001 per project. The attendance rows can be added now or on the grid. */
+        post: operations["createToolboxTalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggests what to talk about next, from rules over this project (recent incidents, SWMS in force, topics not run lately). No model is called and nothing is created. Empty for people who are not builder staff. */
+        get: operations["suggestToolboxTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        /** A talk with its attendance grid. Each signed row says if its signature image repeats (a flag for a person to look at, never a block). */
+        get: operations["getToolboxTalk"];
+        put?: never;
+        post?: never;
+        /** Delete an open talk that nobody has signed. */
+        delete: operations["deleteToolboxTalk"];
+        options?: never;
+        head?: never;
+        /** Change the details of an open talk. */
+        patch: operations["updateToolboxTalk"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the talk (needs everyone on the grid signed or removed) or reopen it (needs the manage permission). */
+        post: operations["transitionToolboxTalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add people to the attendance grid of an open talk. */
+        post: operations["addToolboxAttendees"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an unsigned row from the grid. */
+        delete: operations["removeToolboxAttendee"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Sign one row with a signature drawn on the device and uploaded as an image to this project. */
+        put: operations["signToolboxAttendee"];
+        post?: never;
+        /** Clear one row's signature so it can be signed again. */
+        delete: operations["clearToolboxSignature"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
@@ -9746,6 +10918,27 @@ export interface paths {
         get: operations["getTmTicket"];
         /** Replace a draft ticket. Refused from the first signature. */
         put: operations["updateTmTicket"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's checks on a ticket, from the site diary, timesheets, equipment logs and where it was signed. Advice only. */
+        get: operations["getTmTicketChecks"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -10998,6 +12191,26 @@ export interface components {
             restricted: boolean;
             open: number;
             overdue: number;
+            /** @description Open and due from today through the next 7 days in the project zone. Open items with no due date are in neither this nor overdue. */
+            dueSoon: number;
+        };
+        PortfolioIncidents: components["schemas"]["PortfolioTool"] & {
+            /**
+             * Format: date
+             * @description Project-local date of the latest injury; null when none is recorded or the caller cannot read incidents.
+             */
+            lastInjuryOn: string | null;
+            /**
+             * Format: date
+             * @description Latest incident of any type except a near miss, same rule.
+             */
+            lastIncidentOn: string | null;
+            /** @description Whole days from the latest injury to today in the project zone; null when none is recorded. */
+            daysSinceInjury: number | null;
+            /** @description Same for the latest incident other than a near miss. */
+            daysSinceIncident: number | null;
+            /** @description Incidents of any type, near misses included, in the last 12 months. */
+            last12Months: number;
         };
         PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
             /** @description Activities at 0% complete. */
@@ -11019,6 +12232,12 @@ export interface components {
             variance: components["schemas"]["FinancialsSignedMoney"];
             /** @description Cost codes whose forecast is over their revised budget. */
             overBudgetCodes: number;
+            /** @description Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend. */
+            monthly: {
+                /** @description Calendar month, YYYY-MM. */
+                month: string;
+                spent: components["schemas"]["FinancialsSignedMoney"];
+            }[];
         };
         PortfolioProject: {
             id: string;
@@ -11026,7 +12245,13 @@ export interface components {
             number: string | null;
             status: string;
             phase: components["schemas"]["ProjectPhase"] | null;
+            /** @description The state the site is in, for grouping by region. */
+            state: components["schemas"]["AuState"] | null;
             siteLocation: components["schemas"]["GeoPoint"] | null;
+            /** @description Open observations the caller can see; overdue means past the due date. */
+            observations: components["schemas"]["PortfolioTool"];
+            /** @description Inspections not yet closed, builder staff only; overdue means past the due date. */
+            inspections: components["schemas"]["PortfolioTool"];
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
@@ -11035,7 +12260,7 @@ export interface components {
             /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
             variations: components["schemas"]["PortfolioTool"];
             /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
-            incidents: components["schemas"]["PortfolioTool"];
+            incidents: components["schemas"]["PortfolioIncidents"];
             /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
             programme: components["schemas"]["PortfolioProgramme"];
             budget: components["schemas"]["PortfolioBudget"];
@@ -11133,6 +12358,83 @@ export interface components {
             totals: components["schemas"]["PortfolioTotals"];
             projects: components["schemas"]["PortfolioProject"][];
             /** @description True when more than 200 projects matched and the rest were left out. */
+            truncated: boolean;
+        };
+        ProjectSustainability: {
+            restricted: boolean;
+            hasPlan: boolean;
+            conditions: {
+                nonCompliant: number;
+                overdue: number;
+                compliancePercent: number | null;
+            };
+            documentsLapsing: number;
+            monitoring: {
+                points: number;
+                openBreaches: number;
+                overdue: number;
+            };
+            waste: {
+                totalTonnes: number;
+                divertedTonnes: number;
+                landfillTonnes: number;
+                diversionPercent: number | null;
+                last30Tonnes: number;
+                last30DivertedTonnes: number;
+                last30DiversionPercent: number | null;
+                previous30Tonnes: number;
+                previous30DivertedTonnes: number;
+                previous30DiversionPercent: number | null;
+                regulatedWithoutDocket: number;
+            };
+            carbon: {
+                totalKg: number;
+                last30Kg: number;
+                previous30Kg: number;
+                changePercent: number | null;
+            };
+        };
+        SustainabilityProject: components["schemas"]["ProjectSustainability"] & {
+            id: string;
+            name: string;
+            number: string | null;
+            status: string;
+            phase: string | null;
+            state: string | null;
+            /** @description What needs chasing on the project; orders the list. */
+            attention: number;
+        };
+        SustainabilityFlag: {
+            /** @enum {string} */
+            code: "breach_open" | "conditions_non_compliant" | "docket_missing" | "diversion_falling" | "diversion_low" | "carbon_rising" | "plan_missing";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            projectId: string;
+            projectName: string;
+            message: string;
+        };
+        SustainabilityTotals: {
+            projectsCovered: number;
+            projectsRestricted: number;
+            projectsWithoutPlan: number;
+            openBreaches: number;
+            nonCompliantConditions: number;
+            overdueConditions: number;
+            documentsLapsing: number;
+            wasteTonnes: number;
+            landfillTonnes: number;
+            diversionPercent: number | null;
+            last30DiversionPercent: number | null;
+            previous30DiversionPercent: number | null;
+            carbonKg: number;
+            carbonLast30Kg: number;
+            carbonPrevious30Kg: number;
+            carbonChangePercent: number | null;
+        };
+        SustainabilityPortfolio: {
+            totals: components["schemas"]["SustainabilityTotals"];
+            projects: components["schemas"]["SustainabilityProject"][];
+            flags: components["schemas"]["SustainabilityFlag"][];
             truncated: boolean;
         };
         ReadinessPackPdf: {
@@ -12604,7 +13906,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "permit" | "cover";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -12661,6 +13963,173 @@ export interface components {
         };
         BookmarkList: {
             data: components["schemas"]["Bookmark"][];
+        };
+        /** @enum {string} */
+        PlantAssetCategory: "crane" | "excavator" | "loader" | "truck" | "generator" | "access_platform" | "compaction" | "lighting" | "other";
+        /** @enum {string} */
+        PlantAssetStatus: "active" | "maintenance" | "retired";
+        PlantAsset: {
+            id: string;
+            name: string;
+            assetNumber: string;
+            category: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership: "owned" | "hired";
+            /** @description The hire company */
+            supplier: string | null;
+            make: string | null;
+            model: string | null;
+            serialNumber: string | null;
+            /** @description Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller. */
+            dailyRateCents: number | null;
+            status: components["schemas"]["PlantAssetStatus"];
+            notes: string | null;
+            version: number;
+        };
+        PlantAssetList: {
+            data: components["schemas"]["PlantAsset"][];
+        };
+        CreatePlantAssetRequest: {
+            name: string;
+            assetNumber: string;
+            category: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership: "owned" | "hired";
+            supplier?: string;
+            make?: string;
+            model?: string;
+            serialNumber?: string;
+            dailyRateCents?: number;
+            notes?: string;
+        };
+        UpdatePlantAssetRequest: {
+            name?: string;
+            category?: components["schemas"]["PlantAssetCategory"];
+            /** @enum {string} */
+            ownership?: "owned" | "hired";
+            supplier?: string;
+            make?: string;
+            model?: string;
+            serialNumber?: string;
+            dailyRateCents?: number;
+            notes?: string;
+            status?: components["schemas"]["PlantAssetStatus"];
+        };
+        PlantAllocation: {
+            id: string;
+            assetId: string;
+            projectId: string;
+            costCodeId: string | null;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            note: string | null;
+            /** @enum {string} */
+            status: "active" | "cancelled";
+            /** @description Days in the allocation times the machine's daily rate. Null without a rate the caller may see. */
+            estimatedCostCents: number | null;
+        };
+        PlantAllocationList: {
+            data: components["schemas"]["PlantAllocation"][];
+        };
+        CreatePlantAllocationRequest: {
+            projectId: string;
+            costCodeId?: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            note?: string;
+        };
+        /** @enum {string} */
+        PlantPlanKind: "service" | "inspection" | "certification";
+        PlantMaintenancePlan: {
+            id: string;
+            assetId: string;
+            title: string;
+            kind: components["schemas"]["PlantPlanKind"];
+            intervalDays: number | null;
+            /** Format: date */
+            nextDueOn: string | null;
+            /** Format: date */
+            lastDoneOn: string | null;
+            responsible: string | null;
+            active: boolean;
+            /**
+             * @description Null for a finished plan. Due soon is 14 days ahead, or 30 for a certification.
+             * @enum {string|null}
+             */
+            state: "ok" | "due_soon" | "overdue" | null;
+        };
+        PlantMaintenancePlanList: {
+            data: components["schemas"]["PlantMaintenancePlan"][];
+        };
+        CreatePlantMaintenancePlanRequest: {
+            title: string;
+            kind: components["schemas"]["PlantPlanKind"];
+            intervalDays?: number;
+            /** Format: date */
+            nextDueOn: string;
+            /** Format: date */
+            lastDoneOn?: string;
+            responsible?: string;
+        };
+        CompletePlantMaintenanceRequest: {
+            /** Format: date */
+            doneOn: string;
+            performedBy?: string;
+            note?: string;
+            costCents?: number;
+        };
+        PlantMaintenanceRecord: {
+            id: string;
+            planId: string;
+            assetId: string;
+            /** Format: date */
+            doneOn: string;
+            performedBy: string | null;
+            note: string | null;
+            costCents: number | null;
+        };
+        PlantMaintenanceRecordList: {
+            data: components["schemas"]["PlantMaintenanceRecord"][];
+        };
+        PlantUtilisation: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            days: number;
+            fleetPct: number;
+            assets: {
+                assetId: string;
+                bookedDays: number;
+                idleDays: number;
+                pct: number;
+                costCents: number | null;
+                idleCostCents: number | null;
+            }[];
+            projects: {
+                projectId: string;
+                bookedDays: number;
+                costCents: number | null;
+            }[];
+        };
+        PlantFlag: {
+            /** @enum {string} */
+            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "idle";
+            /** @enum {string} */
+            severity: "critical" | "warning" | "info";
+            assetId: string;
+            /** @description The maintenance plan or allocation the flag is about, when there is one. */
+            subjectId: string | null;
+            message: string;
+            /** Format: date */
+            date: string | null;
+        };
+        PlantFlagList: {
+            data: components["schemas"]["PlantFlag"][];
         };
         FeatureFlags: {
             orgId: string;
@@ -12813,6 +14282,13 @@ export interface components {
         NovaSearchResult: components["schemas"]["NovaSource"] & {
             /** @description The start of the passage, or the stretch around the first query word it contains. */
             snippet: string;
+        };
+        NovaHelp: {
+            runId: string;
+            answer: string;
+            steps: string[];
+            /** @description Tools to open next, by the label the menus use. */
+            tools: string[];
         };
         NovaAnswer: {
             /** @description For feedback (`air_`); null when no model call was needed. */
@@ -14596,8 +16072,23 @@ export interface components {
             subjectTemplate: string;
             /** @description Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}} */
             bodyTemplate: string;
+            /** @description Extra details items of this type ask for, in order */
+            fields: components["schemas"]["CorrespondenceFieldDefinition"][];
             archived: boolean;
             version: number;
+        };
+        CorrespondenceFieldDefinition: {
+            /** @description Stable name the value is stored under */
+            key: string;
+            label: string;
+            /** @enum {string} */
+            kind: "text" | "date" | "number" | "yesNo";
+            /** @description Must be filled before the item is sent */
+            required: boolean;
+        };
+        /** @description Values by field key. A date is YYYY-MM-DD; null clears a value. */
+        CorrespondenceFieldValues: {
+            [key: string]: string | number | boolean | null;
         };
         CorrespondenceTypeList: {
             data: components["schemas"]["CorrespondenceType"][];
@@ -14613,6 +16104,7 @@ export interface components {
             timeBarDays?: number | null;
             subjectTemplate?: string;
             bodyTemplate?: string;
+            fields?: components["schemas"]["CorrespondenceFieldDefinition"][];
         };
         UpdateCorrespondenceTypeRequest: {
             name?: string;
@@ -14624,6 +16116,7 @@ export interface components {
             timeBarDays?: number | null;
             subjectTemplate?: string;
             bodyTemplate?: string;
+            fields?: components["schemas"]["CorrespondenceFieldDefinition"][];
             archived?: boolean;
         };
         CorrespondenceRelated: {
@@ -14672,6 +16165,9 @@ export interface components {
             sentInTime: boolean | null;
             fileIds: string[];
             related: components["schemas"]["CorrespondenceRelated"][];
+            /** @description Seen only by the author, admins and the people listed on the item */
+            isPrivate: boolean;
+            fieldValues: components["schemas"]["CorrespondenceFieldValues"];
             /** Format: date-time */
             sentAt: string | null;
             sentBy: string | null;
@@ -14687,6 +16183,25 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        CorrespondenceEmail: {
+            id: string;
+            senderId: string;
+            recipientUserId: string;
+            message: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "failed";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        CorrespondenceEmailList: {
+            data: components["schemas"]["CorrespondenceEmail"][];
+        };
+        EmailCorrespondenceRequest: {
+            userIds: components["schemas"]["UserRef"][];
+            message?: string;
+        };
         CorrespondenceResponse: {
             id: string;
             authorId: string;
@@ -14697,6 +16212,8 @@ export interface components {
             sentAt: string;
         };
         CorrespondenceDetail: {
+            /** @description The caller can change the private flag and the list (author or admin) */
+            canManageAccess: boolean;
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
@@ -14746,6 +16263,134 @@ export interface components {
             /** @description Project team members to notify. Each must be an active, non-external member of the project. */
             mentions?: string[];
         };
+        CorrespondenceAccess: {
+            isPrivate: boolean;
+            userIds: components["schemas"]["UserRef"][];
+        };
+        SetCorrespondenceAccessRequest: {
+            isPrivate: boolean;
+            userIds: components["schemas"]["UserRef"][];
+        };
+        CorrespondenceHistoryEntry: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            byUser: string | null;
+            /** @enum {string} */
+            action: "created" | "edited" | "sent" | "responded" | "closed" | "voided" | "access_changed" | "emailed";
+            changes: {
+                field: string;
+                /** @description The earlier value; long text is cut at 300 characters */
+                from: unknown;
+                /** @description The new value; long text is cut at 300 characters */
+                to: unknown;
+            }[];
+        };
+        CorrespondenceHistory: {
+            data: components["schemas"]["CorrespondenceHistoryEntry"][];
+        };
+        AnnouncementAudienceInput: {
+            /** @enum {string} */
+            kind: "all" | "group";
+            /** @description For `group`, everyone on the project from these companies. */
+            companyIds?: components["schemas"]["CompanyRef"][];
+            /** @description For `group`, these individual people. */
+            userIds?: string[];
+        };
+        CreateAnnouncementRequest: {
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority?: "normal" | "important";
+            audience: components["schemas"]["AnnouncementAudienceInput"];
+            /** @description People who must read it; each must be among the recipients. */
+            keyUserIds?: string[];
+            /** @description Hours after posting by which key people should have read it. Nova flags the ones who haven't. */
+            readByHours?: number | null;
+        };
+        AnnouncementReceipts: {
+            recipientCount: number;
+            readCount: number;
+        };
+        AnnouncementSummary: {
+            id: string;
+            projectId: string;
+            title: string;
+            preview: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @enum {string} */
+            audienceKind: "all" | "group";
+            createdById: string;
+            createdByName: string;
+            /** Format: date-time */
+            createdAt: string;
+            readByHours: number | null;
+            isMine: boolean;
+            /** @description The caller was sent it and hasn't read it. */
+            unread: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** @description How many have read it; only for the sender and managers. */
+            receipts: components["schemas"]["AnnouncementReceipts"] | null;
+        };
+        AnnouncementPage: {
+            data: components["schemas"]["AnnouncementSummary"][];
+            nextCursor: string | null;
+            /** @description Announcements on this project the caller hasn't read. */
+            unreadCount: number;
+        };
+        AnnouncementRecipient: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: date-time */
+            nudgedAt: string | null;
+        };
+        AnnouncementUnreadFlag: {
+            userId: string;
+            name: string;
+            isKey: boolean;
+            hoursOverdue: number;
+            /** Format: date-time */
+            nudgedAt: string | null;
+            /** @description False inside four hours of the last reminder. */
+            canNudge: boolean;
+        };
+        AnnouncementDetail: components["schemas"]["AnnouncementSummary"] & {
+            body: string;
+            audience: {
+                /** @enum {string} */
+                kind: "all" | "group";
+                companyIds: string[];
+                userIds: string[];
+            };
+            /**
+             * Format: date-time
+             * @description When key people should have read it by.
+             */
+            dueAt: string | null;
+            /** @description Who has read it; only for the sender and managers. */
+            recipients: components["schemas"]["AnnouncementRecipient"][] | null;
+            /** @description Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others. */
+            flags: components["schemas"]["AnnouncementUnreadFlag"][];
+        };
+        AnnouncementNudgeResult: {
+            nudged: number;
+            /** @description Already read */
+            skipped: number;
+        };
+        AnnouncementDraft: {
+            runId: string;
+            title: string;
+            body: string;
+            /** @enum {string} */
+            priority: "normal" | "important";
+            /** @description What code removed or changed because the notes didn't support it. */
+            notes: string[];
+        };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
             nextCursor: string | null;
@@ -14764,6 +16409,8 @@ export interface components {
             timeBarDays?: number | null;
             fileIds?: components["schemas"]["FileRef"][];
             related?: components["schemas"]["CorrespondenceRelated"][];
+            isPrivate?: boolean;
+            fieldValues?: components["schemas"]["CorrespondenceFieldValues"];
         };
         UpdateCorrespondenceRequest: {
             subject?: string;
@@ -14778,6 +16425,8 @@ export interface components {
             timeBarDays?: number | null;
             fileIds?: components["schemas"]["FileRef"][];
             related?: components["schemas"]["CorrespondenceRelated"][];
+            isPrivate?: boolean;
+            fieldValues?: components["schemas"]["CorrespondenceFieldValues"];
         };
         RespondCorrespondenceRequest: {
             body: string;
@@ -16864,6 +18513,12 @@ export interface components {
         };
         /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
         TmTicketSignoff: {
+            /**
+             * @description Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
+             * @enum {string}
+             */
+            geofenceStatus: "inside" | "outside" | "uncertain" | "unknown";
+            hasPosition: boolean;
             /** @enum {string} */
             role: "contractor" | "principal_rep";
             signerName: string;
@@ -16901,6 +18556,17 @@ export interface components {
         TmTicketDetail: components["schemas"]["TmTicket"] & {
             lines: components["schemas"]["TmTicketLine"][];
             signoffs: components["schemas"]["TmTicketSignoff"][];
+        };
+        TmTicketFinding: {
+            /** @enum {string} */
+            code: "no_diary_entry" | "labour_hours_differ" | "equipment_hours_differ" | "labour_not_from_timesheet" | "equipment_not_from_log" | "signed_off_site";
+            /** @enum {string} */
+            severity: "warn" | "info";
+            message: string;
+            line: number | null;
+        };
+        TmTicketChecks: {
+            findings: components["schemas"]["TmTicketFinding"][];
         };
         TmTicketList: {
             data: components["schemas"]["TmTicket"][];
@@ -16942,6 +18608,12 @@ export interface components {
             signerPosition?: string;
             /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
             evidenceFileId?: string;
+            /** @description The device position when signing. Optional; checked against the project's site fence and stored with the sign-off. */
+            fix?: {
+                lat: number;
+                lng: number;
+                accuracyM?: number;
+            };
         };
         VoidTmTicketRequest: {
             note: string;
@@ -17808,6 +19480,41 @@ export interface components {
                 /** Format: date */
                 expiresOn: string | null;
             }[];
+        };
+        WorkerClearance: {
+            workerId: string;
+            fullName: string;
+            /** @enum {string} */
+            kind: "worker" | "visitor" | "delivery";
+            companyName: string | null;
+            /** @description Short-lived link for matching the face at the gate. */
+            photoUrl: string | null;
+            siteId: string | null;
+            /**
+             * Format: date
+             * @description Today in the project's time zone.
+             */
+            localDate: string;
+            /** Format: date-time */
+            checkedAt: string;
+            /** @enum {string} */
+            result: "cleared" | "warning" | "blocked";
+            checks: {
+                /** @enum {string} */
+                key: "worker" | "white_card" | "licences" | "induction" | "swms" | "insurance";
+                label: string;
+                /** @enum {string} */
+                status: "pass" | "warn" | "fail" | "na";
+                detail: string;
+            }[];
+            /** @description The rule-based line for the gate; null when everything is clear. */
+            flag: {
+                /** @enum {string} */
+                severity: "warning" | "blocking";
+                title: string;
+                detail: string;
+                suggestedAction: string;
+            } | null;
         };
         WorkerList: {
             data: components["schemas"]["Worker"][];
@@ -18987,6 +20694,11 @@ export interface components {
             description: string;
             /** @description Files attached to the inspection itself. */
             fileIds: string[];
+            /** @description Only the creator */
+            isPrivate: boolean;
+            distributionIds: string[];
+            drawingRevisionIds: string[];
+            reopenCount: number;
             /** Format: date-time */
             completedAt: string | null;
             signedBy: components["schemas"]["InspectionSignature"] | null;
@@ -19018,6 +20730,40 @@ export interface components {
             responses: components["schemas"]["InspectionItemResponse"][];
             missingRequiredItemIds: string[];
             failedItemIds: string[];
+            summary: components["schemas"]["InspectionStatusCounts"];
+            reopenFlag: components["schemas"]["InspectionReopenFlag"] | null;
+        };
+        InspectionStatusCounts: {
+            pass: number;
+            fail: number;
+            na: number;
+            answered: number;
+            unanswered: number;
+            total: number;
+        };
+        InspectionReopenFlag: {
+            /** @enum {string} */
+            code: "reopened_repeatedly";
+            count: number;
+            message: string;
+        };
+        InspectionHistoryEvent: {
+            id: string;
+            inspectionId: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "section_na" | "signed" | "submitted" | "reopened" | "closed" | "deleted";
+            detail: {
+                [key: string]: unknown;
+            };
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        InspectionHistoryList: {
+            data: components["schemas"]["InspectionHistoryEvent"][];
+        };
+        ReopenInspectionRequest: {
+            reason: string;
         };
         InspectionSection: {
             section: string;
@@ -19052,6 +20798,9 @@ export interface components {
             specSection?: string;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         /** @description Header fields. Send only what changes; null clears an optional field. */
         UpdateInspectionRequest: {
@@ -19069,6 +20818,9 @@ export interface components {
             specSection?: string | null;
             description?: string;
             fileIds?: components["schemas"]["FileRef"][];
+            isPrivate?: boolean;
+            distributionIds?: components["schemas"]["UserRef"][];
+            drawingRevisionIds?: string[];
         };
         SetInspectionSectionNaRequest: {
             section: string;
@@ -19183,6 +20935,477 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             version: number;
+        };
+        /** @enum {string} */
+        MonitoringParameter: "dust_pm10" | "dust_pm25" | "dust_deposition" | "noise_laeq" | "noise_lamax" | "vibration_ppv" | "water_ph" | "water_turbidity" | "water_tss" | "other";
+        /** @enum {string} */
+        MonitoringFrequency: "daily" | "weekly" | "fortnightly" | "monthly" | "per_event";
+        /** @enum {string} */
+        MonitoringReadingStatus: "ok" | "warning" | "breach";
+        MonitoringReading: {
+            id: string;
+            pointId: string;
+            /** @description Set on the project-wide list. */
+            pointName: string | null;
+            /** @description Set on the project-wide list. */
+            unit: string | null;
+            value: number;
+            /** Format: date-time */
+            takenAt: string;
+            status: components["schemas"]["MonitoringReadingStatus"];
+            note: string | null;
+            fileIds: string[];
+            responseNote: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+            respondedBy: string | null;
+            /** @description The environmental incident raised for this breach. */
+            incidentId: string | null;
+        };
+        MonitoringReadingPage: {
+            data: components["schemas"]["MonitoringReading"][];
+            nextCursor: string | null;
+        };
+        MonitoringPoint: {
+            id: string;
+            projectId: string;
+            name: string;
+            parameter: components["schemas"]["MonitoringParameter"];
+            unit: string;
+            location: string | null;
+            minLimit: number | null;
+            maxLimit: number | null;
+            /** @description A reading within this fraction of a limit is a warning. */
+            warnMargin: number;
+            frequency: components["schemas"]["MonitoringFrequency"];
+            conditionId: string | null;
+            active: boolean;
+            latest: components["schemas"]["MonitoringReading"] | null;
+            /** @description Latest values, oldest first. */
+            recent: number[];
+            openBreaches: number;
+            isOverdue: boolean;
+            /** @description Three rising readings, the latest close to the maximum. */
+            isTrending: boolean;
+            version: number;
+        };
+        MonitoringPointList: {
+            data: components["schemas"]["MonitoringPoint"][];
+        };
+        CreateMonitoringPointRequest: {
+            name: string;
+            parameter: components["schemas"]["MonitoringParameter"];
+            unit: string;
+            location?: string | null;
+            minLimit?: number | null;
+            maxLimit?: number | null;
+            warnMargin?: number;
+            frequency?: components["schemas"]["MonitoringFrequency"];
+            conditionId?: string | null;
+        };
+        UpdateMonitoringPointRequest: {
+            name?: string;
+            parameter?: components["schemas"]["MonitoringParameter"];
+            unit?: string;
+            location?: string | null;
+            minLimit?: number | null;
+            maxLimit?: number | null;
+            warnMargin?: number;
+            frequency?: components["schemas"]["MonitoringFrequency"];
+            conditionId?: string | null;
+            active?: boolean;
+        };
+        LogReadingRequest: {
+            value: number;
+            /**
+             * Format: date-time
+             * @description Defaults to now.
+             */
+            takenAt?: string;
+            note?: string;
+            fileIds?: string[];
+        };
+        RespondToReadingRequest: {
+            /** @description The corrective action taken. */
+            note: string;
+            /** @description Also report an environmental incident. */
+            raiseIncident?: boolean;
+        };
+        RespondToReadingResult: {
+            reading: components["schemas"]["MonitoringReading"];
+            incidentId: string | null;
+            incidentNumber: number | null;
+        };
+        /** @enum {string} */
+        EnvironmentConditionCategory: "air_quality" | "noise_vibration" | "water_quality" | "waste" | "soil_erosion" | "biodiversity" | "heritage" | "hazardous_materials" | "traffic_amenity" | "energy_carbon" | "other";
+        /** @enum {string} */
+        EnvironmentConditionSource: "planning_permit" | "epa_licence" | "cemp" | "council" | "client" | "other";
+        /** @enum {string} */
+        EnvironmentConditionFrequency: "once" | "daily" | "weekly" | "fortnightly" | "monthly" | "quarterly" | "per_event";
+        /** @enum {string} */
+        EnvironmentConditionStatus: "not_started" | "in_progress" | "compliant" | "non_compliant" | "not_applicable";
+        /** @enum {string} */
+        EnvironmentConditionAction: "start" | "signOff" | "flagNonCompliant" | "markNotApplicable" | "reopen";
+        /** @enum {string} */
+        EnvironmentDocumentType: "emp" | "permit" | "epa_licence" | "approval_letter" | "monitoring_plan" | "waste_plan" | "audit_report" | "other";
+        /** @enum {string} */
+        EnvironmentExpiryState: "none" | "valid" | "expiring" | "expired";
+        EnvironmentPlan: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** @description The planning permit or licence this plan answers to. */
+            permitReference: string | null;
+            summary: string | null;
+            /** @enum {string} */
+            status: "draft" | "active";
+            reviewIntervalMonths: number;
+            /** Format: date */
+            nextReviewDate: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            approvedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentPlanResponse: {
+            plan: components["schemas"]["EnvironmentPlan"] | null;
+        };
+        CreateEnvironmentPlanRequest: {
+            title: string;
+            permitReference?: string | null;
+            summary?: string | null;
+            reviewIntervalMonths?: number;
+            /** Format: date */
+            nextReviewDate?: string | null;
+        };
+        UpdateEnvironmentPlanRequest: {
+            title?: string;
+            permitReference?: string | null;
+            summary?: string | null;
+            reviewIntervalMonths?: number;
+            /** Format: date */
+            nextReviewDate?: string | null;
+        };
+        EnvironmentCondition: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description EMC-0042 */
+            numberLabel: string;
+            title: string;
+            requirement: string | null;
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            source: components["schemas"]["EnvironmentConditionSource"];
+            /** @description For example "Permit condition 14". */
+            sourceReference: string | null;
+            frequency: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId: string | null;
+            responsibleUserId: string | null;
+            status: components["schemas"]["EnvironmentConditionStatus"];
+            /** Format: date */
+            dueDate: string | null;
+            /** Format: date */
+            lastReviewedOn: string | null;
+            isOverdue: boolean;
+            /** @description Evidence files. */
+            fileIds: string[];
+            /** @description What the caller can do now, from status and permission level. */
+            availableActions: components["schemas"]["EnvironmentConditionAction"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentConditionEvent: {
+            id: string;
+            /** @enum {string} */
+            action: "start" | "sign_off" | "flag_non_compliant" | "not_applicable" | "reopen";
+            fromStatus: components["schemas"]["EnvironmentConditionStatus"];
+            toStatus: components["schemas"]["EnvironmentConditionStatus"];
+            note: string | null;
+            fileIds: string[];
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        EnvironmentConditionDetail: {
+            condition: components["schemas"]["EnvironmentCondition"];
+            events: components["schemas"]["EnvironmentConditionEvent"][];
+        };
+        EnvironmentConditionPage: {
+            data: components["schemas"]["EnvironmentCondition"][];
+            nextCursor: string | null;
+        };
+        CreateEnvironmentConditionRequest: {
+            title: string;
+            requirement?: string | null;
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            source?: components["schemas"]["EnvironmentConditionSource"];
+            sourceReference?: string | null;
+            frequency?: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId?: string | null;
+            responsibleUserId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            fileIds?: string[];
+        };
+        UpdateEnvironmentConditionRequest: {
+            title?: string;
+            requirement?: string | null;
+            category?: components["schemas"]["EnvironmentConditionCategory"];
+            source?: components["schemas"]["EnvironmentConditionSource"];
+            sourceReference?: string | null;
+            frequency?: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId?: string | null;
+            responsibleUserId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            fileIds?: string[];
+        };
+        EnvironmentConditionTransitionRequest: {
+            action: components["schemas"]["EnvironmentConditionAction"];
+            note?: string;
+            /** @description Evidence to attach. */
+            fileIds?: string[];
+        };
+        EnvironmentStarterPackResult: {
+            created: components["schemas"]["EnvironmentCondition"][];
+            /** @description Starter conditions already in the register. */
+            skipped: number;
+        };
+        EnvironmentDocument: {
+            id: string;
+            projectId: string;
+            title: string;
+            docType: components["schemas"]["EnvironmentDocumentType"];
+            reference: string | null;
+            fileId: string;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            expiry: components["schemas"]["EnvironmentExpiryState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentDocumentList: {
+            data: components["schemas"]["EnvironmentDocument"][];
+        };
+        CreateEnvironmentDocumentRequest: {
+            title: string;
+            docType: components["schemas"]["EnvironmentDocumentType"];
+            reference?: string | null;
+            fileId: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+        };
+        UpdateEnvironmentDocumentRequest: {
+            title?: string;
+            docType?: components["schemas"]["EnvironmentDocumentType"];
+            reference?: string | null;
+            fileId?: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+        };
+        EnvironmentFlag: {
+            /** @enum {string} */
+            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending" | "waste_diversion_low" | "waste_diversion_falling" | "waste_docket_missing" | "carbon_rising";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            message: string;
+            conditionIds: string[];
+            documentIds: string[];
+        };
+        EnvironmentCategoryTally: {
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            total: number;
+            compliant: number;
+            nonCompliant: number;
+            overdue: number;
+        };
+        /** @enum {string} */
+        WasteType: "general" | "concrete" | "bricks_masonry" | "timber" | "metals" | "plastics" | "plasterboard" | "soil_fill" | "cardboard_paper" | "glass" | "green_waste" | "hazardous" | "asbestos" | "other";
+        /**
+         * @description Recycled and reused count as diverted from landfill.
+         * @enum {string}
+         */
+        WasteDestination: "recycled" | "reused" | "landfill" | "treatment";
+        WasteDocket: {
+            id: string;
+            projectId: string;
+            /** Format: date */
+            docketDate: string;
+            wasteType: components["schemas"]["WasteType"];
+            destination: components["schemas"]["WasteDestination"];
+            tonnes: number;
+            docketNumber: string | null;
+            contractor: string | null;
+            facility: string | null;
+            note: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WasteDocketPage: {
+            data: components["schemas"]["WasteDocket"][];
+            nextCursor: string | null;
+        };
+        CreateWasteDocketRequest: {
+            /** Format: date */
+            docketDate: string;
+            wasteType: components["schemas"]["WasteType"];
+            destination: components["schemas"]["WasteDestination"];
+            tonnes: number;
+            docketNumber?: string;
+            contractor?: string;
+            facility?: string;
+            note?: string;
+            fileIds?: string[];
+        };
+        WasteWindow: {
+            tonnes: number;
+            divertedTonnes: number;
+            diversionPercent: number | null;
+        };
+        WasteSummary: {
+            totalTonnes: number;
+            divertedTonnes: number;
+            diversionPercent: number | null;
+            targetPercent: number;
+            byDestination: {
+                recycled: number;
+                reused: number;
+                landfill: number;
+                treatment: number;
+            };
+            byType: {
+                wasteType: components["schemas"]["WasteType"];
+                tonnes: number;
+                divertedTonnes: number;
+            }[];
+            /** @description The last six months, oldest first. */
+            monthly: {
+                /** @description YYYY-MM */
+                month: string;
+                tonnes: number;
+                divertedTonnes: number;
+                diversionPercent: number | null;
+            }[];
+            last30: components["schemas"]["WasteWindow"];
+            previous30: components["schemas"]["WasteWindow"];
+            /** @description Hazardous or asbestos dockets with no copy attached. */
+            regulatedWithoutDocket: number;
+        };
+        /** @enum {string} */
+        CarbonSource: "diesel_litres" | "petrol_litres" | "lpg_litres" | "electricity_kwh" | "concrete_m3" | "steel_tonnes" | "other";
+        CarbonEntry: {
+            id: string;
+            projectId: string;
+            /** Format: date */
+            entryDate: string;
+            source: components["schemas"]["CarbonSource"];
+            scope: number;
+            quantity: number;
+            /** @description kg CO2-e per unit, as used for this entry. */
+            factor: number;
+            kgCo2e: number;
+            description: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CarbonEntryPage: {
+            data: components["schemas"]["CarbonEntry"][];
+            nextCursor: string | null;
+        };
+        CreateCarbonEntryRequest: {
+            /** Format: date */
+            entryDate: string;
+            source: components["schemas"]["CarbonSource"];
+            quantity: number;
+            /** @description kg CO2-e per unit. The source's default when left out. */
+            factor?: number;
+            description?: string;
+            note?: string;
+        };
+        CarbonSummary: {
+            totalKg: number;
+            byScope: {
+                1: number;
+                2: number;
+                3: number;
+            };
+            bySource: {
+                source: components["schemas"]["CarbonSource"];
+                quantity: number;
+                kg: number;
+            }[];
+            /** @description The last six months, oldest first. */
+            monthly: {
+                /** @description YYYY-MM */
+                month: string;
+                kg: number;
+            }[];
+            last30Kg: number;
+            previous30Kg: number;
+            /** @description Last 30 days against the 30 before; null without a base. */
+            changePercent: number | null;
+        };
+        EnvironmentSummary: {
+            /**
+             * Format: date
+             * @description Today at the project, which "overdue" is measured against.
+             */
+            today: string;
+            plan: components["schemas"]["EnvironmentPlan"] | null;
+            conditions: {
+                total: number;
+                byStatus: {
+                    not_started: number;
+                    in_progress: number;
+                    compliant: number;
+                    non_compliant: number;
+                    not_applicable: number;
+                };
+                overdue: number;
+                /** @description Signed-off share of applicable conditions; null when there are none. */
+                compliancePercent: number | null;
+                byCategory: components["schemas"]["EnvironmentCategoryTally"][];
+            };
+            documents: {
+                total: number;
+                expired: number;
+                expiring: number;
+            };
+            monitoring: {
+                points: number;
+                /** @description Breaches not yet answered. */
+                openBreaches: number;
+                /** @description Active points without a recent reading. */
+                overdue: number;
+            };
+            waste: {
+                totalTonnes: number;
+                /** @description Share recycled or reused; null with no dockets. */
+                diversionPercent: number | null;
+            };
+            carbon: {
+                totalKg: number;
+                last30Kg: number;
+            };
+            flags: components["schemas"]["EnvironmentFlag"][];
         };
         ObservationPage: {
             data: components["schemas"]["Observation"][];
@@ -19373,6 +21596,140 @@ export interface components {
         };
         IncidentActionFromSourceList: {
             data: components["schemas"]["IncidentActionFromSource"][];
+        };
+        /** @enum {string} */
+        ToolboxTopicCategory: "general" | "hazard" | "plant" | "environment" | "wellbeing" | "incident_review" | "emergency";
+        /** @enum {string} */
+        ToolboxTalkStatus: "open" | "closed";
+        ToolboxTopic: {
+            id: string;
+            projectId: string;
+            title: string;
+            talkingPoints: string;
+            category: components["schemas"]["ToolboxTopicCategory"];
+            /** @description The high-risk work category this topic covers */
+            hrcwCategory: string | null;
+            isActive: boolean;
+            /**
+             * Format: date-time
+             * @description When a talk on this topic was last held on the project.
+             */
+            lastHeldAt: string | null;
+            version: number;
+        };
+        ToolboxTopicList: {
+            data: components["schemas"]["ToolboxTopic"][];
+        };
+        CreateToolboxTopicRequest: {
+            title: string;
+            talkingPoints?: string;
+            category?: components["schemas"]["ToolboxTopicCategory"];
+            hrcwCategory?: string | null;
+        };
+        UpdateToolboxTopicRequest: {
+            title?: string;
+            talkingPoints?: string;
+            category?: components["schemas"]["ToolboxTopicCategory"];
+            hrcwCategory?: string | null;
+            isActive?: boolean;
+        };
+        ToolboxTalk: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description TBT-0001 */
+            numberLabel: string;
+            topicId: string | null;
+            title: string;
+            /** Format: date-time */
+            heldAt: string;
+            location: string | null;
+            presenterName: string;
+            notes: string | null;
+            status: components["schemas"]["ToolboxTalkStatus"];
+            /** Format: date-time */
+            closedAt: string | null;
+            attendeeCount: number;
+            signedCount: number;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        ToolboxTalkPage: {
+            data: components["schemas"]["ToolboxTalk"][];
+            nextCursor: string | null;
+        };
+        /**
+         * @description shared_between_people is one signature image on rows for different people in this talk. reused_from_earlier_talk is a person's image identical to one they signed with in an earlier talk. A hand-drawn signature is never identical twice, so both are worth a look. Neither blocks anything.
+         * @enum {string}
+         */
+        ToolboxRepeatReason: "shared_between_people" | "reused_from_earlier_talk";
+        ToolboxAttendee: {
+            id: string;
+            personName: string;
+            companyId: string | null;
+            userId: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            signatureFileId: string | null;
+            repeatFlags: components["schemas"]["ToolboxRepeatReason"][];
+        };
+        ToolboxTalkDetail: {
+            talk: components["schemas"]["ToolboxTalk"];
+            topic: components["schemas"]["ToolboxTopic"] | null;
+            attendees: components["schemas"]["ToolboxAttendee"][];
+            /** @description What stops the talk closing now. Empty when it can close. */
+            closeBlockers: string[];
+            canEdit: boolean;
+        };
+        ToolboxAttendeeInput: {
+            personName: string;
+            companyId?: string | null;
+            userId?: string | null;
+        };
+        CreateToolboxTalkRequest: {
+            title: string;
+            topicId?: string | null;
+            /** Format: date-time */
+            heldAt: string;
+            location?: string | null;
+            presenterName: string;
+            notes?: string | null;
+            attendees?: components["schemas"]["ToolboxAttendeeInput"][];
+        };
+        UpdateToolboxTalkRequest: {
+            title?: string;
+            topicId?: string | null;
+            /** Format: date-time */
+            heldAt?: string;
+            location?: string | null;
+            presenterName?: string;
+            notes?: string | null;
+        };
+        ToolboxTransitionRequest: {
+            /** @enum {string} */
+            action: "close" | "reopen";
+        };
+        AddToolboxAttendeesRequest: {
+            attendees: components["schemas"]["ToolboxAttendeeInput"][];
+        };
+        SignToolboxAttendeeRequest: {
+            /** @description A ready image uploaded to this project. */
+            signatureFileId: string;
+        };
+        ToolboxSuggestion: {
+            /** @enum {string} */
+            reason: "recent_incident" | "swms_in_force" | "not_run_recently" | "never_run";
+            /** @description A topic in the library to run */
+            topicId: string | null;
+            title: string;
+            /** @description One plain sentence with the facts behind the suggestion. */
+            because: string;
+            hrcwCategory: string | null;
+        };
+        ToolboxSuggestionList: {
+            data: components["schemas"]["ToolboxSuggestion"][];
         };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
@@ -19907,6 +22264,9 @@ export interface components {
     };
     parameters: {
         InspectionItemId: string;
+        PlantAssetId: string;
+        PlantAllocationId: string;
+        PlantPlanId: string;
         TimesheetId: string;
         EquipmentId: string;
         EquipmentBookingId: string;
@@ -19915,8 +22275,17 @@ export interface components {
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
+        EnvironmentConditionId: string;
+        EnvironmentDocumentId: string;
         CoverId: string;
         CompanyId: string;
+        MonitoringPointId: string;
+        EnvironmentReadingId: string;
+        WasteDocketId: string;
+        CarbonEntryId: string;
+        ToolboxTopicId: string;
+        ToolboxTalkId: string;
+        ToolboxAttendeeId: string;
         IncidentId: string;
         IncidentActionId: string;
         PermitId: string;
@@ -19937,6 +22306,7 @@ export interface components {
         CorrespondenceTypeId: string;
         SiteCaptureId: string;
         CoordinationIssueId: string;
+        AnnouncementId: string;
         ConversationId: string;
         CorrespondenceId: string;
         RfiId: string;
@@ -20974,6 +23344,328 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAssetList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAsset"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePlantAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlantAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAsset"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantAllocations: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                assetId?: string;
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantAllocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantAllocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelPlantAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                allocationId: components["parameters"]["PlantAllocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAllocation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantMaintenancePlans: {
+        parameters: {
+            query?: {
+                assetId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlanList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantMaintenancePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completePlantMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                planId: components["parameters"]["PlantPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompletePlantMaintenanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenancePlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantMaintenanceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantMaintenanceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPlantUtilisation: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantUtilisation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantFlags: {
+        parameters: {
+            query?: {
+                idleDays?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantFlagList"];
+                };
             };
             default: components["responses"]["Problem"];
         };
@@ -23627,6 +26319,42 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    askNovaForHelp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question?: string;
+                    /** @description The screen they were on */
+                    area?: string;
+                    error?: {
+                        status?: number | null;
+                        code?: string | null;
+                        message: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The explanation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHelp"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     submitAiFeedback: {
         parameters: {
             query?: never;
@@ -25164,6 +27892,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSustainabilityPortfolio: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sustainability portfolio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SustainabilityPortfolio"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -28294,6 +31047,182 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listAnnouncements: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+                /** @description Only announcements the caller has not read */
+                unread?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    markAnnouncementRead: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    nudgeAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                announcementId: components["parameters"]["AnnouncementId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementNudgeResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftAnnouncementWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    notes: string;
+                    /** @description Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits. */
+                    audience?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listCorrespondence: {
         parameters: {
             query?: {
@@ -28416,6 +31345,85 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getCorrespondenceAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setCorrespondenceAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCorrespondenceAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceHistory"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     sendCorrespondence: {
         parameters: {
             query?: never;
@@ -28470,6 +31478,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceEmails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceEmailList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    emailCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceEmailList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -30775,6 +33837,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    checkWorkerClearance: {
+        parameters: {
+            query: {
+                /** @description The badge QR text (`archova:badge:wkr_...`) or the worker id. */
+                code: string;
+                /** @description Check against this site's induction. Defaults to the project's first active site. */
+                siteId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerClearance"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -33256,6 +36347,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    deleteInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     updateInspection: {
         parameters: {
             query?: never;
@@ -33284,6 +36401,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reopenInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionHistoryList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -33707,6 +36882,856 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getEnvironmentSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlanResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentConditions: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["EnvironmentConditionStatus"];
+                category?: components["schemas"]["EnvironmentConditionCategory"];
+                source?: components["schemas"]["EnvironmentConditionSource"];
+                overdue?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentConditionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    applyEnvironmentStarterPack: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentStarterPackResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentConditionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentConditionTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentDocuments: {
+        parameters: {
+            query?: {
+                docType?: components["schemas"]["EnvironmentDocumentType"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWasteDockets: {
+        parameters: {
+            query?: {
+                wasteType?: components["schemas"]["WasteType"];
+                destination?: components["schemas"]["WasteDestination"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteDocketPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWasteDocket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWasteDocketRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteDocket"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWasteSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WasteSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWasteDocket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                wasteDocketId: components["parameters"]["WasteDocketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCarbonEntries: {
+        parameters: {
+            query?: {
+                source?: components["schemas"]["CarbonSource"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonEntryPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCarbonEntry: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCarbonEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonEntry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCarbonSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarbonSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteCarbonEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                carbonEntryId: components["parameters"]["CarbonEntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMonitoringPoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPointList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMonitoringPoint: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMonitoringPointRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPoint"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMonitoringPoint: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMonitoringPointRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPoint"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPointReadings: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["MonitoringReadingStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReadingPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logReading: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogReadingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReading"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentReadings: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["MonitoringReadingStatus"];
+                /** @description true: breaches not yet answered. */
+                open?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReadingPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                readingId: components["parameters"]["EnvironmentReadingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondToReadingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespondToReadingResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listIncidents: {
         parameters: {
             query?: {
@@ -33921,6 +37946,425 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentAction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listToolboxTopics: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopicList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createToolboxTopic: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateToolboxTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopic"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateToolboxTopic: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                topicId: components["parameters"]["ToolboxTopicId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolboxTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTopic"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listToolboxTalks: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ToolboxTalkStatus"];
+                topicId?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createToolboxTalk: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateToolboxTalkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestToolboxTopics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxSuggestionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getToolboxTalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolboxTalkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionToolboxTalk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToolboxTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addToolboxAttendees: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddToolboxAttendeesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeToolboxAttendee: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signToolboxAttendee: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignToolboxAttendeeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearToolboxSignature: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                talkId: components["parameters"]["ToolboxTalkId"];
+                attendeeId: components["parameters"]["ToolboxAttendeeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolboxTalkDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -35985,6 +40429,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTmTicketChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketChecks"];
                 };
             };
             default: components["responses"]["Problem"];

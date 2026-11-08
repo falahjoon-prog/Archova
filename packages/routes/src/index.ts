@@ -22,6 +22,7 @@ export const webRoutes = {
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
+  plant: (orgSlug: string) => `/${enc(orgSlug)}/plant`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,
@@ -71,6 +72,7 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  announcements: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/announcements`,
   conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
@@ -115,6 +117,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
     `${p(orgSlug, projectId)}/incidents${incidentId ? `?id=${enc(incidentId)}` : ''}`,
+  toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
+    `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
@@ -128,6 +132,7 @@ export const webRoutes = {
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
+  environment: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/environment`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/workers`,
@@ -141,6 +146,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/timesheets`,
   attendanceCheckIn: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/check-in`,
+  attendanceClearance: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/clearance`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>

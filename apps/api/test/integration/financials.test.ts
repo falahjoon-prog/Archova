@@ -1904,8 +1904,14 @@ describe('T&M tickets', () => {
     const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
       role: 'contractor',
       signerName: 'Pat Manager',
+      fix: { lat: -33.87, lng: 151.21, accuracyM: 12 },
     });
     expect(sign1.json()).toMatchObject({ status: 'part_signed' });
+    // No fence is set on this project, so even with a position the status is unknown, not inside.
+    expect(sign1.json().signoffs[0]).toMatchObject({
+      geofenceStatus: 'unknown',
+      hasPosition: true,
+    });
     expect(sign1.json().signoffs[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
     expect((await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, body)).json().code).toBe(
       'financials.tm_ticket.bad_state',
@@ -1939,6 +1945,14 @@ describe('T&M tickets', () => {
         })
       ).statusCode,
     ).toBe(403);
+
+    // Nova's checks: no diary entry for the day, and the hand-typed lines are not tied to timesheets.
+    const chk = (await get(`tm-tickets/${t1.id}/checks`))
+      .json()
+      .findings.map((f: { code: string }) => f.code);
+    expect(chk).toContain('no_diary_entry');
+    expect(chk).toContain('labour_not_from_timesheet');
+    expect((await s.sub.browser.get(`${s.base}/tm-tickets/${t1.id}/checks`)).statusCode).toBe(403);
 
     // The database itself refuses to change a signed ticket, its lines or its sign-offs, whatever the app does.
     const ctx: TenantContext = {

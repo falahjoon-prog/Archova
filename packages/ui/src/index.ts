@@ -39,12 +39,16 @@ export {
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
 export {
   DonutChart,
+  FlowBars,
   GroupedBars,
+  SegmentBar,
   SiteMap,
   ToneBars,
   type BarGroup,
+  type BarSegment,
   type BarSeries,
   type DonutSlice,
+  type FlowRow,
   type MapPoint,
   type TonedBar,
 } from './patterns/Charts';

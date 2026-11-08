@@ -16,6 +16,7 @@ import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
 import { inviteeReminders } from './jobs/invitee-reminders';
 import { trustReminders } from './jobs/trust-reminders';
+import { correspondenceEmails } from './jobs/correspondence-emails';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
 import { permitNotices } from './jobs/permit-notices';
@@ -123,6 +124,7 @@ async function main() {
     permitNotices,
     coverNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
+    correspondenceEmails(emailSender, config.email.appBaseUrl),
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
     walletRetention(),

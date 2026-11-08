@@ -2,6 +2,7 @@ import {
   boolean,
   customType,
   date,
+  doublePrecision,
   integer,
   jsonb,
   numeric,
@@ -497,6 +498,13 @@ export const tmTicketSignoffs = financialsSchema.table('tm_ticket_signoffs', {
   evidenceFileId: uuid('evidence_file_id'),
   ip: text('ip'),
   userAgent: text('user_agent'),
+  lat: doublePrecision('lat'),
+  lng: doublePrecision('lng'),
+  accuracyM: integer('accuracy_m'),
+  geofenceStatus: text('geofence_status')
+    .$type<'inside' | 'outside' | 'uncertain' | 'unknown'>()
+    .notNull()
+    .default('unknown'),
   signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -32,10 +32,12 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: announcements
   - name: bim
   - name: defects
   - name: financials
   - name: quality
+  - name: environment
   - name: precon
   - name: insurance
   - name: safety
@@ -51,6 +53,7 @@ tags:
   - name: notifications
   - name: bookmarks
   - name: recents
+  - name: plant
   - name: reporting
   - name: search
   - name: data-export
@@ -801,6 +804,278 @@ paths:
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantAssets
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: The organisation's fleet of plant and equipment.
+      description: Daily rates are returned only to those who may manage the register; for everyone else `dailyRateCents` is null.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAssetList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPlantAsset
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Add a machine to the fleet register.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantAssetRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAsset' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    patch:
+      operationId: updatePlantAsset
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Change a machine's details, rate or status (active, in the workshop, retired).
+      description: A machine with allocations still to come can't be retired.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePlantAssetRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAsset' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/allocations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantAllocations
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Where machines are allocated, in date order.
+      description: Filter to allocations that touch `[from, to]`, one machine or one project. Up to 1000 are returned.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/allocations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantAllocation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.allocations.manage
+      summary: Allocate a machine to a project for a date range.
+      description: Refused with `plant.allocation_conflict` when the machine is already allocated on any day in the range, and with `plant.bad_state` when it is in the workshop or retired.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantAllocationRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/allocations/{allocationId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAllocationId'
+    post:
+      operationId: cancelPlantAllocation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.allocations.manage
+      summary: Cancel an allocation, freeing the machine for those days.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/maintenance-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantMaintenancePlans
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Service, inspection and certification schedules, soonest due first.
+      parameters:
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlanList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantMaintenancePlan
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Schedule a service, inspection or certificate for a machine.
+      description: With `intervalDays` the plan recurs, and finishing it sets the next due date; without it the plan is a one-off (for example a crane certificate).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantMaintenancePlanRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantPlanId'
+    post:
+      operationId: completePlantMaintenancePlan
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Record that a service, inspection or certificate was done.
+      description: A recurring plan's next due date becomes the done date plus its interval. A one-off plan is finished.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePlantMaintenanceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-records:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    get:
+      operationId: listPlantMaintenanceRecords
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: What has been done to a machine, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenanceRecordList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/utilisation:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPlantUtilisation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: How much of a date range each machine, and the fleet, is allocated.
+      description: |
+        Counts days covered by at least one active allocation. Retired machines are left out. Cost figures
+        (`costCents`, `idleCostCents`) are each machine's daily rate times booked or idle days, and are null without a
+        rate or without permission to see rates. `projects` shows allocated days and cost per project.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantUtilisation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantFlags
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: What Nova flags about the fleet (rule-based, no model).
+      description: |
+        Overdue or soon-due maintenance, expired or expiring certificates, a machine booked twice, a machine allocated
+        while in the workshop, a service that falls inside a booking, and machines idle for `idleDays` (default 14).
+        Most urgent first.
+      parameters:
+        - name: idleDays
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 365 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantFlagList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -2784,6 +3059,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiUsage' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/help:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: askNovaForHelp
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.help.use
+      summary: Ask Nova where to find something in Archova, or what an error means and what to do about it.
+      description: |
+        Sends the person's question and, for an error, only its HTTP status, code and message, plus the name of the
+        screen they are on. No project records are read and nothing is stored beyond the usual run accounting. The
+        answer is a few plain sentences and steps, and up to three tools from a fixed list to open next; it never
+        contains links. Counts against the Ask Nova feature switch and credits (a fraction of one credit), and each
+        person's request rate limit. Processed in Australia like every Nova task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                question: { type: string, minLength: 1, maxLength: 500 }
+                area:
+                  { type: string, maxLength: 60, description: The screen they were on, e.g. RFIs }
+                error:
+                  type: object
+                  additionalProperties: false
+                  required: [message]
+                  properties:
+                    status: { type: [integer, 'null'], minimum: 100, maximum: 599 }
+                    code: { type: [string, 'null'], maxLength: 80 }
+                    message: { type: string, maxLength: 400 }
+      responses:
+        '200':
+          description: The explanation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaHelp' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/runs/{runId}/feedback:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4542,6 +4858,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/portfolio/sustainability:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSustainabilityPortfolio
+      tags: [reporting]
+      x-module: reporting
+      x-permission: reporting.portfolio.read
+      summary: Sustainability across projects, with company totals and Nova's flags.
+      description: |
+        One row per project the caller can see: open monitoring breaches, permit conditions non-compliant or overdue,
+        waste diverted from landfill (and whether it is trending down), and emissions against the 30 days before.
+        A project where the caller cannot read the environmental tools is `restricted` and counts nothing, and is left
+        out of the company totals. `flags` are rule-based checks across projects, most serious first (no model cost).
+        Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The sustainability portfolio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SustainabilityPortfolio' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/search:
     parameters:
@@ -7032,6 +7377,173 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Announcements sent to the caller (or by them), newest first, with the caller's unread count.
+      description: |
+        Everyone on the project sees the announcements sent to them and the ones they sent. Project managers
+        (`announcements.announcements.manage`) see every announcement. `receipts` (how many have read it) is only
+        returned to the sender and managers.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - {
+            name: unread,
+            in: query,
+            description: 'Only announcements the caller has not read',
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Post an announcement to everyone on the project or a chosen group.
+      description: |
+        The audience is fixed when the announcement is posted: `all` is everyone active on the project (including
+        subcontractors and other outside members), `group` is the named companies and people. The sender is never a
+        recipient. Every recipient gets an inbox notification. `keyUserIds` (among the recipients) are the people who must
+        read it; with `readByHours`, Nova flags those who haven't by then and the sender confirms any reminder.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAnnouncementRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    get:
+      operationId: getAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: One announcement. The sender and managers also get the read receipts and Nova's overdue flags.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/read:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: markAnnouncementRead
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.read
+      summary: Mark the caller's copy as read. The first read time is kept.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/announcements/{announcementId}/nudges:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/AnnouncementId'
+    post:
+      operationId: nudgeAnnouncement
+      tags: [announcements]
+      x-module: announcements
+      x-permission: announcements.announcements.create
+      summary: Remind people who haven't read it yet. The sender (or a manager) chooses who; nothing is sent automatically.
+      description: |
+        Only people the announcement was sent to, and only those who still haven't read it. Anyone reminded in the last
+        four hours is skipped (`skipped`), so a repeat request does not ping them twice. Only the sender or a manager
+        (`announcements.announcements.manage`) may send reminders.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userIds]
+              properties:
+                userIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementNudgeResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/announcement-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftAnnouncementWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: announcements.announcements.create
+      summary: Nova drafts an announcement from rough notes or pasted context (for example a schedule change).
+      description: |
+        Nova turns what the person pasted or typed into a short, plain-English title and body for the project team.
+        Code checks the draft against the notes: any date, time, amount or number the notes don't contain is removed
+        and listed in `notes`, so Nova can't invent facts. Nothing is posted: the person edits the draft and posts it
+        themselves. Costs half a Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [notes]
+              properties:
+                notes: { type: string, minLength: 1, maxLength: 4000 }
+                audience:
+                  description: Who it is for in the person's words (for example "all trades" or "concreters"), so the tone fits.
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7129,6 +7641,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: getCorrespondenceAccess
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Whether the item is private and who is listed to open it. Author and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setCorrespondenceAccess
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Make the item private or not, and replace the list of people who may open it.
+      description: |
+        Author and admins only, at any stage except void. A private item is seen only by its author, admins and the
+        people listed here, and only once it has been sent. Listed people must be on the project. The change is
+        recorded in the item's history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCorrespondenceAccessRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/history:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: listCorrespondenceHistory
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: Who did what to the item and when, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceHistory' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7175,6 +7745,42 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: listCorrespondenceEmails
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: The emails sent about the item and whether they went out.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceEmailList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: emailCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.send
+      summary: Email a sent item to people on the project who can open it. The email names the item and carries the note and a link, not the item's text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailCorrespondenceRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceEmailList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close:
     parameters:
@@ -9065,6 +9671,38 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SignInResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/clearance:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: checkWorkerClearance
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Is this worker cleared to be on site today? One answer from their Safety ID.'
+      description: |
+        Scan a worker's Safety ID badge (or type the worker id) and get one pass, warning or blocked answer built from
+        what is already recorded: the worker record, white card and licence expiry, the site induction for this
+        project, and the SWMS their company works under. Read only: it does not sign anyone in or out. `flag` is the
+        rule-based line for the gate or supervisor (no model call). Subcontractors reach their own company's workers only.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: The badge QR text (`archova:badge:wkr_...`) or the worker id.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: siteId
+          in: query
+          description: Check against this site's induction. Defaults to the project's first active site.
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerClearance' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/me/badge:
     parameters:
@@ -11218,6 +11856,62 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InspectionDetail' }
         default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.close
+      summary: Delete an inspection. It is hidden everywhere; the change history keeps a record.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: reopenInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Reopen a submitted or closed inspection with a reason (closing needs the close permission to reopen).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReopenInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/history:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    get:
+      operationId: listInspectionHistory
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: The change history of an inspection, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionHistoryList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11544,6 +12238,647 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Observation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEnvironmentSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'The environmental register at a glance: condition counts by status and category, document expiry, plan state, and the rule-based flags Nova raises (no model, no credit cost).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/plan:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.read
+      summary: "The project's Environmental Management Plan, or null before one is set up."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlanResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.manage
+      summary: "Set up the project's EMP (one per project). It starts as a draft."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentPlanRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.manage
+      summary: 'Edit the EMP header.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/plan/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: approveEnvironmentPlan
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.plan.approve
+      summary: 'Approve the EMP: it becomes active and the next review is set one review interval out.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentConditions
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'The compliance-condition register in number order.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionStatus' },
+          }
+        - {
+            name: category,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionCategory' },
+          }
+        - {
+            name: source,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentConditionSource' },
+          }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Add a compliance condition. It is numbered EMC-0001 per project.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentConditionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/starter-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: applyEnvironmentStarterPack
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Load the standard Australian construction conditions (dust, noise, sediment, discharge, waste, heritage and more). Conditions already in the register are skipped, so applying it twice adds nothing.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentStarterPackResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentConditionId'
+    get:
+      operationId: getEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: 'One condition with its sign-off trail.'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.manage
+      summary: 'Edit a condition.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentConditionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentConditionId'
+    post:
+      operationId: transitionEnvironmentCondition
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.conditions.read
+      summary: "start and flagNonCompliant (site team), signOff, markNotApplicable and reopen (the person accountable for compliance). Sign-off needs evidence or a note; flagging, exemption and reopening need a note. The server checks the caller's level for the action."
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnvironmentConditionTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentConditionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/documents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentDocuments
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.read
+      summary: 'Permits, licences, plans and audit reports with their expiry state.'
+      parameters:
+        - {
+            name: docType,
+            in: query,
+            schema: { $ref: '#/components/schemas/EnvironmentDocumentType' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocumentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Register an environmental document against an uploaded file.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEnvironmentDocumentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentDocumentId'
+    patch:
+      operationId: updateEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Edit a document, for example a renewed expiry date or a new file.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEnvironmentDocumentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvironmentDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEnvironmentDocument
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.documents.manage
+      summary: 'Remove a document from the register.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWasteDockets
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.read
+      summary: 'Waste dockets, newest first.'
+      parameters:
+        - { name: wasteType, in: query, schema: { $ref: '#/components/schemas/WasteType' } }
+        - {
+            name: destination,
+            in: query,
+            schema: { $ref: '#/components/schemas/WasteDestination' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteDocketPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWasteDocket
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.log
+      summary: 'Record a waste docket: how many tonnes of what left site, and whether it was recycled, reused, landfilled or treated.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWasteDocketRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteDocket' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getWasteSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.read
+      summary: 'Tonnes by type and destination, the diversion rate against the target, a six-month trend, and the last 30 days against the 30 before.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WasteSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/waste/{wasteDocketId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/WasteDocketId'
+    delete:
+      operationId: deleteWasteDocket
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.waste.delete
+      summary: 'Remove a docket entered by mistake.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCarbonEntries
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.read
+      summary: 'Carbon entries (fuel, electricity, materials), newest first.'
+      parameters:
+        - { name: source, in: query, schema: { $ref: '#/components/schemas/CarbonSource' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonEntryPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCarbonEntry
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.log
+      summary: "Log an activity (litres of diesel, kWh, m3 of concrete...). It is converted to kg CO2-e with the source's default factor, or the factor given, which is kept on the entry."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCarbonEntryRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getCarbonSummary
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.read
+      summary: 'Total kg CO2-e by scope and source, a six-month trend, and the last 30 days against the 30 before.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CarbonSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/carbon/{carbonEntryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CarbonEntryId'
+    delete:
+      operationId: deleteCarbonEntry
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.carbon.delete
+      summary: 'Remove an entry logged by mistake.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listMonitoringPoints
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Monitoring points with their latest reading, recent values for a sparkline, open breaches, and whether a reading is overdue or rising towards the limit.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPointList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createMonitoringPoint
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.manage
+      summary: 'Add a monitoring point (a place and parameter with its limits). A point can be linked to an EMP condition, which a breach then flags non-compliant.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMonitoringPointRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPoint' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/MonitoringPointId'
+    patch:
+      operationId: updateMonitoringPoint
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.manage
+      summary: "Change a point's limits, frequency or linked condition, or switch it off."
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMonitoringPointRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPoint' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/MonitoringPointId'
+    get:
+      operationId: listPointReadings
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Readings at a point, newest first.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/MonitoringReadingStatus' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReadingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logReading
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.log
+      summary: "Log a reading. Its status (ok, warning, breach) is fixed against the point's limits; a breach flags the linked condition non-compliant. Readings are not edited afterwards."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogReadingRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReading' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentReadings
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Recent readings across the project, newest first. Use status=breach and open=true for the breach register.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/MonitoringReadingStatus' },
+          }
+        - {
+            name: open,
+            in: query,
+            schema: { type: string, enum: ['true', 'false'] },
+            description: 'true: breaches not yet answered.',
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReadingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentReadingId'
+    post:
+      operationId: respondToReading
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.respond
+      summary: 'Answer a breach with a corrective-action note, and optionally report it as an environmental incident in the incident register. A breach is answered once.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondToReadingRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RespondToReadingResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incidents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11712,6 +13047,310 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentAction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-topics:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listToolboxTopics
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: The project's toolbox topic library with when each was last run. Inactive topics only with includeInactive.
+      parameters:
+        - { name: includeInactive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopicList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createToolboxTopic
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.manage
+      summary: Add a topic to the library.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateToolboxTopicRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopic' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-topics/{topicId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTopicId'
+    patch:
+      operationId: updateToolboxTopic
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.manage
+      summary: Edit a topic or retire it (isActive false). Past talks keep their topic.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateToolboxTopicRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTopic' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listToolboxTalks
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: Toolbox talks, newest first. People who are not builder staff see the talks they started and the ones their company attended.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ToolboxTalkStatus' } }
+        - { name: topicId, in: query, schema: { type: string, pattern: '^tbp_[0-9A-Za-z]{26}$' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Record a talk that was held. It is numbered TBT-0001 per project. The attendance rows can be added now or on the grid.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateToolboxTalkRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestToolboxTopics
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: Nova suggests what to talk about next, from rules over this project (recent incidents, SWMS in force, topics not run lately). No model is called and nothing is created. Empty for people who are not builder staff.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxSuggestionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    get:
+      operationId: getToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.read
+      summary: A talk with its attendance grid. Each signed row says if its signature image repeats (a flag for a person to look at, never a block).
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Change the details of an open talk.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateToolboxTalkRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Delete an open talk that nobody has signed.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    post:
+      operationId: transitionToolboxTalk
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Close the talk (needs everyone on the grid signed or removed) or reopen it (needs the manage permission).
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ToolboxTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+    post:
+      operationId: addToolboxAttendees
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Add people to the attendance grid of an open talk.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddToolboxAttendeesRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+      - $ref: '#/components/parameters/ToolboxAttendeeId'
+    delete:
+      operationId: removeToolboxAttendee
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Remove an unsigned row from the grid.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ToolboxTalkId'
+      - $ref: '#/components/parameters/ToolboxAttendeeId'
+    put:
+      operationId: signToolboxAttendee
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Sign one row with a signature drawn on the device and uploaded as an image to this project.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignToolboxAttendeeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: clearToolboxSignature
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.toolbox.run
+      summary: Clear one row's signature so it can be signed again.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
     parameters:
@@ -13293,6 +14932,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TmTicketDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    get:
+      operationId: getTmTicketChecks
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.read
+      summary: Nova's checks on a ticket, from the site diary, timesheets, equipment logs and where it was signed. Advice only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketChecks' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14741,6 +16398,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iti_[0-9A-Za-z]{26}$' }
+    PlantAssetId:
+      name: assetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+    PlantAllocationId:
+      name: allocationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+    PlantPlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
     TimesheetId:
       name: timesheetId
       in: path
@@ -14781,6 +16453,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    EnvironmentConditionId:
+      name: conditionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ecn_[0-9A-Za-z]{26}$' }
+    EnvironmentDocumentId:
+      name: environmentDocumentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^edc_[0-9A-Za-z]{26}$' }
     CoverId:
       name: coverId
       in: path
@@ -14791,6 +16473,41 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    MonitoringPointId:
+      name: pointId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^mpt_[0-9A-Za-z]{26}$' }
+    EnvironmentReadingId:
+      name: readingId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^erd_[0-9A-Za-z]{26}$' }
+    WasteDocketId:
+      name: wasteDocketId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wdk_[0-9A-Za-z]{26}$' }
+    CarbonEntryId:
+      name: carbonEntryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cbe_[0-9A-Za-z]{26}$' }
+    ToolboxTopicId:
+      name: topicId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tbp_[0-9A-Za-z]{26}$' }
+    ToolboxTalkId:
+      name: talkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tbt_[0-9A-Za-z]{26}$' }
+    ToolboxAttendeeId:
+      name: attendeeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tba_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -14891,6 +16608,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    AnnouncementId:
+      name: announcementId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ann_[0-9A-Za-z]{26}$' }
     ConversationId:
       name: conversationId
       in: path
@@ -15304,7 +17026,7 @@ components:
         targetId: { type: string }
     PortfolioTool:
       type: object
-      required: [restricted, open, overdue]
+      required: [restricted, open, overdue, dueSoon]
       properties:
         restricted:
           {
@@ -15313,6 +17035,40 @@ components:
           }
         open: { type: integer }
         overdue: { type: integer }
+        dueSoon:
+          {
+            type: integer,
+            description: 'Open and due from today through the next 7 days in the project zone. Open items with no due date are in neither this nor overdue.',
+          }
+    PortfolioIncidents:
+      allOf:
+        - $ref: '#/components/schemas/PortfolioTool'
+        - type: object
+          required: [lastInjuryOn, lastIncidentOn, daysSinceInjury, daysSinceIncident, last12Months]
+          properties:
+            lastInjuryOn:
+              type: [string, 'null']
+              format: date
+              description: 'Project-local date of the latest injury; null when none is recorded or the caller cannot read incidents.'
+            lastIncidentOn:
+              type: [string, 'null']
+              format: date
+              description: 'Latest incident of any type except a near miss, same rule.'
+            daysSinceInjury:
+              {
+                type: [integer, 'null'],
+                description: 'Whole days from the latest injury to today in the project zone; null when none is recorded.',
+              }
+            daysSinceIncident:
+              {
+                type: [integer, 'null'],
+                description: 'Same for the latest incident other than a near miss.',
+              }
+            last12Months:
+              {
+                type: integer,
+                description: 'Incidents of any type, near misses included, in the last 12 months.',
+              }
     PortfolioProgramme:
       allOf:
         - $ref: '#/components/schemas/PortfolioTool'
@@ -15328,7 +17084,8 @@ components:
               }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
+      required:
+        [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes, monthly]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -15350,6 +17107,22 @@ components:
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
+        monthly:
+          type: array
+          description: >-
+            Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow
+            chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend.
+          items:
+            type: object
+            required: [month, spent]
+            properties:
+              month:
+                {
+                  type: string,
+                  pattern: '^\d{4}-(0[1-9]|1[0-2])$',
+                  description: 'Calendar month, YYYY-MM.',
+                }
+              spent: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     PortfolioProject:
       type: object
       required:
@@ -15359,8 +17132,11 @@ components:
           number,
           status,
           phase,
+          state,
           siteLocation,
           rfis,
+          observations,
+          inspections,
           defects,
           submittals,
           claims,
@@ -15376,7 +17152,22 @@ components:
         number: { type: [string, 'null'] }
         status: { type: string }
         phase: { oneOf: [{ $ref: '#/components/schemas/ProjectPhase' }, { type: 'null' }] }
+        state:
+          {
+            oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }],
+            description: 'The state the site is in, for grouping by region.',
+          }
         siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
+        observations:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Open observations the caller can see; overdue means past the due date.',
+          }
+        inspections:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Inspections not yet closed, builder staff only; overdue means past the due date.',
+          }
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
@@ -15392,7 +17183,7 @@ components:
           }
         incidents:
           {
-            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            allOf: [{ $ref: '#/components/schemas/PortfolioIncidents' }],
             description: 'Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded.',
           }
         programme:
@@ -15572,6 +17363,145 @@ components:
             type: boolean,
             description: 'True when more than 200 projects matched and the rest were left out.',
           }
+    ProjectSustainability:
+      type: object
+      required: [restricted, hasPlan, conditions, documentsLapsing, monitoring, waste, carbon]
+      properties:
+        restricted: { type: boolean }
+        hasPlan: { type: boolean }
+        conditions:
+          type: object
+          required: [nonCompliant, overdue, compliancePercent]
+          properties:
+            nonCompliant: { type: integer }
+            overdue: { type: integer }
+            compliancePercent: { type: [integer, 'null'] }
+        documentsLapsing: { type: integer }
+        monitoring:
+          type: object
+          required: [points, openBreaches, overdue]
+          properties:
+            points: { type: integer }
+            openBreaches: { type: integer }
+            overdue: { type: integer }
+        waste:
+          type: object
+          required:
+            [
+              totalTonnes,
+              divertedTonnes,
+              landfillTonnes,
+              diversionPercent,
+              last30Tonnes,
+              last30DivertedTonnes,
+              last30DiversionPercent,
+              previous30Tonnes,
+              previous30DivertedTonnes,
+              previous30DiversionPercent,
+              regulatedWithoutDocket,
+            ]
+          properties:
+            totalTonnes: { type: number }
+            divertedTonnes: { type: number }
+            landfillTonnes: { type: number }
+            diversionPercent: { type: [integer, 'null'] }
+            last30Tonnes: { type: number }
+            last30DivertedTonnes: { type: number }
+            last30DiversionPercent: { type: [integer, 'null'] }
+            previous30Tonnes: { type: number }
+            previous30DivertedTonnes: { type: number }
+            previous30DiversionPercent: { type: [integer, 'null'] }
+            regulatedWithoutDocket: { type: integer }
+        carbon:
+          type: object
+          required: [totalKg, last30Kg, previous30Kg, changePercent]
+          properties:
+            totalKg: { type: number }
+            last30Kg: { type: number }
+            previous30Kg: { type: number }
+            changePercent: { type: [integer, 'null'] }
+    SustainabilityProject:
+      allOf:
+        - $ref: '#/components/schemas/ProjectSustainability'
+        - type: object
+          required: [id, name, number, status, phase, state, attention]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            number: { type: [string, 'null'] }
+            status: { type: string }
+            phase: { type: [string, 'null'] }
+            state: { type: [string, 'null'] }
+            attention:
+              { type: integer, description: 'What needs chasing on the project; orders the list.' }
+    SustainabilityFlag:
+      type: object
+      required: [code, severity, projectId, projectName, message]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              breach_open,
+              conditions_non_compliant,
+              docket_missing,
+              diversion_falling,
+              diversion_low,
+              carbon_rising,
+              plan_missing,
+            ]
+        severity: { type: string, enum: [info, warning, critical] }
+        projectId: { type: string }
+        projectName: { type: string }
+        message: { type: string }
+    SustainabilityTotals:
+      type: object
+      required:
+        [
+          projectsCovered,
+          projectsRestricted,
+          projectsWithoutPlan,
+          openBreaches,
+          nonCompliantConditions,
+          overdueConditions,
+          documentsLapsing,
+          wasteTonnes,
+          landfillTonnes,
+          diversionPercent,
+          last30DiversionPercent,
+          previous30DiversionPercent,
+          carbonKg,
+          carbonLast30Kg,
+          carbonPrevious30Kg,
+          carbonChangePercent,
+        ]
+      properties:
+        projectsCovered: { type: integer }
+        projectsRestricted: { type: integer }
+        projectsWithoutPlan: { type: integer }
+        openBreaches: { type: integer }
+        nonCompliantConditions: { type: integer }
+        overdueConditions: { type: integer }
+        documentsLapsing: { type: integer }
+        wasteTonnes: { type: number }
+        landfillTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+        last30DiversionPercent: { type: [integer, 'null'] }
+        previous30DiversionPercent: { type: [integer, 'null'] }
+        carbonKg: { type: number }
+        carbonLast30Kg: { type: number }
+        carbonPrevious30Kg: { type: number }
+        carbonChangePercent: { type: [integer, 'null'] }
+    SustainabilityPortfolio:
+      type: object
+      required: [totals, projects, flags, truncated]
+      properties:
+        totals: { $ref: '#/components/schemas/SustainabilityTotals' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/SustainabilityProject' }
+        flags: { type: array, items: { $ref: '#/components/schemas/SustainabilityFlag' } }
+        truncated: { type: boolean }
     ReadinessPackPdf:
       type: object
       required: [filename, contentType, dataBase64]
@@ -17808,6 +19738,7 @@ components:
                 incident,
                 compliance_document,
                 conversation,
+                announcement,
                 permit,
                 cover,
               ],
@@ -17885,6 +19816,243 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/Bookmark' }
+    PlantAssetCategory:
+      type: string
+      enum:
+        [crane, excavator, loader, truck, generator, access_platform, compaction, lighting, other]
+    PlantAssetStatus:
+      type: string
+      enum: [active, maintenance, retired]
+    PlantAsset:
+      type: object
+      required:
+        [
+          id,
+          name,
+          assetNumber,
+          category,
+          ownership,
+          supplier,
+          make,
+          model,
+          serialNumber,
+          dailyRateCents,
+          status,
+          notes,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        assetNumber: { type: string }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: [string, 'null'], description: The hire company, for hired machines. }
+        make: { type: [string, 'null'] }
+        model: { type: [string, 'null'] }
+        serialNumber: { type: [string, 'null'] }
+        dailyRateCents:
+          type: [integer, 'null']
+          description: Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller.
+        status: { $ref: '#/components/schemas/PlantAssetStatus' }
+        notes: { type: [string, 'null'] }
+        version: { type: integer }
+    PlantAssetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantAsset' }
+    CreatePlantAssetRequest:
+      type: object
+      additionalProperties: false
+      required: [name, assetNumber, category, ownership]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: string, minLength: 1, maxLength: 200 }
+        make: { type: string, minLength: 1, maxLength: 100 }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        serialNumber: { type: string, minLength: 1, maxLength: 100 }
+        dailyRateCents: { type: integer, minimum: 0 }
+        notes: { type: string, minLength: 1, maxLength: 2000 }
+    UpdatePlantAssetRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: string, maxLength: 200 }
+        make: { type: string, maxLength: 100 }
+        model: { type: string, maxLength: 100 }
+        serialNumber: { type: string, maxLength: 100 }
+        dailyRateCents: { type: integer, minimum: 0 }
+        notes: { type: string, maxLength: 2000 }
+        status: { $ref: '#/components/schemas/PlantAssetStatus' }
+    PlantAllocation:
+      type: object
+      required:
+        [id, assetId, projectId, costCodeId, startsOn, endsOn, note, status, estimatedCostCents]
+      properties:
+        id: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        note: { type: [string, 'null'] }
+        status: { type: string, enum: [active, cancelled] }
+        estimatedCostCents:
+          type: [integer, 'null']
+          description: Days in the allocation times the machine's daily rate. Null without a rate the caller may see.
+    PlantAllocationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantAllocation' }
+    CreatePlantAllocationRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId, startsOn, endsOn]
+      properties:
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    PlantPlanKind:
+      type: string
+      enum: [service, inspection, certification]
+    PlantMaintenancePlan:
+      type: object
+      required:
+        [id, assetId, title, kind, intervalDays, nextDueOn, lastDoneOn, responsible, active, state]
+      properties:
+        id: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        kind: { $ref: '#/components/schemas/PlantPlanKind' }
+        intervalDays: { type: [integer, 'null'] }
+        nextDueOn: { type: [string, 'null'], format: date }
+        lastDoneOn: { type: [string, 'null'], format: date }
+        responsible: { type: [string, 'null'] }
+        active: { type: boolean }
+        state:
+          type: [string, 'null']
+          enum: [ok, due_soon, overdue, null]
+          description: Null for a finished plan. Due soon is 14 days ahead, or 30 for a certification.
+    PlantMaintenancePlanList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+    CreatePlantMaintenancePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [title, kind, nextDueOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PlantPlanKind' }
+        intervalDays: { type: integer, minimum: 1, maximum: 3660 }
+        nextDueOn: { type: string, format: date }
+        lastDoneOn: { type: string, format: date }
+        responsible: { type: string, minLength: 1, maxLength: 200 }
+    CompletePlantMaintenanceRequest:
+      type: object
+      additionalProperties: false
+      required: [doneOn]
+      properties:
+        doneOn: { type: string, format: date }
+        performedBy: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        costCents: { type: integer, minimum: 0 }
+    PlantMaintenanceRecord:
+      type: object
+      required: [id, planId, assetId, doneOn, performedBy, note, costCents]
+      properties:
+        id: { type: string, pattern: '^prc_[0-9A-Za-z]{26}$' }
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        doneOn: { type: string, format: date }
+        performedBy: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        costCents: { type: [integer, 'null'] }
+    PlantMaintenanceRecordList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantMaintenanceRecord' }
+    PlantUtilisation:
+      type: object
+      required: [from, to, days, fleetPct, assets, projects]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        days: { type: integer }
+        fleetPct: { type: integer, minimum: 0, maximum: 100 }
+        assets:
+          type: array
+          items:
+            type: object
+            required: [assetId, bookedDays, idleDays, pct, costCents, idleCostCents]
+            properties:
+              assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+              bookedDays: { type: integer }
+              idleDays: { type: integer }
+              pct: { type: integer, minimum: 0, maximum: 100 }
+              costCents: { type: [integer, 'null'] }
+              idleCostCents: { type: [integer, 'null'] }
+        projects:
+          type: array
+          items:
+            type: object
+            required: [projectId, bookedDays, costCents]
+            properties:
+              projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+              bookedDays: { type: integer }
+              costCents: { type: [integer, 'null'] }
+    PlantFlag:
+      type: object
+      required: [code, severity, assetId, subjectId, message, date]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              maintenance_overdue,
+              maintenance_due_soon,
+              certification_expired,
+              certification_expiring,
+              double_booking,
+              booked_while_unavailable,
+              service_during_booking,
+              idle,
+            ]
+        severity: { type: string, enum: [critical, warning, info] }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        subjectId:
+          type: [string, 'null']
+          description: The maintenance plan or allocation the flag is about, when there is one.
+        message: { type: string }
+        date: { type: [string, 'null'], format: date }
+    PlantFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantFlag' }
     FeatureFlags:
       type: object
       required: [orgId, flags]
@@ -18159,6 +20327,17 @@ components:
             snippet:
               type: string
               description: The start of the passage, or the stretch around the first query word it contains.
+    NovaHelp:
+      type: object
+      required: [runId, answer, steps, tools]
+      properties:
+        runId: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+        answer: { type: string }
+        steps: { type: array, items: { type: string } }
+        tools:
+          description: Tools to open next, by the label the menus use.
+          type: array
+          items: { type: string }
     NovaAnswer:
       type: object
       required: [runId, found, answer, citations, closestMatches]
@@ -20947,6 +23126,7 @@ components:
           timeBarDays,
           subjectTemplate,
           bodyTemplate,
+          fields,
           archived,
           version,
         ]
@@ -20967,8 +23147,34 @@ components:
             type: string,
             description: 'Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}}',
           }
+        fields:
+          type: array
+          maxItems: 12
+          description: Extra details items of this type ask for, in order
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
         archived: { type: boolean }
         version: { type: integer }
+    CorrespondenceFieldDefinition:
+      type: object
+      additionalProperties: false
+      required: [key, label, kind, required]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z][a-zA-Z0-9]{0,29}$'
+          description: Stable name the value is stored under
+        label: { type: string, minLength: 1, maxLength: 60 }
+        kind: { type: string, enum: [text, date, number, yesNo] }
+        required: { type: boolean, description: Must be filled before the item is sent }
+    CorrespondenceFieldValues:
+      type: object
+      description: Values by field key. A date is YYYY-MM-DD; null clears a value.
+      additionalProperties:
+        oneOf:
+          - { type: string, maxLength: 1000 }
+          - { type: number }
+          - { type: boolean }
+          - { type: 'null' }
     CorrespondenceTypeList:
       type: object
       required: [data]
@@ -20990,6 +23196,10 @@ components:
         timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
         subjectTemplate: { type: string, maxLength: 300 }
         bodyTemplate: { type: string, maxLength: 20000 }
+        fields:
+          type: array
+          maxItems: 12
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
     UpdateCorrespondenceTypeRequest:
       type: object
       additionalProperties: false
@@ -21004,6 +23214,10 @@ components:
         timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
         subjectTemplate: { type: string, maxLength: 300 }
         bodyTemplate: { type: string, maxLength: 20000 }
+        fields:
+          type: array
+          maxItems: 12
+          items: { $ref: '#/components/schemas/CorrespondenceFieldDefinition' }
         archived: { type: boolean }
     CorrespondenceRelated:
       type: object
@@ -21038,6 +23252,8 @@ components:
           sentInTime,
           fileIds,
           related,
+          isPrivate,
+          fieldValues,
           sentAt,
           sentBy,
           contentHash,
@@ -21085,6 +23301,10 @@ components:
         related:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate:
+          type: boolean
+          description: Seen only by the author, admins and the people listed on the item
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
         sentAt: { type: [string, 'null'], format: date-time }
         sentBy: { type: [string, 'null'] }
         contentHash:
@@ -21095,6 +23315,35 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    CorrespondenceEmail:
+      type: object
+      required: [id, senderId, recipientUserId, message, status, createdAt, sentAt]
+      properties:
+        id: { type: string }
+        senderId: { type: string }
+        recipientUserId: { type: string }
+        message: { type: string }
+        status: { type: string, enum: [queued, sending, sent, failed] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+    CorrespondenceEmailList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceEmail' }
+    EmailCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        message: { type: string, maxLength: 1000 }
     CorrespondenceResponse:
       type: object
       required: [id, authorId, authorCompanyId, body, fileIds, sentAt]
@@ -21109,8 +23358,11 @@ components:
         sentAt: { type: string, format: date-time }
     CorrespondenceDetail:
       type: object
-      required: [item, responses]
+      required: [item, responses, canManageAccess]
       properties:
+        canManageAccess:
+          type: boolean
+          description: The caller can change the private flag and the list (author or admin)
         item: { $ref: '#/components/schemas/CorrespondenceItem' }
         responses:
           type: array
@@ -21195,6 +23447,208 @@ components:
           maxItems: 20
           description: Project team members to notify. Each must be an active, non-external member of the project.
           items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    CorrespondenceAccess:
+      type: object
+      required: [isPrivate, userIds]
+      properties:
+        isPrivate: { type: boolean }
+        userIds:
+          type: array
+          items: { $ref: '#/components/schemas/UserRef' }
+    SetCorrespondenceAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [isPrivate, userIds]
+      properties:
+        isPrivate: { type: boolean }
+        userIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/UserRef' }
+    CorrespondenceHistoryEntry:
+      type: object
+      required: [id, at, byUser, action, changes]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        byUser: { type: [string, 'null'] }
+        action:
+          type: string
+          enum: [created, edited, sent, responded, closed, voided, access_changed, emailed]
+        changes:
+          type: array
+          items:
+            type: object
+            required: [field, from, to]
+            properties:
+              field: { type: string }
+              from: { description: 'The earlier value; long text is cut at 300 characters' }
+              to: { description: 'The new value; long text is cut at 300 characters' }
+    CorrespondenceHistory:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceHistoryEntry' }
+    AnnouncementAudienceInput:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [all, group] }
+        companyIds:
+          type: array
+          maxItems: 50
+          description: For `group`, everyone on the project from these companies.
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        userIds:
+          type: array
+          maxItems: 200
+          description: For `group`, these individual people.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    CreateAnnouncementRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body, audience]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        priority: { type: string, enum: [normal, important] }
+        audience: { $ref: '#/components/schemas/AnnouncementAudienceInput' }
+        keyUserIds:
+          type: array
+          maxItems: 100
+          description: People who must read it; each must be among the recipients.
+          items: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        readByHours:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 720
+          description: Hours after posting by which key people should have read it. Nova flags the ones who haven't.
+    AnnouncementReceipts:
+      type: object
+      required: [recipientCount, readCount]
+      properties:
+        recipientCount: { type: integer }
+        readCount: { type: integer }
+    AnnouncementSummary:
+      type: object
+      required:
+        - id
+        - projectId
+        - title
+        - preview
+        - priority
+        - audienceKind
+        - createdById
+        - createdByName
+        - createdAt
+        - readByHours
+        - isMine
+        - unread
+        - readAt
+        - receipts
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        preview: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        audienceKind: { type: string, enum: [all, group] }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        readByHours: { type: [integer, 'null'] }
+        isMine: { type: boolean }
+        unread: { type: boolean, description: The caller was sent it and hasn't read it. }
+        readAt: { type: [string, 'null'], format: date-time }
+        receipts:
+          description: How many have read it; only for the sender and managers.
+          oneOf:
+            - $ref: '#/components/schemas/AnnouncementReceipts'
+            - type: 'null'
+    AnnouncementPage:
+      type: object
+      required: [data, nextCursor, unreadCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AnnouncementSummary' }
+        nextCursor: { type: [string, 'null'] }
+        unreadCount:
+          { type: integer, description: Announcements on this project the caller hasn't read. }
+    AnnouncementRecipient:
+      type: object
+      required: [userId, name, isKey, readAt, nudgedAt]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        readAt: { type: [string, 'null'], format: date-time }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+    AnnouncementUnreadFlag:
+      type: object
+      required: [userId, name, isKey, hoursOverdue, nudgedAt, canNudge]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        isKey: { type: boolean }
+        hoursOverdue: { type: integer }
+        nudgedAt: { type: [string, 'null'], format: date-time }
+        canNudge: { type: boolean, description: False inside four hours of the last reminder. }
+    AnnouncementDetail:
+      allOf:
+        - $ref: '#/components/schemas/AnnouncementSummary'
+        - type: object
+          required: [body, audience, dueAt, recipients, flags]
+          properties:
+            body: { type: string }
+            audience:
+              type: object
+              required: [kind, companyIds, userIds]
+              properties:
+                kind: { type: string, enum: [all, group] }
+                companyIds:
+                  type: array
+                  items: { type: string }
+                userIds:
+                  type: array
+                  items: { type: string }
+            dueAt:
+              {
+                type: [string, 'null'],
+                format: date-time,
+                description: When key people should have read it by.,
+              }
+            recipients:
+              description: Who has read it; only for the sender and managers.
+              oneOf:
+                - type: array
+                  items: { $ref: '#/components/schemas/AnnouncementRecipient' }
+                - type: 'null'
+            flags:
+              type: array
+              description: "Nova's flags (rule-based, no model): key people still unread after the read-by time. Empty for others."
+              items: { $ref: '#/components/schemas/AnnouncementUnreadFlag' }
+    AnnouncementNudgeResult:
+      type: object
+      required: [nudged, skipped]
+      properties:
+        nudged: { type: integer }
+        skipped: { type: integer, description: Already read, or reminded in the last four hours. }
+    AnnouncementDraft:
+      type: object
+      required: [runId, title, body, priority, notes]
+      properties:
+        runId: { type: string }
+        title: { type: string }
+        body: { type: string }
+        priority: { type: string, enum: [normal, important] }
+        notes:
+          type: array
+          description: What code removed or changed because the notes didn't support it.
+          items: { type: string }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
@@ -21228,6 +23682,8 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate: { type: boolean }
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
     UpdateCorrespondenceRequest:
       type: object
       additionalProperties: false
@@ -21252,6 +23708,8 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        isPrivate: { type: boolean }
+        fieldValues: { $ref: '#/components/schemas/CorrespondenceFieldValues' }
     RespondCorrespondenceRequest:
       type: object
       additionalProperties: false
@@ -24633,8 +27091,23 @@ components:
       type: object
       description: Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature.
       required:
-        [role, signerName, signerPosition, hasEvidence, evidenceFileId, contentHash, signedAt]
+        [
+          role,
+          signerName,
+          signerPosition,
+          hasEvidence,
+          evidenceFileId,
+          geofenceStatus,
+          hasPosition,
+          contentHash,
+          signedAt,
+        ]
       properties:
+        geofenceStatus:
+          type: string
+          enum: [inside, outside, uncertain, unknown]
+          description: Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
+        hasPosition: { type: boolean }
         role: { type: string, enum: [contractor, principal_rep] }
         signerName: { type: string }
         signerPosition: { type: [string, 'null'] }
@@ -24692,6 +27165,31 @@ components:
             signoffs:
               type: array
               items: { $ref: '#/components/schemas/TmTicketSignoff' }
+    TmTicketFinding:
+      type: object
+      required: [code, severity, message, line]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              no_diary_entry,
+              labour_hours_differ,
+              equipment_hours_differ,
+              labour_not_from_timesheet,
+              equipment_not_from_log,
+              signed_off_site,
+            ]
+        severity: { type: string, enum: [warn, info] }
+        message: { type: string }
+        line: { type: [integer, 'null'] }
+    TmTicketChecks:
+      type: object
+      required: [findings]
+      properties:
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/TmTicketFinding' }
     TmTicketList:
       type: object
       required: [data, total, awaitingSignature, unconverted]
@@ -24751,6 +27249,15 @@ components:
           type: string
           pattern: '^fil_[0-9A-Za-z]{26}$'
           description: A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative.
+        fix:
+          type: object
+          additionalProperties: false
+          required: [lat, lng]
+          description: The device position when signing. Optional; checked against the project's site fence and stored with the sign-off.
+          properties:
+            lat: { type: number, minimum: -90, maximum: 90 }
+            lng: { type: number, minimum: -180, maximum: 180 }
+            accuracyM: { type: number, minimum: 0, maximum: 100000 }
     VoidTmTicketRequest:
       type: object
       additionalProperties: false
@@ -26156,6 +28663,58 @@ components:
               title: { type: string }
               completedAt: { type: string, format: date-time }
               expiresOn: { type: [string, 'null'], format: date }
+    WorkerClearance:
+      type: object
+      required:
+        [
+          workerId,
+          fullName,
+          kind,
+          companyName,
+          photoUrl,
+          siteId,
+          localDate,
+          checkedAt,
+          result,
+          checks,
+          flag,
+        ]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        fullName: { type: string }
+        kind: { type: string, enum: [worker, visitor, delivery] }
+        companyName: { type: [string, 'null'] }
+        photoUrl:
+          {
+            type: [string, 'null'],
+            description: 'Short-lived link for matching the face at the gate.',
+          }
+        siteId: { type: [string, 'null'] }
+        localDate: { type: string, format: date, description: "Today in the project's time zone." }
+        checkedAt: { type: string, format: date-time }
+        result: { type: string, enum: [cleared, warning, blocked] }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [key, label, status, detail]
+            properties:
+              key:
+                { type: string, enum: [worker, white_card, licences, induction, swms, insurance] }
+              label: { type: string }
+              status: { type: string, enum: [pass, warn, fail, na] }
+              detail: { type: string }
+        flag:
+          description: The rule-based line for the gate; null when everything is clear.
+          oneOf:
+            - type: object
+              required: [severity, title, detail, suggestedAction]
+              properties:
+                severity: { type: string, enum: [warning, blocking] }
+                title: { type: string }
+                detail: { type: string }
+                suggestedAction: { type: string }
+            - type: 'null'
     WorkerList:
       type: object
       required: [data]
@@ -28007,6 +30566,10 @@ components:
           specSection,
           description,
           fileIds,
+          isPrivate,
+          distributionIds,
+          drawingRevisionIds,
+          reopenCount,
           createdAt,
           updatedAt,
           version,
@@ -28034,6 +30597,15 @@ components:
           type: array
           description: Files attached to the inspection itself.
           items: { type: string }
+        isPrivate:
+          {
+            type: boolean,
+            description: Only the creator,
+            assignees and people who can close it can see it.,
+          }
+        distributionIds: { type: array, items: { type: string } }
+        drawingRevisionIds: { type: array, items: { type: string } }
+        reopenCount: { type: integer }
         completedAt: { type: [string, 'null'], format: date-time }
         signedBy:
           oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
@@ -28066,6 +30638,8 @@ components:
           responses,
           missingRequiredItemIds,
           failedItemIds,
+          summary,
+          reopenFlag,
         ]
       properties:
         inspection: { $ref: '#/components/schemas/Inspection' }
@@ -28092,6 +30666,53 @@ components:
         failedItemIds:
           type: array
           items: { type: string }
+        summary: { $ref: '#/components/schemas/InspectionStatusCounts' }
+        reopenFlag:
+          oneOf: [{ $ref: '#/components/schemas/InspectionReopenFlag' }, { type: 'null' }]
+    InspectionStatusCounts:
+      type: object
+      required: [pass, fail, na, answered, unanswered, total]
+      properties:
+        pass: { type: integer }
+        fail: { type: integer }
+        na: { type: integer }
+        answered: { type: integer }
+        unanswered: { type: integer }
+        total: { type: integer }
+    InspectionReopenFlag:
+      type: object
+      required: [code, count, message]
+      properties:
+        code: { type: string, enum: [reopened_repeatedly] }
+        count: { type: integer }
+        message: { type: string }
+    InspectionHistoryEvent:
+      type: object
+      required: [id, inspectionId, kind, detail, actorId, at]
+      properties:
+        id: { type: string }
+        inspectionId: { type: string }
+        kind:
+          {
+            type: string,
+            enum: [created, updated, section_na, signed, submitted, reopened, closed, deleted],
+          }
+        detail: { type: object, additionalProperties: true }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    InspectionHistoryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionHistoryEvent' }
+    ReopenInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 2000 }
     InspectionSection:
       type: object
       required: [section, items, answered, pass, fail, na, unanswered, isNa]
@@ -28143,6 +30764,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     UpdateInspectionRequest:
       type: object
       additionalProperties: false
@@ -28168,6 +30798,15 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        isPrivate: { type: boolean }
+        distributionIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
+        drawingRevisionIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
     SetInspectionSectionNaRequest:
       type: object
       additionalProperties: false
@@ -28368,6 +31007,803 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    MonitoringParameter:
+      type: string
+      enum:
+        [
+          dust_pm10,
+          dust_pm25,
+          dust_deposition,
+          noise_laeq,
+          noise_lamax,
+          vibration_ppv,
+          water_ph,
+          water_turbidity,
+          water_tss,
+          other,
+        ]
+    MonitoringFrequency:
+      type: string
+      enum: [daily, weekly, fortnightly, monthly, per_event]
+    MonitoringReadingStatus:
+      type: string
+      enum: [ok, warning, breach]
+    MonitoringReading:
+      type: object
+      required:
+        [
+          id,
+          pointId,
+          pointName,
+          unit,
+          value,
+          takenAt,
+          status,
+          note,
+          fileIds,
+          responseNote,
+          respondedAt,
+          respondedBy,
+          incidentId,
+        ]
+      properties:
+        id: { type: string }
+        pointId: { type: string }
+        pointName: { type: [string, 'null'], description: 'Set on the project-wide list.' }
+        unit: { type: [string, 'null'], description: 'Set on the project-wide list.' }
+        value: { type: number }
+        takenAt: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/MonitoringReadingStatus' }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        responseNote: { type: [string, 'null'] }
+        respondedAt: { type: [string, 'null'], format: date-time }
+        respondedBy: { type: [string, 'null'] }
+        incidentId:
+          {
+            type: [string, 'null'],
+            description: 'The environmental incident raised for this breach.',
+          }
+    MonitoringReadingPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/MonitoringReading' } }
+        nextCursor: { type: [string, 'null'] }
+    MonitoringPoint:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          parameter,
+          unit,
+          location,
+          minLimit,
+          maxLimit,
+          warnMargin,
+          frequency,
+          conditionId,
+          active,
+          latest,
+          recent,
+          openBreaches,
+          isOverdue,
+          isTrending,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string }
+        location: { type: [string, 'null'] }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin:
+          { type: number, description: 'A reading within this fraction of a limit is a warning.' }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+        active: { type: boolean }
+        latest:
+          oneOf:
+            - $ref: '#/components/schemas/MonitoringReading'
+            - type: 'null'
+        recent:
+          { type: array, items: { type: number }, description: 'Latest values, oldest first.' }
+        openBreaches: { type: integer }
+        isOverdue: { type: boolean }
+        isTrending:
+          { type: boolean, description: 'Three rising readings, the latest close to the maximum.' }
+        version: { type: integer }
+    MonitoringPointList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/MonitoringPoint' } }
+    CreateMonitoringPointRequest:
+      type: object
+      required: [name, parameter, unit]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string, minLength: 1, maxLength: 30 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin: { type: number, minimum: 0, maximum: 0.5 }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+    UpdateMonitoringPointRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string, minLength: 1, maxLength: 30 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin: { type: number, minimum: 0, maximum: 0.5 }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+        active: { type: boolean }
+    LogReadingRequest:
+      type: object
+      required: [value]
+      additionalProperties: false
+      properties:
+        value: { type: number }
+        takenAt: { type: string, format: date-time, description: 'Defaults to now.' }
+        note: { type: string, maxLength: 2000 }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    RespondToReadingRequest:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 4000,
+            description: 'The corrective action taken.',
+          }
+        raiseIncident: { type: boolean, description: 'Also report an environmental incident.' }
+    RespondToReadingResult:
+      type: object
+      required: [reading, incidentId, incidentNumber]
+      properties:
+        reading: { $ref: '#/components/schemas/MonitoringReading' }
+        incidentId: { type: [string, 'null'] }
+        incidentNumber: { type: [integer, 'null'] }
+    EnvironmentConditionCategory:
+      type: string
+      enum:
+        [
+          air_quality,
+          noise_vibration,
+          water_quality,
+          waste,
+          soil_erosion,
+          biodiversity,
+          heritage,
+          hazardous_materials,
+          traffic_amenity,
+          energy_carbon,
+          other,
+        ]
+    EnvironmentConditionSource:
+      type: string
+      enum: [planning_permit, epa_licence, cemp, council, client, other]
+    EnvironmentConditionFrequency:
+      type: string
+      enum: [once, daily, weekly, fortnightly, monthly, quarterly, per_event]
+    EnvironmentConditionStatus:
+      type: string
+      enum: [not_started, in_progress, compliant, non_compliant, not_applicable]
+    EnvironmentConditionAction:
+      type: string
+      enum: [start, signOff, flagNonCompliant, markNotApplicable, reopen]
+    EnvironmentDocumentType:
+      type: string
+      enum:
+        [
+          emp,
+          permit,
+          epa_licence,
+          approval_letter,
+          monitoring_plan,
+          waste_plan,
+          audit_report,
+          other,
+        ]
+    EnvironmentExpiryState:
+      type: string
+      enum: [none, valid, expiring, expired]
+    EnvironmentPlan:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          permitReference,
+          summary,
+          status,
+          reviewIntervalMonths,
+          nextReviewDate,
+          approvedAt,
+          approvedBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        permitReference:
+          {
+            type: [string, 'null'],
+            description: 'The planning permit or licence this plan answers to.',
+          }
+        summary: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, active] }
+        reviewIntervalMonths: { type: integer }
+        nextReviewDate: { type: [string, 'null'], format: date }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        approvedBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentPlanResponse:
+      type: object
+      required: [plan]
+      properties:
+        plan:
+          oneOf:
+            - $ref: '#/components/schemas/EnvironmentPlan'
+            - type: 'null'
+    CreateEnvironmentPlanRequest:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        permitReference: { type: [string, 'null'], maxLength: 200 }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        reviewIntervalMonths: { type: integer, minimum: 1, maximum: 60 }
+        nextReviewDate: { type: [string, 'null'], format: date }
+    UpdateEnvironmentPlanRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        permitReference: { type: [string, 'null'], maxLength: 200 }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        reviewIntervalMonths: { type: integer, minimum: 1, maximum: 60 }
+        nextReviewDate: { type: [string, 'null'], format: date }
+    EnvironmentCondition:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          requirement,
+          category,
+          source,
+          sourceReference,
+          frequency,
+          responsibleCompanyId,
+          responsibleUserId,
+          status,
+          dueDate,
+          lastReviewedOn,
+          isOverdue,
+          fileIds,
+          availableActions,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'EMC-0042' }
+        title: { type: string }
+        requirement: { type: [string, 'null'] }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference:
+          { type: [string, 'null'], description: 'For example "Permit condition 14".' }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        dueDate: { type: [string, 'null'], format: date }
+        lastReviewedOn: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        fileIds: { type: array, items: { type: string }, description: 'Evidence files.' }
+        availableActions:
+          type: array
+          description: What the caller can do now, from status and permission level.
+          items: { $ref: '#/components/schemas/EnvironmentConditionAction' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentConditionEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, fileIds, actorId, at]
+      properties:
+        id: { type: string }
+        action:
+          { type: string, enum: [start, sign_off, flag_non_compliant, not_applicable, reopen] }
+        fromStatus: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        toStatus: { $ref: '#/components/schemas/EnvironmentConditionStatus' }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    EnvironmentConditionDetail:
+      type: object
+      required: [condition, events]
+      properties:
+        condition: { $ref: '#/components/schemas/EnvironmentCondition' }
+        events: { type: array, items: { $ref: '#/components/schemas/EnvironmentConditionEvent' } }
+    EnvironmentConditionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EnvironmentCondition' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateEnvironmentConditionRequest:
+      type: object
+      required: [title, category]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        requirement: { type: [string, 'null'], maxLength: 4000 }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference: { type: [string, 'null'], maxLength: 200 }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    UpdateEnvironmentConditionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        requirement: { type: [string, 'null'], maxLength: 4000 }
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        source: { $ref: '#/components/schemas/EnvironmentConditionSource' }
+        sourceReference: { type: [string, 'null'], maxLength: 200 }
+        frequency: { $ref: '#/components/schemas/EnvironmentConditionFrequency' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    EnvironmentConditionTransitionRequest:
+      type: object
+      required: [action]
+      additionalProperties: false
+      properties:
+        action: { $ref: '#/components/schemas/EnvironmentConditionAction' }
+        note: { type: string, maxLength: 4000 }
+        fileIds:
+          { type: array, maxItems: 20, items: { type: string }, description: 'Evidence to attach.' }
+    EnvironmentStarterPackResult:
+      type: object
+      required: [created, skipped]
+      properties:
+        created: { type: array, items: { $ref: '#/components/schemas/EnvironmentCondition' } }
+        skipped: { type: integer, description: 'Starter conditions already in the register.' }
+    EnvironmentDocument:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          docType,
+          reference,
+          fileId,
+          issuedOn,
+          expiresOn,
+          expiry,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'] }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        expiry: { $ref: '#/components/schemas/EnvironmentExpiryState' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EnvironmentDocumentList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EnvironmentDocument' } }
+    CreateEnvironmentDocumentRequest:
+      type: object
+      required: [title, docType, fileId]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'], maxLength: 200 }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+    UpdateEnvironmentDocumentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docType: { $ref: '#/components/schemas/EnvironmentDocumentType' }
+        reference: { type: [string, 'null'], maxLength: 200 }
+        fileId: { type: string }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+    EnvironmentFlag:
+      type: object
+      required: [code, severity, message, conditionIds, documentIds]
+      properties:
+        code:
+          {
+            type: string,
+            enum:
+              [
+                conditions_non_compliant,
+                conditions_overdue,
+                documents_expired,
+                documents_expiring,
+                plan_missing,
+                plan_unapproved,
+                plan_review_due,
+                monitoring_breach_open,
+                monitoring_overdue,
+                monitoring_trending,
+                waste_diversion_low,
+                waste_diversion_falling,
+                waste_docket_missing,
+                carbon_rising,
+              ],
+          }
+        severity: { type: string, enum: [info, warning, critical] }
+        message: { type: string }
+        conditionIds: { type: array, items: { type: string } }
+        documentIds: { type: array, items: { type: string } }
+    EnvironmentCategoryTally:
+      type: object
+      required: [category, total, compliant, nonCompliant, overdue]
+      properties:
+        category: { $ref: '#/components/schemas/EnvironmentConditionCategory' }
+        total: { type: integer }
+        compliant: { type: integer }
+        nonCompliant: { type: integer }
+        overdue: { type: integer }
+    WasteType:
+      type: string
+      enum:
+        [
+          general,
+          concrete,
+          bricks_masonry,
+          timber,
+          metals,
+          plastics,
+          plasterboard,
+          soil_fill,
+          cardboard_paper,
+          glass,
+          green_waste,
+          hazardous,
+          asbestos,
+          other,
+        ]
+    WasteDestination:
+      type: string
+      enum: [recycled, reused, landfill, treatment]
+      description: 'Recycled and reused count as diverted from landfill.'
+    WasteDocket:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          docketDate,
+          wasteType,
+          destination,
+          tonnes,
+          docketNumber,
+          contractor,
+          facility,
+          note,
+          fileIds,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        docketDate: { type: string, format: date }
+        wasteType: { $ref: '#/components/schemas/WasteType' }
+        destination: { $ref: '#/components/schemas/WasteDestination' }
+        tonnes: { type: number }
+        docketNumber: { type: [string, 'null'] }
+        contractor: { type: [string, 'null'] }
+        facility: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    WasteDocketPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WasteDocket' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateWasteDocketRequest:
+      type: object
+      required: [docketDate, wasteType, destination, tonnes]
+      additionalProperties: false
+      properties:
+        docketDate: { type: string, format: date }
+        wasteType: { $ref: '#/components/schemas/WasteType' }
+        destination: { $ref: '#/components/schemas/WasteDestination' }
+        tonnes: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        docketNumber: { type: string, maxLength: 100 }
+        contractor: { type: string, maxLength: 200 }
+        facility: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    WasteWindow:
+      type: object
+      required: [tonnes, divertedTonnes, diversionPercent]
+      properties:
+        tonnes: { type: number }
+        divertedTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+    WasteSummary:
+      type: object
+      required:
+        [
+          totalTonnes,
+          divertedTonnes,
+          diversionPercent,
+          targetPercent,
+          byDestination,
+          byType,
+          monthly,
+          last30,
+          previous30,
+          regulatedWithoutDocket,
+        ]
+      properties:
+        totalTonnes: { type: number }
+        divertedTonnes: { type: number }
+        diversionPercent: { type: [integer, 'null'] }
+        targetPercent: { type: integer }
+        byDestination:
+          type: object
+          required: [recycled, reused, landfill, treatment]
+          properties:
+            recycled: { type: number }
+            reused: { type: number }
+            landfill: { type: number }
+            treatment: { type: number }
+        byType:
+          type: array
+          items:
+            type: object
+            required: [wasteType, tonnes, divertedTonnes]
+            properties:
+              wasteType: { $ref: '#/components/schemas/WasteType' }
+              tonnes: { type: number }
+              divertedTonnes: { type: number }
+        monthly:
+          type: array
+          description: 'The last six months, oldest first.'
+          items:
+            type: object
+            required: [month, tonnes, divertedTonnes, diversionPercent]
+            properties:
+              month: { type: string, description: 'YYYY-MM' }
+              tonnes: { type: number }
+              divertedTonnes: { type: number }
+              diversionPercent: { type: [integer, 'null'] }
+        last30: { $ref: '#/components/schemas/WasteWindow' }
+        previous30: { $ref: '#/components/schemas/WasteWindow' }
+        regulatedWithoutDocket:
+          { type: integer, description: 'Hazardous or asbestos dockets with no copy attached.' }
+    CarbonSource:
+      type: string
+      enum:
+        [
+          diesel_litres,
+          petrol_litres,
+          lpg_litres,
+          electricity_kwh,
+          concrete_m3,
+          steel_tonnes,
+          other,
+        ]
+    CarbonEntry:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryDate,
+          source,
+          scope,
+          quantity,
+          factor,
+          kgCo2e,
+          description,
+          note,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entryDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/CarbonSource' }
+        scope: { type: integer, minimum: 1, maximum: 3 }
+        quantity: { type: number }
+        factor: { type: number, description: 'kg CO2-e per unit, as used for this entry.' }
+        kgCo2e: { type: number }
+        description: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    CarbonEntryPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/CarbonEntry' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateCarbonEntryRequest:
+      type: object
+      required: [entryDate, source, quantity]
+      additionalProperties: false
+      properties:
+        entryDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/CarbonSource' }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        factor:
+          {
+            type: number,
+            minimum: 0,
+            description: "kg CO2-e per unit. The source's default when left out.",
+          }
+        description: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+    CarbonSummary:
+      type: object
+      required: [totalKg, byScope, bySource, monthly, last30Kg, previous30Kg, changePercent]
+      properties:
+        totalKg: { type: number }
+        byScope:
+          type: object
+          required: ['1', '2', '3']
+          properties:
+            '1': { type: number }
+            '2': { type: number }
+            '3': { type: number }
+        bySource:
+          type: array
+          items:
+            type: object
+            required: [source, quantity, kg]
+            properties:
+              source: { $ref: '#/components/schemas/CarbonSource' }
+              quantity: { type: number }
+              kg: { type: number }
+        monthly:
+          type: array
+          description: 'The last six months, oldest first.'
+          items:
+            type: object
+            required: [month, kg]
+            properties:
+              month: { type: string, description: 'YYYY-MM' }
+              kg: { type: number }
+        last30Kg: { type: number }
+        previous30Kg: { type: number }
+        changePercent:
+          {
+            type: [integer, 'null'],
+            description: 'Last 30 days against the 30 before; null without a base.',
+          }
+    EnvironmentSummary:
+      type: object
+      required: [today, plan, conditions, documents, monitoring, waste, carbon, flags]
+      properties:
+        today:
+          {
+            type: string,
+            format: date,
+            description: 'Today at the project, which "overdue" is measured against.',
+          }
+        plan:
+          oneOf:
+            - $ref: '#/components/schemas/EnvironmentPlan'
+            - type: 'null'
+        conditions:
+          type: object
+          required: [total, byStatus, overdue, compliancePercent, byCategory]
+          properties:
+            total: { type: integer }
+            byStatus:
+              type: object
+              required: [not_started, in_progress, compliant, non_compliant, not_applicable]
+              properties:
+                not_started: { type: integer }
+                in_progress: { type: integer }
+                compliant: { type: integer }
+                non_compliant: { type: integer }
+                not_applicable: { type: integer }
+            overdue: { type: integer }
+            compliancePercent:
+              {
+                type: [integer, 'null'],
+                description: 'Signed-off share of applicable conditions; null when there are none.',
+              }
+            byCategory:
+              { type: array, items: { $ref: '#/components/schemas/EnvironmentCategoryTally' } }
+        documents:
+          type: object
+          required: [total, expired, expiring]
+          properties:
+            total: { type: integer }
+            expired: { type: integer }
+            expiring: { type: integer }
+        monitoring:
+          type: object
+          required: [points, openBreaches, overdue]
+          properties:
+            points: { type: integer }
+            openBreaches: { type: integer, description: 'Breaches not yet answered.' }
+            overdue: { type: integer, description: 'Active points without a recent reading.' }
+        waste:
+          type: object
+          required: [totalTonnes, diversionPercent]
+          properties:
+            totalTonnes: { type: number }
+            diversionPercent:
+              {
+                type: [integer, 'null'],
+                description: 'Share recycled or reused; null with no dockets.',
+              }
+        carbon:
+          type: object
+          required: [totalKg, last30Kg]
+          properties:
+            totalKg: { type: number }
+            last30Kg: { type: number }
+        flags: { type: array, items: { $ref: '#/components/schemas/EnvironmentFlag' } }
     ObservationPage:
       type: object
       required: [data, nextCursor]
@@ -28673,6 +32109,221 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/IncidentActionFromSource' }
+    ToolboxTopicCategory:
+      type: string
+      enum: [general, hazard, plant, environment, wellbeing, incident_review, emergency]
+    ToolboxTalkStatus:
+      type: string
+      enum: [open, closed]
+    ToolboxTopic:
+      type: object
+      required:
+        [id, projectId, title, talkingPoints, category, hrcwCategory, isActive, lastHeldAt, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        talkingPoints: { type: string }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory:
+          {
+            type: [string, 'null'],
+            description: The high-risk work category this topic covers,
+            if any.,
+          }
+        isActive: { type: boolean }
+        lastHeldAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: When a talk on this topic was last held on the project.,
+          }
+        version: { type: integer }
+    ToolboxTopicList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxTopic' }
+    CreateToolboxTopicRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        talkingPoints: { type: string, maxLength: 10000 }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory: { type: [string, 'null'], maxLength: 60 }
+    UpdateToolboxTopicRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        talkingPoints: { type: string, maxLength: 10000 }
+        category: { $ref: '#/components/schemas/ToolboxTopicCategory' }
+        hrcwCategory: { type: [string, 'null'], maxLength: 60 }
+        isActive: { type: boolean }
+    ToolboxTalk:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          topicId,
+          title,
+          heldAt,
+          location,
+          presenterName,
+          notes,
+          status,
+          closedAt,
+          attendeeCount,
+          signedCount,
+          createdBy,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: TBT-0001 }
+        topicId: { type: [string, 'null'] }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'] }
+        presenterName: { type: string }
+        notes: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ToolboxTalkStatus' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        attendeeCount: { type: integer }
+        signedCount: { type: integer }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    ToolboxTalkPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxTalk' }
+        nextCursor: { type: [string, 'null'] }
+    ToolboxRepeatReason:
+      type: string
+      description: shared_between_people is one signature image on rows for different people in this talk. reused_from_earlier_talk is a person's image identical to one they signed with in an earlier talk. A hand-drawn signature is never identical twice, so both are worth a look. Neither blocks anything.
+      enum: [shared_between_people, reused_from_earlier_talk]
+    ToolboxAttendee:
+      type: object
+      required: [id, personName, companyId, userId, signedAt, signatureFileId, repeatFlags]
+      properties:
+        id: { type: string }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+        signedAt: { type: [string, 'null'], format: date-time }
+        signatureFileId: { type: [string, 'null'] }
+        repeatFlags:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxRepeatReason' }
+    ToolboxTalkDetail:
+      type: object
+      required: [talk, topic, attendees, closeBlockers, canEdit]
+      properties:
+        talk: { $ref: '#/components/schemas/ToolboxTalk' }
+        topic:
+          oneOf:
+            - { $ref: '#/components/schemas/ToolboxTopic' }
+            - { type: 'null' }
+        attendees:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxAttendee' }
+        closeBlockers:
+          type: array
+          description: What stops the talk closing now. Empty when it can close.
+          items: { type: string }
+        canEdit: { type: boolean }
+    ToolboxAttendeeInput:
+      type: object
+      additionalProperties: false
+      required: [personName]
+      properties:
+        personName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+    CreateToolboxTalkRequest:
+      type: object
+      additionalProperties: false
+      required: [title, heldAt, presenterName]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        topicId: { type: [string, 'null'] }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 200 }
+        presenterName: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+        attendees:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ToolboxAttendeeInput' }
+    UpdateToolboxTalkRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        topicId: { type: [string, 'null'] }
+        heldAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 200 }
+        presenterName: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+    ToolboxTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [close, reopen] }
+    AddToolboxAttendeesRequest:
+      type: object
+      additionalProperties: false
+      required: [attendees]
+      properties:
+        attendees:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ToolboxAttendeeInput' }
+    SignToolboxAttendeeRequest:
+      type: object
+      additionalProperties: false
+      required: [signatureFileId]
+      properties:
+        signatureFileId: { type: string, description: A ready image uploaded to this project. }
+    ToolboxSuggestion:
+      type: object
+      required: [reason, topicId, title, because, hrcwCategory]
+      properties:
+        reason:
+          { type: string, enum: [recent_incident, swms_in_force, not_run_recently, never_run] }
+        topicId:
+          {
+            type: [string, 'null'],
+            description: A topic in the library to run,
+            or null when nothing in the library fits.,
+          }
+        title: { type: string }
+        because:
+          { type: string, description: One plain sentence with the facts behind the suggestion. }
+        hrcwCategory: { type: [string, 'null'] }
+    ToolboxSuggestionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ToolboxSuggestion' }
     IncidentPage:
       type: object
       required: [data, nextCursor]
