@@ -9,6 +9,7 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
+import type { HelpService } from '../application/help';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
@@ -317,6 +318,7 @@ export function aiRoutes(
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
   captureScans: CaptureScanService,
+  help: HelpService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -334,6 +336,30 @@ export function aiRoutes(
         admin.updateSettings(scope, expected, input.body),
       );
       return { status: 200, body: toSettingsDto(s), headers: { etag: etag(s.version) } };
+    },
+    askNovaForHelp: async (input) => {
+      const ctx = requireTenant(input);
+      const body = input.body;
+      const answer = await help.explain(ctx, {
+        question: body.question ?? null,
+        area: body.area ?? '',
+        error: body.error
+          ? {
+              status: body.error.status ?? null,
+              code: body.error.code ?? null,
+              message: body.error.message,
+            }
+          : null,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', answer.runId),
+          answer: answer.answer,
+          steps: answer.steps,
+          tools: answer.tools,
+        },
+      };
     },
     getAiUsage: async (input) => {
       const usage = await database.withTenantTx(

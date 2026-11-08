@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261107120000_financials_tm_tickets.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261107120200_financials_tm_tickets.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- financials: time-and-materials (daywork) tickets. A ticket records labour, equipment and material used on site
 -- for work not in the contract, is signed on site by the contractor and the principal's representative, and is then
 -- converted once into direct costs (cost to us) or a draft variation (a charge, claimable once approved).
