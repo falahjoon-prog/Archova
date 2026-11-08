@@ -9,7 +9,10 @@ import {
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  ToolboxIcon,
   IncidentsIcon,
+  PermitsIcon,
+  InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   FolderLinksIcon,
@@ -191,6 +194,11 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('payment_claims') && {
+      href: webRoutes.tmTickets(orgSlug, projectId),
+      label: 'T&M tickets',
+      icon: ContractsIcon,
+    },
     canRead('budget') && {
       href: webRoutes.budget(orgSlug, projectId),
       label: 'Budget',
@@ -227,9 +235,29 @@ export function projectToolGroups(
       icon: SwmsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.toolboxTalks(orgSlug, projectId),
+      label: 'Toolbox talks',
+      icon: ToolboxIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
+    },
+    canRead('environment') && {
+      href: webRoutes.environment(orgSlug, projectId),
+      label: 'Environment',
+      icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.permits(orgSlug, projectId),
+      label: 'Permits',
+      icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.insurance(orgSlug, projectId),
+      label: 'Insurance & bonds',
+      icon: InsuranceIcon,
     },
     canAdmin('inspections') && {
       href: webRoutes.safetySignals(orgSlug, projectId),
@@ -341,6 +369,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Inspections',
       'Observations',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
@@ -350,7 +379,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
   },
   {
     id: 'estimating',

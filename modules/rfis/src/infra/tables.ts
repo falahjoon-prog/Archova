@@ -45,6 +45,8 @@ export const rfis = rfisSchema.table('rfis', {
   distributionCompanyIds: uuid('distribution_company_ids').array().notNull().default([]),
   dueDate: date('due_date'),
   openedAt: timestamp('opened_at', { withTimezone: true }),
+  /** When the ball last changed hands (send, answer, reopen, reassignment while open); null when nobody holds it. */
+  ballSince: timestamp('ball_since', { withTimezone: true }),
   answeredAt: timestamp('answered_at', { withTimezone: true }),
   closedAt: timestamp('closed_at', { withTimezone: true }),
   voidedAt: timestamp('voided_at', { withTimezone: true }),

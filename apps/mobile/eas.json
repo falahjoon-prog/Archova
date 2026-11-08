@@ -1,23 +1,47 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "APP_VARIANT": "development" }
+      "env": {
+        "APP_VARIANT": "development"
+      }
     },
     "preview": {
       "distribution": "store",
       "channel": "preview",
       "autoIncrement": true,
-      "env": { "APP_VARIANT": "preview" }
+      "env": {
+        "APP_VARIANT": "preview"
+      }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
       "autoIncrement": true,
-      "env": { "APP_VARIANT": "production" }
+      "env": {
+        "APP_VARIANT": "production"
+      }
+    },
+    "phone-test": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "preview",
+        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-API-HTTPS-URL",
+        "EXPO_PUBLIC_APP_ORIGIN": "https://REPLACE-WITH-WEB-HTTPS-URL"
+      }
     }
   },
-  "submit": { "preview": {}, "production": {} }
+  "submit": {
+    "preview": {},
+    "production": {}
+  }
 }
