@@ -3595,6 +3595,12 @@ export const SignTmTicketParams = z.object({
   "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
 });
 export const SignTmTicketBody = s.SignTmTicketRequestSchema;
+export const ReviewTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const ReviewTmTicketBody = s.ReviewTmTicketRequestSchema;
 export const VoidTmTicketParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11799,6 +11805,18 @@ export const operations = {
     params: SignTmTicketParams,
     query: null,
     body: SignTmTicketBody,
+  },
+  reviewTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/review',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewTmTicketParams,
+    query: null,
+    body: ReviewTmTicketBody,
   },
   voidTmTicket: {
     method: 'POST',

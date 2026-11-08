@@ -15032,6 +15032,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TmTicketDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TmTicketId'
+    post:
+      operationId: reviewTmTicket
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.tm_tickets.manage
+      summary: Move a draft ticket between in progress, ready for review and field verified. Field verified needs a different person from whoever marked it ready, and a note while Nova flags differing hours. A ticket must be field verified before it is signed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewTmTicketRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TmTicketDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -27235,6 +27260,10 @@ components:
           location,
           contractor,
           instructedBy,
+          reference,
+          notes,
+          reviewStage,
+          verifyNote,
           origin,
           status,
           total,
@@ -27253,6 +27282,10 @@ components:
         location: { type: [string, 'null'] }
         contractor: { type: [string, 'null'] }
         instructedBy: { type: [string, 'null'] }
+        reference: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        reviewStage: { $ref: '#/components/schemas/TmReviewStage' }
+        verifyNote: { type: [string, 'null'] }
         origin: { type: string, enum: [manual, nova] }
         status: { type: string, enum: [draft, part_signed, signed, converted, void] }
         total: { $ref: '#/components/schemas/FinancialsMoney' }
@@ -27261,6 +27294,9 @@ components:
         variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
         voidReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    TmReviewStage:
+      type: string
+      enum: [in_progress, ready_for_review, field_verified]
     TmTicketDetail:
       allOf:
         - $ref: '#/components/schemas/TmTicket'
@@ -27331,6 +27367,8 @@ components:
         location: { type: string, minLength: 1, maxLength: 200 }
         contractor: { type: string, minLength: 1, maxLength: 200 }
         instructedBy: { type: string, minLength: 1, maxLength: 200 }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+        notes: { type: string, maxLength: 5000 }
         origin: { type: string, enum: [manual, nova] }
         lines:
           type: array
@@ -27366,6 +27404,17 @@ components:
             lat: { type: number, minimum: -90, maximum: 90 }
             lng: { type: number, minimum: -180, maximum: 180 }
             accuracyM: { type: number, minimum: 0, maximum: 100000 }
+    ReviewTmTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [stage]
+      properties:
+        stage: { $ref: '#/components/schemas/TmReviewStage' }
+        note:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required to field-verify while Nova still flags hours that differ from the timesheet or equipment log.
     VoidTmTicketRequest:
       type: object
       additionalProperties: false

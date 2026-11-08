@@ -450,6 +450,17 @@ export const tmTickets = financialsSchema.table('tm_tickets', {
   location: text('location'),
   contractor: text('contractor'),
   instructedBy: text('instructed_by'),
+  reference: text('reference'),
+  notes: text('notes'),
+  reviewStage: text('review_stage')
+    .$type<'in_progress' | 'ready_for_review' | 'field_verified'>()
+    .notNull()
+    .default('in_progress'),
+  readyAt: timestamp('ready_at', { withTimezone: true }),
+  readyBy: uuid('ready_by'),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  verifiedBy: uuid('verified_by'),
+  verifyNote: text('verify_note'),
   origin: text('origin').$type<'manual' | 'nova'>().notNull().default('manual'),
   status: text('status')
     .$type<'draft' | 'part_signed' | 'signed' | 'converted' | 'void'>()
