@@ -6,8 +6,8 @@ import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { BookmarksCard } from '@/features/bookmarks';
-import { ConversationsCard } from '@/features/conversations';
 import { RecentsCard } from '@/features/recents';
+import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
@@ -16,6 +16,9 @@ import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { DirectionsCard } from '../components/DirectionsCard';
 import { PhotosCard } from '../components/PhotosCard';
+import { ProjectHero } from '../components/ProjectHero';
+import { ProjectStatusCard } from '../components/ProjectStatusCard';
+import { useUpdateProject } from '../hooks/useProjectMutations';
 import { MemberList } from '../components/MemberList';
 import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
 import { AddMemberForm } from '../forms/AddMemberForm';
@@ -35,11 +38,16 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
   const permissions = useProjectPermissions(org.orgId, projectId);
+  const updateProject = useUpdateProject(org.orgId, projectId);
 
   // UI gating only; the API enforces the same rule (frontend 02 §6). The contract types tool names as plain
   // strings, while `can()` takes the domain's narrower `Tool` union; unknown tools are simply never matched.
   const canManageMembers = permissions.data
     ? can(permissions.data as EffectivePermissions, 'platform.project_members.manage')
+    : false;
+
+  const canEditProject = permissions.data
+    ? can(permissions.data as EffectivePermissions, 'platform.projects.update')
     : false;
 
   // Names for the member table. Only fetched when the caller manages members (they need the same reference data).
@@ -79,7 +87,27 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
         <span aria-current="page">{p.name}</span>
       </nav>
       <PageHeader title={p.name} eyebrow={p.number ? `Project ${p.number}` : undefined} />
-      <div className="project-overview">
+      <div className="stack-lg">
+        <ProjectHero
+          orgId={org.orgId}
+          fileId={p.heroFileId}
+          name={p.name}
+          onRemove={
+            canEditProject
+              ? () => updateProject.mutate({ version: p.version, body: { heroFileId: null } })
+              : undefined
+          }
+        />
+        <ProjectStatusCard
+          orgId={org.orgId}
+          projectId={projectId}
+          version={p.version}
+          tile={p.statusTile ?? null}
+          canEdit={canEditProject}
+        />
+        <ErrorAlert error={updateProject.error} title="We couldn't change the project photo" />
+      </div>
+      <div className="project-overview project-overview--spaced">
         <div className="project-overview__col">
           <Card title="Project information">
             <dl className="details">
@@ -117,7 +145,17 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             permissions={permissions.data as EffectivePermissions | undefined}
           />
           <RecentsCard projectId={projectId} />
-          <PhotosCard projectId={projectId} timeZone={p.timezone} />
+          <PhotosCard
+            projectId={projectId}
+            timeZone={p.timezone}
+            heroFileId={p.heroFileId}
+            onUseAsHero={
+              canEditProject
+                ? (fileId) =>
+                    updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
+                : undefined
+            }
+          />
         </div>
       </div>
       <div className="stack-lg project-overview__below">
@@ -141,6 +179,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             />
           ) : null}
         </Card>
+
         <ErrorAlert
           error={permissions.error}
           title="We couldn't check your permissions on this project"

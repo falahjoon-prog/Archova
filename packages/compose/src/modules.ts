@@ -188,8 +188,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
   let access: ReturnType<typeof createAccessModule> | null = null;
+  let filesApi: ReturnType<typeof createFilesModule>['api'] | null = null;
   const platform = createPlatformModule(services, {
     identity: identity.api,
+    files: () => filesApi!,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
@@ -234,6 +236,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       correspondence: 'correspondence.items.respond',
     },
   });
+  filesApi = files.api;
 
   const documents = createDocumentsModule(services, {
     access: access.api,
