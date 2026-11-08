@@ -9,6 +9,7 @@ import {
   type SyncRunOptions,
   type Syncable,
 } from '@archova/sync-core';
+import type { ActionQueue } from '../actions/action-queue';
 import type { SignInQueue } from '../attendance/sign-in-queue';
 import type { UploadQueue } from '../files/upload-queue';
 
@@ -16,6 +17,8 @@ export function createDeviceSync(deps: {
   uploads: UploadQueue;
   /** Gate sign-ins scanned with no signal; replayed before the engine runs so the site list is current. */
   signIns?: SignInQueue;
+  /** Submittal responses and timesheet actions taken with no signal, replayed in order. */
+  actions?: ActionQueue;
   engine: SyncEngine | null;
   now?: () => number;
   random?: () => number;
@@ -34,6 +37,11 @@ export function createDeviceSync(deps: {
       }
       try {
         if (deps.signIns && (await deps.signIns.drain()).retry) uploadRetry = true;
+      } catch {
+        uploadRetry = true;
+      }
+      try {
+        if (deps.actions && (await deps.actions.drain()).retry) uploadRetry = true;
       } catch {
         uploadRetry = true;
       }

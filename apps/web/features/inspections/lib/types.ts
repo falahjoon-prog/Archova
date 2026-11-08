@@ -1,5 +1,5 @@
 export type ResponseType =
-  'pass_fail_na' | 'yes_no' | 'number' | 'text' | 'photo' | 'signature' | 'select';
+  'pass_fail_na' | 'yes_no' | 'number' | 'text' | 'photo' | 'signature' | 'select' | 'date';
 export type InspectionResult = 'pass' | 'fail' | 'na';
 export type InspectionStatus = 'scheduled' | 'in_progress' | 'submitted' | 'closed';
 
@@ -11,6 +11,7 @@ export const RESPONSE_TYPE_LABELS: Record<ResponseType, string> = {
   photo: 'Photo',
   signature: 'Signature (typed name)',
   select: 'Choose one',
+  date: 'Date',
 };
 
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
