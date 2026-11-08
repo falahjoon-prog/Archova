@@ -1848,7 +1848,7 @@ describe('T&M tickets', () => {
     const created = await post('tm-tickets', body);
     expect(created.statusCode).toBe(201);
     const t1 = created.json();
-    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '1970.00' });
+    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '2036.00' });
     expect(t1.lines.map((l: { amount: string }) => l.amount)).toEqual([
       '680.00',
       '630.00',
@@ -1866,6 +1866,42 @@ describe('T&M tickets', () => {
       budgetLineId: line.id,
     });
     expect(convertEarly.json().code).toBe('financials.tm_ticket.bad_state');
+
+    // Review before signing: a ticket cannot be signed until it is ready and then field verified by someone else.
+    expect(edited.json()).toMatchObject({ reviewStage: 'in_progress' });
+    expect(
+      (
+        await post(`tm-tickets/${t1.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' })
+      ).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'field_verified' })).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'ready_for_review' })).json(),
+    ).toMatchObject({ reviewStage: 'ready_for_review' });
+    // The person who marked it ready cannot verify it.
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'field_verified' })).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    // Hand-typed lines are not tied to a timesheet, so there are no differing hours to explain and no note is needed.
+    const verified = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+      stage: 'field_verified',
+    });
+    expect(verified.json()).toMatchObject({ reviewStage: 'field_verified' });
+    // Editing sends it back, so it must be re-verified.
+    expect(
+      (
+        await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, {
+          ...body,
+          title: 'Extra excavation C',
+        })
+      ).json(),
+    ).toMatchObject({ reviewStage: 'in_progress' });
+    await post(`tm-tickets/${t1.id}/review`, { stage: 'ready_for_review' });
+    await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+      stage: 'field_verified',
+    });
 
     // First signature freezes the ticket; the same person cannot sign twice or in the other role.
     const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
@@ -1947,7 +1983,7 @@ describe('T&M tickets', () => {
     });
     expect(conv.json()).toMatchObject({ status: 'converted', convertedTo: 'direct_cost' });
     const dcs = (await get('direct-costs')).json();
-    expect(dcs.total).toBe('1970.00');
+    expect(dcs.total).toBe('2036.00');
     expect(dcs.data.map((d: { category: string }) => d.category).sort()).toEqual([
       'labour',
       'materials',
@@ -1975,7 +2011,7 @@ describe('T&M tickets', () => {
     expect(asVar.json()).toMatchObject({ status: 'converted', convertedTo: 'variation' });
     expect(asVar.json().variationId).toMatch(/^var_/);
     const vars = (await get(`contracts/${contract.id}/variations`)).json();
-    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '1970.00' });
+    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '2036.00' });
 
     const t3 = (await post('tm-tickets', body)).json();
     expect((await post(`tm-tickets/${t3.id}/void`, { note: '' })).statusCode).toBe(422);

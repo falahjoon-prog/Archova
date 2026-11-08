@@ -7815,6 +7815,15 @@ export const RetentionReleaseSchema = z.object({
 });
 export type RetentionRelease = z.infer<typeof RetentionReleaseSchema>;
 
+export const TmReviewStageSchema = z.enum(["in_progress", "ready_for_review", "field_verified"]);
+export type TmReviewStage = z.infer<typeof TmReviewStageSchema>;
+
+export const ReviewTmTicketRequestSchema = z.object({
+  "stage": TmReviewStageSchema,
+  "note": z.string().min(1).max(1000).optional(),
+}).strict();
+export type ReviewTmTicketRequest = z.infer<typeof ReviewTmTicketRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -8887,6 +8896,10 @@ export const TmTicketSchema = z.object({
   "location": z.string().nullable(),
   "contractor": z.string().nullable(),
   "instructedBy": z.string().nullable(),
+  "reference": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "reviewStage": TmReviewStageSchema,
+  "verifyNote": z.string().nullable(),
   "origin": z.enum(["manual", "nova"]),
   "status": z.enum(["draft", "part_signed", "signed", "converted", "void"]),
   "total": FinancialsMoneySchema,
@@ -8968,6 +8981,8 @@ export const TmTicketRequestSchema = z.object({
   "location": z.string().min(1).max(200).optional(),
   "contractor": z.string().min(1).max(200).optional(),
   "instructedBy": z.string().min(1).max(200).optional(),
+  "reference": z.string().min(1).max(100).optional(),
+  "notes": z.string().max(5000).optional(),
   "origin": z.enum(["manual", "nova"]).optional(),
   "lines": z.array(TmTicketLineRequestSchema).min(1).max(200),
 }).strict();

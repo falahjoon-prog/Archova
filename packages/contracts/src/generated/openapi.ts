@@ -10937,6 +10937,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a draft ticket between in progress, ready for review and field verified. Field verified needs a different person from whoever marked it ready, and a note while Nova flags differing hours. A ticket must be field verified before it is signed. */
+        post: operations["reviewTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void": {
         parameters: {
             query?: never;
@@ -18486,6 +18507,10 @@ export interface components {
             location: string | null;
             contractor: string | null;
             instructedBy: string | null;
+            reference: string | null;
+            notes: string | null;
+            reviewStage: components["schemas"]["TmReviewStage"];
+            verifyNote: string | null;
             /** @enum {string} */
             origin: "manual" | "nova";
             /** @enum {string} */
@@ -18500,6 +18525,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @enum {string} */
+        TmReviewStage: "in_progress" | "ready_for_review" | "field_verified";
         TmTicketDetail: components["schemas"]["TmTicket"] & {
             lines: components["schemas"]["TmTicketLine"][];
             signoffs: components["schemas"]["TmTicketSignoff"][];
@@ -18539,6 +18566,8 @@ export interface components {
             location?: string;
             contractor?: string;
             instructedBy?: string;
+            reference?: string;
+            notes?: string;
             /** @enum {string} */
             origin?: "manual" | "nova";
             lines: components["schemas"]["TmTicketLineRequest"][];
@@ -18561,6 +18590,11 @@ export interface components {
                 lng: number;
                 accuracyM?: number;
             };
+        };
+        ReviewTmTicketRequest: {
+            stage: components["schemas"]["TmReviewStage"];
+            /** @description Required to field-verify while Nova still flags hours that differ from the timesheet or equipment log. */
+            note?: string;
         };
         VoidTmTicketRequest: {
             note: string;
@@ -40363,6 +40397,37 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SignTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewTmTicketRequest"];
             };
         };
         responses: {
