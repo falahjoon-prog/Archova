@@ -17,11 +17,11 @@ export const HAZARD_DISCLAIMER =
   'Nova flags what it can see in a photo for you to check. It is not a safety inspection and does not decide that a rule was broken.';
 
 /** Wording that judges rather than observes: a signal using it is dropped, not repaired. */
-const JUDGING =
+export const JUDGING =
   /\b(breach\w*|non-?complian\w*|illegal\w*|unlawful\w*|violat\w*|offence\w*|negligen\w*|contravene\w*|contravention|liable|liability|at fault|stop work|should be|must be|needs? to be|ought to|whs act|regulations?|australian standard|as ?\d{3,4})\b/i;
 
 /** A name for a person ("a worker named Dave", "Mr Smith"): signals describe what is visible, never who. */
-const PERSON_NAME = /\b(?:[Nn]amed|[Cc]alled|known as|Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][a-z]+/;
+export const PERSON_NAME = /\b(?:[Nn]amed|[Cc]alled|known as|Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][a-z]+/;
 
 /** "Is not worn" states a fact about a person Nova can't know from one frame; keep it as what the photo suggests. */
 export function soften(text: string): string {

@@ -1,4 +1,4 @@
--- Composed from modules/platform/db/migrations/20261107040000_platform_directory_contacts.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/platform/db/migrations/20261108091500_platform_directory_contacts.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- platform (phase 1): the project directory and company contacts (docs/backend/schema/platform.md).
 -- Members get the directory details a project admin keeps for them (phone, job title, trade); the sign-in profile is
 -- never shown to other members. company_contacts holds people at a company who have no login, e.g. a supplier's

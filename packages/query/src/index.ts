@@ -46,9 +46,11 @@ export type ProjectTool =
   | 'submittals'
   | 'correspondence'
   | 'conversations'
+  | 'announcements'
   | 'coordination'
   | 'diary'
   | 'key-dates'
+  | 'locations'
   | 'photos'
   | 'delays'
   | 'programme'
@@ -62,6 +64,10 @@ export type ProjectTool =
   | 'observations'
   | 'swms'
   | 'incidents'
+  | 'toolbox'
+  | 'environment'
+  | 'permits'
+  | 'insurance'
   | 'inspections'
   | 'late-submissions'
   | 'spec-books'
@@ -72,7 +78,9 @@ export type ProjectTool =
   | 'estimates'
   | 'contracts'
   | 'payment-claims'
+  | 'owner-invoices'
   | 'cost-forecast'
+  | 'tm-tickets'
   | 'budget';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */

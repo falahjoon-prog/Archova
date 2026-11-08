@@ -1,8 +1,9 @@
-import { encodeId } from '@archova/domain';
+import { directionsUrl, encodeId } from '@archova/domain';
 import type {
   Company,
   KeyDateChange,
   KeyDates,
+  ProjectLocation,
   MembershipSummary,
   Org,
   Project,
@@ -11,6 +12,7 @@ import type {
 } from '@archova/contracts';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
 import type { companies, companyContacts, orgs, projectMembers, projects } from '../infra/tables';
+import type { LocationRow } from '../application/locations';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -35,6 +37,11 @@ export const toProjectDto = (p: typeof projects.$inferSelect): Project => ({
   number: p.number,
   status: p.status,
   phase: p.phase,
+  heroFileId: p.heroFileId ? encodeId('file', p.heroFileId) : null,
+  statusTile:
+    p.statusDoc && typeof p.statusDoc === 'object'
+      ? { title: p.statusTitle, doc: p.statusDoc as NonNullable<Project['statusTile']>['doc'] }
+      : null,
   state: p.state,
   timezone: p.timezone,
   address: p.address,
@@ -128,3 +135,20 @@ export const toCompanyContactDto = (c: typeof companyContacts.$inferSelect): Com
   updatedAt: iso(c.updatedAt),
   version: c.version,
 });
+export const toProjectLocationDto = (l: LocationRow): ProjectLocation => {
+  const point = l.lat !== null && l.lng !== null ? { lat: l.lat, lng: l.lng } : null;
+  return {
+    id: encodeId('projectLocation', l.id),
+    name: l.name,
+    kind: l.kind,
+    address: l.address,
+    point,
+    directionsUrl: directionsUrl({ address: l.address, point }),
+    accessNote: l.accessNote,
+    contactName: l.contactName,
+    contactPhone: l.contactPhone,
+    usedFor: l.usedFor,
+    isDefault: l.isDefault,
+    version: l.version,
+  };
+};

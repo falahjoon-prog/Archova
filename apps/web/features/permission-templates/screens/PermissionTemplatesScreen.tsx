@@ -23,6 +23,7 @@ const TOOLS: Array<[string, string]> = [
   ['meetings', 'Meetings'],
   ['inspections', 'Quality and safety'],
   ['incidents', 'Incidents'],
+  ['environment', 'Environment and sustainability'],
   ['budget', 'Budget'],
   ['commitments', 'Commitments'],
   ['variations', 'Variations'],

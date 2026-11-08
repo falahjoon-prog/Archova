@@ -8,6 +8,7 @@ import type {
   CreateProjectRequest,
   UpdateCompanyContactRequest,
   UpdateProjectMemberRequest,
+  UpdateProjectRequest,
 } from '@archova/contracts';
 import { queryKeys } from '@archova/query';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
@@ -44,6 +45,23 @@ export function useAddProjectMember(orgId: string, projectId: string) {
   });
 }
 
+/** PATCH /v1/orgs/{orgId}/projects/{projectId}. Sends the version it was read at, so a stale edit is refused. */
+export function useUpdateProject(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ version, body }: { version: number; body: UpdateProjectRequest }) => {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.PATCH('/v1/orgs/{orgId}/projects/{projectId}', {
+          params: { path: { orgId, projectId }, header: { 'If-Match': `"${version}"` } },
+          body,
+        }),
+      );
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.project(orgId, projectId) }),
+  });
+}
 /** PATCH …/members/{memberId}: the phone, job title and trade shown in the directory. */
 export function useUpdateProjectMember(orgId: string, projectId: string) {
   const queryClient = useQueryClient();
