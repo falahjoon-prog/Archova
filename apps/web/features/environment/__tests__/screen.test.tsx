@@ -87,4 +87,50 @@ describe('EnvironmentScreen', () => {
     expect(within(table).getByText('EPA works approval')).toBeTruthy();
     expect(within(table).getByText('Expiring soon')).toBeTruthy();
   });
+
+  it('shows monitoring points with the latest reading and a rising warning', async () => {
+    nav.search = 'tab=monitoring';
+    renderInProject(<EnvironmentScreen />);
+    const table = await screen.findByRole('table', { name: 'Monitoring points' });
+    expect(within(table).getByText('Dust monitor, north boundary')).toBeTruthy();
+    expect(within(table).getByText('Rising')).toBeTruthy();
+    const flags = await screen.findByLabelText('Nova flags');
+    expect(within(flags).getByText(/1 monitoring breach is waiting/)).toBeTruthy();
+  });
+
+  it('flags the linked condition when a logged reading breaches, and the breach needs a response', async () => {
+    const user = userEvent.setup();
+    nav.search = 'tab=monitoring';
+    renderInProject(<EnvironmentScreen />);
+    await user.click(
+      await screen.findByRole('button', { name: 'Log a reading for Noise logger, Smith St' }),
+    );
+    const save = screen.getByRole('button', { name: 'Log reading' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await enterText(user, screen.getByLabelText(/Reading \(dB\(A\)\)/), '82');
+    await user.click(save);
+    await waitFor(async () =>
+      expect(
+        (await environmentPreview.listConditions('prj_test', {})).find(
+          (c) => c.numberLabel === 'EMC-0003',
+        )!.status,
+      ).toBe('non_compliant'),
+    );
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Respond to the breach at Noise logger, Smith St',
+      }),
+    );
+    const record = screen.getByRole('button', { name: 'Record response' }) as HTMLButtonElement;
+    expect(record.disabled).toBe(true);
+    await enterText(user, screen.getByLabelText('Corrective action'), 'Works paused for the hour');
+    await user.click(record);
+    await waitFor(async () =>
+      expect(
+        (await environmentPreview.listReadings('prj_test', { status: 'breach', open: true }))
+          .length,
+      ).toBe(1),
+    );
+  });
 });

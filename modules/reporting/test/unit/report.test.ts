@@ -12,14 +12,28 @@ import {
   type ResultRow,
 } from '../../src/domain/report';
 
-const tool = (open: number, overdue: number, restricted = false) => ({ restricted, open, overdue });
+const tool = (open: number, overdue: number, restricted = false) => ({
+  restricted,
+  open,
+  overdue,
+  dueSoon: 0,
+});
 const counts = (r: [number, number], d: [number, number], s: [number, number]): ProjectCounts => ({
   rfis: tool(...r),
   defects: tool(...d),
   submittals: tool(...s),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
   programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
 });
 

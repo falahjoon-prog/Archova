@@ -15,10 +15,11 @@ const { ReportsScreen } = await import('../screens/ReportsScreen');
 const { ReadinessScreen } = await import('../screens/ReadinessScreen');
 const { toCsv, orderColumns } = await import('../lib/types');
 
-const tool = (open: number, overdue: number, restricted = false) => ({
+const tool = (open: number, overdue: number, restricted = false, dueSoon = 0) => ({
   restricted,
   open,
   overdue,
+  dueSoon,
 });
 const project = (id: string, name: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -26,13 +27,23 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   number: null,
   status: 'active',
   phase: null,
+  state: null,
   siteLocation: null,
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
   rfis: tool(0, 0),
   defects: tool(0, 0),
   submittals: tool(0, 0),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
   programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
   budget: {
     restricted: true,
@@ -277,6 +288,7 @@ describe('Status report', () => {
     restricted: false,
     open: 10,
     overdue: late,
+    dueSoon: 0,
     notStarted: 4,
     completed: 5,
     lateDays,
@@ -341,6 +353,48 @@ describe('Status report', () => {
     await user.selectOptions(screen.getByLabelText('Project'), 'prj_a');
     expect(screen.getByText('under budget')).toBeTruthy();
     expect(screen.getByText('90%')).toBeTruthy();
+  });
+});
+
+describe('Project overview tab', () => {
+  it('shows a row per tool with overdue, next 7 days and later, and lets a row be hidden', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        projects: 1,
+        rfisOpen: 0,
+        rfisOverdue: 0,
+        defectsOpen: 0,
+        defectsOverdue: 0,
+        submittalsOpen: 0,
+        submittalsOverdue: 0,
+        claimsOpen: 0,
+        claimsOverdue: 0,
+        variationsOpen: 0,
+        variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 0,
+        projectsOverBudget: 0,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [project('prj_a', 'Alpha Tower', { rfis: tool(10, 3, false, 2) })],
+      truncated: false,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PortfolioScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Project overview' }));
+    const table = await screen.findByRole('table', { name: /Open items on Alpha Tower/ });
+    const rfiRow = within(table).getByRole('row', { name: /RFIs/ });
+    expect(within(rfiRow).getByRole('link', { name: '3 overdue RFIs' })).toBeTruthy();
+    const cells = within(rfiRow).getAllByRole('cell');
+    expect(cells.map((c) => c.textContent)).toEqual(['', '3', '2', '5', '10']);
+    await user.click(screen.getByRole('button', { name: 'Choose rows' }));
+    await user.click(screen.getByRole('checkbox', { name: 'RFIs' }));
+    expect(within(table).queryByRole('row', { name: /^RFIs/ })).toBeNull();
   });
 });
 

@@ -266,3 +266,98 @@ describe('Documents and the summary', () => {
     expect(res.statusCode).toBe(422);
   });
 });
+
+describe('Monitoring', () => {
+  it('judges readings against limits, flags the linked condition on a breach, and answers it with an incident', async () => {
+    const s = await setup();
+    const cond = await s.pm.browser.post(`${s.base}/conditions`, {
+      title: 'Dust suppression',
+      category: 'air_quality',
+    });
+    const condition = cond.json().condition;
+    const point = await s.pm.browser.post(`${s.base}/monitoring-points`, {
+      name: 'North boundary dust',
+      parameter: 'dust_pm10',
+      unit: 'µg/m³',
+      location: 'North boundary',
+      maxLimit: 50,
+      conditionId: condition.id,
+    });
+    expect(point.statusCode).toBe(201);
+    const p = point.json();
+    expect(p).toMatchObject({ maxLimit: 50, minLimit: null, latest: null, openBreaches: 0 });
+
+    // Limits need at least one end, and a minimum below the maximum.
+    const bad = await s.pm.browser.post(`${s.base}/monitoring-points`, {
+      name: 'Nothing',
+      parameter: 'other',
+      unit: 'x',
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const url = `${s.base}/monitoring-points/${p.id}/readings`;
+    expect((await s.site.browser.post(url, { value: 20 })).json().status).toBe('ok');
+    expect((await s.site.browser.post(url, { value: 44 })).json().status).toBe('warning');
+    const breach = await s.site.browser.post(url, { value: 61, note: 'Wind gusting' });
+    expect(breach.statusCode).toBe(201);
+    expect(breach.json()).toMatchObject({ status: 'breach', value: 61 });
+
+    // The condition was flagged non-compliant automatically, with a trail row.
+    const after = await s.pm.browser.get(`${s.base}/conditions/${condition.id}`);
+    expect(after.json().condition.status).toBe('non_compliant');
+    expect(after.json().events.at(-1).note).toContain('North boundary dust');
+
+    const points = (await s.pm.browser.get(`${s.base}/monitoring-points`)).json().data;
+    expect(points[0]).toMatchObject({ openBreaches: 1 });
+    expect(points[0].latest.value).toBe(61);
+    const summary = (await s.pm.browser.get(`${s.base}/summary`)).json();
+    expect(summary.monitoring).toMatchObject({ points: 1, openBreaches: 1 });
+    expect(summary.flags.map((f: { code: string }) => f.code)).toContain('monitoring_breach_open');
+
+    // A subcontractor can read but not log or answer.
+    expect((await s.sub.browser.get(`${s.base}/monitoring-points`)).statusCode).toBe(200);
+    expect((await s.sub.browser.post(url, { value: 1 })).statusCode).toBe(403);
+
+    // A breach needs a response; the site team answers it and raises an environmental incident.
+    const respondUrl = `${s.base}/readings/${breach.json().id}/respond`;
+    expect((await s.site.browser.post(respondUrl, { note: '' })).statusCode).toBe(422);
+    const answered = await s.site.browser.post(respondUrl, {
+      note: 'Water cart run every two hours; works paused until wind drops.',
+      raiseIncident: true,
+    });
+    expect(answered.statusCode).toBe(200);
+    const body = answered.json();
+    expect(body.incidentId).toMatch(/^inx_/);
+    expect(body.reading.respondedAt).not.toBeNull();
+    const incident = await s.pm.browser.get(
+      `/v1/orgs/${s.org.id}/projects/${s.project.id}/incidents/${body.incidentId}`,
+    );
+    expect(incident.json().incident).toMatchObject({ type: 'environmental' });
+
+    // Answered once, and an ok reading has nothing to answer.
+    expect((await s.site.browser.post(respondUrl, { note: 'again' })).statusCode).toBe(409);
+    const open = await s.pm.browser.get(`${s.base}/readings?status=breach&open=true`);
+    expect(open.json().data).toEqual([]);
+  });
+
+  it('keeps readings of a point newest first and refuses a future reading', async () => {
+    const s = await setup();
+    const point = (
+      await s.pm.browser.post(`${s.base}/monitoring-points`, {
+        name: 'Discharge pH',
+        parameter: 'water_ph',
+        unit: 'pH',
+        minLimit: 6.5,
+        maxLimit: 8.5,
+      })
+    ).json();
+    const url = `${s.base}/monitoring-points/${point.id}/readings`;
+    await s.pm.browser.post(url, { value: 7, takenAt: '2026-10-01T01:00:00Z' });
+    await s.pm.browser.post(url, { value: 6.4, takenAt: '2026-10-02T01:00:00Z' });
+    const list = (await s.pm.browser.get(url)).json();
+    expect(list.data.map((r: { value: number }) => r.value)).toEqual([6.4, 7]);
+    expect(list.data[0].status).toBe('breach');
+    const future = await s.pm.browser.post(url, { value: 7, takenAt: '2099-01-01T00:00:00Z' });
+    expect(future.statusCode).toBe(422);
+  });
+});

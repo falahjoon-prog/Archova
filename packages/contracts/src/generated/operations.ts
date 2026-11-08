@@ -1745,6 +1745,17 @@ export const RespondToCorrespondenceParams = z.object({
   "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
 });
 export const RespondToCorrespondenceBody = s.RespondCorrespondenceRequestSchema;
+export const ListCorrespondenceEmailsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const EmailCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const EmailCorrespondenceBody = s.EmailCorrespondenceRequestSchema;
 export const CloseCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2845,6 +2856,53 @@ export const DeleteEnvironmentDocumentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "environmentDocumentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
 });
+export const ListMonitoringPointsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMonitoringPointParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMonitoringPointBody = s.CreateMonitoringPointRequestSchema;
+export const UpdateMonitoringPointParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMonitoringPointBody = s.UpdateMonitoringPointRequestSchema;
+export const ListPointReadingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const ListPointReadingsQuery = z.object({
+  "status": s.MonitoringReadingStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const LogReadingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const LogReadingBody = s.LogReadingRequestSchema;
+export const ListEnvironmentReadingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEnvironmentReadingsQuery = z.object({
+  "status": s.MonitoringReadingStatusSchema.optional(),
+  "open": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RespondToReadingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "readingId": z.string().regex(new RegExp("^erd_[0-9A-Za-z]{26}$")),
+});
+export const RespondToReadingBody = s.RespondToReadingRequestSchema;
 export const ListIncidentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2891,6 +2949,90 @@ export const UpdateIncidentActionParams = z.object({
   "actionId": z.string().regex(new RegExp("^iac_[0-9A-Za-z]{26}$")),
 });
 export const UpdateIncidentActionBody = s.UpdateIncidentActionRequestSchema;
+export const ListToolboxTopicsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListToolboxTopicsQuery = z.object({
+  "includeInactive": z.enum(["true", "false"]).optional(),
+});
+export const CreateToolboxTopicParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateToolboxTopicBody = s.CreateToolboxTopicRequestSchema;
+export const UpdateToolboxTopicParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "topicId": z.string().regex(new RegExp("^tbp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateToolboxTopicBody = s.UpdateToolboxTopicRequestSchema;
+export const ListToolboxTalksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListToolboxTalksQuery = z.object({
+  "status": s.ToolboxTalkStatusSchema.optional(),
+  "topicId": z.string().regex(new RegExp("^tbp_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateToolboxTalkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateToolboxTalkBody = s.CreateToolboxTalkRequestSchema;
+export const SuggestToolboxTopicsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetToolboxTalkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateToolboxTalkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateToolboxTalkBody = s.UpdateToolboxTalkRequestSchema;
+export const DeleteToolboxTalkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+});
+export const TransitionToolboxTalkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+});
+export const TransitionToolboxTalkBody = s.ToolboxTransitionRequestSchema;
+export const AddToolboxAttendeesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+});
+export const AddToolboxAttendeesBody = s.AddToolboxAttendeesRequestSchema;
+export const RemoveToolboxAttendeeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+  "attendeeId": z.string().regex(new RegExp("^tba_[0-9A-Za-z]{26}$")),
+});
+export const SignToolboxAttendeeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+  "attendeeId": z.string().regex(new RegExp("^tba_[0-9A-Za-z]{26}$")),
+});
+export const SignToolboxAttendeeBody = s.SignToolboxAttendeeRequestSchema;
+export const ClearToolboxSignatureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
+  "attendeeId": z.string().regex(new RegExp("^tba_[0-9A-Za-z]{26}$")),
+});
 export const ListIncidentActionsFromSourceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7501,6 +7643,30 @@ export const operations = {
     query: null,
     body: RespondToCorrespondenceBody,
   },
+  listCorrespondenceEmails: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceEmailsParams,
+    query: null,
+    body: null,
+  },
+  emailCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.send",
+    internal: false,
+    contentType: "application/json",
+    params: EmailCorrespondenceParams,
+    query: null,
+    body: EmailCorrespondenceBody,
+  },
   closeCorrespondence: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close',
@@ -9953,6 +10119,90 @@ export const operations = {
     query: null,
     body: null,
   },
+  listMonitoringPoints: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListMonitoringPointsParams,
+    query: null,
+    body: null,
+  },
+  createMonitoringPoint: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMonitoringPointParams,
+    query: null,
+    body: CreateMonitoringPointBody,
+  },
+  updateMonitoringPoint: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMonitoringPointParams,
+    query: null,
+    body: UpdateMonitoringPointBody,
+  },
+  listPointReadings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListPointReadingsParams,
+    query: ListPointReadingsQuery,
+    body: null,
+  },
+  logReading: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogReadingParams,
+    query: null,
+    body: LogReadingBody,
+  },
+  listEnvironmentReadings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListEnvironmentReadingsParams,
+    query: ListEnvironmentReadingsQuery,
+    body: null,
+  },
+  respondToReading: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.respond",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToReadingParams,
+    query: null,
+    body: RespondToReadingBody,
+  },
   listIncidents: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
@@ -10036,6 +10286,174 @@ export const operations = {
     params: UpdateIncidentActionParams,
     query: null,
     body: UpdateIncidentActionBody,
+  },
+  listToolboxTopics: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.read",
+    internal: false,
+    contentType: null,
+    params: ListToolboxTopicsParams,
+    query: ListToolboxTopicsQuery,
+    body: null,
+  },
+  createToolboxTopic: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateToolboxTopicParams,
+    query: null,
+    body: CreateToolboxTopicBody,
+  },
+  updateToolboxTopic: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-topics/{topicId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateToolboxTopicParams,
+    query: null,
+    body: UpdateToolboxTopicBody,
+  },
+  listToolboxTalks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.read",
+    internal: false,
+    contentType: null,
+    params: ListToolboxTalksParams,
+    query: ListToolboxTalksQuery,
+    body: null,
+  },
+  createToolboxTalk: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: "application/json",
+    params: CreateToolboxTalkParams,
+    query: null,
+    body: CreateToolboxTalkBody,
+  },
+  suggestToolboxTopics: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/suggestions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.read",
+    internal: false,
+    contentType: null,
+    params: SuggestToolboxTopicsParams,
+    query: null,
+    body: null,
+  },
+  getToolboxTalk: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.read",
+    internal: false,
+    contentType: null,
+    params: GetToolboxTalkParams,
+    query: null,
+    body: null,
+  },
+  updateToolboxTalk: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateToolboxTalkParams,
+    query: null,
+    body: UpdateToolboxTalkBody,
+  },
+  deleteToolboxTalk: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: null,
+    params: DeleteToolboxTalkParams,
+    query: null,
+    body: null,
+  },
+  transitionToolboxTalk: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionToolboxTalkParams,
+    query: null,
+    body: TransitionToolboxTalkBody,
+  },
+  addToolboxAttendees: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: "application/json",
+    params: AddToolboxAttendeesParams,
+    query: null,
+    body: AddToolboxAttendeesBody,
+  },
+  removeToolboxAttendee: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: null,
+    params: RemoveToolboxAttendeeParams,
+    query: null,
+    body: null,
+  },
+  signToolboxAttendee: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: "application/json",
+    params: SignToolboxAttendeeParams,
+    query: null,
+    body: SignToolboxAttendeeBody,
+  },
+  clearToolboxSignature: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees/{attendeeId}/signature',
+    module: "safety",
+    auth: "required",
+    permission: "safety.toolbox.run",
+    internal: false,
+    contentType: null,
+    params: ClearToolboxSignatureParams,
+    query: null,
+    body: null,
   },
   listIncidentActionsFromSource: {
     method: 'GET',

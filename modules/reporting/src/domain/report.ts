@@ -86,6 +86,8 @@ export interface ToolCounts {
   restricted: boolean;
   open: number;
   overdue: number;
+  /** Open and due from today through the next 7 days (not overdue). Open items with no due date are in neither. */
+  dueSoon: number;
 }
 
 /** Programme activities, with the split the schedule insights need on top of open and late. */
@@ -96,13 +98,28 @@ export interface ProgrammeCounts extends ToolCounts {
   lateDays: number;
 }
 
+/** Incidents, with the dates the safety streaks and the 12-month trend are worked out from. */
+export interface IncidentCounts extends ToolCounts {
+  /** Project-local date of the latest injury, or null when none is recorded (or the caller cannot read incidents). */
+  lastInjuryOn: string | null;
+  /** The latest incident of any type except a near miss, same rule. */
+  lastIncidentOn: string | null;
+  /** Whole days from those dates to today in the project's zone; null when none is recorded. */
+  daysSinceInjury: number | null;
+  daysSinceIncident: number | null;
+  /** Incidents of any type, near misses included, recorded in the last 12 months. */
+  last12Months: number;
+}
+
 export interface ProjectCounts {
   rfis: ToolCounts;
   defects: ToolCounts;
   submittals: ToolCounts;
   claims: ToolCounts;
   variations: ToolCounts;
-  incidents: ToolCounts;
+  incidents: IncidentCounts;
+  observations: ToolCounts;
+  inspections: ToolCounts;
   programme: ProgrammeCounts;
 }
 

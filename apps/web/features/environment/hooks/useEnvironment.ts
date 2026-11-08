@@ -14,7 +14,13 @@ import type {
   ConditionInput,
   DocumentInput,
   EnvironmentDocument,
+  MonitoringPoint,
   Plan,
+  PointInput,
+  Reading,
+  ReadingFilters,
+  ReadingInput,
+  RespondInput,
   PlanInput,
   TransitionInput,
 } from '../lib/types';
@@ -71,6 +77,26 @@ export function useEnvironmentDocuments() {
   });
 }
 
+export function useMonitoringPoints() {
+  const source = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'points' }),
+    queryFn: () => source.listPoints(projectId),
+  });
+}
+
+export function useReadings(filters: ReadingFilters) {
+  const source = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'environment', { view: 'readings', ...filters }),
+    queryFn: () => source.listReadings(projectId, filters),
+  });
+}
+
 /** Status changes are seen by others and feed the summary, so none is optimistic. */
 export function useEnvironmentMutations() {
   const source = useSource();
@@ -108,6 +134,18 @@ export function useEnvironmentMutations() {
     }),
     approvePlan: useMutation({
       mutationFn: async (plan: Plan) => await settle(await source.approvePlan(projectId, plan)),
+    }),
+    createPoint: useMutation({
+      mutationFn: async (input: PointInput) =>
+        await settle(await source.createPoint(projectId, input)),
+    }),
+    logReading: useMutation({
+      mutationFn: async (v: { point: MonitoringPoint; input: ReadingInput }) =>
+        await settle(await source.logReading(projectId, v.point, v.input)),
+    }),
+    respond: useMutation({
+      mutationFn: async (v: { reading: Reading; input: RespondInput }) =>
+        await settle(await source.respond(projectId, v.reading, v.input)),
     }),
   };
 }

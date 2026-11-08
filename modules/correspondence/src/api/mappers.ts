@@ -3,12 +3,19 @@ import type {
   CorrespondenceAccess,
   CorrespondenceDetail,
   CorrespondenceHistoryEntry,
+  CorrespondenceEmail,
   CorrespondenceItem,
   CorrespondenceResponse,
   CorrespondenceTemplate,
   CorrespondenceType,
 } from '@archova/contracts';
-import type { HistoryRow, ItemView, ResponseRow, TypeRow } from '../application/correspondence';
+import type {
+  EmailRow,
+  HistoryRow,
+  ItemView,
+  ResponseRow,
+  TypeRow,
+} from '../application/correspondence';
 import type { TypeTemplate } from '../domain/templates';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -102,4 +109,16 @@ export const toHistoryDto = (h: HistoryRow): CorrespondenceHistoryEntry => ({
   byUser: userOrNull(h.byUser),
   action: h.action as CorrespondenceHistoryEntry['action'],
   changes: h.changes as CorrespondenceHistoryEntry['changes'],
+});
+
+export const toEmails = (rows: EmailRow[]): { data: CorrespondenceEmail[] } => ({
+  data: rows.map((r) => ({
+    id: encodeId('correspondenceEmail', r.id),
+    senderId: encodeId('user', r.senderId),
+    recipientUserId: encodeId('user', r.recipientUserId),
+    message: r.message,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+    sentAt: isoOrNull(r.sentAt),
+  })),
 });

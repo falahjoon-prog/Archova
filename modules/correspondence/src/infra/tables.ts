@@ -109,3 +109,20 @@ export const itemHistory = correspondenceSchema.table('item_history', {
   action: text('action').notNull(),
   changes: jsonb('changes').$type<HistoryChange[]>().notNull().default([]),
 });
+
+export const itemEmails = correspondenceSchema.table('item_emails', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  senderId: uuid('sender_id').notNull(),
+  recipientUserId: uuid('recipient_user_id').notNull(),
+  message: text('message').notNull().default(''),
+  status: text('status')
+    .$type<'queued' | 'sending' | 'sent' | 'failed'>()
+    .notNull()
+    .default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+});

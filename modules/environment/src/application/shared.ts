@@ -8,6 +8,14 @@ export interface EnvironmentDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  /** The safety module's incident register: a monitoring breach can be reported as an environmental incident. */
+  safety: {
+    reportEnvironmental(
+      scope: TenantScope,
+      projectId: string,
+      input: { title: string; description: string; location: string | null; occurredAt: Date },
+    ): Promise<{ id: string; number: number }>;
+  };
   now?: () => Date;
 }
 

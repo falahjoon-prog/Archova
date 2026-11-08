@@ -25,6 +25,7 @@ describe('projectToolGroups', () => {
       'Inspections',
       'Observations',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',

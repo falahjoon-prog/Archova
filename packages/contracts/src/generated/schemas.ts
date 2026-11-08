@@ -155,6 +155,18 @@ export const AddTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AddTimesheetLineRequest = z.infer<typeof AddTimesheetLineRequestSchema>;
 
+export const ToolboxAttendeeInputSchema = z.object({
+  "personName": z.string().min(1).max(200),
+  "companyId": z.string().nullable().optional(),
+  "userId": z.string().nullable().optional(),
+}).strict();
+export type ToolboxAttendeeInput = z.infer<typeof ToolboxAttendeeInputSchema>;
+
+export const AddToolboxAttendeesRequestSchema = z.object({
+  "attendees": z.array(ToolboxAttendeeInputSchema).min(1).max(200),
+}).strict();
+export type AddToolboxAttendeesRequest = z.infer<typeof AddToolboxAttendeesRequestSchema>;
+
 export const AuStateSchema = z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]);
 export type AuState = z.infer<typeof AuStateSchema>;
 
@@ -1589,6 +1601,22 @@ export const CorrespondenceDetailSchema = z.object({
 });
 export type CorrespondenceDetail = z.infer<typeof CorrespondenceDetailSchema>;
 
+export const CorrespondenceEmailSchema = z.object({
+  "id": z.string(),
+  "senderId": z.string(),
+  "recipientUserId": z.string(),
+  "message": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "failed"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type CorrespondenceEmail = z.infer<typeof CorrespondenceEmailSchema>;
+
+export const CorrespondenceEmailListSchema = z.object({
+  "data": z.array(CorrespondenceEmailSchema),
+});
+export type CorrespondenceEmailList = z.infer<typeof CorrespondenceEmailListSchema>;
+
 export const CorrespondenceFieldDefinitionSchema = z.object({
   "key": z.string().regex(new RegExp("^[a-z][a-zA-Z0-9]{0,29}$")),
   "label": z.string().min(1).max(60),
@@ -1601,7 +1629,7 @@ export const CorrespondenceHistoryEntrySchema = z.object({
   "id": z.string(),
   "at": z.string().datetime({ offset: true }),
   "byUser": z.string().nullable(),
-  "action": z.enum(["created", "edited", "sent", "responded", "closed", "voided", "access_changed"]),
+  "action": z.enum(["created", "edited", "sent", "responded", "closed", "voided", "access_changed", "emailed"]),
   "changes": z.array(z.object({
   "field": z.string(),
   "from": z.record(z.string(), z.unknown()),
@@ -2503,6 +2531,25 @@ export const CreateMeetingSeriesRequestSchema = z.object({
 }).strict();
 export type CreateMeetingSeriesRequest = z.infer<typeof CreateMeetingSeriesRequestSchema>;
 
+export const MonitoringParameterSchema = z.enum(["dust_pm10", "dust_pm25", "dust_deposition", "noise_laeq", "noise_lamax", "vibration_ppv", "water_ph", "water_turbidity", "water_tss", "other"]);
+export type MonitoringParameter = z.infer<typeof MonitoringParameterSchema>;
+
+export const MonitoringFrequencySchema = z.enum(["daily", "weekly", "fortnightly", "monthly", "per_event"]);
+export type MonitoringFrequency = z.infer<typeof MonitoringFrequencySchema>;
+
+export const CreateMonitoringPointRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "parameter": MonitoringParameterSchema,
+  "unit": z.string().min(1).max(30),
+  "location": z.string().max(200).nullable().optional(),
+  "minLimit": z.number().nullable().optional(),
+  "maxLimit": z.number().nullable().optional(),
+  "warnMargin": z.number().min(0).max(0.5).optional(),
+  "frequency": MonitoringFrequencySchema.optional(),
+  "conditionId": z.string().nullable().optional(),
+}).strict();
+export type CreateMonitoringPointRequest = z.infer<typeof CreateMonitoringPointRequestSchema>;
+
 export const CreateOauthAppRequestSchema = z.object({
   "name": z.string().min(1).max(80),
   "description": z.string().max(500).optional(),
@@ -2925,6 +2972,28 @@ export const CreateTenderPackageRequestSchema = z.object({
   "documents": z.array(PackageDocumentSchema).max(100).optional(),
 }).strict();
 export type CreateTenderPackageRequest = z.infer<typeof CreateTenderPackageRequestSchema>;
+
+export const CreateToolboxTalkRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "topicId": z.string().nullable().optional(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string().max(200).nullable().optional(),
+  "presenterName": z.string().min(1).max(200),
+  "notes": z.string().max(5000).nullable().optional(),
+  "attendees": z.array(ToolboxAttendeeInputSchema).max(200).optional(),
+}).strict();
+export type CreateToolboxTalkRequest = z.infer<typeof CreateToolboxTalkRequestSchema>;
+
+export const ToolboxTopicCategorySchema = z.enum(["general", "hazard", "plant", "environment", "wellbeing", "incident_review", "emergency"]);
+export type ToolboxTopicCategory = z.infer<typeof ToolboxTopicCategorySchema>;
+
+export const CreateToolboxTopicRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "talkingPoints": z.string().max(10000).optional(),
+  "category": ToolboxTopicCategorySchema.optional(),
+  "hrcwCategory": z.string().max(60).nullable().optional(),
+}).strict();
+export type CreateToolboxTopicRequest = z.infer<typeof CreateToolboxTopicRequestSchema>;
 
 export const TransmittalPurposeSchema = z.enum(["for_information", "for_review", "for_construction", "for_tender", "other"]);
 export type TransmittalPurpose = z.infer<typeof TransmittalPurposeSchema>;
@@ -3661,6 +3730,12 @@ export const EligibilityCheckSchema = z.object({
 });
 export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
 
+export const EmailCorrespondenceRequestSchema = z.object({
+  "userIds": z.array(UserRefSchema).min(1).max(20),
+  "message": z.string().max(1000).optional(),
+}).strict();
+export type EmailCorrespondenceRequest = z.infer<typeof EmailCorrespondenceRequestSchema>;
+
 export const EmergencyContactSchema = z.object({
   "name": z.string(),
   "relationship": z.string().nullable(),
@@ -3773,7 +3848,7 @@ export const EnvironmentDocumentListSchema = z.object({
 export type EnvironmentDocumentList = z.infer<typeof EnvironmentDocumentListSchema>;
 
 export const EnvironmentFlagSchema = z.object({
-  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due"]),
+  "code": z.enum(["conditions_non_compliant", "conditions_overdue", "documents_expired", "documents_expiring", "plan_missing", "plan_unapproved", "plan_review_due", "monitoring_breach_open", "monitoring_overdue", "monitoring_trending"]),
   "severity": z.enum(["info", "warning", "critical"]),
   "message": z.string(),
   "conditionIds": z.array(z.string()),
@@ -3829,6 +3904,11 @@ export const EnvironmentSummarySchema = z.object({
   "total": z.number().int(),
   "expired": z.number().int(),
   "expiring": z.number().int(),
+}),
+  "monitoring": z.object({
+  "points": z.number().int(),
+  "openBreaches": z.number().int(),
+  "overdue": z.number().int(),
 }),
   "flags": z.array(EnvironmentFlagSchema),
 });
@@ -5270,6 +5350,14 @@ export const LogQuantityRequestSchema = z.object({
 });
 export type LogQuantityRequest = z.infer<typeof LogQuantityRequestSchema>;
 
+export const LogReadingRequestSchema = z.object({
+  "value": z.number(),
+  "takenAt": z.string().datetime({ offset: true }).optional(),
+  "note": z.string().max(2000).optional(),
+  "fileIds": z.array(z.string()).max(20).optional(),
+}).strict();
+export type LogReadingRequest = z.infer<typeof LogReadingRequestSchema>;
+
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
   "password": z.string().min(1).max(256),
@@ -5544,6 +5632,59 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
+
+export const MonitoringReadingStatusSchema = z.enum(["ok", "warning", "breach"]);
+export type MonitoringReadingStatus = z.infer<typeof MonitoringReadingStatusSchema>;
+
+export const MonitoringReadingSchema = z.object({
+  "id": z.string(),
+  "pointId": z.string(),
+  "pointName": z.string().nullable(),
+  "unit": z.string().nullable(),
+  "value": z.number(),
+  "takenAt": z.string().datetime({ offset: true }),
+  "status": MonitoringReadingStatusSchema,
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "responseNote": z.string().nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedBy": z.string().nullable(),
+  "incidentId": z.string().nullable(),
+});
+export type MonitoringReading = z.infer<typeof MonitoringReadingSchema>;
+
+export const MonitoringPointSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "parameter": MonitoringParameterSchema,
+  "unit": z.string(),
+  "location": z.string().nullable(),
+  "minLimit": z.number().nullable(),
+  "maxLimit": z.number().nullable(),
+  "warnMargin": z.number(),
+  "frequency": MonitoringFrequencySchema,
+  "conditionId": z.string().nullable(),
+  "active": z.boolean(),
+  "latest": z.union([MonitoringReadingSchema, z.null()]),
+  "recent": z.array(z.number()),
+  "openBreaches": z.number().int(),
+  "isOverdue": z.boolean(),
+  "isTrending": z.boolean(),
+  "version": z.number().int(),
+});
+export type MonitoringPoint = z.infer<typeof MonitoringPointSchema>;
+
+export const MonitoringPointListSchema = z.object({
+  "data": z.array(MonitoringPointSchema),
+});
+export type MonitoringPointList = z.infer<typeof MonitoringPointListSchema>;
+
+export const MonitoringReadingPageSchema = z.object({
+  "data": z.array(MonitoringReadingSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type MonitoringReadingPage = z.infer<typeof MonitoringReadingPageSchema>;
 
 export const NccReferenceSchema = z.object({
   "provisionKey": z.string(),
@@ -6570,8 +6711,18 @@ export const PortfolioToolSchema = z.object({
   "restricted": z.boolean(),
   "open": z.number().int(),
   "overdue": z.number().int(),
+  "dueSoon": z.number().int(),
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
+
+export const PortfolioIncidentsSchema = z.intersection(PortfolioToolSchema, z.object({
+  "lastInjuryOn": z.string().date().nullable(),
+  "lastIncidentOn": z.string().date().nullable(),
+  "daysSinceInjury": z.number().int().nullable(),
+  "daysSinceIncident": z.number().int().nullable(),
+  "last12Months": z.number().int(),
+}));
+export type PortfolioIncidents = z.infer<typeof PortfolioIncidentsSchema>;
 
 export const PortfolioProgrammeSchema = z.intersection(PortfolioToolSchema, z.object({
   "notStarted": z.number().int(),
@@ -6601,13 +6752,16 @@ export const PortfolioProjectSchema = z.object({
   "number": z.string().nullable(),
   "status": z.string(),
   "phase": z.union([ProjectPhaseSchema, z.null()]),
+  "state": z.union([AuStateSchema, z.null()]),
   "siteLocation": z.union([GeoPointSchema, z.null()]),
+  "observations": PortfolioToolSchema,
+  "inspections": PortfolioToolSchema,
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
   "claims": PortfolioToolSchema,
   "variations": PortfolioToolSchema,
-  "incidents": PortfolioToolSchema,
+  "incidents": PortfolioIncidentsSchema,
   "programme": PortfolioProgrammeSchema,
   "budget": PortfolioBudgetSchema,
   "attention": z.number().int(),
@@ -7333,6 +7487,19 @@ export const RespondTenderAccessRequestSchema = z.object({
 }).strict();
 export type RespondTenderAccessRequest = z.infer<typeof RespondTenderAccessRequestSchema>;
 
+export const RespondToReadingRequestSchema = z.object({
+  "note": z.string().min(1).max(4000),
+  "raiseIncident": z.boolean().optional(),
+}).strict();
+export type RespondToReadingRequest = z.infer<typeof RespondToReadingRequestSchema>;
+
+export const RespondToReadingResultSchema = z.object({
+  "reading": MonitoringReadingSchema,
+  "incidentId": z.string().nullable(),
+  "incidentNumber": z.number().int().nullable(),
+});
+export type RespondToReadingResult = z.infer<typeof RespondToReadingResultSchema>;
+
 export const RespondToShiftRequestSchema = z.object({
   "status": z.enum(["accepted", "declined", "attended", "no_show"]),
 }).strict();
@@ -7843,6 +8010,11 @@ export const SignTmTicketRequestSchema = z.object({
 }).strict().optional(),
 }).strict();
 export type SignTmTicketRequest = z.infer<typeof SignTmTicketRequestSchema>;
+
+export const SignToolboxAttendeeRequestSchema = z.object({
+  "signatureFileId": z.string(),
+}).strict();
+export type SignToolboxAttendeeRequest = z.infer<typeof SignToolboxAttendeeRequestSchema>;
 
 export const SignupRequestSchema = z.object({
   "email": EmailSchema,
@@ -8499,6 +8671,96 @@ export const TokenResponseSchema = z.object({
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 
+export const ToolboxRepeatReasonSchema = z.enum(["shared_between_people", "reused_from_earlier_talk"]);
+export type ToolboxRepeatReason = z.infer<typeof ToolboxRepeatReasonSchema>;
+
+export const ToolboxAttendeeSchema = z.object({
+  "id": z.string(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "userId": z.string().nullable(),
+  "signedAt": z.string().datetime({ offset: true }).nullable(),
+  "signatureFileId": z.string().nullable(),
+  "repeatFlags": z.array(ToolboxRepeatReasonSchema),
+});
+export type ToolboxAttendee = z.infer<typeof ToolboxAttendeeSchema>;
+
+export const ToolboxSuggestionSchema = z.object({
+  "reason": z.enum(["recent_incident", "swms_in_force", "not_run_recently", "never_run"]),
+  "topicId": z.string().nullable(),
+  "title": z.string(),
+  "because": z.string(),
+  "hrcwCategory": z.string().nullable(),
+});
+export type ToolboxSuggestion = z.infer<typeof ToolboxSuggestionSchema>;
+
+export const ToolboxSuggestionListSchema = z.object({
+  "data": z.array(ToolboxSuggestionSchema),
+});
+export type ToolboxSuggestionList = z.infer<typeof ToolboxSuggestionListSchema>;
+
+export const ToolboxTalkStatusSchema = z.enum(["open", "closed"]);
+export type ToolboxTalkStatus = z.infer<typeof ToolboxTalkStatusSchema>;
+
+export const ToolboxTalkSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "topicId": z.string().nullable(),
+  "title": z.string(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string().nullable(),
+  "presenterName": z.string(),
+  "notes": z.string().nullable(),
+  "status": ToolboxTalkStatusSchema,
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "attendeeCount": z.number().int(),
+  "signedCount": z.number().int(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type ToolboxTalk = z.infer<typeof ToolboxTalkSchema>;
+
+export const ToolboxTopicSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "talkingPoints": z.string(),
+  "category": ToolboxTopicCategorySchema,
+  "hrcwCategory": z.string().nullable(),
+  "isActive": z.boolean(),
+  "lastHeldAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type ToolboxTopic = z.infer<typeof ToolboxTopicSchema>;
+
+export const ToolboxTalkDetailSchema = z.object({
+  "talk": ToolboxTalkSchema,
+  "topic": z.union([ToolboxTopicSchema, z.null()]),
+  "attendees": z.array(ToolboxAttendeeSchema),
+  "closeBlockers": z.array(z.string()),
+  "canEdit": z.boolean(),
+});
+export type ToolboxTalkDetail = z.infer<typeof ToolboxTalkDetailSchema>;
+
+export const ToolboxTalkPageSchema = z.object({
+  "data": z.array(ToolboxTalkSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ToolboxTalkPage = z.infer<typeof ToolboxTalkPageSchema>;
+
+export const ToolboxTopicListSchema = z.object({
+  "data": z.array(ToolboxTopicSchema),
+});
+export type ToolboxTopicList = z.infer<typeof ToolboxTopicListSchema>;
+
+export const ToolboxTransitionRequestSchema = z.object({
+  "action": z.enum(["close", "reopen"]),
+}).strict();
+export type ToolboxTransitionRequest = z.infer<typeof ToolboxTransitionRequestSchema>;
+
 export const TranslateInductionRequestSchema = z.object({
   "lang": z.string().regex(new RegExp("^[a-z]{2,3}(-[A-Za-z]{2,4})?$")),
 }).strict();
@@ -8996,6 +9258,20 @@ export const UpdateMeetingSeriesRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateMeetingSeriesRequest = z.infer<typeof UpdateMeetingSeriesRequestSchema>;
 
+export const UpdateMonitoringPointRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "parameter": MonitoringParameterSchema.optional(),
+  "unit": z.string().min(1).max(30).optional(),
+  "location": z.string().max(200).nullable().optional(),
+  "minLimit": z.number().nullable().optional(),
+  "maxLimit": z.number().nullable().optional(),
+  "warnMargin": z.number().min(0).max(0.5).optional(),
+  "frequency": MonitoringFrequencySchema.optional(),
+  "conditionId": z.string().nullable().optional(),
+  "active": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMonitoringPointRequest = z.infer<typeof UpdateMonitoringPointRequestSchema>;
+
 export const UpdateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema.optional(),
   "typeKey": z.string().max(80).optional(),
@@ -9197,6 +9473,25 @@ export const UpdateTenderPackageRequestSchema = z.object({
   "documents": z.array(PackageDocumentSchema).max(100).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateTenderPackageRequest = z.infer<typeof UpdateTenderPackageRequestSchema>;
+
+export const UpdateToolboxTalkRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "topicId": z.string().nullable().optional(),
+  "heldAt": z.string().datetime({ offset: true }).optional(),
+  "location": z.string().max(200).nullable().optional(),
+  "presenterName": z.string().min(1).max(200).optional(),
+  "notes": z.string().max(5000).nullable().optional(),
+}).strict();
+export type UpdateToolboxTalkRequest = z.infer<typeof UpdateToolboxTalkRequestSchema>;
+
+export const UpdateToolboxTopicRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "talkingPoints": z.string().max(10000).optional(),
+  "category": ToolboxTopicCategorySchema.optional(),
+  "hrcwCategory": z.string().max(60).nullable().optional(),
+  "isActive": z.boolean().optional(),
+}).strict();
+export type UpdateToolboxTopicRequest = z.infer<typeof UpdateToolboxTopicRequestSchema>;
 
 export const UpdateWorkerRequestSchema = z.object({
   "fullName": z.string().min(1).max(200).optional(),

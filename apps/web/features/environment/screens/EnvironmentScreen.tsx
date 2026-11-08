@@ -27,6 +27,7 @@ import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { MonitoringTab } from './MonitoringTab';
 import {
   useConditionDetail,
   useConditions,
@@ -60,6 +61,7 @@ const FREQUENCIES = Object.keys(FREQUENCY_LABELS) as ConditionFrequency[];
 const DOC_TYPES = Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[];
 const TABS = [
   { id: 'conditions', label: 'Conditions' },
+  { id: 'monitoring', label: 'Monitoring' },
   { id: 'documents', label: 'Documents' },
   { id: 'plan', label: 'Plan' },
 ] as const;
@@ -153,6 +155,12 @@ export function EnvironmentScreen() {
                 tone: s.conditions.overdue > 0 ? 'warning' : 'neutral',
               },
               {
+                label: 'Open breaches',
+                value: s.monitoring.openBreaches,
+                hint: `${s.monitoring.points} monitoring ${s.monitoring.points === 1 ? 'point' : 'points'}`,
+                tone: s.monitoring.openBreaches > 0 ? 'danger' : 'neutral',
+              },
+              {
                 label: 'Documents lapsing',
                 value: s.documents.expired + s.documents.expiring,
                 hint: `${s.documents.expired} expired · ${s.documents.expiring} within 30 days`,
@@ -188,6 +196,8 @@ export function EnvironmentScreen() {
             onAct={(condition, action) => setDialog({ kind: 'act', condition, action })}
             onHistory={(condition) => setDialog({ kind: 'history', condition })}
           />
+        ) : tab === 'monitoring' ? (
+          <MonitoringTab />
         ) : tab === 'documents' ? (
           <DocumentsTab onAdd={() => setDialog({ kind: 'document' })} />
         ) : (
