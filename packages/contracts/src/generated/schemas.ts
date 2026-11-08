@@ -155,6 +155,18 @@ export const AddTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AddTimesheetLineRequest = z.infer<typeof AddTimesheetLineRequestSchema>;
 
+export const ToolboxAttendeeInputSchema = z.object({
+  "personName": z.string().min(1).max(200),
+  "companyId": z.string().nullable().optional(),
+  "userId": z.string().nullable().optional(),
+}).strict();
+export type ToolboxAttendeeInput = z.infer<typeof ToolboxAttendeeInputSchema>;
+
+export const AddToolboxAttendeesRequestSchema = z.object({
+  "attendees": z.array(ToolboxAttendeeInputSchema).min(1).max(200),
+}).strict();
+export type AddToolboxAttendeesRequest = z.infer<typeof AddToolboxAttendeesRequestSchema>;
+
 export const AuStateSchema = z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]);
 export type AuState = z.infer<typeof AuStateSchema>;
 
@@ -2902,6 +2914,28 @@ export const CreateTenderPackageRequestSchema = z.object({
   "documents": z.array(PackageDocumentSchema).max(100).optional(),
 }).strict();
 export type CreateTenderPackageRequest = z.infer<typeof CreateTenderPackageRequestSchema>;
+
+export const CreateToolboxTalkRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "topicId": z.string().nullable().optional(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string().max(200).nullable().optional(),
+  "presenterName": z.string().min(1).max(200),
+  "notes": z.string().max(5000).nullable().optional(),
+  "attendees": z.array(ToolboxAttendeeInputSchema).max(200).optional(),
+}).strict();
+export type CreateToolboxTalkRequest = z.infer<typeof CreateToolboxTalkRequestSchema>;
+
+export const ToolboxTopicCategorySchema = z.enum(["general", "hazard", "plant", "environment", "wellbeing", "incident_review", "emergency"]);
+export type ToolboxTopicCategory = z.infer<typeof ToolboxTopicCategorySchema>;
+
+export const CreateToolboxTopicRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "talkingPoints": z.string().max(10000).optional(),
+  "category": ToolboxTopicCategorySchema.optional(),
+  "hrcwCategory": z.string().max(60).nullable().optional(),
+}).strict();
+export type CreateToolboxTopicRequest = z.infer<typeof CreateToolboxTopicRequestSchema>;
 
 export const TransmittalPurposeSchema = z.enum(["for_information", "for_review", "for_construction", "for_tender", "other"]);
 export type TransmittalPurpose = z.infer<typeof TransmittalPurposeSchema>;
@@ -6613,6 +6647,7 @@ export const PortfolioToolSchema = z.object({
   "restricted": z.boolean(),
   "open": z.number().int(),
   "overdue": z.number().int(),
+  "dueSoon": z.number().int(),
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
 
@@ -7894,6 +7929,11 @@ export const SignTmTicketRequestSchema = z.object({
 }).strict();
 export type SignTmTicketRequest = z.infer<typeof SignTmTicketRequestSchema>;
 
+export const SignToolboxAttendeeRequestSchema = z.object({
+  "signatureFileId": z.string(),
+}).strict();
+export type SignToolboxAttendeeRequest = z.infer<typeof SignToolboxAttendeeRequestSchema>;
+
 export const SignupRequestSchema = z.object({
   "email": EmailSchema,
   "password": PasswordSchema,
@@ -8548,6 +8588,96 @@ export const TokenResponseSchema = z.object({
   "scope": z.string().optional(),
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
+
+export const ToolboxRepeatReasonSchema = z.enum(["shared_between_people", "reused_from_earlier_talk"]);
+export type ToolboxRepeatReason = z.infer<typeof ToolboxRepeatReasonSchema>;
+
+export const ToolboxAttendeeSchema = z.object({
+  "id": z.string(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "userId": z.string().nullable(),
+  "signedAt": z.string().datetime({ offset: true }).nullable(),
+  "signatureFileId": z.string().nullable(),
+  "repeatFlags": z.array(ToolboxRepeatReasonSchema),
+});
+export type ToolboxAttendee = z.infer<typeof ToolboxAttendeeSchema>;
+
+export const ToolboxSuggestionSchema = z.object({
+  "reason": z.enum(["recent_incident", "swms_in_force", "not_run_recently", "never_run"]),
+  "topicId": z.string().nullable(),
+  "title": z.string(),
+  "because": z.string(),
+  "hrcwCategory": z.string().nullable(),
+});
+export type ToolboxSuggestion = z.infer<typeof ToolboxSuggestionSchema>;
+
+export const ToolboxSuggestionListSchema = z.object({
+  "data": z.array(ToolboxSuggestionSchema),
+});
+export type ToolboxSuggestionList = z.infer<typeof ToolboxSuggestionListSchema>;
+
+export const ToolboxTalkStatusSchema = z.enum(["open", "closed"]);
+export type ToolboxTalkStatus = z.infer<typeof ToolboxTalkStatusSchema>;
+
+export const ToolboxTalkSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "topicId": z.string().nullable(),
+  "title": z.string(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string().nullable(),
+  "presenterName": z.string(),
+  "notes": z.string().nullable(),
+  "status": ToolboxTalkStatusSchema,
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "attendeeCount": z.number().int(),
+  "signedCount": z.number().int(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type ToolboxTalk = z.infer<typeof ToolboxTalkSchema>;
+
+export const ToolboxTopicSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "talkingPoints": z.string(),
+  "category": ToolboxTopicCategorySchema,
+  "hrcwCategory": z.string().nullable(),
+  "isActive": z.boolean(),
+  "lastHeldAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type ToolboxTopic = z.infer<typeof ToolboxTopicSchema>;
+
+export const ToolboxTalkDetailSchema = z.object({
+  "talk": ToolboxTalkSchema,
+  "topic": z.union([ToolboxTopicSchema, z.null()]),
+  "attendees": z.array(ToolboxAttendeeSchema),
+  "closeBlockers": z.array(z.string()),
+  "canEdit": z.boolean(),
+});
+export type ToolboxTalkDetail = z.infer<typeof ToolboxTalkDetailSchema>;
+
+export const ToolboxTalkPageSchema = z.object({
+  "data": z.array(ToolboxTalkSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ToolboxTalkPage = z.infer<typeof ToolboxTalkPageSchema>;
+
+export const ToolboxTopicListSchema = z.object({
+  "data": z.array(ToolboxTopicSchema),
+});
+export type ToolboxTopicList = z.infer<typeof ToolboxTopicListSchema>;
+
+export const ToolboxTransitionRequestSchema = z.object({
+  "action": z.enum(["close", "reopen"]),
+}).strict();
+export type ToolboxTransitionRequest = z.infer<typeof ToolboxTransitionRequestSchema>;
 
 export const TranslateInductionRequestSchema = z.object({
   "lang": z.string().regex(new RegExp("^[a-z]{2,3}(-[A-Za-z]{2,4})?$")),
@@ -9258,6 +9388,25 @@ export const UpdateTenderPackageRequestSchema = z.object({
   "documents": z.array(PackageDocumentSchema).max(100).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateTenderPackageRequest = z.infer<typeof UpdateTenderPackageRequestSchema>;
+
+export const UpdateToolboxTalkRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "topicId": z.string().nullable().optional(),
+  "heldAt": z.string().datetime({ offset: true }).optional(),
+  "location": z.string().max(200).nullable().optional(),
+  "presenterName": z.string().min(1).max(200).optional(),
+  "notes": z.string().max(5000).nullable().optional(),
+}).strict();
+export type UpdateToolboxTalkRequest = z.infer<typeof UpdateToolboxTalkRequestSchema>;
+
+export const UpdateToolboxTopicRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "talkingPoints": z.string().max(10000).optional(),
+  "category": ToolboxTopicCategorySchema.optional(),
+  "hrcwCategory": z.string().max(60).nullable().optional(),
+  "isActive": z.boolean().optional(),
+}).strict();
+export type UpdateToolboxTopicRequest = z.infer<typeof UpdateToolboxTopicRequestSchema>;
 
 export const UpdateWorkerRequestSchema = z.object({
   "fullName": z.string().min(1).max(200).optional(),

@@ -372,3 +372,34 @@ export function FlowBars({ rows, ariaLabel }: { rows: readonly FlowRow[]; ariaLa
     </ul>
   );
 }
+
+export interface BarSegment {
+  label: string;
+  value: number;
+  tone: 'danger' | 'warning' | 'info' | 'success' | 'neutral';
+}
+
+/**
+ * One stacked bar: segments left to right on a scale shared with the other bars (`max`). Decorative on its own,
+ * so the counts must also be given as text next to it; this carries a text summary for screen readers.
+ */
+export function SegmentBar({ segments, max }: { segments: readonly BarSegment[]; max: number }) {
+  const scale = Math.max(1, max);
+  const summary = segments.map((s) => `${s.value} ${s.label.toLowerCase()}`).join(', ');
+  return (
+    <span className="ac-segbar" role="img" aria-label={summary}>
+      {segments.map((s) =>
+        s.value > 0 ? (
+          <span
+            key={s.label}
+            className="ac-segbar__seg"
+            style={{
+              width: `${(s.value / scale) * 100}%`,
+              background: `var(--c-status-${s.tone})`,
+            }}
+          />
+        ) : null,
+      )}
+    </span>
+  );
+}

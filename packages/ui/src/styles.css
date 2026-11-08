@@ -1561,3 +1561,14 @@
 .ac-flow__cum {
   color: var(--c-text-muted);
 }
+.ac-segbar {
+  display: flex;
+  height: 0.75rem;
+  min-width: 4rem;
+  background: var(--c-border-divider);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ac-segbar__seg {
+  height: 100%;
+}

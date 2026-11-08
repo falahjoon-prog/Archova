@@ -54,3 +54,31 @@ export function lineProblem(lines: DraftLine[]): string | null {
   }
   return null;
 }
+
+export const GEO_LABEL: Record<string, string> = {
+  inside: 'on site',
+  outside: 'outside the site fence',
+  uncertain: 'position not confirmed on site',
+  unknown: 'no position recorded',
+};
+
+/** The device position, or null if it is refused, unavailable or slow. Signing never waits on it for long. */
+export function currentFix(
+  timeoutMs = 8000,
+): Promise<{ lat: number; lng: number; accuracyM?: number } | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) =>
+        resolve({
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          ...(Number.isFinite(p.coords.accuracy)
+            ? { accuracyM: Math.round(p.coords.accuracy) }
+            : {}),
+        }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30_000 },
+    );
+  });
+}

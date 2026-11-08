@@ -50,6 +50,7 @@ beforeEach(() => {
   fake.reset();
   fake.on('GET', `${P}/budget`, () => ({ id: 'bud_1', status: 'locked', lines: [], totals: {} }));
   fake.on('GET', `${P}/contracts`, () => ({ data: [] }));
+  fake.on('GET', `${P}/tm-tickets/{tmTicketId}/checks`, () => ({ findings: [] }));
 });
 
 describe('T&M line maths', () => {
@@ -130,8 +131,12 @@ describe('TmTicketDetailCard', () => {
             role: 'contractor',
             signerName: 'Pat',
             signerPosition: null,
+            geofenceStatus: 'unknown',
+            hasPosition: false,
             hasEvidence: false,
             evidenceFileId: null,
+            geofenceStatus: 'outside',
+            hasPosition: true,
             contentHash: 'a'.repeat(64),
             signedAt: '2026-11-04T00:00:00Z',
           },
@@ -143,10 +148,29 @@ describe('TmTicketDetailCard', () => {
       <TmTicketDetailCard id="tmt_1" canManage canSign canConvert onClose={() => {}} />,
     );
     await screen.findByText(/signed on site by Pat/);
+    expect(screen.getByText(/outside the site fence/)).toBeTruthy();
     await enterText(user, screen.getByLabelText(/Full name/), 'Sam Lee');
     await user.click(screen.getByRole('button', { name: 'Record signature' }));
     expect(await screen.findByText(/Attach a photo of the docket/)).toBeTruthy();
     expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)).toHaveLength(0);
+  });
+
+  it('shows Nova’s checks on the ticket', async () => {
+    fake.on('GET', `${P}/tm-tickets/{tmTicketId}`, () => ticket());
+    fake.on('GET', `${P}/tm-tickets/{tmTicketId}/checks`, () => ({
+      findings: [
+        {
+          code: 'no_diary_entry',
+          severity: 'warn',
+          message: 'There is no site diary entry for 2026-11-03.',
+          line: null,
+        },
+      ],
+    }));
+    renderInProject(
+      <TmTicketDetailCard id="tmt_1" canManage canSign canConvert onClose={() => {}} />,
+    );
+    expect(await screen.findByText(/no site diary entry for 2026-11-03/)).toBeTruthy();
   });
 
   it('offers conversion only when fully signed and the person may convert', async () => {

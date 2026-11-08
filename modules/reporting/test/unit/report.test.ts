@@ -12,7 +12,12 @@ import {
   type ResultRow,
 } from '../../src/domain/report';
 
-const tool = (open: number, overdue: number, restricted = false) => ({ restricted, open, overdue });
+const tool = (open: number, overdue: number, restricted = false) => ({
+  restricted,
+  open,
+  overdue,
+  dueSoon: 0,
+});
 const counts = (r: [number, number], d: [number, number], s: [number, number]): ProjectCounts => ({
   rfis: tool(...r),
   defects: tool(...d),

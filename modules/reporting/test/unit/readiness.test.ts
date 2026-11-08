@@ -77,7 +77,7 @@ const day = (id: string) => ({ id, name: id, number: null, status: 'active' });
 
 function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
   const tool = {
-    portfolioCounts: async () => ({ restricted: false, open: 0, overdue: 0 }),
+    portfolioCounts: async () => ({ restricted: false, open: 0, overdue: 0, dueSoon: 0 }),
     reportRows: async () => ({ rows: [], truncated: false, restricted: false }),
   };
   return {

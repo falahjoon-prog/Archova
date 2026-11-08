@@ -4079,3 +4079,52 @@ fieldset.worker-card > legend {
 .project-overview--spaced {
   margin-block-start: var(--space-4);
 }
+
+.overview-table__wrap {
+  overflow-x: auto;
+}
+.overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.overview-table th,
+.overview-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: end;
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.overview-table th:first-child {
+  text-align: start;
+  font-weight: 600;
+}
+.overview-table th.overview-table__bar,
+.overview-table td.overview-table__bar {
+  text-align: start;
+  min-width: 6rem;
+}
+.overview-table__late {
+  color: var(--c-status-danger);
+  font-weight: 600;
+}
+.overview-table tfoot th,
+.overview-table tfoot td {
+  font-weight: 600;
+  border-bottom: 0;
+}
+.overview-rows__edit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.overview-rows__edit li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.overview-rows__edit li > :first-child {
+  flex: 1;
+}

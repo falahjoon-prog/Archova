@@ -6,6 +6,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useBranding, useSaveBranding } from '@/features/branding';
 import { DashboardEditor, type Tile, type TileContext } from '@/features/dashboard';
+import { ProjectOverviewTable } from '../components/ProjectOverviewTable';
 import { StatusReport } from '../components/StatusReport';
 import { usePortfolio } from '../hooks/useReporting';
 import { SAMPLE_PORTFOLIO } from '../tiles';
@@ -88,11 +89,18 @@ export function PortfolioScreen() {
         tabs={[
           { id: 'overview', label: 'Overview' },
           { id: 'status', label: 'Status report' },
+          { id: 'project-overview', label: 'Project overview' },
         ]}
         value={view}
         onValueChange={setView}
       >
-        {view === 'status' ? (
+        {view === 'project-overview' ? (
+          portfolio.data ? (
+            <ProjectOverviewTable portfolio={portfolio.data} />
+          ) : (
+            <SkeletonRows label="Loading the project overview…" />
+          )
+        ) : view === 'status' ? (
           portfolio.data ? (
             <StatusReport portfolio={portfolio.data} />
           ) : (

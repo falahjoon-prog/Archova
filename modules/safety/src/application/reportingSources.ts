@@ -22,7 +22,8 @@ export function createReportingSources(deps: Pick<SafetyDeps, 'access'>) {
         : ['reported', 'investigating', 'closed'];
 
   async function portfolioCounts(scope: TenantScope, projectId: string) {
-    if (!(await allowed(scope, projectId))) return { restricted: true, open: 0, overdue: 0 };
+    if (!(await allowed(scope, projectId)))
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const rows = await scope.tx
       .select({
         status: incidents.status,
@@ -41,6 +42,8 @@ export function createReportingSources(deps: Pick<SafetyDeps, 'access'>) {
       restricted: false,
       open: rows.length,
       overdue: rows.filter(awaitingRegulatorNotice).length,
+      // An incident has no due date apart from the regulator notice already counted as overdue.
+      dueSoon: 0,
     };
   }
 
