@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { localDateOf } from '@archova/time';
+import { addDays, localDateOf } from '@archova/time';
 import type { TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -20,7 +20,7 @@ interface Deps {
   now?: () => Date;
 }
 
-const RESTRICTED = { restricted: true, open: 0, overdue: 0 };
+const RESTRICTED = { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
 const NO_ROWS = { rows: [], truncated: false, restricted: true };
 
 /**
@@ -69,6 +69,10 @@ export function createReportingSources(deps: Deps) {
       restricted: false,
       open: rows.length,
       overdue: rows.filter((r) => claimOverdue(r, date)).length,
+      dueSoon: rows.filter((r) => {
+        const due = claimDueDate(r);
+        return due !== null && due >= date && due <= addDays(date, 7);
+      }).length,
     };
   }
 
@@ -126,7 +130,7 @@ export function createReportingSources(deps: Deps) {
         ),
       );
     // A variation has no statutory due date, so none is ever overdue.
-    return { restricted: false, open: rows.length, overdue: 0 };
+    return { restricted: false, open: rows.length, overdue: 0, dueSoon: 0 };
   }
 
   async function variationRows(

@@ -11373,6 +11373,8 @@ export interface components {
             restricted: boolean;
             open: number;
             overdue: number;
+            /** @description Open and due from today through the next 7 days in the project zone. Open items with no due date are in neither this nor overdue. */
+            dueSoon: number;
         };
         PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
             /** @description Activities at 0% complete. */
