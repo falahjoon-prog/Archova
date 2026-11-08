@@ -177,6 +177,7 @@ export const toObservationDto = (
   status: r.status,
   dueDate: r.dueDate,
   isOverdue: r.isOverdue,
+  typeKey: r.typeKey,
   inspectionId: r.inspectionId ? encodeId('inspection', r.inspectionId) : null,
   inspectionItemId: r.inspectionItemId ? encodeId('inspectionItem', r.inspectionItemId) : null,
   swmsId: r.swmsId ? encodeId('swms', r.swmsId) : null,

@@ -8337,6 +8337,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/observation-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The observation type picker, grouped and searchable, with the person's recent types first. */
+        get: operations["listObservationTypes"];
+        put?: never;
+        /** Add a custom observation type for this project, or for the whole organisation. */
+        post: operations["createObservationType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/observation-types/{typeKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                typeKey: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Hide a type or require an attachment for it on this project; rename a custom type. */
+        patch: operations["updateObservationType"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observation-type-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        /** Suggest the likely observation type for a checklist item. */
+        get: operations["suggestObservationType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/observations": {
         parameters: {
             query?: never;
@@ -18976,6 +19040,51 @@ export interface components {
             signedByName?: string;
             signatureFileId?: components["schemas"]["FileRef"];
         };
+        ObservationTypeInfo: {
+            /** @description A built-in key */
+            key: string;
+            group: string;
+            name: string;
+            category: components["schemas"]["ObservationType"];
+            requiresAttachment: boolean;
+            builtIn: boolean;
+            hidden: boolean;
+        };
+        ObservationTypeGroup: {
+            /** @description Recents first, then each group A to Z. */
+            group: string;
+            types: components["schemas"]["ObservationTypeInfo"][];
+        };
+        ObservationTypePicker: {
+            /** @description Grouped, searched and without hidden types, as the picker shows them. */
+            groups: components["schemas"]["ObservationTypeGroup"][];
+            /** @description Every type including hidden ones, for the settings screen. */
+            all: components["schemas"]["ObservationTypeInfo"][];
+        };
+        CreateObservationTypeRequest: {
+            name: string;
+            group?: string;
+            category: components["schemas"]["ObservationType"];
+            requiresAttachment?: boolean;
+            /** @description Offer it on every project in the organisation, not just this one. */
+            orgWide?: boolean;
+        };
+        /** @description For a built-in type only `requiresAttachment` and `hidden` apply, and only to this project. */
+        UpdateObservationTypeRequest: {
+            name?: string;
+            group?: string;
+            category?: components["schemas"]["ObservationType"];
+            requiresAttachment?: boolean;
+            hidden?: boolean;
+        };
+        ObservationTypeSuggestion: {
+            /** @description The likely type for an observation raised from this item, or null. A rule over what people chose before for this line and the words in the item, not a model. A person always picks. */
+            suggestion: {
+                type: components["schemas"]["ObservationTypeInfo"];
+                /** @enum {string} */
+                reason: "previous_observations" | "keywords";
+            } | null;
+        };
         /** @enum {string} */
         ObservationType: "safety" | "quality" | "environmental" | "commercial";
         /** @enum {string} */
@@ -18999,6 +19108,8 @@ export interface components {
             /** Format: date */
             dueDate: string | null;
             isOverdue: boolean;
+            /** @description The picker type it was raised under. `type` is its register category. */
+            typeKey: string | null;
             /** @description The inspection it was raised from. */
             inspectionId: string | null;
             /** @description The checklist item it was raised from. */
@@ -19024,8 +19135,10 @@ export interface components {
             data: components["schemas"]["Observation"][];
             nextCursor: string | null;
         };
+        /** @description Send `typeKey` (from the type picker) or, for older clients, a register `type`. */
         CreateObservationRequest: {
-            type: components["schemas"]["ObservationType"];
+            type?: components["schemas"]["ObservationType"];
+            typeKey?: string;
             hazard?: string;
             description: string;
             location?: string;
@@ -19038,6 +19151,7 @@ export interface components {
         };
         UpdateObservationRequest: {
             type?: components["schemas"]["ObservationType"];
+            typeKey?: string;
             hazard?: string | null;
             description?: string;
             location?: string | null;
@@ -19711,6 +19825,8 @@ export interface components {
         };
         CreateObservationFromItemRequest: {
             type?: components["schemas"]["ObservationType"];
+            /** @description Defaults to the suggested type for the item, if there is one. */
+            typeKey?: string;
             hazard?: string;
             description?: string;
             /** @description Replaces the item's latest comment in the draft description. */
@@ -33269,6 +33385,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listObservationTypes: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationTypePicker"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createObservationType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateObservationTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationTypeInfo"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateObservationType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                typeKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateObservationTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationTypeInfo"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestObservationType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+                itemId: components["parameters"]["InspectionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationTypeSuggestion"];
                 };
             };
             default: components["responses"]["Problem"];

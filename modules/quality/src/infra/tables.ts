@@ -107,6 +107,7 @@ export const observations = qualitySchema.table('observations', {
   projectId: uuid('project_id').notNull(),
   number: integer('number').notNull(),
   type: text('type').$type<ObservationType>().notNull(),
+  typeKey: text('type_key'),
   hazard: text('hazard'),
   description: text('description').notNull(),
   location: text('location'),
@@ -154,4 +155,22 @@ export const signatures = qualitySchema.table('inspection_signatures', {
   fileId: uuid('file_id'),
   signedBy: uuid('signed_by'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const observationTypes = qualitySchema.table('observation_types', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id'),
+  key: text('key'),
+  group: text('group_name'),
+  name: text('name'),
+  category: text('category').$type<ObservationType>(),
+  requiresAttachment: boolean('requires_attachment'),
+  hidden: boolean('hidden').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
