@@ -57,6 +57,7 @@ import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-o
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
+import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
   WORKFORCE_PERMISSIONS,
@@ -105,6 +106,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
 
@@ -474,6 +476,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
+  const plant = createPlantModule(services, { access: access.api });
+
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -590,6 +594,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     bookmarks,
     recents,
+    plant,
     financials,
     quality,
     environment,
@@ -636,6 +641,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     bookmarks,
     recents,
+    plant,
     financials,
     quality,
     environment,

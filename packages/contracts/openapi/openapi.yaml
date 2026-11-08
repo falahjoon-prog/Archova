@@ -53,6 +53,7 @@ tags:
   - name: notifications
   - name: bookmarks
   - name: recents
+  - name: plant
   - name: reporting
   - name: search
   - name: data-export
@@ -803,6 +804,278 @@ paths:
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantAssets
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: The organisation's fleet of plant and equipment.
+      description: Daily rates are returned only to those who may manage the register; for everyone else `dailyRateCents` is null.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAssetList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPlantAsset
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Add a machine to the fleet register.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantAssetRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAsset' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    patch:
+      operationId: updatePlantAsset
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Change a machine's details, rate or status (active, in the workshop, retired).
+      description: A machine with allocations still to come can't be retired.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePlantAssetRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAsset' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/allocations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantAllocations
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Where machines are allocated, in date order.
+      description: Filter to allocations that touch `[from, to]`, one machine or one project. Up to 1000 are returned.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/allocations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantAllocation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.allocations.manage
+      summary: Allocate a machine to a project for a date range.
+      description: Refused with `plant.allocation_conflict` when the machine is already allocated on any day in the range, and with `plant.bad_state` when it is in the workshop or retired.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantAllocationRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/allocations/{allocationId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAllocationId'
+    post:
+      operationId: cancelPlantAllocation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.allocations.manage
+      summary: Cancel an allocation, freeing the machine for those days.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantAllocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/maintenance-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantMaintenancePlans
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Service, inspection and certification schedules, soonest due first.
+      parameters:
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlanList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantMaintenancePlan
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Schedule a service, inspection or certificate for a machine.
+      description: With `intervalDays` the plan recurs, and finishing it sets the next due date; without it the plan is a one-off (for example a crane certificate).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantMaintenancePlanRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantPlanId'
+    post:
+      operationId: completePlantMaintenancePlan
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Record that a service, inspection or certificate was done.
+      description: A recurring plan's next due date becomes the done date plus its interval. A one-off plan is finished.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePlantMaintenanceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/maintenance-records:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    get:
+      operationId: listPlantMaintenanceRecords
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: What has been done to a machine, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantMaintenanceRecordList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/utilisation:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPlantUtilisation
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: How much of a date range each machine, and the fleet, is allocated.
+      description: |
+        Counts days covered by at least one active allocation. Retired machines are left out. Cost figures
+        (`costCents`, `idleCostCents`) are each machine's daily rate times booked or idle days, and are null without a
+        rate or without permission to see rates. `projects` shows allocated days and cost per project.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantUtilisation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantFlags
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: What Nova flags about the fleet (rule-based, no model).
+      description: |
+        Overdue or soon-due maintenance, expired or expiring certificates, a machine booked twice, a machine allocated
+        while in the workshop, a service that falls inside a booking, and machines idle for `idleDays` (default 14).
+        Most urgent first.
+      parameters:
+        - name: idleDays
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 365 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantFlagList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -16067,6 +16340,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iti_[0-9A-Za-z]{26}$' }
+    PlantAssetId:
+      name: assetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+    PlantAllocationId:
+      name: allocationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+    PlantPlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
     TimesheetId:
       name: timesheetId
       in: path
@@ -19470,6 +19758,243 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/Bookmark' }
+    PlantAssetCategory:
+      type: string
+      enum:
+        [crane, excavator, loader, truck, generator, access_platform, compaction, lighting, other]
+    PlantAssetStatus:
+      type: string
+      enum: [active, maintenance, retired]
+    PlantAsset:
+      type: object
+      required:
+        [
+          id,
+          name,
+          assetNumber,
+          category,
+          ownership,
+          supplier,
+          make,
+          model,
+          serialNumber,
+          dailyRateCents,
+          status,
+          notes,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        assetNumber: { type: string }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: [string, 'null'], description: The hire company, for hired machines. }
+        make: { type: [string, 'null'] }
+        model: { type: [string, 'null'] }
+        serialNumber: { type: [string, 'null'] }
+        dailyRateCents:
+          type: [integer, 'null']
+          description: Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller.
+        status: { $ref: '#/components/schemas/PlantAssetStatus' }
+        notes: { type: [string, 'null'] }
+        version: { type: integer }
+    PlantAssetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantAsset' }
+    CreatePlantAssetRequest:
+      type: object
+      additionalProperties: false
+      required: [name, assetNumber, category, ownership]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: string, minLength: 1, maxLength: 200 }
+        make: { type: string, minLength: 1, maxLength: 100 }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        serialNumber: { type: string, minLength: 1, maxLength: 100 }
+        dailyRateCents: { type: integer, minimum: 0 }
+        notes: { type: string, minLength: 1, maxLength: 2000 }
+    UpdatePlantAssetRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        category: { $ref: '#/components/schemas/PlantAssetCategory' }
+        ownership: { type: string, enum: [owned, hired] }
+        supplier: { type: string, maxLength: 200 }
+        make: { type: string, maxLength: 100 }
+        model: { type: string, maxLength: 100 }
+        serialNumber: { type: string, maxLength: 100 }
+        dailyRateCents: { type: integer, minimum: 0 }
+        notes: { type: string, maxLength: 2000 }
+        status: { $ref: '#/components/schemas/PlantAssetStatus' }
+    PlantAllocation:
+      type: object
+      required:
+        [id, assetId, projectId, costCodeId, startsOn, endsOn, note, status, estimatedCostCents]
+      properties:
+        id: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        note: { type: [string, 'null'] }
+        status: { type: string, enum: [active, cancelled] }
+        estimatedCostCents:
+          type: [integer, 'null']
+          description: Days in the allocation times the machine's daily rate. Null without a rate the caller may see.
+    PlantAllocationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantAllocation' }
+    CreatePlantAllocationRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId, startsOn, endsOn]
+      properties:
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    PlantPlanKind:
+      type: string
+      enum: [service, inspection, certification]
+    PlantMaintenancePlan:
+      type: object
+      required:
+        [id, assetId, title, kind, intervalDays, nextDueOn, lastDoneOn, responsible, active, state]
+      properties:
+        id: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        kind: { $ref: '#/components/schemas/PlantPlanKind' }
+        intervalDays: { type: [integer, 'null'] }
+        nextDueOn: { type: [string, 'null'], format: date }
+        lastDoneOn: { type: [string, 'null'], format: date }
+        responsible: { type: [string, 'null'] }
+        active: { type: boolean }
+        state:
+          type: [string, 'null']
+          enum: [ok, due_soon, overdue, null]
+          description: Null for a finished plan. Due soon is 14 days ahead, or 30 for a certification.
+    PlantMaintenancePlanList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantMaintenancePlan' }
+    CreatePlantMaintenancePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [title, kind, nextDueOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PlantPlanKind' }
+        intervalDays: { type: integer, minimum: 1, maximum: 3660 }
+        nextDueOn: { type: string, format: date }
+        lastDoneOn: { type: string, format: date }
+        responsible: { type: string, minLength: 1, maxLength: 200 }
+    CompletePlantMaintenanceRequest:
+      type: object
+      additionalProperties: false
+      required: [doneOn]
+      properties:
+        doneOn: { type: string, format: date }
+        performedBy: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        costCents: { type: integer, minimum: 0 }
+    PlantMaintenanceRecord:
+      type: object
+      required: [id, planId, assetId, doneOn, performedBy, note, costCents]
+      properties:
+        id: { type: string, pattern: '^prc_[0-9A-Za-z]{26}$' }
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        doneOn: { type: string, format: date }
+        performedBy: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        costCents: { type: [integer, 'null'] }
+    PlantMaintenanceRecordList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantMaintenanceRecord' }
+    PlantUtilisation:
+      type: object
+      required: [from, to, days, fleetPct, assets, projects]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        days: { type: integer }
+        fleetPct: { type: integer, minimum: 0, maximum: 100 }
+        assets:
+          type: array
+          items:
+            type: object
+            required: [assetId, bookedDays, idleDays, pct, costCents, idleCostCents]
+            properties:
+              assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+              bookedDays: { type: integer }
+              idleDays: { type: integer }
+              pct: { type: integer, minimum: 0, maximum: 100 }
+              costCents: { type: [integer, 'null'] }
+              idleCostCents: { type: [integer, 'null'] }
+        projects:
+          type: array
+          items:
+            type: object
+            required: [projectId, bookedDays, costCents]
+            properties:
+              projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+              bookedDays: { type: integer }
+              costCents: { type: [integer, 'null'] }
+    PlantFlag:
+      type: object
+      required: [code, severity, assetId, subjectId, message, date]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              maintenance_overdue,
+              maintenance_due_soon,
+              certification_expired,
+              certification_expiring,
+              double_booking,
+              booked_while_unavailable,
+              service_during_booking,
+              idle,
+            ]
+        severity: { type: string, enum: [critical, warning, info] }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        subjectId:
+          type: [string, 'null']
+          description: The maintenance plan or allocation the flag is about, when there is one.
+        message: { type: string }
+        date: { type: [string, 'null'], format: date }
+    PlantFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantFlag' }
     FeatureFlags:
       type: object
       required: [orgId, flags]

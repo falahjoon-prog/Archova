@@ -54,6 +54,10 @@ const TOOLS: ReadonlyArray<{ match: RegExp; text: string }> = [
     text: 'Portfolio and Reports are in the top bar under Portfolio.',
   },
   {
+    match: /plant|crane|excavator|fleet|machine/,
+    text: 'Plant and equipment is in the top bar under Operations.',
+  },
+  {
     match: /wallet|insurance|licen[cs]es?/,
     text: 'Compliance wallet and Subcontractor wallets are in the top bar under Compliance.',
   },
