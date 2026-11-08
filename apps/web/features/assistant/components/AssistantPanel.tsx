@@ -3,7 +3,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addDays, parseLocalDate } from '@archova/time';
-import { Alert, Button, CitationChip, buttonClassName, NovaFeedback, Textarea } from '@archova/ui';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  CitationChip,
+  buttonClassName,
+  NovaFeedback,
+  Textarea,
+} from '@archova/ui';
 import { NovaIcon, X } from '@archova/ui/icons';
 import { AppLink } from '@/shared/layout/AppLink';
 import { resolveCitation } from '@/shared/lib/citations';
@@ -13,7 +21,13 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { askNovaHelp, assistNova, sendAnswerFeedback, type AssistTurn } from '../data/ask';
 import { actionRedirect } from '../data/actions';
 import { startersFor } from '../data/starters';
-import { recordingSupported, startRecording, stopSpeaking } from '@/shared/lib/speech';
+import {
+  recordingSupported,
+  speak,
+  speechSupported,
+  startRecording,
+  stopSpeaking,
+} from '@/shared/lib/speech';
 import { transcribeClip } from '../data/listen';
 import { errorHelpAnswer, navHelpAnswer } from '../data/help';
 import type { ErrorView } from '@/shared/lib/errors';
@@ -126,6 +140,26 @@ export function AssistantPanel() {
   const [recording, setRecording] = useState(false);
   const [listening, setListening] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
+  // Voice output uses the device's own text-to-speech: free, and no text leaves the device.
+  // Read after mount so the server and first client render agree.
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [micSupported, setMicSupported] = useState(false);
+  useEffect(() => {
+    setCanSpeak(speechSupported());
+    setMicSupported(recordingSupported());
+  }, []);
+  const [readAloud, setReadAloud] = useState(false);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const readAloudRef = useRef(false);
+  readAloudRef.current = readAloud;
+  const sayAnswer = (id: number, text: string) => {
+    setSpeakingId(id);
+    speak(text, () => setSpeakingId((cur) => (cur === id ? null : cur)));
+  };
+  const hush = () => {
+    stopSpeaking();
+    setSpeakingId(null);
+  };
   const abort = useRef<AbortController | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const nextId = useRef(1);
@@ -159,10 +193,11 @@ export function AssistantPanel() {
 
   const exhausted = usage.data?.remaining === 0;
   // The speech service needs a project to bill and permission-check against; the preview has none.
-  const canListen = recordingSupported() && !previewDataOnly && Boolean(scope.projectId);
+  const canListen = micSupported && !previewDataOnly && Boolean(scope.projectId);
   useEffect(
     () => () => {
       void recorder.current?.stop();
+      stopSpeaking();
     },
     [],
   );
@@ -188,7 +223,7 @@ export function AssistantPanel() {
       return;
     }
     try {
-      stopSpeaking();
+      hush();
       recorder.current = await startRecording();
       setRecording(true);
     } catch {
@@ -247,6 +282,7 @@ export function AssistantPanel() {
         controller.signal,
       );
       update(id, { status: end === 'done' ? 'done' : 'stopped' });
+      if (end === 'done' && readAloudRef.current) sayAnswer(id, answer.text);
     } catch {
       update(id, { status: 'error' });
     }
@@ -263,6 +299,7 @@ export function AssistantPanel() {
         { role: 'user' as const, text: t.question.slice(0, 1500) },
         { role: 'nova' as const, text: t.answer!.text.slice(0, 1500) },
       ]);
+    hush();
     const id = nextId.current++;
     const turn: Turn = {
       id,
@@ -341,6 +378,11 @@ export function AssistantPanel() {
               turn={t}
               orgSlug={org.orgSlug}
               onStop={() => abort.current?.abort()}
+              canSpeak={canSpeak}
+              speaking={speakingId === t.id}
+              onSpeak={() =>
+                speakingId === t.id ? hush() : sayAnswer(t.id, t.answer?.text ?? t.shown)
+              }
               onRetry={() => void run(t.id, t.question, t.scope, t.error)}
               onFeedback={(v) => {
                 update(t.id, { feedback: v });
@@ -445,6 +487,16 @@ export function AssistantPanel() {
             to check, and is not kept.
           </p>
         ) : null}
+        {canSpeak ? (
+          <Checkbox
+            label="Read Nova's answers aloud"
+            checked={readAloud}
+            onChange={(e) => {
+              setReadAloud(e.target.checked);
+              if (!e.target.checked) hush();
+            }}
+          />
+        ) : null}
         {micError ? (
           <p className="u-caption u-m-0" role="alert">
             {micError}
@@ -461,12 +513,18 @@ function AnswerBlock({
   onStop,
   onRetry,
   onFeedback,
+  canSpeak,
+  speaking,
+  onSpeak,
 }: {
   turn: Turn;
   orgSlug: string;
   onStop: () => void;
   onRetry: () => void;
   onFeedback: (v: 'up' | 'down') => void;
+  canSpeak: boolean;
+  speaking: boolean;
+  onSpeak: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const runAction = useRunAssistantAction();
@@ -560,6 +618,11 @@ function AnswerBlock({
             >
               {copied ? 'Copied' : 'Copy'}
             </Button>
+            {canSpeak ? (
+              <Button size="sm" variant="tertiary" onClick={onSpeak}>
+                {speaking ? 'Stop reading' : 'Read aloud'}
+              </Button>
+            ) : null}
             <NovaFeedback value={turn.feedback} onChange={onFeedback} />
           </>
         ) : null}
