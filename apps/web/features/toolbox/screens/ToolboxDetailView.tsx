@@ -63,45 +63,53 @@ export function ToolboxDetailView({ id }: { id: string }) {
   const editable = isOpen && d.canEdit;
   const flagged = d.attendees.filter((a) => a.repeatFlags.length > 0);
 
+  // Three columns so the row menu stays on screen at phone width: the company sits under the name, and a
+  // repeat-signature prompt sits under the signature.
   const columns: DataTableColumn<Attendee>[] = [
     {
       id: 'name',
       header: 'Name',
       rowHeader: true,
       sortValue: (a) => a.personName,
-      cell: (a) => a.personName,
-    },
-    {
-      id: 'company',
-      header: 'Company',
-      sortValue: (a) => dir.companyName(a.companyId),
-      cell: (a) => (a.companyId ? dir.companyName(a.companyId) : '—'),
+      cell: (a) => (
+        <>
+          {a.personName}
+          {a.companyId ? (
+            <>
+              <br />
+              <span className="u-muted">{dir.companyName(a.companyId)}</span>
+            </>
+          ) : null}
+        </>
+      ),
     },
     {
       id: 'signature',
       header: 'Signature',
       sortValue: (a) => a.signedAt ?? '',
-      cell: (a) =>
-        a.signedAt ? (
-          <>
-            <StatusPill tone="success">Signed</StatusPill>{' '}
-            <span className="u-muted">{formatInstant(a.signedAt, tz)}</span>
-          </>
-        ) : (
-          <StatusPill tone="warning">Not signed</StatusPill>
-        ),
-    },
-    {
-      id: 'flag',
-      header: 'Check',
-      cell: (a) =>
-        a.repeatFlags.length ? (
-          <StatusPill tone="warning">
-            {a.repeatFlags.map((r) => REPEAT_LABELS[r]).join('; ')}
-          </StatusPill>
-        ) : (
-          '—'
-        ),
+      cell: (a) => (
+        <>
+          {a.signedAt ? (
+            <StatusPill tone="success">Signed</StatusPill>
+          ) : (
+            <StatusPill tone="warning">Not signed</StatusPill>
+          )}
+          {a.signedAt ? (
+            <>
+              <br />
+              <span className="u-muted">{formatInstant(a.signedAt, tz)}</span>
+            </>
+          ) : null}
+          {a.repeatFlags.length ? (
+            <>
+              <br />
+              <span className="u-muted">
+                Check: {a.repeatFlags.map((r) => REPEAT_LABELS[r]).join('; ')}
+              </span>
+            </>
+          ) : null}
+        </>
+      ),
     },
     {
       id: 'menu',
@@ -171,50 +179,52 @@ export function ToolboxDetailView({ id }: { id: string }) {
           pasted an old one. This is a prompt to look, not a finding.
         </Alert>
       ) : null}
-      <Card title="Details">
-        <DescriptionList
-          items={[
-            { label: 'When', value: formatInstant(t.heldAt, tz) },
-            { label: 'Presented by', value: t.presenterName },
-            { label: 'Location', value: t.location ?? '—' },
-            {
-              label: 'Topic',
-              value: d.topic
-                ? `${d.topic.title} (${CATEGORY_LABELS[d.topic.category]})`
-                : 'Not from the library',
-            },
-          ]}
-        />
-      </Card>
-      <Card
-        title="Attendance"
-        actions={
-          editable ? (
-            <Button variant="secondary" onClick={() => setAdding(true)}>
-              <Plus size={16} aria-hidden="true" /> Add people
-            </Button>
-          ) : null
-        }
-      >
-        <ErrorAlert
-          error={m.clearSignature.error ?? m.removeAttendee.error}
-          title="We couldn't update the grid"
-        />
-        {d.attendees.length === 0 ? (
-          <EmptyState
-            icon={ToolboxIcon}
-            title="Nobody on the grid yet"
-            description="Add the people who attended, then each one signs."
+      <div className="stack">
+        <Card title="Details">
+          <DescriptionList
+            items={[
+              { label: 'When', value: formatInstant(t.heldAt, tz) },
+              { label: 'Presented by', value: t.presenterName },
+              { label: 'Location', value: t.location ?? '—' },
+              {
+                label: 'Topic',
+                value: d.topic
+                  ? `${d.topic.title} (${CATEGORY_LABELS[d.topic.category]})`
+                  : 'Not from the library',
+              },
+            ]}
           />
-        ) : (
-          <DataTable
-            caption="Attendance"
-            columns={columns}
-            rows={d.attendees}
-            getRowId={(a) => a.id}
+        </Card>
+        <Card
+          title="Attendance"
+          actions={
+            editable ? (
+              <Button variant="secondary" onClick={() => setAdding(true)}>
+                <Plus size={16} aria-hidden="true" /> Add people
+              </Button>
+            ) : null
+          }
+        >
+          <ErrorAlert
+            error={m.clearSignature.error ?? m.removeAttendee.error}
+            title="We couldn't update the grid"
           />
-        )}
-      </Card>
+          {d.attendees.length === 0 ? (
+            <EmptyState
+              icon={ToolboxIcon}
+              title="Nobody on the grid yet"
+              description="Add the people who attended, then each one signs."
+            />
+          ) : (
+            <DataTable
+              caption="Attendance"
+              columns={columns}
+              rows={d.attendees}
+              getRowId={(a) => a.id}
+            />
+          )}
+        </Card>
+      </div>
       {adding ? (
         <AddPeopleDialog
           companies={dir.companies.map((c) => ({ id: c.id, name: c.name }))}
