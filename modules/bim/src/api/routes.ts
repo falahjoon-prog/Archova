@@ -10,7 +10,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
-import type { BimService } from '../application/bim';
+import { captureDto, type BimService } from '../application/bim';
 
 const id = (kind: IdKind, value: string, code: ProblemCode) => {
   const uuid = decodeId(kind, value);
@@ -20,6 +20,9 @@ const id = (kind: IdKind, value: string, code: ProblemCode) => {
 const project = (p: { projectId: string }) => id('project', p.projectId, 'project.not_found');
 const issueId = (p: { issueId: string }) =>
   id('coordinationIssue', p.issueId, 'bim.issue_not_found');
+
+const captureId = (p: { captureId: string }) =>
+  id('siteCapture', p.captureId, 'bim.capture_not_found');
 
 export function bimRoutes(database: Database, svc: BimService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -77,5 +80,24 @@ export function bimRoutes(database: Database, svc: BimService) {
           svc.addComment(s, project(input.params), issueId(input.params), input.body),
         ),
       ),
+    listSiteCaptures: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => svc.listCaptures(s, project(input.params))),
+    }),
+    createSiteCapture: async (input) => {
+      const row = await tx(input, (s) => svc.createCapture(s, project(input.params), input.body));
+      return { status: 201, body: captureDto(row), headers: { etag: etag(row.version) } };
+    },
+    updateSiteCapture: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        svc.updateCapture(s, project(input.params), captureId(input.params), expected, input.body),
+      );
+      return { status: 200, body: captureDto(row), headers: { etag: etag(row.version) } };
+    },
+    deleteSiteCapture: async (input) => {
+      await tx(input, (s) => svc.deleteCapture(s, project(input.params), captureId(input.params)));
+      return { status: 204 };
+    },
   });
 }

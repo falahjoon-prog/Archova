@@ -149,6 +149,63 @@ describe('PortfolioScreen', () => {
     const last = fake.callsTo('GET', PORTFOLIO).at(-1)!;
     expect(last.init.params?.query).toMatchObject({ includeClosed: 'true' });
   });
+  it('lets an admin add a tile from the library and saves the layout for the company', async () => {
+    const zero = Object.fromEntries(
+      [
+        'projects',
+        'rfisOpen',
+        'rfisOverdue',
+        'defectsOpen',
+        'defectsOverdue',
+        'submittalsOpen',
+        'submittalsOverdue',
+        'claimsOpen',
+        'claimsOverdue',
+        'variationsOpen',
+        'variationsOverdue',
+        'incidentsOpen',
+        'incidentsOverdue',
+        'programmeOpen',
+        'programmeOverdue',
+        'budgetProjects',
+        'projectsOverBudget',
+      ].map((k) => [k, 0]),
+    );
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        ...zero,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [],
+      truncated: false,
+    }));
+    const B = '/v1/orgs/{orgId}/branding';
+    const branding = {
+      logoFileId: null,
+      accentColor: null,
+      dashboardWidgets: ['rfis'],
+      dashboardLayout: null,
+      availableWidgets: [{ key: 'rfis', label: 'RFIs open' }],
+      version: 1,
+    };
+    fake.on('GET', B, () => branding);
+    fake.on('PUT', B, () => branding);
+    renderInProject(<PortfolioScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit layout' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add tiles' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add Text box' }));
+    expect(screen.getByRole('button', { name: /^Move Text box/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await screen.findByRole('button', { name: 'Edit layout' });
+    const body = fake.callsTo('PUT', B).at(-1)!.init.body as { dashboardLayout: unknown[] };
+    expect(body.dashboardLayout).toMatchObject([
+      { id: 'rfis', type: 'stat_rfis', x: 0, y: 0, w: 3, h: 2 },
+      { type: 'portfolio_charts', x: 0, y: 2, w: 12, h: 7 },
+      { type: 'text_box', x: 0, y: 9, w: 4, h: 3 },
+    ]);
+  });
 });
 
 describe('PortfolioScreen charts', () => {
