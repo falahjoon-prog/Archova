@@ -549,6 +549,8 @@ export function createRfiService(deps: RfisDeps) {
     const values = fieldValues(patch);
     values.version = rfi.version + 1;
     values.updatedBy = scope.ctx.userId;
+    // Handing an open RFI to someone else restarts the wait.
+    if (patch.assigneeIds !== undefined && rfi.status === 'open') values.ballSince = now();
     const [row] = await scope.tx
       .update(rfis)
       .set(values)
@@ -591,7 +593,13 @@ export function createRfiService(deps: RfisDeps) {
         : and(eq(rfis.id, rfi.id), eq(rfis.version, expectedVersion));
     const [row] = await scope.tx
       .update(rfis)
-      .set({ ...values, version: rfi.version + 1, updatedBy: scope.ctx.userId })
+      .set({
+        // The ball changes hands whenever the RFI is sent, answered or reopened.
+        ...(values.status === 'open' || values.status === 'answered' ? { ballSince: now() } : {}),
+        ...values,
+        version: rfi.version + 1,
+        updatedBy: scope.ctx.userId,
+      })
       .where(where)
       .returning();
     if (!row) throw versionConflict();
@@ -1158,7 +1166,7 @@ export function createRfiService(deps: RfisDeps) {
    */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const { date } = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -1172,10 +1180,16 @@ export function createRfiService(deps: RfisDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${rfis.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${rfis.dueDate} >= ${date}::date and ${rfis.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(rfis)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): RFIs the caller can see, one flat row each. `state` open = waiting for an answer. */

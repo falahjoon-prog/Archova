@@ -69,12 +69,20 @@ export function TransmittalListScreen() {
         title="Transmittals"
         description="Send drawings and documents to the people who need them, and see who has opened them."
         actions={
-          <Link
-            href={webRoutes.newTransmittal(org.orgSlug, project.projectId)}
-            className={buttonClassName('primary')}
-          >
-            <Plus size={16} aria-hidden="true" /> New transmittal
-          </Link>
+          <span className="row">
+            <Link
+              href={webRoutes.documentRegister(org.orgSlug, project.projectId)}
+              className={buttonClassName('secondary')}
+            >
+              Document register
+            </Link>
+            <Link
+              href={webRoutes.newTransmittal(org.orgSlug, project.projectId)}
+              className={buttonClassName('primary')}
+            >
+              <Plus size={16} aria-hidden="true" /> New transmittal
+            </Link>
+          </span>
         }
       />
       <ErrorAlert error={list.error} title="We couldn't load transmittals" />

@@ -15,10 +15,11 @@ const { ReportsScreen } = await import('../screens/ReportsScreen');
 const { ReadinessScreen } = await import('../screens/ReadinessScreen');
 const { toCsv, orderColumns } = await import('../lib/types');
 
-const tool = (open: number, overdue: number, restricted = false) => ({
+const tool = (open: number, overdue: number, restricted = false, dueSoon = 0) => ({
   restricted,
   open,
   overdue,
+  dueSoon,
 });
 const project = (id: string, name: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -26,13 +27,23 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   number: null,
   status: 'active',
   phase: null,
+  state: null,
   siteLocation: null,
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
   rfis: tool(0, 0),
   defects: tool(0, 0),
   submittals: tool(0, 0),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
   programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
   budget: {
     restricted: true,
@@ -42,6 +53,7 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
     spent: '0.00',
     variance: '0.00',
     overBudgetCodes: 0,
+    monthly: [],
   },
   attention: 0,
   ...over,
@@ -53,6 +65,110 @@ const PREVIEW = '/v1/orgs/{orgId}/reports/preview';
 const PROJECTS = '/v1/orgs/{orgId}/projects';
 
 beforeEach(() => fake.reset());
+
+const SUSTAINABILITY = '/v1/orgs/{orgId}/portfolio/sustainability';
+const sProject = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  number: null,
+  status: 'active',
+  phase: null,
+  state: null,
+  restricted: false,
+  hasPlan: true,
+  conditions: { nonCompliant: 0, overdue: 0, compliancePercent: 100 },
+  documentsLapsing: 0,
+  monitoring: { points: 1, openBreaches: 0, overdue: 0 },
+  waste: {
+    totalTonnes: 100,
+    divertedTonnes: 90,
+    landfillTonnes: 10,
+    diversionPercent: 90,
+    last30Tonnes: 20,
+    last30DivertedTonnes: 18,
+    last30DiversionPercent: 90,
+    previous30Tonnes: 20,
+    previous30DivertedTonnes: 18,
+    previous30DiversionPercent: 90,
+    regulatedWithoutDocket: 0,
+  },
+  carbon: { totalKg: 5000, last30Kg: 1000, previous30Kg: 1000, changePercent: 0 },
+  attention: 0,
+  ...over,
+});
+
+describe('Sustainability view', () => {
+  it('shows totals, Nova flags, and a row per project with the falling diversion called out', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {},
+      projects: [],
+      truncated: false,
+    }));
+    fake.on('GET', SUSTAINABILITY, () => ({
+      totals: {
+        projectsCovered: 2,
+        projectsRestricted: 1,
+        projectsWithoutPlan: 0,
+        openBreaches: 2,
+        nonCompliantConditions: 1,
+        overdueConditions: 0,
+        documentsLapsing: 0,
+        wasteTonnes: 300,
+        landfillTonnes: 90,
+        diversionPercent: 68,
+        last30DiversionPercent: 60,
+        previous30DiversionPercent: 80,
+        carbonKg: 9000,
+        carbonLast30Kg: 3000,
+        carbonPrevious30Kg: 2000,
+        carbonChangePercent: 50,
+      },
+      projects: [
+        sProject('prj_a', 'Alpha Tower', {
+          monitoring: { points: 2, openBreaches: 2, overdue: 0 },
+          conditions: { nonCompliant: 1, overdue: 0, compliancePercent: 50 },
+          waste: {
+            totalTonnes: 200,
+            divertedTonnes: 120,
+            landfillTonnes: 80,
+            diversionPercent: 60,
+            last30Tonnes: 20,
+            last30DivertedTonnes: 10,
+            last30DiversionPercent: 50,
+            previous30Tonnes: 20,
+            previous30DivertedTonnes: 16,
+            previous30DiversionPercent: 80,
+            regulatedWithoutDocket: 0,
+          },
+          attention: 8,
+        }),
+        sProject('prj_b', 'Bravo Lofts', { restricted: true }),
+      ],
+      flags: [
+        {
+          code: 'breach_open',
+          severity: 'critical',
+          projectId: 'prj_a',
+          projectName: 'Alpha Tower',
+          message: '2 monitoring breaches waiting for a response.',
+        },
+      ],
+      truncated: false,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PortfolioScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Sustainability' }));
+    const flags = await screen.findByLabelText('Nova flags');
+    expect(within(flags).getByText(/2 monitoring breaches waiting/)).toBeTruthy();
+    expect(screen.getByText('Down 20 points on the 30 days before')).toBeTruthy();
+    const table = await screen.findByRole('table', { name: 'Projects by sustainability' });
+    expect(within(table).getByRole('link', { name: 'Alpha Tower' })).toBeTruthy();
+    expect(within(table).getByText('Falling')).toBeTruthy();
+    expect(within(table).getByText('2 open')).toBeTruthy();
+    expect(within(table).getByText('No access')).toBeTruthy();
+    expect(screen.getByText(/1 project is left out/)).toBeTruthy();
+  });
+});
 
 describe('PortfolioScreen', () => {
   it('shows company totals and a row per project, with no access called out', async () => {
@@ -93,6 +209,10 @@ describe('PortfolioScreen', () => {
             spent: '40000.00',
             variance: '-12500.00',
             overBudgetCodes: 2,
+            monthly: [
+              { month: '2026-09', spent: '10000.00' },
+              { month: '2026-11', spent: '30000.00' },
+            ],
           },
         }),
         project('prj_b', 'Bravo Lofts', { defects: tool(1, 0), rfis: tool(0, 0, true) }),
@@ -144,6 +264,63 @@ describe('PortfolioScreen', () => {
     const last = fake.callsTo('GET', PORTFOLIO).at(-1)!;
     expect(last.init.params?.query).toMatchObject({ includeClosed: 'true' });
   });
+  it('lets an admin add a tile from the library and saves the layout for the company', async () => {
+    const zero = Object.fromEntries(
+      [
+        'projects',
+        'rfisOpen',
+        'rfisOverdue',
+        'defectsOpen',
+        'defectsOverdue',
+        'submittalsOpen',
+        'submittalsOverdue',
+        'claimsOpen',
+        'claimsOverdue',
+        'variationsOpen',
+        'variationsOverdue',
+        'incidentsOpen',
+        'incidentsOverdue',
+        'programmeOpen',
+        'programmeOverdue',
+        'budgetProjects',
+        'projectsOverBudget',
+      ].map((k) => [k, 0]),
+    );
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        ...zero,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [],
+      truncated: false,
+    }));
+    const B = '/v1/orgs/{orgId}/branding';
+    const branding = {
+      logoFileId: null,
+      accentColor: null,
+      dashboardWidgets: ['rfis'],
+      dashboardLayout: null,
+      availableWidgets: [{ key: 'rfis', label: 'RFIs open' }],
+      version: 1,
+    };
+    fake.on('GET', B, () => branding);
+    fake.on('PUT', B, () => branding);
+    renderInProject(<PortfolioScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit layout' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add tiles' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add Text box' }));
+    expect(screen.getByRole('button', { name: /^Move Text box/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await screen.findByRole('button', { name: 'Edit layout' });
+    const body = fake.callsTo('PUT', B).at(-1)!.init.body as { dashboardLayout: unknown[] };
+    expect(body.dashboardLayout).toMatchObject([
+      { id: 'rfis', type: 'stat_rfis', x: 0, y: 0, w: 3, h: 2 },
+      { type: 'portfolio_charts', x: 0, y: 2, w: 12, h: 7 },
+      { type: 'text_box', x: 0, y: 9, w: 4, h: 3 },
+    ]);
+  });
 });
 
 describe('PortfolioScreen charts', () => {
@@ -183,6 +360,7 @@ describe('PortfolioScreen charts', () => {
             spent: '40000.00',
             variance: '10000.00',
             overBudgetCodes: 0,
+            monthly: [],
           },
         }),
         project('prj_b', 'Bravo Lofts'),
@@ -208,11 +386,13 @@ describe('Status report', () => {
     spent: '1000.00',
     variance,
     overBudgetCodes: 0,
+    monthly: [],
   });
   const programme = (late: number, lateDays: number) => ({
     restricted: false,
     open: 10,
     overdue: late,
+    dueSoon: 0,
     notStarted: 4,
     completed: 5,
     lateDays,
@@ -243,7 +423,13 @@ describe('Status report', () => {
       },
       projects: [
         project('prj_a', 'Alpha Tower', {
-          budget: budget('100000.00', '90000.00', '10000.00'),
+          budget: {
+            ...budget('100000.00', '90000.00', '10000.00'),
+            monthly: [
+              { month: '2026-09', spent: '1000.00' },
+              { month: '2026-11', spent: '2500.00' },
+            ],
+          },
           programme: programme(0, 0),
         }),
         project('prj_b', 'Bravo Lofts', {
@@ -265,9 +451,54 @@ describe('Status report', () => {
     expect(within(bars).getByText('Over budget, off schedule').nextSibling).toBeTruthy();
     expect(within(bars).getByText('Not enough data')).toBeTruthy();
     expect(screen.getByText('4.5')).toBeTruthy(); // 9 days over 2 late tasks
+    const flow = screen.getByRole('list', { name: 'Spend by month with running total' });
+    expect(within(flow).getAllByRole('listitem')).toHaveLength(3); // Sep, a quiet Oct, Nov
+    expect(within(flow).getByText('Oct 2026')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Project'), 'prj_a');
     expect(screen.getByText('under budget')).toBeTruthy();
     expect(screen.getByText('90%')).toBeTruthy();
+  });
+});
+
+describe('Project overview tab', () => {
+  it('shows a row per tool with overdue, next 7 days and later, and lets a row be hidden', async () => {
+    fake.on('GET', PORTFOLIO, () => ({
+      totals: {
+        projects: 1,
+        rfisOpen: 0,
+        rfisOverdue: 0,
+        defectsOpen: 0,
+        defectsOverdue: 0,
+        submittalsOpen: 0,
+        submittalsOverdue: 0,
+        claimsOpen: 0,
+        claimsOverdue: 0,
+        variationsOpen: 0,
+        variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
+        programmeOpen: 0,
+        programmeOverdue: 0,
+        budgetProjects: 0,
+        projectsOverBudget: 0,
+        budgetRevised: '0.00',
+        budgetForecastFinal: '0.00',
+        budgetVariance: '0.00',
+      },
+      projects: [project('prj_a', 'Alpha Tower', { rfis: tool(10, 3, false, 2) })],
+      truncated: false,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PortfolioScreen />);
+    await user.click(await screen.findByRole('tab', { name: 'Project overview' }));
+    const table = await screen.findByRole('table', { name: /Open items on Alpha Tower/ });
+    const rfiRow = within(table).getByRole('row', { name: /RFIs/ });
+    expect(within(rfiRow).getByRole('link', { name: '3 overdue RFIs' })).toBeTruthy();
+    const cells = within(rfiRow).getAllByRole('cell');
+    expect(cells.map((c) => c.textContent)).toEqual(['', '3', '2', '5', '10']);
+    await user.click(screen.getByRole('button', { name: 'Choose rows' }));
+    await user.click(screen.getByRole('checkbox', { name: 'RFIs' }));
+    expect(within(table).queryByRole('row', { name: /^RFIs/ })).toBeNull();
   });
 });
 
