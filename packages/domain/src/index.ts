@@ -7,3 +7,5 @@ export * from './diary';
 export * from './sopa';
 export * from './inspection';
 export * from './tasks';
+export * from './site-capture';
+export * from './site-access';

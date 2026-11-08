@@ -4,7 +4,14 @@ import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { daysBetween } from '@archova/time';
 import { canMove, csvLine, editable, hoursOf, payable, type SheetState } from '../domain/timesheet';
-import { attendanceSessions, timesheetLines, timesheets, workers } from '../infra/tables';
+import {
+  attendanceSessions,
+  equipment,
+  equipmentLogs,
+  timesheetLines,
+  timesheets,
+  workers,
+} from '../infra/tables';
 import type { AttendanceService } from './attendance';
 
 export type SheetRow = typeof timesheets.$inferSelect;
@@ -400,6 +407,64 @@ export function createTimesheetService(deps: TimesheetDeps) {
     return rows.map((r) => ({ costCodeId: r.costCodeId, minutes: Number(r.minutes) }));
   }
 
+  /**
+   * What happened on site on one day, for drafting a T&M ticket in `financials`: worked hours per submitted or
+   * approved timesheet line and the equipment logs. Builder staff only; asks for the timesheet and equipment views.
+   */
+  async function dayActivity(scope: TenantScope, projectId: string, date: string) {
+    await need(scope, 'workforce.timesheets.view', projectId);
+    await need(scope, 'workforce.equipment.view', projectId);
+    if (scope.ctx.principalType !== 'member')
+      throw new AppError('access.denied', "Only the builder's staff can read the day's activity.");
+    const labour = await scope.tx
+      .select({
+        id: timesheetLines.id,
+        worker: workers.fullName,
+        minutes: sql<number>`${timesheetLines.minutes} - ${timesheetLines.breakMinutes}`,
+        costCodeId: timesheetLines.costCodeId,
+      })
+      .from(timesheetLines)
+      .innerJoin(timesheets, eq(timesheets.id, timesheetLines.timesheetId))
+      .innerJoin(workers, eq(workers.id, timesheets.workerId))
+      .where(
+        and(
+          eq(timesheets.projectId, projectId),
+          eq(timesheets.localDate, date),
+          inArray(timesheets.status, ['submitted', 'approved', 'exported']),
+        ),
+      )
+      .orderBy(asc(workers.fullName));
+    const machines = await scope.tx
+      .select({
+        id: equipmentLogs.id,
+        name: equipment.name,
+        assetNumber: equipment.assetNumber,
+        hours: equipmentLogs.hours,
+        operator: equipmentLogs.operator,
+      })
+      .from(equipmentLogs)
+      .innerJoin(equipment, eq(equipment.id, equipmentLogs.equipmentId))
+      .where(and(eq(equipmentLogs.projectId, projectId), eq(equipmentLogs.logDate, date)))
+      .orderBy(asc(equipment.name));
+    return {
+      labour: labour
+        .filter((l) => Number(l.minutes) > 0)
+        .map((l) => ({
+          timesheetLineId: l.id,
+          worker: l.worker,
+          hours: (Math.round(Number(l.minutes) / 15) / 4).toFixed(2),
+          costCodeId: l.costCodeId,
+        })),
+      equipment: machines.map((m) => ({
+        equipmentLogId: m.id,
+        name: m.name,
+        assetNumber: m.assetNumber,
+        hours: m.hours,
+        operator: m.operator,
+      })),
+    };
+  }
+
   return {
     list,
     get,
@@ -411,6 +476,7 @@ export function createTimesheetService(deps: TimesheetDeps) {
     reject,
     exportCsv,
     minutesByCostCode,
+    dayActivity,
   };
 }
 

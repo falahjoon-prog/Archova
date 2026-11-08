@@ -30,9 +30,24 @@ const defectId = (p: { defectId: string }) => {
   return id;
 };
 
-type FieldsBody = Omit<DefectFields, 'assigneeCompanyId' | 'assigneeUserId' | 'pin'> & {
+type FieldsBody = Omit<
+  DefectFields,
+  | 'assigneeCompanyId'
+  | 'assigneeUserId'
+  | 'assigneeUserIds'
+  | 'managerUserId'
+  | 'finalApproverUserId'
+  | 'distributionUserIds'
+  | 'approverDelegateUserId'
+  | 'pin'
+> & {
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
+  assigneeUserIds?: string[];
+  managerUserId?: string | null;
+  finalApproverUserId?: string | null;
+  distributionUserIds?: string[];
+  approverDelegateUserId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
 };
 
@@ -54,6 +69,28 @@ function fields(b: FieldsBody): DefectFields {
   if (b.assigneeUserId !== undefined)
     out.assigneeUserId =
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.assigneeUserIds !== undefined)
+    out.assigneeUserIds = b.assigneeUserIds.map((u, i) => ref('user', u, `assigneeUserIds/${i}`));
+  if (b.managerUserId !== undefined)
+    out.managerUserId =
+      b.managerUserId === null ? null : ref('user', b.managerUserId, 'managerUserId');
+  if (b.finalApproverUserId !== undefined)
+    out.finalApproverUserId =
+      b.finalApproverUserId === null
+        ? null
+        : ref('user', b.finalApproverUserId, 'finalApproverUserId');
+  if (b.distributionUserIds !== undefined)
+    out.distributionUserIds = b.distributionUserIds.map((u, i) =>
+      ref('user', u, `distributionUserIds/${i}`),
+    );
+  if (b.approverDelegateUserId !== undefined)
+    out.approverDelegateUserId =
+      b.approverDelegateUserId === null
+        ? null
+        : ref('user', b.approverDelegateUserId, 'approverDelegateUserId');
+  if (b.approverDelegateFrom !== undefined) out.approverDelegateFrom = b.approverDelegateFrom;
+  if (b.approverDelegateUntil !== undefined) out.approverDelegateUntil = b.approverDelegateUntil;
+  if (b.requireCloseEvidence !== undefined) out.requireCloseEvidence = b.requireCloseEvidence;
   if (b.pin)
     out.pin = {
       ...b.pin,

@@ -1,4 +1,4 @@
--- Composed from modules/tasks/db/migrations/20261107110000_tasks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/tasks/db/migrations/20261108110000_tasks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- tasks: ad-hoc project tasks. Action items that already live in meetings and safety are not copied here; the
 -- "my tasks" rollup reads them where they are, so closing one still happens in its own module.
 
