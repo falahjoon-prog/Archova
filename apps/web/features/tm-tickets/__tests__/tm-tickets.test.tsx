@@ -131,8 +131,6 @@ describe('TmTicketDetailCard', () => {
             role: 'contractor',
             signerName: 'Pat',
             signerPosition: null,
-            geofenceStatus: 'unknown',
-            hasPosition: false,
             hasEvidence: false,
             evidenceFileId: null,
             geofenceStatus: 'outside',
