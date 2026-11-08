@@ -20,7 +20,12 @@ import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useDeleteSnapshot, usePortfolio, useSnapshot } from '../hooks/useReporting';
 import { SNAPSHOT_COMPARE_ROWS, compareTotal, type DashboardSnapshotDetail } from '../lib/types';
-import { PortfolioDashboard } from './PortfolioScreen';
+import { TileBoard, type TileContext } from '@/features/dashboard';
+import { useBranding } from '@/features/branding';
+import { QualitySafety } from '../components/QualitySafety';
+import { ProjectOverviewTable } from '../components/ProjectOverviewTable';
+import { StatusReport } from '../components/StatusReport';
+import { DEFAULT_WIDGETS, defaultLayout } from './PortfolioScreen';
 
 interface CompareRow {
   label: string;
@@ -86,6 +91,31 @@ function Compare({ snapshot }: { snapshot: DashboardSnapshotDetail }) {
   );
 }
 
+/** The saved numbers laid out on the company's current tile board, with the other dashboard views beside it. */
+function SnapshotDashboard({
+  snapshot,
+  view,
+}: {
+  snapshot: DashboardSnapshotDetail;
+  view: string;
+}) {
+  const org = useCurrentOrg();
+  const branding = useBranding().data;
+  const portfolio = snapshot.dashboard;
+  if (view === 'status') return <StatusReport portfolio={portfolio} />;
+  if (view === 'project-overview') return <ProjectOverviewTable portfolio={portfolio} />;
+  if (view === 'quality-safety') return <QualitySafety portfolio={portfolio} />;
+  const tiles =
+    branding?.dashboardLayout ?? defaultLayout(branding?.dashboardWidgets ?? DEFAULT_WIDGETS);
+  const ctx: TileContext = {
+    surface: 'portfolio',
+    orgId: org.orgId,
+    orgSlug: org.orgSlug,
+    data: portfolio,
+  };
+  return <TileBoard tiles={tiles} ctx={ctx} />;
+}
+
 /** A saved dashboard reopened exactly as it was, with a comparison against today. */
 export function SnapshotDetailScreen({ snapshotId }: { snapshotId: string }) {
   const org = useCurrentOrg();
@@ -126,13 +156,17 @@ export function SnapshotDetailScreen({ snapshotId }: { snapshotId: string }) {
       {data ? (
         <>
           <Alert tone="info" title="This is a saved copy">
-            The figures below are frozen as they were when the snapshot was taken. They do not
-            change.
+            The figures below are frozen as they were when the snapshot was taken and do not change.
+            Tiles are laid out as your company's dashboard is today, and Sustainability is not part
+            of a snapshot.
           </Alert>
           <Tabs
             label="Snapshot views"
             tabs={[
-              { id: 'dashboard', label: 'Dashboard as it was' },
+              { id: 'dashboard', label: 'Overview' },
+              { id: 'status', label: 'Status report' },
+              { id: 'project-overview', label: 'Project overview' },
+              { id: 'quality-safety', label: 'Quality & Safety' },
               { id: 'compare', label: 'Compare with today' },
             ]}
             value={view}
@@ -141,7 +175,7 @@ export function SnapshotDetailScreen({ snapshotId }: { snapshotId: string }) {
             {view === 'compare' ? (
               <Compare snapshot={data} />
             ) : (
-              <PortfolioDashboard data={data.dashboard} />
+              <SnapshotDashboard snapshot={data} view={view} />
             )}
           </Tabs>
         </>

@@ -120,7 +120,7 @@ describe('SnapshotDetailScreen', () => {
     fake.on('GET', PORTFOLIO, () => dashboard({ rfisOpen: 5, rfisOverdue: 0 }));
     renderInProject(<SnapshotDetailScreen snapshotId="dsn_1" />);
     expect(await screen.findByRole('heading', { name: 'Monthly Report - Mar 2026' })).toBeTruthy();
-    expect(await screen.findByRole('table', { name: /Projects with open/ })).toBeTruthy();
+    expect(await screen.findByText('This is a saved copy')).toBeTruthy();
     expect(screen.getByText('This is a saved copy')).toBeTruthy();
     await userEvent.click(screen.getByRole('tab', { name: 'Compare with today' }));
     const cmp = await screen.findByRole('table', { name: /compared with today/ });

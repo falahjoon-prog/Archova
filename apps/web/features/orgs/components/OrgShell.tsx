@@ -9,6 +9,7 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { BrandingStyle, useBranding, useLogoUrl } from '@/features/branding';
 import { InboxLink } from '@/features/notifications';
 import { SearchLink } from '@/features/search';
 import { SupportBanner } from '@/features/support-access';
@@ -59,6 +60,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
               ? [
                   {
@@ -71,6 +73,10 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                         ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]
                         : []),
                     ],
+                  },
+                  {
+                    label: 'Operations',
+                    items: [{ href: webRoutes.plant(orgSlug), label: 'Plant and equipment' }],
                   },
                   {
                     label: 'Tendering',
@@ -111,6 +117,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                     items: [
                       { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
                       { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
+                      { href: webRoutes.branding(orgSlug), label: 'Branding' },
                       { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
                       {
                         href: webRoutes.permissionTemplates(orgSlug),
@@ -132,6 +139,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             </>
           }
         >
+          <BrandingStyle />
           <SupportBanner />
           {children}
         </OrgAppShell>
@@ -141,11 +149,14 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
 }
 
 /** The app shell wired to the Ask Nova panel state, which lives in the assistant provider above it. */
-function OrgAppShell(props: Omit<ComponentProps<typeof AppShell>, 'assistant'>) {
+function OrgAppShell(props: Omit<ComponentProps<typeof AppShell>, 'assistant' | 'orgLogoUrl'>) {
   const panel = useAssistantPanelState();
+  const branding = useBranding();
+  const logo = useLogoUrl(branding.data?.logoFileId);
   return (
     <AppShell
       {...props}
+      orgLogoUrl={logo.data ?? null}
       assistant={{
         label: 'Ask Nova',
         panel: <AssistantPanel />,

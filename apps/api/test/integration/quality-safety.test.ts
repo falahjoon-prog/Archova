@@ -6,6 +6,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  uploadBytes,
   type TestContext,
 } from './helpers';
 
@@ -159,7 +160,177 @@ describe('Inspections (quality-safety schema)', () => {
   });
 });
 
+describe('Inspection record', () => {
+  it('counts statuses, reopens with a reason and flags repeats, keeps history, and deletes', async () => {
+    const s = await setup();
+    const tpl = (
+      await s.pm.browser.post(`${s.base}/inspection-templates`, {
+        name: 'Record check',
+        type: 'general',
+        items: [
+          { section: 'A', prompt: 'Clean', responseType: 'pass_fail_na' },
+          { section: 'A', prompt: 'Tidy', responseType: 'pass_fail_na' },
+        ],
+      })
+    ).json();
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.template.id}/publish`);
+    const started = await s.pm.browser.post(`${s.base}/inspections`, {
+      templateId: tpl.template.id,
+      isPrivate: true,
+    });
+    expect(started.statusCode).toBe(201);
+    const ins = started.json().inspection;
+    expect(ins).toMatchObject({ isPrivate: true, reopenCount: 0 });
+    expect(started.json().summary).toMatchObject({ total: 2, unanswered: 2 });
+
+    // A private inspection is hidden from people who aren't on it.
+    expect((await s.sub.browser.get(`${s.base}/inspections/${ins.id}`)).statusCode).toBe(404);
+
+    const ids = tpl.items.map((i: { id: string }) => i.id);
+    let cur = await s.pm.browser.put(`${s.base}/inspections/${ins.id}/responses`, {
+      responses: [
+        { templateItemId: ids[0], result: 'pass' },
+        { templateItemId: ids[1], result: 'fail', note: 'Rubbish' },
+      ],
+    });
+    expect(cur.json().summary).toMatchObject({ pass: 1, fail: 1, unanswered: 0 });
+
+    const early = await s.pm.browser.post(
+      `${s.base}/inspections/${ins.id}/reopen`,
+      { reason: 'x' },
+      { 'if-match': etagOf(cur) },
+    );
+    expect(early.json().code).toBe('inspection.invalid_state');
+
+    for (let n = 1; n <= 2; n++) {
+      const sub = await s.pm.browser.post(
+        `${s.base}/inspections/${ins.id}/submit`,
+        { signedByName: 'Pat' },
+        { 'if-match': etagOf(cur) },
+      );
+      expect(sub.statusCode).toBe(200);
+      cur = await s.pm.browser.post(
+        `${s.base}/inspections/${ins.id}/reopen`,
+        { reason: `Missed a spot ${n}` },
+        { 'if-match': etagOf(sub) },
+      );
+      expect(cur.statusCode).toBe(200);
+      expect(cur.json().inspection).toMatchObject({ status: 'in_progress', reopenCount: n });
+    }
+    expect(cur.json().reopenFlag).toMatchObject({ code: 'reopened_repeatedly', count: 2 });
+
+    const hist = await s.pm.browser.get(`${s.base}/inspections/${ins.id}/history`);
+    const kinds = hist.json().data.map((h: { kind: string }) => h.kind);
+    expect(kinds[0]).toBe('created');
+    expect(kinds.filter((k: string) => k === 'reopened')).toHaveLength(2);
+
+    const gone = await s.pm.browser.del(`${s.base}/inspections/${ins.id}`, {
+      'if-match': etagOf(cur),
+    });
+    expect(gone.statusCode).toBe(204);
+    expect((await s.pm.browser.get(`${s.base}/inspections/${ins.id}`)).statusCode).toBe(404);
+  });
+});
+
 describe('Observations', () => {
+  it('logs item activity, raises an observation from an item, and rolls up sections', async () => {
+    const s = await setup();
+    const created = await s.pm.browser.post(`${s.base}/inspection-templates`, {
+      name: 'Housekeeping',
+      type: 'site',
+      items: [
+        {
+          section: 'A',
+          prompt: 'Areas are clean',
+          responseType: 'pass_fail_na',
+          helpText: 'Walk the whole floor',
+        },
+        { section: 'A', prompt: 'Inspected on', responseType: 'date' },
+        { section: 'B', prompt: 'Toilets provided', responseType: 'pass_fail_na' },
+      ],
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().items[0].helpText).toBe('Walk the whole floor');
+    const tpl = created.json().template;
+    const items = created.json().items as Array<{ id: string }>;
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.id}/publish`);
+    const started = await s.pm.browser.post(`${s.base}/inspections`, {
+      templateId: tpl.id,
+      dueDate: '2026-12-01',
+      trade: 'Concrete',
+      specSection: '03 30 00',
+      description: 'Weekly walk',
+    });
+    expect(started.statusCode).toBe(201);
+    const ins = started.json().inspection;
+    expect(ins).toMatchObject({
+      dueDate: '2026-12-01',
+      trade: 'Concrete',
+      specSection: '03 30 00',
+    });
+    const base = `${s.base}/inspections/${ins.id}`;
+
+    const answered = await s.pm.browser.put(`${base}/responses`, {
+      responses: [
+        { templateItemId: items[0]!.id, result: 'fail', note: 'Rubbish at stair 2' },
+        { templateItemId: items[1]!.id, value: '2026-11-07' },
+      ],
+    });
+    expect(answered.statusCode).toBe(200);
+    const bad = await s.pm.browser.put(`${base}/responses`, {
+      responses: [{ templateItemId: items[1]!.id, value: 'tomorrow' }],
+    });
+    expect(bad.statusCode).toBe(422);
+
+    // A comment shows in the strip without changing the answer.
+    const commented = await s.pm.browser.post(`${base}/items/${items[0]!.id}/comments`, {
+      body: 'Told the foreman',
+    });
+    expect(commented.statusCode).toBe(200);
+    const strip = commented
+      .json()
+      .itemActivity.find((a: { templateItemId: string }) => a.templateItemId === items[0]!.id);
+    expect(strip).toMatchObject({ comments: 2, observations: 0 }); // the answer's note and this comment;
+
+    // The observation is pre-filled from the item and linked back to it.
+    const obs = await s.pm.browser.post(`${base}/items/${items[0]!.id}/observations`, {});
+    expect(obs.statusCode).toBe(201);
+    expect(obs.json()).toMatchObject({
+      inspectionId: ins.id,
+      inspectionItemId: items[0]!.id,
+      priority: 'high',
+    });
+    expect(obs.json().description).toContain('Areas are clean');
+    const log = await s.pm.browser.get(`${base}/items/${items[0]!.id}/activity`);
+    expect(log.json().data.map((e: { kind: string }) => e.kind)).toEqual(
+      expect.arrayContaining(['response', 'comment', 'observation']),
+    );
+
+    // Marking section B N/A stops it counting as unanswered; it can be put back.
+    const naRes = await s.pm.browser.put(
+      `${base}/section-na`,
+      { section: 'B', na: true },
+      { 'if-match': etagOf(await s.pm.browser.get(base)) },
+    );
+    expect(naRes.statusCode).toBe(200);
+    expect(naRes.json().sections.find((x: { section: string }) => x.section === 'B')).toMatchObject(
+      { isNa: true },
+    );
+    expect(naRes.json().missingRequiredItemIds).toHaveLength(0);
+
+    // Two signatures, and submit with no name needed.
+    await s.pm.browser.post(`${base}/signatures`, { name: 'Pat Manager' });
+    const two = await s.pm.browser.post(`${base}/signatures`, { name: 'Sam Subbie' });
+    expect(two.json().signatures).toHaveLength(2);
+    const done = await s.pm.browser.post(
+      `${base}/submit`,
+      {},
+      { 'if-match': etagOf(await s.pm.browser.get(base)) },
+    );
+    expect(done.statusCode).toBe(200);
+    expect(done.json().inspection.status).toBe('submitted');
+  });
+
   it('is raised, resolved by the assigned company, closed by the builder, and hidden from others', async () => {
     const s = await setup();
     const raised = await s.pm.browser.post(`${s.base}/observations`, {
@@ -366,5 +537,105 @@ describe('SWMS register', () => {
     const list = await s.pm.browser.get(`${s.base}/swms?status=rejected`);
     expect(list.json().data).toHaveLength(1);
     expect((await s.pm.browser.get(`${s.base}/swms?status=accepted`)).json().data).toEqual([]);
+  });
+});
+
+describe('Observation types', () => {
+  it('groups and searches the picker, requires an attachment where set, and lets a project tune it', async () => {
+    const s = await setup();
+    const picker = await s.pm.browser.get(`${s.base}/observation-types`);
+    expect(picker.statusCode).toBe(200);
+    expect(picker.json().groups.map((g: { group: string }) => g.group)).toEqual(
+      expect.arrayContaining(['Safety', 'Quality', 'Environmental', 'Commissioning']),
+    );
+    const found = await s.pm.browser.get(`${s.base}/observation-types?q=hold`);
+    expect(found.json().groups).toHaveLength(1);
+
+    // Safety Hazard needs an attachment.
+    const none = await s.pm.browser.post(`${s.base}/observations`, {
+      typeKey: 'safety_hazard',
+      description: 'Open edge on level 2',
+    });
+    expect(none.statusCode).toBe(422);
+    expect(none.json().code).toBe('observation.attachment_required');
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    const fileId = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      bytes,
+      'edge.png',
+      'image/png',
+    );
+    const ok = await s.pm.browser.post(`${s.base}/observations`, {
+      typeKey: 'safety_hazard',
+      description: 'Open edge on level 2',
+      fileIds: [fileId],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ type: 'safety', typeKey: 'safety_hazard' });
+
+    // The person's recent types come first.
+    const again = await s.pm.browser.get(`${s.base}/observation-types`);
+    expect(again.json().groups[0]).toMatchObject({ group: 'Recents' });
+
+    // A project can drop the rule, add its own type, and hide one.
+    const relaxed = await s.pm.browser.patch(`${s.base}/observation-types/safety_hazard`, {
+      requiresAttachment: false,
+    });
+    expect(relaxed.statusCode).toBe(200);
+    expect(relaxed.json().requiresAttachment).toBe(false);
+    const custom = await s.pm.browser.post(`${s.base}/observation-types`, {
+      name: 'Waterproofing',
+      group: 'Quality',
+      category: 'quality',
+      requiresAttachment: true,
+    });
+    expect(custom.statusCode).toBe(201);
+    const dupe = await s.pm.browser.post(`${s.base}/observation-types`, {
+      name: 'waterproofing',
+      category: 'quality',
+    });
+    expect(dupe.statusCode).toBe(409);
+    const needs = await s.pm.browser.post(`${s.base}/observations`, {
+      typeKey: custom.json().key,
+      description: 'Membrane lapped short',
+    });
+    expect(needs.json().code).toBe('observation.attachment_required');
+    await s.pm.browser.patch(`${s.base}/observation-types/conforming`, { hidden: true });
+    const gone = await s.pm.browser.get(`${s.base}/observation-types?q=conforming`);
+    expect(gone.json().groups).toHaveLength(0);
+    // A subcontractor can use the picker but not change it.
+    const denied = await s.sub.browser.patch(`${s.base}/observation-types/hold_point`, {
+      hidden: true,
+    });
+    expect(denied.statusCode).toBe(403);
+  });
+
+  it('suggests a type for a checklist item and uses it for the new observation', async () => {
+    const s = await setup();
+    const tpl = await s.pm.browser.post(`${s.base}/inspection-templates`, {
+      name: 'Edge check',
+      type: 'site',
+      items: [
+        { section: 'Safety', prompt: 'Edge protection in place', responseType: 'pass_fail_na' },
+      ],
+    });
+    const item = tpl.json().items[0] as { id: string };
+    await s.pm.browser.post(`${s.base}/inspection-templates/${tpl.json().template.id}/publish`);
+    const ins = (
+      await s.pm.browser.post(`${s.base}/inspections`, { templateId: tpl.json().template.id })
+    ).json().inspection;
+    const base = `${s.base}/inspections/${ins.id}/items/${item.id}`;
+    const sug = await s.pm.browser.get(`${base}/observation-type-suggestion`);
+    expect(sug.json().suggestion).toMatchObject({
+      reason: 'keywords',
+      type: { key: 'safety_hazard' },
+    });
+    // With no photo the hazard type would be refused, so the observation starts from the plain quality type.
+    const obs = await s.pm.browser.post(`${base}/observations`, {});
+    expect(obs.statusCode).toBe(201);
+    expect(obs.json().typeKey).toBeNull();
   });
 });

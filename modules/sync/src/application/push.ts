@@ -10,6 +10,10 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import { mutations } from '../infra/tables';
+import { createLimiter } from './drain';
+
+/** Mutations one person may push per minute: a week of queued site work fits, a runaway loop does not. */
+export const PUSH_MUTATIONS_PER_WINDOW = 600;
 
 type Mutation = SyncPushRequest['mutations'][number];
 type Result = SyncPushResponse['results'][number];
@@ -32,6 +36,8 @@ const rejected = (mutationId: string, code: string, detail?: string): Result => 
  */
 export function createPushService(deps: PushDeps) {
   const commands = new Map(deps.commands.map((c) => [c.name, c]));
+  // Per-process, per person; the edge per-IP limit is the cap across instances.
+  const perUser = createLimiter(PUSH_MUTATIONS_PER_WINDOW);
 
   function entitlementProblem(
     tenant: TenantContext,
@@ -173,7 +179,21 @@ export function createPushService(deps: PushDeps) {
 
   async function push(tenant: TenantContext, req: SyncPushRequest): Promise<SyncPushResponse> {
     const results: Result[] = [];
-    for (const m of req.mutations) results.push(await one(tenant, m));
+    const key = `${tenant.orgId}:${tenant.userId}`;
+    for (const m of req.mutations) {
+      // Past the per-person cap the rest of the batch is turned away, not stored: the device retries after the window.
+      if (!perUser.hit(key)) {
+        results.push(
+          rejected(
+            m.mutationId,
+            'rate_limited',
+            'Too many changes sent at once. Try again shortly.',
+          ),
+        );
+        continue;
+      }
+      results.push(await one(tenant, m));
+    }
     return { results };
   }
 

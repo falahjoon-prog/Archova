@@ -1,76 +1,79 @@
 'use client';
 
-import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
-import {
-  Alert,
-  Checkbox,
-  DataTable,
-  EmptyState,
-  PageHeader,
-  SkeletonRows,
-  StatGrid,
-  StatusPill,
-  Tabs,
-  type DataTableColumn,
-} from '@archova/ui';
-import { HomeIcon } from '@archova/ui/icons';
-import { webRoutes } from '@archova/routes';
+import { useState } from 'react';
+import { Alert, Checkbox, PageHeader, SkeletonRows, Tabs } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { formatMoney } from '@/shared/lib/format';
+import { useBranding, useSaveBranding } from '@/features/branding';
+import { DashboardEditor, type Tile, type TileContext } from '@/features/dashboard';
+import { Sustainability } from '../components/Sustainability';
+import { QualitySafety } from '../components/QualitySafety';
+import { ProjectOverviewTable } from '../components/ProjectOverviewTable';
 import { StatusReport } from '../components/StatusReport';
-import { PortfolioCharts } from '../components/PortfolioCharts';
-import { usePortfolio } from '../hooks/useReporting';
-import type { Portfolio, PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
+import { usePortfolio, useSustainabilityPortfolio } from '../hooks/useReporting';
+import { SAMPLE_PORTFOLIO } from '../tiles';
 
-/** "4 open" with a red "2 overdue" beside it; "No access" when the caller cannot open that tool on the project. */
-function ToolCell({ tool }: { tool: PortfolioTool }) {
-  if (tool.restricted) return <span className="u-muted">No access</span>;
-  return (
-    <>
-      {tool.open}
-      {tool.overdue > 0 ? (
-        <>
-          {' '}
-          <StatusPill tone="danger">{tool.overdue} overdue</StatusPill>
-        </>
-      ) : null}
-    </>
-  );
+/** The layout a company gets until it edits one: the widgets it switched on in Settings → Branding, four to a row. */
+export function defaultLayout(widgets: readonly string[]): Tile[] {
+  const tiles: Tile[] = [];
+  let col = 0;
+  let row = 0;
+  for (const key of widgets) {
+    if (key === 'project_table') continue;
+    if (col + 3 > 12) {
+      col = 0;
+      row += 2;
+    }
+    tiles.push({ id: key, type: `stat_${key}`, x: col, y: row, w: 3, h: 2 });
+    col += 3;
+  }
+  tiles.push({
+    id: 'charts',
+    type: 'portfolio_charts',
+    x: 0,
+    y: tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0),
+    w: 12,
+    h: 7,
+  });
+  if (widgets.includes('project_table')) {
+    const y = tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0);
+    tiles.push({ id: 'project_table', type: 'projects_table', x: 0, y, w: 12, h: 8 });
+  }
+  return tiles;
 }
 
-/** One tile: the open count, with the overdue count underneath and the tile turning red only when something is overdue. */
-function stat(label: string, open: number, overdue: number, word: string) {
-  return {
-    label,
-    value: open,
-    hint: `${overdue} ${word}`,
-    tone: overdue > 0 ? ('danger' as const) : undefined,
-  };
-}
+export const DEFAULT_WIDGETS = [
+  'projects',
+  'rfis',
+  'defects',
+  'submittals',
+  'claims',
+  'variations',
+  'incidents',
+  'programme',
+  'budget',
+  'project_table',
+];
 
-const aud = (amount: string) => formatMoney({ amount, currency: 'AUD' });
-
-/** Forecast final cost against the revised budget: the shortfall in red when over, the headroom when under. */
-function BudgetCell({ budget }: { budget: PortfolioBudget }) {
-  if (budget.restricted) return <span className="u-muted">No access</span>;
-  if (!budget.hasBudget) return <span className="u-muted">No budget</span>;
-  const over = budget.variance.startsWith('-');
-  return (
-    <>
-      <div>{over ? aud(budget.variance.slice(1)) : aud(budget.variance)}</div>
-      <StatusPill tone={over ? 'danger' : 'success'}>
-        {over ? 'over budget' : 'under budget'}
-      </StatusPill>
-    </>
-  );
-}
-
-/** Every project in the company at a glance: what is open and what is overdue, most overdue first. */
+/** Every project in the company at a glance, as a board of tiles the company can rearrange, resize and add to. */
 export function PortfolioScreen() {
+  const org = useCurrentOrg();
   const [includeClosed, setIncludeClosed] = useState(false);
+  const [view, setView] = useState('overview');
   const portfolio = usePortfolio(includeClosed);
+  const sustainability = useSustainabilityPortfolio(includeClosed, view === 'sustainability');
+  const branding = useBranding().data;
+  const save = useSaveBranding();
+  const tiles =
+    branding?.dashboardLayout ?? defaultLayout(branding?.dashboardWidgets ?? DEFAULT_WIDGETS);
+  const ctx: TileContext = {
+    surface: 'portfolio',
+    orgId: org.orgId,
+    orgSlug: org.orgSlug,
+    data: portfolio.data,
+  };
+  const sampleCtx: TileContext = { ...ctx, data: SAMPLE_PORTFOLIO, preview: true };
+
   return (
     <div className="stack-lg">
       <PageHeader
@@ -79,202 +82,68 @@ export function PortfolioScreen() {
         description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
-      <PortfolioDashboard
-        data={portfolio.data}
-        loading={portfolio.isPending}
-        toolbar={
-          <Checkbox
-            label="Include closed and archived projects"
-            checked={includeClosed}
-            onChange={(e) => setIncludeClosed(e.target.checked)}
-          />
-        }
-      />
-    </div>
-  );
-}
-
-/**
- * The dashboard itself (overview and status report) for a portfolio. The live page feeds it the current numbers; a
- * saved snapshot feeds it the numbers as they were, so both look identical.
- */
-export function PortfolioDashboard({
-  data,
-  loading = false,
-  toolbar,
-}: {
-  data: Portfolio | undefined;
-  loading?: boolean;
-  toolbar?: ReactNode;
-}) {
-  const org = useCurrentOrg();
-  const [view, setView] = useState('overview');
-
-  const columns: DataTableColumn<PortfolioProject>[] = [
-    {
-      id: 'project',
-      header: 'Project',
-      rowHeader: true,
-      sortValue: (r) => r.name,
-      cell: (r) => (
-        <Link className="link" href={webRoutes.project(org.orgSlug, r.id)}>
-          {r.name}
-        </Link>
-      ),
-    },
-    {
-      id: 'rfis',
-      header: 'RFIs',
-      sortValue: (r) => r.rfis.open,
-      cell: (r) => <ToolCell tool={r.rfis} />,
-    },
-    {
-      id: 'defects',
-      header: 'Defects',
-      sortValue: (r) => r.defects.open,
-      cell: (r) => <ToolCell tool={r.defects} />,
-    },
-    {
-      id: 'submittals',
-      header: 'Submittals',
-      sortValue: (r) => r.submittals.open,
-      cell: (r) => <ToolCell tool={r.submittals} />,
-    },
-    {
-      id: 'claims',
-      header: 'Claims',
-      sortValue: (r) => r.claims.open,
-      cell: (r) => <ToolCell tool={r.claims} />,
-    },
-    {
-      id: 'variations',
-      header: 'Variations',
-      sortValue: (r) => r.variations.open,
-      cell: (r) => <ToolCell tool={r.variations} />,
-    },
-    {
-      id: 'incidents',
-      header: 'Incidents',
-      sortValue: (r) => r.incidents.open,
-      cell: (r) => <ToolCell tool={r.incidents} />,
-    },
-    {
-      id: 'programme',
-      header: 'Programme',
-      sortValue: (r) => r.programme.open,
-      cell: (r) => <ToolCell tool={r.programme} />,
-    },
-    {
-      id: 'budget',
-      header: 'Forecast vs budget',
-      sortValue: (r) =>
-        r.budget.hasBudget && !r.budget.restricted ? Number(r.budget.variance) : 0,
-      cell: (r) => <BudgetCell budget={r.budget} />,
-    },
-    {
-      id: 'attention',
-      header: 'Overdue',
-      align: 'end',
-      sortValue: (r) => r.attention,
-      cell: (r) => r.attention || '—',
-    },
-  ];
-
-  return (
-    <div className="stack-lg">
+      {portfolio.data?.truncated ? (
+        <Alert tone="info" title="Showing the first 200 projects">
+          Close out finished projects to bring the rest into view.
+        </Alert>
+      ) : null}
       <Tabs
         label="Portfolio views"
         tabs={[
           { id: 'overview', label: 'Overview' },
           { id: 'status', label: 'Status report' },
+          { id: 'project-overview', label: 'Project overview' },
+          { id: 'quality-safety', label: 'Quality & Safety' },
+          { id: 'sustainability', label: 'Sustainability' },
         ]}
         value={view}
         onValueChange={setView}
       >
-        {view === 'status' ? (
-          data ? (
-            <StatusReport portfolio={data} />
+        {view === 'sustainability' ? (
+          sustainability.data ? (
+            <Sustainability portfolio={sustainability.data} />
+          ) : sustainability.error ? (
+            <ErrorAlert error={sustainability.error} title="We couldn't load sustainability" />
+          ) : (
+            <SkeletonRows label="Loading sustainability…" />
+          )
+        ) : view === 'quality-safety' ? (
+          portfolio.data ? (
+            <QualitySafety portfolio={portfolio.data} />
+          ) : (
+            <SkeletonRows label="Loading quality and safety…" />
+          )
+        ) : view === 'project-overview' ? (
+          portfolio.data ? (
+            <ProjectOverviewTable portfolio={portfolio.data} />
+          ) : (
+            <SkeletonRows label="Loading the project overview…" />
+          )
+        ) : view === 'status' ? (
+          portfolio.data ? (
+            <StatusReport portfolio={portfolio.data} />
           ) : (
             <SkeletonRows label="Loading the status report…" />
           )
         ) : (
-          <div className="stack-lg">
-            {data ? (
-              <StatGrid
-                items={[
-                  { label: 'Projects', value: data.totals.projects },
-                  stat('RFIs open', data.totals.rfisOpen, data.totals.rfisOverdue, 'overdue'),
-                  stat(
-                    'Defects open',
-                    data.totals.defectsOpen,
-                    data.totals.defectsOverdue,
-                    'overdue',
-                  ),
-                  stat(
-                    'Submittals with reviewers',
-                    data.totals.submittalsOpen,
-                    data.totals.submittalsOverdue,
-                    'overdue',
-                  ),
-                  stat(
-                    'Claims unpaid',
-                    data.totals.claimsOpen,
-                    data.totals.claimsOverdue,
-                    'overdue',
-                  ),
-                  { label: 'Variations to decide', value: data.totals.variationsOpen },
-                  stat(
-                    'Incidents open',
-                    data.totals.incidentsOpen,
-                    data.totals.incidentsOverdue,
-                    'to notify',
-                  ),
-                  stat(
-                    'Programme activities open',
-                    data.totals.programmeOpen,
-                    data.totals.programmeOverdue,
-                    'late',
-                  ),
-                  ...(data.totals.budgetProjects > 0
-                    ? [
-                        {
-                          label: 'Forecast vs budget',
-                          value: aud(data.totals.budgetVariance.replace('-', '')),
-                          tone:
-                            data.totals.projectsOverBudget > 0 ? ('danger' as const) : undefined,
-                          hint: `${data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'} across ${data.totals.budgetProjects} ${data.totals.budgetProjects === 1 ? 'project' : 'projects'} (${data.totals.projectsOverBudget} over budget)`,
-                        },
-                      ]
-                    : []),
-                ]}
+          <DashboardEditor
+            surface="portfolio"
+            tiles={tiles}
+            ctx={ctx}
+            sampleCtx={sampleCtx}
+            canEdit={(org.role === 'owner' || org.role === 'admin') && !!branding}
+            saving={save.isPending}
+            error={save.error}
+            onSave={(next) => save.mutateAsync({ patch: { dashboardLayout: next } })}
+            onReset={() => save.mutateAsync({ patch: { dashboardLayout: null } })}
+            toolbarExtra={
+              <Checkbox
+                label="Include closed and archived projects"
+                checked={includeClosed}
+                onChange={(e) => setIncludeClosed(e.target.checked)}
               />
-            ) : null}
-            {data ? <PortfolioCharts portfolio={data} orgSlug={org.orgSlug} /> : null}
-            {data?.truncated ? (
-              <Alert tone="info" title="Showing the first 200 projects">
-                Close out finished projects to bring the rest into view.
-              </Alert>
-            ) : null}
-            {toolbar}
-            {loading ? (
-              <SkeletonRows label="Loading the portfolio…" />
-            ) : (
-              <DataTable
-                caption="Projects with open and overdue items"
-                columns={columns}
-                rows={data?.projects ?? []}
-                getRowId={(r) => r.id}
-                defaultSort={{ columnId: 'attention', direction: 'desc' }}
-                empty={
-                  <EmptyState
-                    icon={HomeIcon}
-                    title="No projects yet"
-                    description="Projects you can see appear here with their open and overdue items."
-                  />
-                }
-              />
-            )}
-          </div>
+            }
+          />
         )}
       </Tabs>
     </div>
