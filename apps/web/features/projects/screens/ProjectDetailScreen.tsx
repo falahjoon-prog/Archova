@@ -12,7 +12,6 @@ import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { CollapsibleGroup, useGroupState } from '@/shared/layout/CollapsibleGroup';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { DirectionsCard } from '../components/DirectionsCard';
@@ -21,7 +20,7 @@ import { ProjectHero } from '../components/ProjectHero';
 import { ProjectStatusCard } from '../components/ProjectStatusCard';
 import { useUpdateProject } from '../hooks/useProjectMutations';
 import { MemberList } from '../components/MemberList';
-import { projectToolGroups } from '../components/ProjectShell';
+import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
 import { AddMemberForm } from '../forms/AddMemberForm';
 import {
   useCompanies,
@@ -35,7 +34,6 @@ import { AU_STATE_NAMES, isAuState, statusLabel } from '../lib/labels';
 export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const org = useCurrentOrg();
   const [addingMember, setAddingMember] = useState(false);
-  const groupState = useGroupState('tools');
   usePublishAssistantScope({ projectId });
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
@@ -79,11 +77,6 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   }
 
   const p = project.data;
-  const toolGroups = projectToolGroups(
-    org.orgSlug,
-    projectId,
-    permissions.data as EffectivePermissions | undefined,
-  ).filter((g) => g.id);
   return (
     <>
       <nav aria-label="Breadcrumb" className="breadcrumb">
@@ -112,103 +105,60 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           tile={p.statusTile ?? null}
           canEdit={canEditProject}
         />
-        <KeyDatesCard
-          projectId={projectId}
-          timeZone={p.timezone}
-          permissions={permissions.data as EffectivePermissions | undefined}
-        />
-        <BookmarksCard projectId={projectId} />
-        <RecentsCard projectId={projectId} />
-        <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         <ErrorAlert error={updateProject.error} title="We couldn't change the project photo" />
-        <PhotosCard
-          projectId={projectId}
-          timeZone={p.timezone}
-          heroFileId={p.heroFileId}
-          onUseAsHero={
-            canEditProject
-              ? (fileId) =>
-                  updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
-              : undefined
-          }
-        />
-        <DirectionsCard
-          projectId={projectId}
-          permissions={permissions.data as EffectivePermissions | undefined}
-        />
-        <section aria-labelledby="tools-heading" className="stack">
-          <div className="tool-sections__bar">
-            <h2 id="tools-heading" className="panel-heading">
-              Tools
-            </h2>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                groupState.setAll(
-                  toolGroups.map((g) => g.id!),
-                  true,
-                )
-              }
-            >
-              Expand all
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                groupState.setAll(
-                  toolGroups.map((g) => g.id!),
-                  false,
-                )
-              }
-            >
-              Collapse all
-            </Button>
-          </div>
-          {toolGroups.map((g) => (
-            <CollapsibleGroup
-              key={g.id}
-              variant="panel"
-              label={g.label!}
-              icon={g.icon}
-              count={g.items.length}
-              open={groupState.isOpen(g.id!)}
-              onToggle={() => groupState.toggle(g.id!)}
-            >
-              <ul className="project-grid tool-grid">
-                {g.items.map(({ href, label, icon: Icon }) => (
-                  <li key={href} className="project-card tool-card">
-                    <Icon size={20} aria-hidden="true" />
-                    <Link className="project-card__link tool-card__link" href={href}>
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </CollapsibleGroup>
-          ))}
-        </section>
-
-        <Card title="Details">
-          <dl className="details">
-            <div>
-              <dt>Status</dt>
-              <dd>{statusLabel(p.status)}</dd>
-            </div>
-            <div>
-              <dt>State or territory</dt>
-              <dd>{p.state && isAuState(p.state) ? AU_STATE_NAMES[p.state] : 'Not set'}</dd>
-            </div>
-            <div>
-              <dt>Project number</dt>
-              <dd className="u-mono">{p.number ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt>Time zone</dt>
-              <dd>{p.timezone}</dd>
-            </div>
-          </dl>
-        </Card>
-
+      </div>
+      <div className="project-overview project-overview--spaced">
+        <div className="project-overview__col">
+          <Card title="Project information">
+            <dl className="details">
+              <div>
+                <dt>Status</dt>
+                <dd>{statusLabel(p.status)}</dd>
+              </div>
+              <div>
+                <dt>State or territory</dt>
+                <dd>{p.state && isAuState(p.state) ? AU_STATE_NAMES[p.state] : 'Not set'}</dd>
+              </div>
+              <div>
+                <dt>Project number</dt>
+                <dd className="u-mono">{p.number ?? 'Not set'}</dd>
+              </div>
+              <div>
+                <dt>Time zone</dt>
+                <dd>{p.timezone}</dd>
+              </div>
+            </dl>
+          </Card>
+          <KeyDatesCard
+            projectId={projectId}
+            timeZone={p.timezone}
+            permissions={permissions.data as EffectivePermissions | undefined}
+          />
+          <BookmarksCard projectId={projectId} />
+          <ConversationsCard projectId={projectId} timeZone={p.timezone} />
+        </div>
+        <div className="project-overview__col">
+          <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <DirectionsCard
+            projectId={projectId}
+            permissions={permissions.data as EffectivePermissions | undefined}
+          />
+          <RecentsCard projectId={projectId} />
+          <PhotosCard
+            projectId={projectId}
+            timeZone={p.timezone}
+            heroFileId={p.heroFileId}
+            onUseAsHero={
+              canEditProject
+                ? (fileId) =>
+                    updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
+                : undefined
+            }
+          />
+        </div>
+      </div>
+      <div className="stack-lg project-overview__below">
         <Card
           title="Members"
           actions={

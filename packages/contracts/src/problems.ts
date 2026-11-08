@@ -387,6 +387,9 @@ export const PROBLEM_CODES = {
   'environment.reason_required': 422,
   'environment.company_not_on_project': 422,
   'environment.document_not_found': 404,
+  'observation.attachment_required': 422,
+  'observation_type.not_found': 404,
+  'observation_type.duplicate': 409,
   // safety: SWMS register
   'swms.not_found': 404,
   'swms.invalid_transition': 409,

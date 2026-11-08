@@ -2376,6 +2376,7 @@ export type ObservationType = z.infer<typeof ObservationTypeSchema>;
 
 export const CreateObservationFromItemRequestSchema = z.object({
   "type": ObservationTypeSchema.optional(),
+  "typeKey": z.string().max(80).optional(),
   "hazard": z.string().min(1).max(200).optional(),
   "description": z.string().min(1).max(20000).optional(),
   "comment": z.string().max(2000).optional(),
@@ -2389,7 +2390,8 @@ export const CreateObservationFromItemRequestSchema = z.object({
 export type CreateObservationFromItemRequest = z.infer<typeof CreateObservationFromItemRequestSchema>;
 
 export const CreateObservationRequestSchema = z.object({
-  "type": ObservationTypeSchema,
+  "type": ObservationTypeSchema.optional(),
+  "typeKey": z.string().max(80).optional(),
   "hazard": z.string().min(1).max(200).optional(),
   "description": z.string().min(1).max(20000),
   "location": z.string().min(1).max(300).optional(),
@@ -2400,6 +2402,15 @@ export const CreateObservationRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type CreateObservationRequest = z.infer<typeof CreateObservationRequestSchema>;
+
+export const CreateObservationTypeRequestSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "group": z.string().min(1).max(100).optional(),
+  "category": ObservationTypeSchema,
+  "requiresAttachment": z.boolean().optional(),
+  "orgWide": z.boolean().optional(),
+}).strict();
+export type CreateObservationTypeRequest = z.infer<typeof CreateObservationTypeRequestSchema>;
 
 export const CreateOrgRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -5885,6 +5896,7 @@ export const ObservationSchema = z.object({
   "status": ObservationStatusSchema,
   "dueDate": z.string().date().nullable(),
   "isOverdue": z.boolean(),
+  "typeKey": z.string().nullable(),
   "inspectionId": z.string().nullable(),
   "inspectionItemId": z.string().nullable(),
   "swmsId": z.string().nullable(),
@@ -5913,6 +5925,37 @@ export const ObservationTransitionRequestSchema = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type ObservationTransitionRequest = z.infer<typeof ObservationTransitionRequestSchema>;
+
+export const ObservationTypeInfoSchema = z.object({
+  "key": z.string(),
+  "group": z.string(),
+  "name": z.string(),
+  "category": ObservationTypeSchema,
+  "requiresAttachment": z.boolean(),
+  "builtIn": z.boolean(),
+  "hidden": z.boolean(),
+});
+export type ObservationTypeInfo = z.infer<typeof ObservationTypeInfoSchema>;
+
+export const ObservationTypeGroupSchema = z.object({
+  "group": z.string(),
+  "types": z.array(ObservationTypeInfoSchema),
+});
+export type ObservationTypeGroup = z.infer<typeof ObservationTypeGroupSchema>;
+
+export const ObservationTypePickerSchema = z.object({
+  "groups": z.array(ObservationTypeGroupSchema),
+  "all": z.array(ObservationTypeInfoSchema),
+});
+export type ObservationTypePicker = z.infer<typeof ObservationTypePickerSchema>;
+
+export const ObservationTypeSuggestionSchema = z.object({
+  "suggestion": z.union([z.object({
+  "type": ObservationTypeInfoSchema,
+  "reason": z.enum(["previous_observations", "keywords"]),
+}), z.null()]),
+});
+export type ObservationTypeSuggestion = z.infer<typeof ObservationTypeSuggestionSchema>;
 
 export const OnSiteSchema = z.object({
   "total": z.number().int(),
@@ -8728,6 +8771,7 @@ export type UpdateMeetingSeriesRequest = z.infer<typeof UpdateMeetingSeriesReque
 
 export const UpdateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema.optional(),
+  "typeKey": z.string().max(80).optional(),
   "hazard": z.string().min(1).max(200).nullable().optional(),
   "description": z.string().min(1).max(20000).optional(),
   "location": z.string().min(1).max(300).nullable().optional(),
@@ -8738,6 +8782,15 @@ export const UpdateObservationRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateObservationRequest = z.infer<typeof UpdateObservationRequestSchema>;
+
+export const UpdateObservationTypeRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "group": z.string().min(1).max(100).optional(),
+  "category": ObservationTypeSchema.optional(),
+  "requiresAttachment": z.boolean().optional(),
+  "hidden": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateObservationTypeRequest = z.infer<typeof UpdateObservationTypeRequestSchema>;
 
 export const UpdateOrgBrandingRequestSchema = z.object({
   "logoFileId": z.string().nullable().optional(),

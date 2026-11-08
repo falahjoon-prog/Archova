@@ -11343,6 +11343,88 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InspectionDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observation-types:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listObservationTypes
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: The observation type picker, grouped and searchable, with the person's recent types first.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationTypePicker' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createObservationType
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Add a custom observation type for this project, or for the whole organisation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateObservationTypeRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationTypeInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observation-types/{typeKey}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: typeKey
+        in: path
+        required: true
+        schema: { type: string, maxLength: 80 }
+    patch:
+      operationId: updateObservationType
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Hide a type or require an attachment for it on this project; rename a custom type.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateObservationTypeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationTypeInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observation-type-suggestion:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+      - $ref: '#/components/parameters/InspectionItemId'
+    get:
+      operationId: suggestObservationType
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: Suggest the likely observation type for a checklist item.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationTypeSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/observations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -28364,6 +28446,80 @@ components:
       properties:
         signedByName: { type: string, minLength: 1, maxLength: 200 }
         signatureFileId: { $ref: '#/components/schemas/FileRef' }
+    ObservationTypeInfo:
+      type: object
+      required: [key, group, name, category, requiresAttachment, builtIn, hidden]
+      properties:
+        key:
+          {
+            type: string,
+            description: A built-in key,
+            or `custom:<id>` for a type the builder added.,
+          }
+        group: { type: string }
+        name: { type: string }
+        category: { $ref: '#/components/schemas/ObservationType' }
+        requiresAttachment: { type: boolean }
+        builtIn: { type: boolean }
+        hidden: { type: boolean }
+    ObservationTypeGroup:
+      type: object
+      required: [group, types]
+      properties:
+        group: { type: string, description: 'Recents first, then each group A to Z.' }
+        types:
+          type: array
+          items: { $ref: '#/components/schemas/ObservationTypeInfo' }
+    ObservationTypePicker:
+      type: object
+      required: [groups, all]
+      properties:
+        groups:
+          type: array
+          description: 'Grouped, searched and without hidden types, as the picker shows them.'
+          items: { $ref: '#/components/schemas/ObservationTypeGroup' }
+        all:
+          type: array
+          description: Every type including hidden ones, for the settings screen.
+          items: { $ref: '#/components/schemas/ObservationTypeInfo' }
+    CreateObservationTypeRequest:
+      type: object
+      additionalProperties: false
+      required: [name, category]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        group: { type: string, minLength: 1, maxLength: 100 }
+        category: { $ref: '#/components/schemas/ObservationType' }
+        requiresAttachment: { type: boolean }
+        orgWide:
+          {
+            type: boolean,
+            description: 'Offer it on every project in the organisation, not just this one.',
+          }
+    UpdateObservationTypeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: For a built-in type only `requiresAttachment` and `hidden` apply, and only to this project.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        group: { type: string, minLength: 1, maxLength: 100 }
+        category: { $ref: '#/components/schemas/ObservationType' }
+        requiresAttachment: { type: boolean }
+        hidden: { type: boolean }
+    ObservationTypeSuggestion:
+      type: object
+      required: [suggestion]
+      properties:
+        suggestion:
+          description: 'The likely type for an observation raised from this item, or null. A rule over what people chose before for this line and the words in the item, not a model. A person always picks.'
+          oneOf:
+            - type: object
+              required: [type, reason]
+              properties:
+                type: { $ref: '#/components/schemas/ObservationTypeInfo' }
+                reason: { type: string, enum: [previous_observations, keywords] }
+            - { type: 'null' }
     ObservationType:
       type: string
       enum: [safety, quality, environmental, commercial]
@@ -28391,6 +28547,7 @@ components:
           status,
           dueDate,
           isOverdue,
+          typeKey,
           inspectionId,
           inspectionItemId,
           swmsId,
@@ -28419,6 +28576,11 @@ components:
         status: { $ref: '#/components/schemas/ObservationStatus' }
         dueDate: { type: [string, 'null'], format: date }
         isOverdue: { type: boolean }
+        typeKey:
+          {
+            type: [string, 'null'],
+            description: The picker type it was raised under. `type` is its register category.,
+          }
         inspectionId: { type: [string, 'null'], description: The inspection it was raised from. }
         inspectionItemId:
           { type: [string, 'null'], description: The checklist item it was raised from. }
@@ -28812,9 +28974,11 @@ components:
     CreateObservationRequest:
       type: object
       additionalProperties: false
-      required: [type, description]
+      required: [description]
+      description: Send `typeKey` (from the type picker) or, for older clients, a register `type`.
       properties:
         type: { $ref: '#/components/schemas/ObservationType' }
+        typeKey: { type: string, maxLength: 80 }
         hazard: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: string, minLength: 1, maxLength: 300 }
@@ -28832,6 +28996,7 @@ components:
       minProperties: 1
       properties:
         type: { $ref: '#/components/schemas/ObservationType' }
+        typeKey: { type: string, maxLength: 80 }
         hazard: { type: [string, 'null'], minLength: 1, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
@@ -29882,6 +30047,12 @@ components:
       additionalProperties: false
       properties:
         type: { $ref: '#/components/schemas/ObservationType' }
+        typeKey:
+          {
+            type: string,
+            maxLength: 80,
+            description: 'Defaults to the suggested type for the item, if there is one.',
+          }
         hazard: { type: string, minLength: 1, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 20000 }
         comment:

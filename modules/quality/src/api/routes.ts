@@ -11,6 +11,7 @@ import {
 } from '@archova/kernel';
 import type { HeaderInput, InspectionService } from '../application/inspections';
 import type { ObservationFields, ObservationService } from '../application/observations';
+import type { ObservationTypeService } from '../application/observation-types';
 import {
   toInspectionDetail,
   toItemEvent,
@@ -43,6 +44,7 @@ type ObservationBody = Omit<ObservationFields, 'assigneeCompanyId' | 'swmsId' | 
 function observationFields(b: ObservationBody): ObservationFields {
   const out: ObservationFields = {};
   if (b.type !== undefined) out.type = b.type;
+  if (b.typeKey !== undefined) out.typeKey = b.typeKey;
   if (b.hazard !== undefined) out.hazard = b.hazard;
   if (b.description !== undefined) out.description = b.description;
   if (b.location !== undefined) out.location = b.location;
@@ -104,6 +106,7 @@ export function qualityRoutes(
   database: Database,
   inspections: InspectionService,
   observations: ObservationService,
+  observationTypes: ObservationTypeService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -278,6 +281,45 @@ export function qualityRoutes(
           ),
         ),
       ),
+    listObservationTypes: async (input) => {
+      const r = await read(input, (s) =>
+        observationTypes.list(s, project(input.params), input.query.q ?? ''),
+      );
+      return { status: 200, body: { groups: r.groups, all: r.all } };
+    },
+    createObservationType: async (input) => ({
+      status: 201,
+      body: await tx(input, (s) =>
+        observationTypes.addCustom(s, project(input.params), {
+          name: input.body.name,
+          category: input.body.category,
+          ...(input.body.group ? { group: input.body.group } : {}),
+          ...(input.body.requiresAttachment !== undefined
+            ? { requiresAttachment: input.body.requiresAttachment }
+            : {}),
+          ...(input.body.orgWide ? { orgWide: true } : {}),
+        }),
+      ),
+    }),
+    updateObservationType: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        observationTypes.update(s, project(input.params), input.params.typeKey, input.body),
+      ),
+    }),
+    suggestObservationType: async (input) => ({
+      status: 200,
+      body: {
+        suggestion: await read(input, (s) =>
+          observationTypes.suggest(
+            s,
+            project(input.params),
+            inspectionId(input.params),
+            notFound('inspectionItem', input.params.itemId, 'inspection.not_found'),
+          ),
+        ).then((x) => (x ? { type: x.type, reason: x.reason } : null)),
+      },
+    }),
     createObservationFromInspectionItem: async (input) =>
       okObservation(
         201,
@@ -379,7 +421,6 @@ export function qualityRoutes(
         await tx(input, (s) =>
           observations.create(s, project(input.params), {
             ...observationFields(input.body),
-            type: input.body.type,
             description: input.body.description,
           }),
         ),
