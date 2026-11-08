@@ -215,6 +215,8 @@ export const PROBLEM_CODES = {
   'correspondence.incomplete': 422,
   'correspondence.recipient_not_on_project': 422,
   'correspondence.response_not_allowed': 403,
+  'correspondence.recipient_cannot_see': 422,
+  'correspondence.email_limit': 429,
   'correspondence_type.not_found': 404,
   'correspondence_type.prefix_taken': 409,
   'correspondence_type.archived': 409,

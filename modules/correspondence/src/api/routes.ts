@@ -11,7 +11,7 @@ import {
 } from '@archova/kernel';
 import type { CorrespondenceService, ItemFields } from '../application/correspondence';
 import type { RelatedLink } from '../domain/correspondence';
-import { toDetail, toTemplateDto, toTypeDto } from './mappers';
+import { toDetail, toEmails, toTemplateDto, toTypeDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -192,6 +192,23 @@ export function correspondenceRoutes(database: Database, svc: CorrespondenceServ
         await tx(input, (s) => svc.close(s, project(input.params), itemId(input.params), expected)),
       );
     },
+    listCorrespondenceEmails: async (input) => ({
+      status: 200,
+      body: toEmails(
+        await read(input, (s) => svc.emails(s, project(input.params), itemId(input.params))),
+      ),
+    }),
+    emailCorrespondence: async (input) => ({
+      status: 201,
+      body: toEmails(
+        await tx(input, (s) =>
+          svc.emailItem(s, project(input.params), itemId(input.params), {
+            userIds: input.body.userIds.map((u, i) => ref('user', u, `userIds/${i}`)),
+            message: input.body.message ?? '',
+          }),
+        ),
+      ),
+    }),
     voidCorrespondence: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       return ok(

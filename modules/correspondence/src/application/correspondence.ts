@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNull, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { atLeast } from '@archova/domain/permissions';
 import { localDateOf } from '@archova/time';
@@ -35,11 +35,16 @@ import {
   type RelatedLink,
 } from '../domain/correspondence';
 import { TYPE_TEMPLATES, findTemplate } from '../domain/templates';
-import { items, responses, types } from '../infra/tables';
+import { itemEmails, items, responses, types } from '../infra/tables';
 
 export type TypeRow = typeof types.$inferSelect;
 export type ItemRow = typeof items.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
+export type EmailRow = typeof itemEmails.$inferSelect;
+
+/** Most emails one item may queue in an hour, so the mail log cannot be used to spam people. */
+const EMAILS_PER_HOUR = 100;
+export const MAX_EMAIL_RECIPIENTS = 20;
 export type ItemView = ItemRow & {
   timeBarState: ReturnType<typeof timeBarState>;
   sentInTime: boolean | null;
@@ -686,6 +691,87 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     return detail(scope, projectId, id);
   }
 
+  async function emails(scope: TenantScope, projectId: string, id: string) {
+    await getVisible(scope, projectId, id);
+    return scope.tx
+      .select()
+      .from(itemEmails)
+      .where(eq(itemEmails.itemId, id))
+      .orderBy(asc(itemEmails.createdAt), asc(itemEmails.id))
+      .limit(500);
+  }
+
+  /**
+   * Queues an email about a sent item to people on the project who could open it themselves. The worker sends
+   * it: the mail names the item and carries the sender's note and a link, not the item's text.
+   */
+  async function emailItem(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { userIds: string[]; message: string },
+  ) {
+    const { item } = await getVisible(scope, projectId, id);
+    if (item.status === 'draft' || item.status === 'void')
+      throw new AppError(
+        'correspondence.invalid_transition',
+        `A ${item.status} item can't be emailed.`,
+        undefined,
+        { status: item.status },
+      );
+    const userIds = [...new Set(input.userIds)];
+    if (userIds.length === 0 || userIds.length > MAX_EMAIL_RECIPIENTS)
+      throw new AppError('validation_failed', `Choose 1 to ${MAX_EMAIL_RECIPIENTS} people.`, [
+        { path: 'userIds', message: `Choose 1 to ${MAX_EMAIL_RECIPIENTS} people` },
+      ]);
+    const [{ n } = { n: 0 }] = await scope.tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(itemEmails)
+      .where(
+        and(
+          eq(itemEmails.itemId, id),
+          gte(itemEmails.createdAt, new Date(now().getTime() - 3_600_000)),
+        ),
+      );
+    if (n + userIds.length > EMAILS_PER_HOUR)
+      throw new AppError(
+        'correspondence.email_limit',
+        'Too many emails about this item. Try later.',
+      );
+    for (const [i, userId] of userIds.entries()) {
+      const m = await deps.platform.getProjectMembership(scope, projectId, userId);
+      const seen =
+        m !== null &&
+        canSeeItem(item, {
+          userId,
+          companyId: m.companyId,
+          isInternal: !m.isExternal,
+          isAdmin: false,
+        });
+      if (!seen)
+        throw new AppError(
+          'correspondence.recipient_cannot_see',
+          'Email people who can open this item.',
+          [{ path: `userIds/${i}`, message: "Can't open this item" }],
+        );
+    }
+    const rows = await scope.tx
+      .insert(itemEmails)
+      .values(
+        userIds.map((userId) => ({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          itemId: id,
+          senderId: scope.ctx.userId,
+          recipientUserId: userId,
+          message: input.message.trim(),
+          createdAt: now(),
+        })),
+      )
+      .returning();
+    return rows;
+  }
+
   /** Global search (`search`): the correspondence the caller can see that matches the words. */
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'correspondence.items.read', { projectId })))
@@ -717,6 +803,8 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     respond,
     close,
     voidItem,
+    emails,
+    emailItem,
   };
 }
 
