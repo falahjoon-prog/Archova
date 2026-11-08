@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261106230000_workforce_worker_badge.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261106230100_workforce_worker_badge.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Digital Safety ID badge: the worker's own photo and emergency contact (backend schema/workforce.md, workers).
 -- Both are personal information the worker enters about themselves. The emergency contact is a small jsonb
 -- ({ name, relationship, phone }); the photo is a ready file in the files module.
