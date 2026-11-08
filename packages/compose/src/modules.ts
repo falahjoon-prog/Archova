@@ -329,6 +329,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
     dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
     getFile: (scope, fileId) => files.api.getFile(scope, fileId),
+    // diary is built later; this is only called at request time.
+    diaryEntryExists: async (scope, projectId, date) =>
+      (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an

@@ -50,6 +50,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     createVariation: service.createVariation,
     dayActivity: deps.dayActivity,
     getFile: deps.getFile,
+    siteOf: async (scope, projectId) => {
+      const p = await deps.platform.getProject(scope, projectId);
+      return { lat: p.siteLat, lng: p.siteLng, radiusM: p.geofenceRadiusM };
+    },
+    diaryEntryExists: deps.diaryEntryExists,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const ownerInvoices = createOwnerInvoicesService({

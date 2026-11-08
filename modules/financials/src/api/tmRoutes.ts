@@ -65,6 +65,8 @@ const toSignoffDto = (s: TmSignoffRow) => ({
   role: s.role,
   signerName: s.signerName,
   signerPosition: s.signerPosition,
+  geofenceStatus: s.geofenceStatus,
+  hasPosition: s.lat !== null,
   hasEvidence: s.evidenceFileId !== null,
   evidenceFileId: s.evidenceFileId ? encodeId('file', s.evidenceFileId) : null,
   contentHash: s.contentHash,
@@ -170,6 +172,17 @@ export function tmTicketRoutes(database: Database, tm: TmTicketsService) {
             ...(input.body.evidenceFileId
               ? { evidenceFileId: ref('file', input.body.evidenceFileId, 'evidenceFileId') }
               : {}),
+            ...(input.body.fix
+              ? {
+                  fix: {
+                    lat: input.body.fix.lat,
+                    lng: input.body.fix.lng,
+                    ...(input.body.fix.accuracyM !== undefined
+                      ? { accuracyM: input.body.fix.accuracyM }
+                      : {}),
+                  },
+                }
+              : {}),
             ip: input.ip ?? undefined,
             userAgent: input.userAgent ?? undefined,
           }),
@@ -208,6 +221,14 @@ export function tmTicketRoutes(database: Database, tm: TmTicketsService) {
         ),
       };
     },
+    getTmTicketChecks: async (input) => ({
+      status: 200,
+      body: {
+        findings: await read(input, (s) =>
+          tm.checks(s, project(input.params), ticketId(input.params)),
+        ),
+      },
+    }),
     suggestTmTicket: async (input) => {
       const r = await read(input, (s) => tm.suggest(s, project(input.params), input.query.date));
       return { status: 200, body: r };
