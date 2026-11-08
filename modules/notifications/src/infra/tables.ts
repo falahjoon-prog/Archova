@@ -11,6 +11,7 @@ export type NotificationEntity =
   | 'compliance_document'
   | 'conversation'
   | 'announcement'
+  | 'permit'
   | 'cover';
 
 export const notifications = notificationsSchema.table('notifications', {

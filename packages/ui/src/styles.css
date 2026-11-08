@@ -1452,3 +1452,80 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+/* Rich text: shown (ac-rt) and edited (ac-rte). Colours are tokens so they follow the theme. */
+.ac-rt {
+  font-size: var(--font-md, 1rem);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ac-rt__p {
+  margin: 0 0 var(--space-2);
+}
+.ac-rt__list {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: var(--space-6);
+}
+.ac-rt--bold {
+  font-weight: 600;
+}
+.ac-rt--italic {
+  font-style: italic;
+}
+.ac-rt--underline {
+  text-decoration: underline;
+}
+.ac-rt-colour--slate {
+  color: var(--c-action-primary);
+}
+.ac-rt-colour--red {
+  color: var(--c-status-danger);
+}
+.ac-rt-colour--green {
+  color: var(--c-status-success);
+}
+.ac-rt-colour--blue {
+  color: var(--c-status-info);
+}
+.ac-rte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ac-rte__label {
+  font-weight: 600;
+  font-size: var(--font-sm);
+}
+.ac-rte__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+.ac-rte__btn,
+.ac-rte__colour {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.ac-rte__colour {
+  padding-inline: var(--space-2);
+}
+.ac-rte__area {
+  min-height: 12rem;
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-md);
+}
+.ac-rte__area:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}

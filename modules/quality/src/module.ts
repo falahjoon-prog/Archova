@@ -11,6 +11,7 @@ import {
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
 import { createObservationService } from './application/observations';
+import { createObservationTypeService } from './application/observation-types';
 import type { QualityDeps } from './application/shared';
 import { qualityRoutes } from './api/routes';
 import { toInspectionDetail, toTemplateDetail } from './api/mappers';
@@ -241,9 +242,10 @@ export function syncPieces(inspections: InspectionService) {
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {
   const inspections = createInspectionService(deps);
   const observations = createObservationService(deps);
+  const observationTypes = createObservationTypeService(deps);
   return {
     definition: defineModule({ name: 'quality', permissions: QUALITY_PERMISSIONS }),
-    routes: qualityRoutes(services.database, inspections, observations),
+    routes: qualityRoutes(services.database, inspections, observations, observationTypes),
     api: {
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),

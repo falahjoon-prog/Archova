@@ -45,6 +45,7 @@ import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answ
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { CaptureObservationView, CaptureScanService } from '../application/capture-scan';
 import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
@@ -247,6 +248,19 @@ const toSourceDto = (s: AnswerSource) => ({
   page: s.page,
 });
 
+const toCaptureObservationDto = (o: CaptureObservationView) => ({
+  id: encodeId('aiCaptureObservation', o.id),
+  fileId: encodeId('file', o.fileId),
+  category: o.category,
+  categoryLabel: o.categoryLabel,
+  observation: o.observation,
+  confidence: o.confidence,
+  status: o.status,
+  reviewNote: o.reviewNote,
+  reviewedAt: o.reviewedAt?.toISOString() ?? null,
+  createdAt: o.createdAt.toISOString(),
+});
+
 const toHazardSignalDto = (s: HazardSignalView) => ({
   id: encodeId('aiHazardSignal', s.id),
   fileId: encodeId('file', s.fileId),
@@ -304,6 +318,7 @@ export function aiRoutes(
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
+  captureScans: CaptureScanService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -827,6 +842,55 @@ export function aiRoutes(
         }),
       );
       return { status: 200, body: toHazardSignalDto(row) };
+    },
+    scanCaptureViewWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const stillFileId = decodeId('file', input.body.still.fileId);
+      if (!stillFileId) throw new AppError('file.not_found');
+      const r = await captureScans.scan(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        stillFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          scanId: encodeId('aiCaptureScan', r.scanId),
+          observations: r.observations.map(toCaptureObservationDto),
+          stillUnclear: r.stillUnclear,
+          dropped: r.dropped,
+          unsupportedNumbers: r.unsupportedNumbers,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    listCaptureObservations: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const fileId = input.query.fileId ? decodeId('file', input.query.fileId) : null;
+      if (input.query.fileId && !fileId) throw new AppError('file.not_found');
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) =>
+          captureScans.list(scope, projectId, {
+            limit: input.query.limit ?? 50,
+            ...(input.query.status ? { status: input.query.status } : {}),
+            ...(fileId ? { fileId } : {}),
+          }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toCaptureObservationDto) } };
+    },
+    reviewCaptureObservation: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const id = decodeId('aiCaptureObservation', input.params.observationId);
+      if (!id) throw new AppError('ai.capture_observation.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        captureScans.review(scope, projectId, id, {
+          decision: input.body.decision,
+          ...(input.body.note ? { note: input.body.note } : {}),
+        }),
+      );
+      return { status: 200, body: toCaptureObservationDto(row) };
     },
     getHazardPatterns: async (input) => {
       const projectId = projectUuid(input.params.projectId);

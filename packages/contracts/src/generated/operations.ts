@@ -58,6 +58,13 @@ export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetOrgBrandingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOrgBrandingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOrgBrandingBody = s.UpdateOrgBrandingRequestSchema;
 export const GetSupportAccessParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -398,6 +405,26 @@ export const CreateBimModelParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const CreateBimModelBody = s.CreateBimModelRequestSchema;
+export const ListSiteCapturesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSiteCaptureBody = s.CreateSiteCaptureRequestSchema;
+export const UpdateSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "captureId": z.string().regex(new RegExp("^scp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSiteCaptureBody = s.UpdateSiteCaptureRequestSchema;
+export const DeleteSiteCaptureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "captureId": z.string().regex(new RegExp("^scp_[0-9A-Za-z]{26}$")),
+});
 export const ListCoordinationIssuesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -599,6 +626,10 @@ export const ResendTransmittalLinkParams = z.object({
   "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
   "recipientId": z.string().regex(new RegExp("^trr_[0-9A-Za-z]{26}$")),
 });
+export const GetDocumentRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const OpenTransmittalAccessBody = s.OpenInductionAccessRequestSchema;
 export const DownloadTransmittalAccessItemBody = s.DownloadTransmittalItemRequestSchema;
 export const GetAiSettingsParams = z.object({
@@ -711,6 +742,34 @@ export const ReviewHazardSignalParams = z.object({
   "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
 });
 export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ScanCaptureViewWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanCaptureViewWithNovaBody = z.object({
+  "still": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListCaptureObservationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCaptureObservationsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewCaptureObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^aco_[0-9A-Za-z]{26}$")),
+});
+export const ReviewCaptureObservationBody = z.object({
   "decision": z.enum(["confirmed", "dismissed"]),
   "note": z.string().max(1000).optional(),
 }).strict();
@@ -2565,6 +2624,24 @@ export const GetInspectionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
 });
+export const UpdateInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInspectionBody = s.UpdateInspectionRequestSchema;
+export const SetInspectionSectionNaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const SetInspectionSectionNaBody = s.SetInspectionSectionNaRequestSchema;
+export const AddInspectionSignatureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const AddInspectionSignatureBody = s.AddInspectionSignatureRequestSchema;
 export const RecordInspectionResponsesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2581,6 +2658,30 @@ export const CloseInspectionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationTypesQuery = z.object({
+  "q": z.string().max(100).optional(),
+});
+export const CreateObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateObservationTypeBody = s.CreateObservationTypeRequestSchema;
+export const UpdateObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "typeKey": z.string().max(80),
+});
+export const UpdateObservationTypeBody = s.UpdateObservationTypeRequestSchema;
+export const SuggestObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^iti_[0-9A-Za-z]{26}$")),
 });
 export const ListObservationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -2716,6 +2817,54 @@ export const AcknowledgeSwmsParams = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListPermitsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPermitsQuery = z.object({
+  "kind": s.PermitKindSchema.optional(),
+  "status": s.PermitStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreatePermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePermitBody = s.CreatePermitRequestSchema;
+export const ListPermitFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPermitFlagsQuery = z.object({
+  "windowDays": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const GetPermitRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetPermitRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetPermitRequirementsBody = s.SetPermitRequirementsRequestSchema;
+export const GetPermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePermitBody = s.UpdatePermitRequestSchema;
+export const TransitionPermitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPermitBody = s.PermitTransitionRequestSchema;
 export const ListContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2982,6 +3131,51 @@ export const VoidDirectCostParams = z.object({
   "directCostId": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
 });
 export const VoidDirectCostBody = s.VoidDirectCostRequestSchema;
+export const ListTmTicketsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTmTicketBody = s.TmTicketRequestSchema;
+export const SuggestTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestTmTicketQuery = z.object({
+  "date": z.string().date(),
+});
+export const GetTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTmTicketBody = s.TmTicketRequestSchema;
+export const SignTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const SignTmTicketBody = s.SignTmTicketRequestSchema;
+export const VoidTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const VoidTmTicketBody = s.VoidTmTicketRequestSchema;
+export const ConvertTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const ConvertTmTicketBody = s.ConvertTmTicketRequestSchema;
 export const ListCommitmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3286,6 +3480,26 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListInspectionItemActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^iti_[0-9A-Za-z]{26}$")),
+});
+export const AddInspectionItemCommentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^iti_[0-9A-Za-z]{26}$")),
+});
+export const AddInspectionItemCommentBody = s.AddInspectionItemCommentRequestSchema;
+export const CreateObservationFromInspectionItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^iti_[0-9A-Za-z]{26}$")),
+});
+export const CreateObservationFromInspectionItemBody = s.CreateObservationFromItemRequestSchema;
 export const ListCoversParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3622,6 +3836,30 @@ export const operations = {
     params: GetOrgParams,
     query: null,
     body: null,
+  },
+  getOrgBranding: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/branding',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetOrgBrandingParams,
+    query: null,
+    body: null,
+  },
+  updateOrgBranding: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/branding',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOrgBrandingParams,
+    query: null,
+    body: UpdateOrgBrandingBody,
   },
   getSupportAccess: {
     method: 'GET',
@@ -4439,6 +4677,54 @@ export const operations = {
     query: null,
     body: CreateBimModelBody,
   },
+  listSiteCaptures: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.read",
+    internal: false,
+    contentType: null,
+    params: ListSiteCapturesParams,
+    query: null,
+    body: null,
+  },
+  createSiteCapture: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSiteCaptureParams,
+    query: null,
+    body: CreateSiteCaptureBody,
+  },
+  updateSiteCapture: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSiteCaptureParams,
+    query: null,
+    body: UpdateSiteCaptureBody,
+  },
+  deleteSiteCapture: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/site-captures/{captureId}',
+    module: "bim",
+    auth: "required",
+    permission: "bim.captures.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteSiteCaptureParams,
+    query: null,
+    body: null,
+  },
   listCoordinationIssues: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/coordination-issues',
@@ -4835,6 +5121,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  getDocumentRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/document-register',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: null,
+    params: GetDocumentRegisterParams,
+    query: null,
+    body: null,
+  },
   getTransmittalAccess: {
     method: 'GET',
     path: '/v1/transmittal-access',
@@ -5062,6 +5360,42 @@ export const operations = {
     params: ReviewHazardSignalParams,
     query: null,
     body: ReviewHazardSignalBody,
+  },
+  scanCaptureViewWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/view-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanCaptureViewWithNovaParams,
+    query: null,
+    body: ScanCaptureViewWithNovaBody,
+  },
+  listCaptureObservations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.review",
+    internal: false,
+    contentType: null,
+    params: ListCaptureObservationsParams,
+    query: ListCaptureObservationsQuery,
+    body: null,
+  },
+  reviewCaptureObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/captures/observations/{observationId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.captures.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewCaptureObservationParams,
+    query: null,
+    body: ReviewCaptureObservationBody,
   },
   getHazardPatterns: {
     method: 'GET',
@@ -9043,6 +9377,42 @@ export const operations = {
     query: null,
     body: null,
   },
+  updateInspection: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateInspectionParams,
+    query: null,
+    body: UpdateInspectionBody,
+  },
+  setInspectionSectionNa: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/section-na',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: SetInspectionSectionNaParams,
+    query: null,
+    body: SetInspectionSectionNaBody,
+  },
+  addInspectionSignature: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/signatures',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: AddInspectionSignatureParams,
+    query: null,
+    body: AddInspectionSignatureBody,
+  },
   recordInspectionResponses: {
     method: 'PUT',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses',
@@ -9076,6 +9446,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: CloseInspectionParams,
+    query: null,
+    body: null,
+  },
+  listObservationTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: ListObservationTypesParams,
+    query: ListObservationTypesQuery,
+    body: null,
+  },
+  createObservationType: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateObservationTypeParams,
+    query: null,
+    body: CreateObservationTypeBody,
+  },
+  updateObservationType: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types/{typeKey}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateObservationTypeParams,
+    query: null,
+    body: UpdateObservationTypeBody,
+  },
+  suggestObservationType: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observation-type-suggestion',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: null,
+    params: SuggestObservationTypeParams,
     query: null,
     body: null,
   },
@@ -9318,6 +9736,102 @@ export const operations = {
     params: AcknowledgeSwmsParams,
     query: null,
     body: AcknowledgeSwmsBody,
+  },
+  listPermits: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: ListPermitsParams,
+    query: ListPermitsQuery,
+    body: null,
+  },
+  createPermit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePermitParams,
+    query: null,
+    body: CreatePermitBody,
+  },
+  listPermitFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/flags',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: ListPermitFlagsParams,
+    query: ListPermitFlagsQuery,
+    body: null,
+  },
+  getPermitRequirements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/requirements',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: GetPermitRequirementsParams,
+    query: null,
+    body: null,
+  },
+  setPermitRequirements: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/requirements',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetPermitRequirementsParams,
+    query: null,
+    body: SetPermitRequirementsBody,
+  },
+  getPermit: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.read",
+    internal: false,
+    contentType: null,
+    params: GetPermitParams,
+    query: null,
+    body: null,
+  },
+  updatePermit: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePermitParams,
+    query: null,
+    body: UpdatePermitBody,
+  },
+  transitionPermit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition',
+    module: "permits",
+    auth: "required",
+    permission: "permits.permits.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPermitParams,
+    query: null,
+    body: TransitionPermitBody,
   },
   listContracts: {
     method: 'GET',
@@ -9930,6 +10444,102 @@ export const operations = {
     params: VoidDirectCostParams,
     query: null,
     body: VoidDirectCostBody,
+  },
+  listTmTickets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: ListTmTicketsParams,
+    query: null,
+    body: null,
+  },
+  createTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTmTicketParams,
+    query: null,
+    body: CreateTmTicketBody,
+  },
+  suggestTmTicket: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/suggestion',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: null,
+    params: SuggestTmTicketParams,
+    query: SuggestTmTicketQuery,
+    body: null,
+  },
+  getTmTicket: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.read",
+    internal: false,
+    contentType: null,
+    params: GetTmTicketParams,
+    query: null,
+    body: null,
+  },
+  updateTmTicket: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTmTicketParams,
+    query: null,
+    body: UpdateTmTicketBody,
+  },
+  signTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/sign',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.sign",
+    internal: false,
+    contentType: "application/json",
+    params: SignTmTicketParams,
+    query: null,
+    body: SignTmTicketBody,
+  },
+  voidTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidTmTicketParams,
+    query: null,
+    body: VoidTmTicketBody,
+  },
+  convertTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/convert',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.convert",
+    internal: false,
+    contentType: "application/json",
+    params: ConvertTmTicketParams,
+    query: null,
+    body: ConvertTmTicketBody,
   },
   listCommitments: {
     method: 'GET',
@@ -10566,6 +11176,42 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listInspectionItemActivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionItemActivityParams,
+    query: null,
+    body: null,
+  },
+  addInspectionItemComment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/comments',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: AddInspectionItemCommentParams,
+    query: null,
+    body: AddInspectionItemCommentBody,
+  },
+  createObservationFromInspectionItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observations',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateObservationFromInspectionItemParams,
+    query: null,
+    body: CreateObservationFromInspectionItemBody,
   },
   listCovers: {
     method: 'GET',
