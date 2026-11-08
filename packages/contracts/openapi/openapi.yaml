@@ -7002,6 +7002,11 @@ paths:
             in: query,
             schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
           }
+        - {
+            name: warrantyItemId,
+            in: query,
+            schema: { $ref: '#/components/schemas/WarrantyItemRef' },
+          }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -7074,6 +7079,155 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWarrantyItems
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: The warranty register, soonest expiry first, with claim counts per item.
+      description: |
+        Everyone who can read the project's warranty (owners and clients included) sees every item. `state` is worked
+        out in the project's time zone: expiring is within 90 days of the last day, expired is after it.
+      parameters:
+        - { name: state, in: query, schema: { $ref: '#/components/schemas/WarrantyState' } }
+        - { name: system, in: query, schema: { $ref: '#/components/schemas/WarrantySystem' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Add a system or product with a warranty period. It is numbered WAR-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWarrantyItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/WarrantyItemId'
+    get:
+      operationId: getWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: One warranty item with its claim history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Edit a warranty item. Changing the start or length recalculates the expiry.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWarrantyItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Remove an item from the register. Claims already raised against it stay on the defect register.
+      description: |
+        Each claim tied to the item is unlinked and gets a line in its history saying so.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty/claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWarrantyClaims
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: Claim history for the project, newest first (defects raised in the liability period or against a warranty item).
+      description: |
+        A summary for everyone who can read the warranty, so an owner or client can follow every claim on their
+        building: number, title, status, dates. This deliberately bypasses the defect register's own visibility rules.
+        Owners and clients get the narrow form: a disputed claim reads as open and the answerable company is null.
+        Description, photos and history stay on the defect. Subcontractors see only claims assigned to their company.
+      parameters:
+        - {
+            name: warrantyItemId,
+            in: query,
+            schema: { $ref: '#/components/schemas/WarrantyItemRef' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyClaimList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getWarrantySummary
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: Warranty counts and what Nova flags, from rules alone (no model).
+      description: |
+        Flags: a warranty ending within 90 days, a lapsed warranty that still has an open claim, a claim open past the
+        14 day response target, and three or more claims on one system within a year.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantySummary' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
     parameters:
@@ -17129,6 +17283,11 @@ components:
       in: path
       required: true
       schema: { type: string, enum: [claim, schedule] }
+    WarrantyItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wri_[0-9A-Za-z]{26}$' }
     DefectId:
       name: defectId
       in: path
@@ -20274,6 +20433,7 @@ components:
                 announcement,
                 permit,
                 cover,
+                warranty_item,
               ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
@@ -26313,6 +26473,11 @@ components:
         closedAt: { type: [string, 'null'], format: date-time }
         closedBy: { type: [string, 'null'] }
         source: { $ref: '#/components/schemas/DefectSource' }
+        warrantyItemId:
+          {
+            type: [string, 'null'],
+            description: The warranty item this claim is against (liability period claims).,
+          }
         availableActions:
           type: array
           description: Actions the caller can take now, for showing buttons
@@ -28367,6 +28532,7 @@ components:
         requireCloseEvidence: { type: boolean }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
+        warrantyItemId: { $ref: '#/components/schemas/WarrantyItemRef' }
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
@@ -28402,6 +28568,190 @@ components:
         requireCloseEvidence: { type: boolean }
         dueDate: { type: [string, 'null'], format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
+        warrantyItemId:
+          { oneOf: [{ $ref: '#/components/schemas/WarrantyItemRef' }, { type: 'null' }] }
+    WarrantyItemRef:
+      type: string
+      pattern: '^wri_[0-9A-Za-z]{26}$'
+    WarrantySystem:
+      type: string
+      enum:
+        [
+          structure,
+          roof,
+          waterproofing,
+          facade_windows,
+          plumbing,
+          electrical,
+          hvac,
+          fire_services,
+          lifts,
+          finishes,
+          appliances,
+          landscaping,
+          other,
+        ]
+    WarrantyResponsibleType:
+      type: string
+      enum: [builder, subcontractor, supplier]
+    WarrantyState:
+      type: string
+      description: Active, expiring (within 90 days of the last day) or expired, in the project's time zone.
+      enum: [active, expiring, expired]
+    WarrantyItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          name,
+          system,
+          description,
+          responsibleType,
+          responsibleCompanyId,
+          responsibleName,
+          startDate,
+          durationMonths,
+          expiryDate,
+          state,
+          daysToExpiry,
+          claimCount,
+          openClaimCount,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'WAR-0007' }
+        name: { type: string }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleName:
+          {
+            type: [string, 'null'],
+            description: A supplier or installer that is not a company on the project.,
+          }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer }
+        expiryDate: { type: string, format: date, description: The last day covered. }
+        state: { $ref: '#/components/schemas/WarrantyState' }
+        daysToExpiry: { type: integer, description: Negative once expired. }
+        claimCount: { type: integer }
+        openClaimCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    WarrantyItemList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WarrantyItem' }
+    WarrantyClaim:
+      type: object
+      required:
+        [
+          defectId,
+          numberLabel,
+          title,
+          status,
+          priority,
+          trade,
+          warrantyItemId,
+          assigneeCompanyId,
+          raisedAt,
+          closedAt,
+          daysOpen,
+          isOverdue,
+        ]
+      properties:
+        defectId: { type: string }
+        numberLabel: { type: string }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/DefectStatus' }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        trade: { type: [string, 'null'] }
+        warrantyItemId: { type: [string, 'null'] }
+        assigneeCompanyId: { type: [string, 'null'] }
+        raisedAt: { type: string, format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        daysOpen:
+          {
+            type: integer,
+            description: Whole days from issue to close,
+            or to today while still open.,
+          }
+        isOverdue: { type: boolean, description: Open past the 14 day response target. }
+    WarrantyClaimList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WarrantyClaim' }
+    WarrantyItemDetail:
+      type: object
+      required: [item, claims]
+      properties:
+        item: { $ref: '#/components/schemas/WarrantyItem' }
+        claims: { type: array, items: { $ref: '#/components/schemas/WarrantyClaim' } }
+    WarrantyFlag:
+      type: object
+      required: [kind, severity, message, itemId, claimId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [warranty_expiring, warranty_expired_open_claim, claim_response_overdue, repeat_claims]
+        severity: { type: string, enum: [info, warning, critical] }
+        message: { type: string }
+        itemId: { type: [string, 'null'] }
+        claimId: { type: [string, 'null'], description: The defect id. }
+    WarrantySummary:
+      type: object
+      required: [itemCount, expiringCount, expiredCount, openClaimCount, closedClaimCount, flags]
+      properties:
+        itemCount: { type: integer }
+        expiringCount: { type: integer }
+        expiredCount: { type: integer }
+        openClaimCount: { type: integer }
+        closedClaimCount: { type: integer }
+        flags: { type: array, items: { $ref: '#/components/schemas/WarrantyFlag' } }
+    CreateWarrantyItemRequest:
+      type: object
+      additionalProperties: false
+      required: [name, system, responsibleType, startDate, durationMonths]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string, maxLength: 5000 }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        responsibleName: { type: string, minLength: 1, maxLength: 200 }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer, minimum: 1, maximum: 600 }
+    UpdateWarrantyItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string, maxLength: 5000 }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        responsibleName: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer, minimum: 1, maximum: 600 }
     DefectTransitionRequest:
       type: object
       additionalProperties: false

@@ -5323,6 +5323,107 @@ export interface paths {
         patch: operations["updateDefect"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The warranty register, soonest expiry first, with claim counts per item.
+         * @description Everyone who can read the project's warranty (owners and clients included) sees every item. `state` is worked
+         *     out in the project's time zone: expiring is within 90 days of the last day, expired is after it.
+         */
+        get: operations["listWarrantyItems"];
+        put?: never;
+        /** Add a system or product with a warranty period. It is numbered WAR-0001 per project. */
+        post: operations["createWarrantyItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        /** One warranty item with its claim history. */
+        get: operations["getWarrantyItem"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove an item from the register. Claims already raised against it stay on the defect register.
+         * @description Each claim tied to the item is unlinked and gets a line in its history saying so.
+         */
+        delete: operations["deleteWarrantyItem"];
+        options?: never;
+        head?: never;
+        /** Edit a warranty item. Changing the start or length recalculates the expiry. */
+        patch: operations["updateWarrantyItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Claim history for the project, newest first (defects raised in the liability period or against a warranty item).
+         * @description A summary for everyone who can read the warranty, so an owner or client can follow every claim on their
+         *     building: number, title, status, dates. This deliberately bypasses the defect register's own visibility rules.
+         *     Owners and clients get the narrow form: a disputed claim reads as open and the answerable company is null.
+         *     Description, photos and history stay on the defect. Subcontractors see only claims assigned to their company.
+         */
+        get: operations["listWarrantyClaims"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Warranty counts and what Nova flags, from rules alone (no model).
+         * @description Flags: a warranty ending within 90 days, a lapsed warranty that still has an open claim, a claim open past the
+         *     14 day response target, and three or more claims on one system within a year.
+         */
+        get: operations["getWarrantySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition": {
         parameters: {
             query?: never;
@@ -14277,7 +14378,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -18104,6 +18205,8 @@ export interface components {
             closedAt: string | null;
             closedBy: string | null;
             source: components["schemas"]["DefectSource"];
+            /** @description The warranty item this claim is against (liability period claims). */
+            warrantyItemId?: string | null;
             /** @description Actions the caller can take now, for showing buttons */
             availableActions: components["schemas"]["DefectAction"][];
             createdBy: string | null;
@@ -19374,6 +19477,7 @@ export interface components {
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
+            warrantyItemId?: components["schemas"]["WarrantyItemRef"];
             /** @description The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`. */
             aiSuggestionId?: string;
         };
@@ -19399,6 +19503,117 @@ export interface components {
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];
+            warrantyItemId?: components["schemas"]["WarrantyItemRef"] | null;
+        };
+        WarrantyItemRef: string;
+        /** @enum {string} */
+        WarrantySystem: "structure" | "roof" | "waterproofing" | "facade_windows" | "plumbing" | "electrical" | "hvac" | "fire_services" | "lifts" | "finishes" | "appliances" | "landscaping" | "other";
+        /** @enum {string} */
+        WarrantyResponsibleType: "builder" | "subcontractor" | "supplier";
+        /**
+         * @description Active, expiring (within 90 days of the last day) or expired, in the project's time zone.
+         * @enum {string}
+         */
+        WarrantyState: "active" | "expiring" | "expired";
+        WarrantyItem: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description WAR-0007 */
+            numberLabel: string;
+            name: string;
+            system: components["schemas"]["WarrantySystem"];
+            description: string;
+            responsibleType: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId: string | null;
+            /** @description A supplier or installer that is not a company on the project. */
+            responsibleName: string | null;
+            /** Format: date */
+            startDate: string;
+            durationMonths: number;
+            /**
+             * Format: date
+             * @description The last day covered.
+             */
+            expiryDate: string;
+            state: components["schemas"]["WarrantyState"];
+            /** @description Negative once expired. */
+            daysToExpiry: number;
+            claimCount: number;
+            openClaimCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        WarrantyItemList: {
+            data: components["schemas"]["WarrantyItem"][];
+        };
+        WarrantyClaim: {
+            defectId: string;
+            numberLabel: string;
+            title: string;
+            status: components["schemas"]["DefectStatus"];
+            priority: components["schemas"]["DefectPriority"];
+            trade: string | null;
+            warrantyItemId: string | null;
+            assigneeCompanyId: string | null;
+            /** Format: date-time */
+            raisedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description Whole days from issue to close */
+            daysOpen: number;
+            /** @description Open past the 14 day response target. */
+            isOverdue: boolean;
+        };
+        WarrantyClaimList: {
+            data: components["schemas"]["WarrantyClaim"][];
+        };
+        WarrantyItemDetail: {
+            item: components["schemas"]["WarrantyItem"];
+            claims: components["schemas"]["WarrantyClaim"][];
+        };
+        WarrantyFlag: {
+            /** @enum {string} */
+            kind: "warranty_expiring" | "warranty_expired_open_claim" | "claim_response_overdue" | "repeat_claims";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            message: string;
+            itemId: string | null;
+            /** @description The defect id. */
+            claimId: string | null;
+        };
+        WarrantySummary: {
+            itemCount: number;
+            expiringCount: number;
+            expiredCount: number;
+            openClaimCount: number;
+            closedClaimCount: number;
+            flags: components["schemas"]["WarrantyFlag"][];
+        };
+        CreateWarrantyItemRequest: {
+            name: string;
+            system: components["schemas"]["WarrantySystem"];
+            description?: string;
+            responsibleType: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"];
+            responsibleName?: string;
+            /** Format: date */
+            startDate: string;
+            durationMonths: number;
+        };
+        UpdateWarrantyItemRequest: {
+            name?: string;
+            system?: components["schemas"]["WarrantySystem"];
+            description?: string;
+            responsibleType?: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"] | null;
+            responsibleName?: string | null;
+            /** Format: date */
+            startDate?: string;
+            durationMonths?: number;
         };
         DefectTransitionRequest: {
             action: components["schemas"]["DefectAction"];
@@ -22932,6 +23147,7 @@ export interface components {
         OwnerInvoiceId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
+        WarrantyItemId: string;
         DefectId: string;
         TenderPackageId: string;
         QuoteId: string;
@@ -31113,6 +31329,7 @@ export interface operations {
                 trade?: string;
                 overdue?: "true" | "false";
                 drawingRevisionId?: string;
+                warrantyItemId?: components["schemas"]["WarrantyItemRef"];
                 q?: string;
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
@@ -31223,6 +31440,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWarrantyItems: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["WarrantyState"];
+                system?: components["schemas"]["WarrantySystem"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWarrantyItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWarrantyItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWarrantyItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWarrantyItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWarrantyItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWarrantyItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWarrantyClaims: {
+        parameters: {
+            query?: {
+                warrantyItemId?: components["schemas"]["WarrantyItemRef"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWarrantySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantySummary"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -46,6 +46,7 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   closedAt: isoOrNull(r.closedAt),
   closedBy: userOrNull(r.closedBy),
   source: r.source,
+  warrantyItemId: r.warrantyItemId ? encodeId('warrantyItem', r.warrantyItemId) : null,
   availableActions: [
     ...new Set(
       actorsFor(r, viewer, r.localToday).flatMap((a) => availableDefectActions(r.status, a)),
