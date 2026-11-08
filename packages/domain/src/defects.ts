@@ -4,6 +4,9 @@
 //   draft → open → ready_for_review → closed
 //                ↖ (reject, reason) ↙
 //   open → disputed (reason) → open (reassigned);  anything not closed → void (reason)
+//   closed → open (reopen, reason)
+// Punch list roles: a defect may name a Punch Item Manager, a Final Approver (who alone closes, rejects or
+// reopens it), several assignees and a distribution list (notified, not assigned). See `defectApproverRule`.
 
 export const DEFECT_STATUSES = [
   'draft',
@@ -36,6 +39,8 @@ export const DEFECT_ACTIONS = [
   /** The builder assigns a disputed defect again. */
   'reassign',
   'void',
+  /** The final approver (or the builder when none is named) reopens a closed defect with a reason. */
+  'reopen',
 ] as const;
 export type DefectAction = (typeof DEFECT_ACTIONS)[number];
 
@@ -56,6 +61,7 @@ const RULES: Record<DefectAction, Rule> = {
   reject: { from: ['ready_for_review'], to: 'open', actor: 'builder', needsReason: true },
   dispute: { from: ['open'], to: 'disputed', actor: 'assignee', needsReason: true },
   reassign: { from: ['disputed'], to: 'open', actor: 'builder' },
+  reopen: { from: ['closed'], to: 'open', actor: 'builder', needsReason: true },
   void: {
     from: ['draft', 'open', 'ready_for_review', 'disputed'],
     to: 'void',
@@ -130,4 +136,20 @@ export function defectLabel(number: number | null | undefined): string {
   return typeof number === 'number' && number > 0
     ? `DEF-${String(number).padStart(4, '0')}`
     : 'D-local';
+}
+
+/** Actions only the named final approver may take once a defect has one. */
+export const FINAL_APPROVER_ACTIONS: readonly DefectAction[] = ['close', 'reject', 'reopen'];
+
+/**
+ * With a final approver named, only that person closes, rejects or reopens the defect; without one, any builder
+ * with the permission may. Returns true when `userId` may take `action`.
+ */
+export function defectApproverRule(
+  defect: { finalApproverUserId?: string | null },
+  action: DefectAction,
+  userId: string,
+): boolean {
+  if (!defect.finalApproverUserId || !FINAL_APPROVER_ACTIONS.includes(action)) return true;
+  return defect.finalApproverUserId === userId;
 }
