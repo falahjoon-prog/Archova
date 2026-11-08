@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, isNull, like, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import type { CreateUploadRequest } from '@archova/contracts';
+import { CaptureSchema, type Capture, type CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fileObjects, photoTags, uploadSessions } from '../infra/tables';
@@ -489,7 +489,89 @@ export function createFilesService({
     return row!;
   }
 
-  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos, setPhotoTags };
+  /**
+   * `photos.create` from a phone (mobile 03 §3.1): the photo's file has uploaded, and this says it is a site photo of
+   * this project. It checks the file is the caller's own stored, scanned photo for that project, then fills in only the
+   * capture details the upload did not already carry (what the phone reported at upload wins). Sending it again
+   * changes nothing.
+   */
+  async function registerPhoto(
+    scope: TenantScope,
+    input: { projectId: string; fileId: string; capture?: unknown },
+  ): Promise<FileRow> {
+    await authorise(scope, input.projectId, 'upload', 'photos');
+    const parsed =
+      input.capture === undefined || input.capture === null
+        ? null
+        : CaptureSchema.safeParse(input.capture);
+    if (parsed && !parsed.success)
+      throw new AppError('validation_failed', 'The photo details are not valid.', [
+        { path: 'payload/capture', message: 'Expected when and where it was taken' },
+      ]);
+    const capture: Capture | null = parsed?.success ? parsed.data : null;
+
+    const [f] = await scope.tx
+      .select()
+      .from(fileObjects)
+      .where(
+        and(
+          eq(fileObjects.id, input.fileId),
+          eq(fileObjects.projectId, input.projectId),
+          eq(fileObjects.module, 'photos'),
+          isNull(fileObjects.deletedAt),
+        ),
+      )
+      .for('update')
+      .limit(1);
+    // Someone else's photo, another project's, or another kind of file all look the same: not found.
+    if (!f || f.createdBy !== scope.ctx.userId) throw new AppError('file.not_found');
+    assertFileReady(f);
+    if (!f.mime.startsWith('image/'))
+      throw new AppError('validation_failed', 'A photo has to be an image.', [
+        { path: 'payload/fileId', message: 'Not an image' },
+      ]);
+    if (!capture) return f;
+
+    const tz = capture.timeZone
+      ? await resolveTimeZone(scope.tx, capture.timeZone, 'capture.timeZone')
+      : null;
+    const sent = captureToRow(capture, tz);
+    const gaps: Partial<typeof fileObjects.$inferInsert> = {};
+    if (f.takenAt === null && sent.takenAt) {
+      gaps.takenAt = sent.takenAt;
+      gaps.takenTz = sent.takenTz;
+    }
+    if (f.captureLat === null && sent.captureLat !== null) {
+      gaps.captureLat = sent.captureLat;
+      gaps.captureLng = sent.captureLng;
+      gaps.captureAccuracyM = sent.captureAccuracyM;
+      gaps.captureHeadingDeg = sent.captureHeadingDeg;
+      gaps.captureSource = sent.captureSource;
+    }
+    if (Object.keys(gaps).length === 0) return f;
+    const [updated] = await scope.tx
+      .update(fileObjects)
+      .set({
+        ...gaps,
+        updatedAt: new Date(),
+        updatedBy: scope.ctx.userId,
+        version: sql`${fileObjects.version} + 1`,
+      })
+      .where(and(eq(fileObjects.orgId, f.orgId), eq(fileObjects.id, f.id)))
+      .returning();
+    return updated!;
+  }
+
+  return {
+    createUpload,
+    complete,
+    get,
+    downloadUrl,
+    readBytes,
+    listProjectPhotos,
+    setPhotoTags,
+    registerPhoto,
+  };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

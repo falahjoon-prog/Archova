@@ -12,6 +12,7 @@ import {
   type DrawingPin,
   type DrawingRevision,
   type DrawingSet,
+  type DrawingSetSummary,
   type DrawingSheet,
   type IssuedFor,
   type ReadField,
@@ -71,6 +72,7 @@ function toSheet(s: DrawingsStore, row: DrawingsStore['sheets'][number]): Drawin
     currentRev: current.rev,
     currentIssuedFor: current.issuedFor,
     currentDrawingDate: current.drawingDate,
+    currentSetId: current.setId,
     revisionCount: revs.length,
   };
 }
@@ -88,6 +90,15 @@ export const drawingsSource = {
       .filter((sheet) => !q || `${sheet.sheetNumber} ${sheet.title}`.toLowerCase().includes(q))
       .sort((a, b) => a.sheetNumber.localeCompare(b.sheetNumber, 'en-AU', { numeric: true }));
     return delay(rows);
+  },
+
+  /** Published issues, newest first, with when each was received (the "Drawing sets" tab). */
+  async listSets(projectId: string): Promise<DrawingSetSummary[]> {
+    return delay(
+      [...stores.get(projectId).setMeta].sort((a, b) =>
+        (b.issuedDate ?? '').localeCompare(a.issuedDate ?? ''),
+      ),
+    );
   },
 
   /** Every revision in the register when "show all revisions" is on (DOC-AC5). */
@@ -319,6 +330,14 @@ export const drawingsSource = {
         old.supersededByRevisionId = revId;
         old.supersededByRev = row.rev.value;
       }
+      if (!s.setMeta.some((m) => m.id === set.id))
+        s.setMeta.push({
+          id: set.id,
+          name: set.name,
+          status: 'published',
+          issuedDate: at.slice(0, 10),
+          receivedDate: at.slice(0, 10),
+        });
       s.revisions.push({
         id: revId,
         sheetId: sheet.id,
@@ -368,6 +387,8 @@ export const drawingsSource = {
 /** Reasons a set can't publish yet: untouched low-confidence fields, or a backwards revision without a reason. */
 export function publishBlockers(set: DrawingSet): string[] {
   const out: string[] = [];
+  if (!set.sheets.length)
+    out.push('No sheets were found in this upload. Check the files and upload the set again.');
   for (const row of set.sheets) {
     const fields = [row.sheetNumber, row.title, row.rev, row.discipline];
     if (fields.some(needsCheck)) {

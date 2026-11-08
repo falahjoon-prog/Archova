@@ -1,13 +1,17 @@
 // Reporting module: the portfolio dashboard and the report builder.
 import { unwrap } from '@archova/api-client';
 import { api } from '@/shared/lib/api';
+import { startOfLocalDay } from '../lib/types';
 import type {
+  AuditFilters,
+  AuditLogPage,
   Portfolio,
   ReadinessPack,
   Report,
   ReportConfig,
   ReportInput,
   ReportResult,
+  SustainabilityPortfolio,
 } from '../lib/types';
 
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -19,6 +23,30 @@ export function createReportingApi(orgId: string) {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/portfolio', {
           params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
+        }),
+      );
+    },
+    async sustainability(includeClosed: boolean): Promise<SustainabilityPortfolio> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/portfolio/sustainability', {
+          params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
+        }),
+      );
+    },
+    async auditLog(filters: AuditFilters, cursor: string | undefined): Promise<AuditLogPage> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/audit-log', {
+          params: {
+            path,
+            query: {
+              limit: 50,
+              ...(filters.projectId ? { projectId: filters.projectId } : {}),
+              ...(filters.module ? { module: filters.module } : {}),
+              ...(startOfLocalDay(filters.from) ? { from: startOfLocalDay(filters.from) } : {}),
+              ...(startOfLocalDay(filters.to, 1) ? { to: startOfLocalDay(filters.to, 1) } : {}),
+              ...(cursor ? { cursor } : {}),
+            },
+          },
         }),
       );
     },

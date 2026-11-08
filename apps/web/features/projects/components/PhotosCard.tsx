@@ -28,7 +28,18 @@ export const photoSource = (module: string) => SOURCE_LABELS[module] ?? 'Photo';
  * Project home: the latest site photos from the diary, defects, inspections and RFIs, filed by area, trade and tags.
  * Filter by area, trade, tag or how recent; open one to see it larger and to tag it (Nova can suggest the tags).
  */
-export function PhotosCard({ projectId, timeZone }: { projectId: string; timeZone: string }) {
+export function PhotosCard({
+  projectId,
+  timeZone,
+  onUseAsHero,
+  heroFileId,
+}: {
+  projectId: string;
+  timeZone: string;
+  /** Given for people who may edit the project: lets them pick the photo shown at the top of the project home. */
+  onUseAsHero?: (fileId: string) => void;
+  heroFileId?: string | null;
+}) {
   const { orgId } = useCurrentOrg();
   const qc = useQueryClient();
   const [open, setOpen] = useState<ProjectPhoto | null>(null);
@@ -168,6 +179,18 @@ export function PhotosCard({ projectId, timeZone }: { projectId: string; timeZon
                   </button>
                 ))}
               </p>
+            ) : null}
+            {onUseAsHero ? (
+              <Button
+                variant="secondary"
+                disabled={heroFileId === open.file.id}
+                onClick={() => {
+                  onUseAsHero(open.file.id);
+                  setOpen(null);
+                }}
+              >
+                {heroFileId === open.file.id ? 'Project photo' : 'Use as project photo'}
+              </Button>
             ) : null}
             <PhotoTagEditor
               key={open.file.id}

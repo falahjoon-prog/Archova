@@ -27,6 +27,8 @@ export interface DefectEvent {
   note: string | null;
   photoIds: string[];
   by: string;
+  /** Set when a stand-in acted for the final approver. */
+  onBehalfOf: string | null;
   at: string;
 }
 
@@ -47,6 +49,20 @@ export interface Defect {
   /** Null while a defect is a draft. */
   assigneeCompanyId: string | null;
   assigneeUserId: string | null;
+  /** Everyone it is assigned to (people at the assigned company); `assigneeUserId` is the first. */
+  assigneeUserIds: string[];
+  /** Punch Item Manager. */
+  managerUserId: string | null;
+  /** Final Approver: when set, only they close, reject or reopen the item. */
+  finalApproverUserId: string | null;
+  /** Told about changes but not assigned. */
+  distributionUserIds: string[];
+  /** Stand-in who may close, reject and reopen in the approver's place between these dates. */
+  approverDelegateUserId: string | null;
+  approverDelegateFrom: string | null;
+  approverDelegateUntil: string | null;
+  /** Closing needs a note or a photo. */
+  requireCloseEvidence: boolean;
   dueDate: string | null;
   raisedBy: string;
   raisedByCompanyId: string | null;
@@ -65,7 +81,7 @@ export interface Defect {
 
 /** The lifecycle actions as the API names them. */
 export type ApiDefectAction =
-  'issue' | 'markReadyForReview' | 'close' | 'reject' | 'dispute' | 'reassign' | 'void';
+  'issue' | 'markReadyForReview' | 'close' | 'reject' | 'dispute' | 'reassign' | 'void' | 'reopen';
 
 export interface DefectInput {
   title: string;
@@ -77,6 +93,14 @@ export interface DefectInput {
   drawing: Defect['drawing'];
   assigneeCompanyId: string | null;
   assigneeUserId: string | null;
+  assigneeUserIds: string[];
+  managerUserId: string | null;
+  finalApproverUserId: string | null;
+  distributionUserIds: string[];
+  approverDelegateUserId: string | null;
+  approverDelegateFrom: string | null;
+  approverDelegateUntil: string | null;
+  requireCloseEvidence: boolean;
   dueDate: string | null;
   category: string | null;
   /** Photos picked on the form; uploaded when the defect is saved. */

@@ -1,4 +1,4 @@
-import { availableDefectActions, defectLabel, encodeId } from '@archova/domain';
+import { availableDefectActions, defectApproverRule, defectLabel, encodeId } from '@archova/domain';
 import type { Defect, DefectDetail, DefectEvent } from '@archova/contracts';
 import type { DefectViewer } from '../domain/defect';
 import { actorsFor } from '../domain/defect';
@@ -30,6 +30,14 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
       : null,
   assigneeCompanyId: companyOrNull(r.assigneeCompanyId),
   assigneeUserId: userOrNull(r.assigneeUserId),
+  assigneeUserIds: r.assigneeUserIds.map((u) => encodeId('user', u)),
+  managerUserId: userOrNull(r.managerUserId),
+  finalApproverUserId: userOrNull(r.finalApproverUserId),
+  distributionUserIds: r.distributionUserIds.map((u) => encodeId('user', u)),
+  approverDelegateUserId: userOrNull(r.approverDelegateUserId),
+  approverDelegateFrom: r.approverDelegateFrom,
+  approverDelegateUntil: r.approverDelegateUntil,
+  requireCloseEvidence: r.requireCloseEvidence,
   dueDate: r.dueDate,
   isOverdue: r.isOverdue,
   raisedByCompanyId: companyOrNull(r.raisedByCompanyId),
@@ -39,8 +47,10 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   closedBy: userOrNull(r.closedBy),
   source: r.source,
   availableActions: [
-    ...new Set(actorsFor(r, viewer).flatMap((a) => availableDefectActions(r.status, a))),
-  ],
+    ...new Set(
+      actorsFor(r, viewer, r.localToday).flatMap((a) => availableDefectActions(r.status, a)),
+    ),
+  ].filter((a) => defectApproverRule(r, a, viewer.userId, r.localToday)),
   createdBy: userOrNull(r.createdBy),
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),
@@ -56,6 +66,7 @@ export const toEventDto = (e: EventRow): DefectEvent => ({
   note: e.note,
   fileIds: e.fileIds.map((f) => encodeId('file', f)),
   actorId: userOrNull(e.actorId),
+  onBehalfOf: userOrNull(e.onBehalfOf),
   at: e.at.toISOString(),
 });
 

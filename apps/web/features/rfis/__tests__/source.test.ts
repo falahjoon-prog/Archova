@@ -28,10 +28,10 @@ describe('rfisSource', () => {
     const draft = await rfisSource.create(P, input(), pm, false);
     expect(draft.number).toBeNull();
     const a = await rfisSource.submit(P, draft.id, pm);
-    expect(a.number).toBe(5);
+    expect(a.number).toBe(6);
     await rfisSource.void(P, a.id, 'Raised twice', pm);
     const b = await rfisSource.create(P, input(), pm, true);
-    expect(b.number).toBe(6);
+    expect(b.number).toBe(7);
   });
 
   it('refuses to submit without the required fields', async () => {

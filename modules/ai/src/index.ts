@@ -7,6 +7,8 @@ import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
 import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
+import { createAssistService } from './application/assist';
+import type { NovaTool } from './domain/assist';
 import { createSemanticSearchService } from './application/semantic-search';
 import { createInductionCurrencyService } from './application/induction-currency';
 import { createInductionDraftService } from './application/induction-draft';
@@ -17,6 +19,7 @@ import { createProjectIndexService, type SourceRevision } from './application/pr
 import type { DefectSource } from './domain/defect-source';
 import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
+import { createHelpService } from './application/help';
 import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
@@ -26,9 +29,11 @@ import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-ans
 import { createRfiDraftService } from './application/rfi-draft';
 import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
+import { createCaptureScanService } from './application/capture-scan';
 import { createHazardScanService } from './application/hazard-scan';
 import { createPhotoTagService } from './application/photo-tag';
 import { createImportMappingService } from './application/import-mapping';
+import { createAnnouncementDraftService } from './application/announcement-draft';
 import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
@@ -94,6 +99,9 @@ export {
 export type { TaskRun, RunOptions, Gateway } from './application/gateway';
 export type { ReadableFile, SheetSuggestionPayload } from './application/drawing-register';
 export type { AskAnswer, AnswerSource } from './application/ask';
+export type { AssistAnswer } from './application/assist';
+export { MAX_FINDING_CHARS } from './domain/assist';
+export type { NovaTool, ToolFinding } from './domain/assist';
 export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision, SweepReport } from './application/project-index';
 export type { DefectSource } from './domain/defect-source';
@@ -301,6 +309,8 @@ export function createAiModule(
      * 2,000 px. Only the AI worker image has a native canvas; unset in the API image, where compare stays text-only.
      */
     rasterizePage?: RasterizePage;
+    /** Read-only lookups Nova may call from the panel, registered by the modules (compose); see `NovaTool`. */
+    novaTools?: readonly NovaTool[];
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
     /** Tests pass an enabled test language; defaults to TRANSLATION_LANGUAGES. */
@@ -354,6 +364,13 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
     accessScopes: askScopes,
+  });
+  const assist = createAssistService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    tools: deps.novaTools ?? [],
+    search: semanticSearch,
   });
   const projectIndex = createProjectIndexService({
     database: services.database,
@@ -420,6 +437,12 @@ export function createAiModule(
     projectCompanies: deps.projectCompanies,
     openDefectsNear: deps.openDefectsNear,
   });
+  const captureScans = createCaptureScanService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const hazardScans = createHazardScanService({
     database: services.database,
     gateway,
@@ -458,6 +481,11 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
+  });
+  const announcementDrafts = createAnnouncementDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
   });
   const laborProductivity = createLaborProductivityService({
     database: services.database,
@@ -512,6 +540,7 @@ export function createAiModule(
     gateway,
     meeting: deps.meetingForMinutes,
   });
+  const help = createHelpService({ gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -540,6 +569,7 @@ export function createAiModule(
       quoteReads,
       quoteNegotiations,
       laborProductivity,
+      announcementDrafts,
       budgetReviews,
       contractPlaybooks,
       contractReviews,
@@ -549,6 +579,9 @@ export function createAiModule(
       swmsDrafts,
       hazardScans,
       photoTags,
+      assist,
+      captureScans,
+      help,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -560,6 +593,8 @@ export function createAiModule(
       getSettings: admin.getSettings,
       extractDrawingRegister: drawingRegister.extract,
       ask: askService.ask,
+      /** The Nova panel with screen context and read-only tools. */
+      assist: assist.ask,
       /** F6: the passages matching a few words by meaning or keyword, within the caller's access; no model call. */
       searchProject: semanticSearch.search,
       indexProject: projectIndex.indexProject,

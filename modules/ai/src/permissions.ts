@@ -12,6 +12,14 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   },
   { key: 'ai.settings.manage', scope: 'org', tool: null, level: 'admin' },
   { key: 'ai.usage.read', scope: 'org', tool: null, level: 'read', orgRoles: ['billing_admin'] },
+  // Nova help: any organisation member can ask where something is or what an error means; no records are read.
+  {
+    key: 'ai.help.use',
+    scope: 'org',
+    tool: null,
+    level: 'read',
+    orgRoles: ['member', 'billing_admin'],
+  },
   // F1: whoever can add drawings can have Nova read them and decide the suggestions.
   { key: 'ai.drawing_register.extract', scope: 'project', tool: 'documents', level: 'standard' },
   { key: 'ai.suggestions.read', scope: 'project', tool: null, level: 'read' },
@@ -31,5 +39,9 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   // Anyone who can add photos to the project can ask Nova to suggest tags for one.
   { key: 'ai.photo_tag.suggest', scope: 'project', tool: 'documents', level: 'standard' },
   { key: 'ai.safety.review', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Site Capture "Ask Nova about this view": anyone who can add a capture can have Nova read a still from it; the
+  // people who coordinate issues decide on what Nova noticed.
+  { key: 'ai.captures.scan', scope: 'project', tool: 'coordination', level: 'standard' },
+  { key: 'ai.captures.review', scope: 'project', tool: 'coordination', level: 'standard' },
   { key: 'ai.contracts.review', scope: 'project', tool: 'commitments', level: 'admin' },
 ];
