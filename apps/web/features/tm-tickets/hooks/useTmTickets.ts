@@ -7,6 +7,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import {
   createTmApi,
   type ConvertTmTicket,
+  type ReviewTmTicket,
   type SignTmTicket,
   type TmTicketRequest,
 } from '../data/api';
@@ -72,6 +73,11 @@ export function useTmMutations(projectId: string) {
         id: string;
         body: Omit<SignTmTicket, 'evidenceFileId'> & { evidence?: File };
       }) => source.sign(projectId, v.id, v.body),
+      onSuccess: refresh,
+    }),
+    review: useMutation({
+      mutationFn: (v: { id: string; body: ReviewTmTicket }) =>
+        source.review(projectId, v.id, v.body),
       onSuccess: refresh,
     }),
     voidTicket: useMutation({

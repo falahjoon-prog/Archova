@@ -10569,6 +10569,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/production/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Production items with progress, the planned-against-installed curve per unit, trade and location rollups, and Nova's rate-drop flags.
+         * @description Each item is a custom production unit the project defined (such as panels installed or LF of conduit) with a
+         *     planned quantity over a planned window. The curve is cumulative by week, one per unit of measure. Nova's flags
+         *     are rule-based, with no model call: a trade or named crew is flagged when its units per working day over the
+         *     last 7 days fall more than 20% below its average over the 28 days before, once that baseline has at least 5
+         *     days of quantity.
+         */
+        get: operations["getProductionReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/production/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define a production item, a custom unit with a planned quantity over a planned window, optionally by trade and location. */
+        post: operations["createProductionItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["ProductionItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a production item's name, unit, trade, location, plan or archive it. */
+        patch: operations["updateProductionItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["ProductionItemId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 100 quantity entries for a production item, newest first. */
+        get: operations["listProductionEntries"];
+        put?: never;
+        /** Log quantity installed for a day, optionally for a named crew. A negative entry corrects and needs a note. */
+        post: operations["logProductionEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lock": {
         parameters: {
             query?: never;
@@ -11040,6 +11130,27 @@ export interface paths {
         put?: never;
         /** Record the on-site signature of the contractor or the principal's representative (the latter needs evidence). The two must be different staff members; the second makes the ticket signed. */
         post: operations["signTmTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a draft ticket between in progress, ready for review and field verified. Field verified needs a different person from whoever marked it ready, and a note while Nova flags differing hours. A ticket must be field verified before it is signed. */
+        post: operations["reviewTmTicket"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18038,6 +18149,116 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ProductionItem: {
+            id: string;
+            name: string;
+            uom: string;
+            trade: string | null;
+            location: string | null;
+            plannedQuantity: number;
+            /** Format: date */
+            plannedStart: string;
+            /** Format: date */
+            plannedFinish: string;
+            archived: boolean;
+        };
+        CreateProductionItemRequest: {
+            name: string;
+            uom: string;
+            trade?: string | null;
+            location?: string | null;
+            plannedQuantity: number;
+            /** Format: date */
+            plannedStart: string;
+            /** Format: date */
+            plannedFinish: string;
+        };
+        UpdateProductionItemRequest: {
+            name?: string;
+            uom?: string;
+            trade?: string | null;
+            location?: string | null;
+            plannedQuantity?: number;
+            /** Format: date */
+            plannedStart?: string;
+            /** Format: date */
+            plannedFinish?: string;
+            archived?: boolean;
+        };
+        ProductionEntry: {
+            id: string;
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            crew: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LogProductionEntryRequest: {
+            /** Format: date */
+            loggedOn: string;
+            quantity: number;
+            crew?: string | null;
+            note?: string | null;
+        };
+        ProductionItemRow: {
+            item: components["schemas"]["ProductionItem"];
+            actual: number;
+            /** @description Installed over planned, 0..n. */
+            pctComplete: number;
+            /** @description Planned quantity that should be in place today. */
+            plannedToDate: number;
+            /** @description Installed minus planned to date; negative is behind. */
+            variance: number;
+            /** @enum {string} */
+            status: "not_started" | "on_track" | "behind" | "complete";
+        };
+        ProductionCurvePoint: {
+            /**
+             * Format: date
+             * @description End of the week; the last point is the end date or today.
+             */
+            date: string;
+            planned: number;
+            /** @description Cumulative installed; null after today. */
+            actual: number | null;
+        };
+        ProductionCurve: {
+            uom: string;
+            points: components["schemas"]["ProductionCurvePoint"][];
+        };
+        ProductionRollup: {
+            /** @description Null for items with no trade or location set. */
+            name: string | null;
+            uom: string;
+            planned: number;
+            actual: number;
+        };
+        ProductionRateFlag: {
+            /** @enum {string} */
+            kind: "trade" | "crew";
+            name: string;
+            uom: string;
+            /** @description Units per working day over the last 7 days. */
+            recentRate: number;
+            /** @description Units per working day over the 28 days before that. */
+            baselineRate: number;
+            /** @description Fall from the baseline, 0..1. */
+            dropPct: number;
+        };
+        ProductionReport: {
+            /**
+             * Format: date
+             * @description Today in the project's time zone.
+             */
+            asOf: string;
+            items: components["schemas"]["ProductionItemRow"][];
+            curves: components["schemas"]["ProductionCurve"][];
+            byTrade: components["schemas"]["ProductionRollup"][];
+            byLocation: components["schemas"]["ProductionRollup"][];
+            flags: components["schemas"]["ProductionRateFlag"][];
+        };
         LogQuantityRequest: {
             /** Format: date */
             loggedOn: string;
@@ -18661,6 +18882,10 @@ export interface components {
             location: string | null;
             contractor: string | null;
             instructedBy: string | null;
+            reference: string | null;
+            notes: string | null;
+            reviewStage: components["schemas"]["TmReviewStage"];
+            verifyNote: string | null;
             /** @enum {string} */
             origin: "manual" | "nova";
             /** @enum {string} */
@@ -18675,6 +18900,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @enum {string} */
+        TmReviewStage: "in_progress" | "ready_for_review" | "field_verified";
         TmTicketDetail: components["schemas"]["TmTicket"] & {
             lines: components["schemas"]["TmTicketLine"][];
             signoffs: components["schemas"]["TmTicketSignoff"][];
@@ -18714,6 +18941,8 @@ export interface components {
             location?: string;
             contractor?: string;
             instructedBy?: string;
+            reference?: string;
+            notes?: string;
             /** @enum {string} */
             origin?: "manual" | "nova";
             lines: components["schemas"]["TmTicketLineRequest"][];
@@ -18736,6 +18965,11 @@ export interface components {
                 lng: number;
                 accuracyM?: number;
             };
+        };
+        ReviewTmTicketRequest: {
+            stage: components["schemas"]["TmReviewStage"];
+            /** @description Required to field-verify while Nova still flags hours that differ from the timesheet or equipment log. */
+            note?: string;
         };
         VoidTmTicketRequest: {
             note: string;
@@ -22446,6 +22680,7 @@ export interface components {
         RfiId: string;
         ContractId: string;
         CostCodeId: string;
+        ProductionItemId: string;
         BudgetSnapshotId: string;
         BudgetLineId: string;
         ForecastAdjustmentId: string;
@@ -39994,6 +40229,154 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getProductionReport: {
+        parameters: {
+            query?: {
+                trade?: string;
+                location?: string;
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProductionItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductionItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProductionItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["ProductionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductionItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProductionEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["ProductionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProductionEntry"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logProductionEntry: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["ProductionItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogProductionEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entry: components["schemas"]["ProductionEntry"];
+                        quantityInstalled: number;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     lockBudget: {
         parameters: {
             query?: never;
@@ -40741,6 +41124,37 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SignTmTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TmTicketDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewTmTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                tmTicketId: components["parameters"]["TmTicketId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewTmTicketRequest"];
             };
         };
         responses: {
