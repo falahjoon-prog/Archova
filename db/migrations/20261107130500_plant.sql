@@ -1,4 +1,4 @@
--- Composed from modules/plant/db/migrations/20261107130000_plant.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/plant/db/migrations/20261107130500_plant.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- plant: the organisation's fleet of plant and equipment (cranes, excavators, generators ...), owned or hired, which
 -- project each machine is allocated to and when, and the service / inspection / certification schedule for each.
 -- Org-level on purpose: the plant manager moves machines between jobs. Project, cost code and company ids are

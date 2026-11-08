@@ -42,8 +42,8 @@ const TOOLS: ReadonlyArray<{ match: RegExp; text: string }> = [
     text: 'Site diary, Delay register, Programme and Attendance are in the project menu under Site & programme.',
   },
   {
-    match: /inspections?|observations?|swms|incidents?|inductions?|safety/,
-    text: 'Inspections, Observations, SWMS, Incidents and Inductions are in the project menu under Quality & safety.',
+    match: /inspections?|observations?|swms|toolbox|incidents?|inductions?|safety/,
+    text: 'Inspections, Observations, SWMS, Toolbox talks, Incidents and Inductions are in the project menu under Quality & safety.',
   },
   {
     match: /tender|bid|prequal/,

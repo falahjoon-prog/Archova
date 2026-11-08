@@ -8,6 +8,7 @@ export const RESPONSE_TYPES = [
   'photo',
   'signature',
   'select',
+  'date',
 ] as const;
 export type ResponseType = (typeof RESPONSE_TYPES)[number];
 export type ItemResult = 'pass' | 'fail' | 'na';
@@ -37,11 +38,13 @@ export interface ResponseState {
 /** Why an answer doesn't fit its item, or null when it does. */
 export function responseProblem(item: ItemSpec, r: ResponseInput): string | null {
   const files = r.fileIds ?? [];
+  // N/A is an override on any item, whatever its response type.
+  if (r.result === 'na') return null;
+  if ((r.result === 'pass' || r.result === 'fail') && item.responseType !== 'pass_fail_na')
+    return 'Only pass/fail items take a pass or fail result.';
   switch (item.responseType) {
     case 'pass_fail_na':
-      return r.result === 'pass' || r.result === 'fail' || r.result === 'na'
-        ? null
-        : 'Answer pass, fail or n/a.';
+      return r.result === 'pass' || r.result === 'fail' ? null : 'Answer pass, fail or n/a.';
     case 'yes_no':
       return typeof r.value === 'boolean' ? null : 'Answer yes or no.';
     case 'number':
@@ -54,6 +57,8 @@ export function responseProblem(item: ItemSpec, r: ResponseInput): string | null
         : 'Choose one of the listed options.';
     case 'photo':
       return files.length > 0 ? null : 'Attach a photo.';
+    case 'date':
+      return typeof r.value === 'string' && isIsoDate(r.value) ? null : 'Enter a date.';
     case 'signature':
       return files.length > 0 || (typeof r.value === 'string' && r.value.trim() !== '')
         ? null
@@ -94,3 +99,66 @@ export type InspectionStatus = (typeof INSPECTION_STATUSES)[number];
 export const isEditable = (s: InspectionStatus) => s === 'scheduled' || s === 'in_progress';
 
 export const inspectionLabel = (n: number) => `INS-${String(n).padStart(4, '0')}`;
+
+const isIsoDate = (v: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+};
+
+export interface SectionSummary {
+  section: string;
+  items: number;
+  /** An answer that isn't pass, fail or N/A (a number, text, date, choice, photo or signature). */
+  answered: number;
+  pass: number;
+  fail: number;
+  na: number;
+  unanswered: number;
+  isNa: boolean;
+}
+
+/**
+ * Per-section counts for the strip under a section heading. A section marked N/A counts every item as N/A and none as
+ * required. Sections keep the order their first item has on the checklist.
+ */
+export function sectionSummaries(
+  items: readonly (ItemSpec & { section: string })[],
+  responses: ReadonlyMap<string, ResponseState>,
+  naSections: ReadonlySet<string>,
+): SectionSummary[] {
+  const out = new Map<string, SectionSummary>();
+  for (const item of items) {
+    const s = out.get(item.section) ?? {
+      section: item.section,
+      items: 0,
+      answered: 0,
+      pass: 0,
+      fail: 0,
+      na: 0,
+      unanswered: 0,
+      isNa: naSections.has(item.section),
+    };
+    out.set(item.section, s);
+    s.items++;
+    const r = responses.get(item.id);
+    if (s.isNa || r?.result === 'na') s.na++;
+    else if (!isAnswered(item, r)) s.unanswered++;
+    else if (r?.result === 'pass') s.pass++;
+    else if (r?.result === 'fail') s.fail++;
+    else s.answered++;
+  }
+  return [...out.values()];
+}
+
+/** Required items still open, ignoring items in sections marked N/A. */
+export function missingRequiredIn(
+  items: readonly (ItemSpec & { section: string })[],
+  responses: ReadonlyMap<string, ResponseState>,
+  naSections: ReadonlySet<string>,
+): ItemSpec[] {
+  return missingRequired(
+    items.filter((i) => !naSections.has(i.section)),
+    responses,
+  );
+}
