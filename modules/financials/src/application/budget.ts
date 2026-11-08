@@ -16,7 +16,10 @@ import {
   budgetLines,
   budgetSnapshots,
   budgets,
+  commitmentLines,
+  commitments,
   costCodes,
+  directCosts,
 } from '../infra/tables';
 
 export type CostCodeRow = typeof costCodes.$inferSelect;
@@ -50,12 +53,19 @@ const NO_BUDGET = {
   spentCents: 0,
   varianceCents: 0,
   overBudgetCodes: 0,
+  monthly: [] as { month: string; spentCents: number }[],
 };
 
 export function createBudgetService(
   deps: BudgetDeps & {
     /** Forecast inputs for the budget comparison; the forecast service owns how they're read. */
     forecastInputs?: (scope: TenantScope, projectId: string) => Promise<ForecastInputs>;
+    /** Spend by month for the portfolio cash-flow chart; the forecast service owns the queries. */
+    monthlySpend?: (
+      scope: TenantScope,
+      projectId: string,
+      hidden: ReadonlySet<string>,
+    ) => Promise<{ month: string; spentCents: number }[]>;
   },
 ) {
   const now = deps.now ?? (() => new Date());
@@ -602,7 +612,7 @@ export function createBudgetService(
       hidden,
       inputs.direct,
     );
-    return { budget, ...r, byId };
+    return { budget, ...r, byId, hidden };
   }
 
   /**
@@ -627,10 +637,144 @@ export function createBudgetService(
       spentCents: r.totals.claimedCents + r.totals.directCents,
       varianceCents: r.totals.varianceCents,
       overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
+      monthly: deps.monthlySpend ? await deps.monthlySpend(scope, projectId, r.hidden) : [],
+    };
+  }
+
+  /**
+   * The cost report: every visible budget line with what is approved, what is waiting for approval and what has been
+   * spent without a commitment, and the projected cost those add up to. Pending is the lines of submitted commitments.
+   * Margin lines follow the same rule as the budget itself.
+   */
+  async function costReport(scope: TenantScope, projectId: string) {
+    const { budget, lines } = await getBudget(scope, projectId);
+    if (!budget) return { hasBudget: false, status: 'draft' as const, lines: [] };
+    const pendingRows = await scope.tx
+      .select({ lineId: commitmentLines.budgetLineId, amount: commitmentLines.amount })
+      .from(commitmentLines)
+      .innerJoin(commitments, eq(commitments.id, commitmentLines.commitmentId))
+      .where(and(eq(commitments.projectId, projectId), eq(commitments.status, 'submitted')));
+    const pending = new Map<string, number>();
+    for (const r of pendingRows)
+      pending.set(r.lineId, (pending.get(r.lineId) ?? 0) + signedCents(r.amount));
+    return {
+      hasBudget: true,
+      status: budget.status,
+      lines: lines.map((l) => {
+        const revised = signedCents(revisedOf(l.line));
+        const approved = signedCents(l.line.committed);
+        const pend = pending.get(l.line.id) ?? 0;
+        const nonCommitted = signedCents(l.line.actual);
+        const projected = approved + pend + nonCommitted;
+        return {
+          line: l.line,
+          code: l.code,
+          codeDescription: l.codeDescription,
+          original: l.line.original,
+          approvedChanges: l.line.approvedChanges,
+          revised: fromCents(revised),
+          approved: fromCents(approved),
+          pending: fromCents(pend),
+          nonCommitted: fromCents(nonCommitted),
+          projected: fromCents(projected),
+          variance: fromCents(revised - projected),
+        };
+      }),
+    };
+  }
+
+  /** The source items behind one figure on the cost report, grouped under the contract or order they came from. */
+  async function costReportItems(
+    scope: TenantScope,
+    projectId: string,
+    lineId: string,
+    column: 'approved' | 'pending' | 'direct',
+  ) {
+    const { lines } = await getBudget(scope, projectId);
+    const view = lines.find((l) => l.line.id === lineId);
+    if (!view) throw new AppError('financials.budget.line_not_found');
+    const code = `${view.code} - ${view.codeDescription}`;
+    if (column === 'direct') {
+      const rows = await scope.tx
+        .select()
+        .from(directCosts)
+        .where(
+          and(
+            eq(directCosts.projectId, projectId),
+            eq(directCosts.budgetLineId, lineId),
+            eq(directCosts.status, 'recorded'),
+          ),
+        )
+        .orderBy(asc(directCosts.number));
+      const total = rows.reduce((n, r) => n + signedCents(r.amount), 0);
+      return {
+        code,
+        total: fromCents(total),
+        groups: rows.length
+          ? [
+              {
+                kind: 'direct_costs' as const,
+                sourceId: null as string | null,
+                label: 'Direct costs',
+                total: fromCents(total),
+                items: rows.map((r) => ({
+                  number: r.number,
+                  description: r.description,
+                  amount: r.amount,
+                })),
+              },
+            ]
+          : [],
+      };
+    }
+    const rows = await scope.tx
+      .select({ c: commitments, l: commitmentLines })
+      .from(commitmentLines)
+      .innerJoin(commitments, eq(commitments.id, commitmentLines.commitmentId))
+      .where(
+        and(
+          eq(commitments.projectId, projectId),
+          eq(commitmentLines.budgetLineId, lineId),
+          eq(commitments.status, column === 'approved' ? 'approved' : 'submitted'),
+        ),
+      )
+      .orderBy(asc(commitments.number), asc(commitmentLines.sort));
+    const groups = new Map<
+      string,
+      {
+        kind: 'subcontract' | 'purchase_order';
+        sourceId: string | null;
+        label: string;
+        cents: number;
+        items: { number: number; description: string; amount: string }[];
+      }
+    >();
+    for (const { c, l } of rows) {
+      let g = groups.get(c.id);
+      if (!g) {
+        g = {
+          kind: c.kind,
+          sourceId: c.id,
+          label: `${c.kind === 'subcontract' ? 'SC' : 'PO'}-${c.number} - ${c.title}`,
+          cents: 0,
+          items: [],
+        };
+        groups.set(c.id, g);
+      }
+      g.cents += signedCents(l.amount);
+      g.items.push({ number: g.items.length + 1, description: l.description, amount: l.amount });
+    }
+    const list = [...groups.values()];
+    return {
+      code,
+      total: fromCents(list.reduce((n, g) => n + g.cents, 0)),
+      groups: list.map(({ cents, ...g }) => ({ ...g, total: fromCents(cents) })),
     };
   }
 
   return {
+    costReport,
+    costReportItems,
     budgetVsForecastFor,
     reviewFacts,
     portfolioSummary,

@@ -142,3 +142,46 @@ export async function assistNova(
   );
   return toAssistAnswer(res);
 }
+
+/**
+ * Model-written help (`POST {o}/ai/help`): where to find something, or what an error means and what to do. Only the
+ * question, the error's status, code and message and the screen name are sent; no project records. Callers fall back
+ * to the built-in rule-based answers when this fails.
+ */
+export async function askNovaHelp(
+  orgId: string,
+  input: {
+    question?: string;
+    area?: string;
+    error?: { status: number | null; code: string | null; message: string };
+  },
+  signal: AbortSignal,
+): Promise<NovaAnswer> {
+  await ensureCsrfToken();
+  const res = unwrap(
+    await api.POST('/v1/orgs/{orgId}/ai/help', {
+      params: { path: { orgId } },
+      body: {
+        ...(input.question ? { question: input.question.slice(0, 500) } : {}),
+        ...(input.area ? { area: input.area.slice(0, 60) } : {}),
+        ...(input.error
+          ? {
+              error: {
+                status: input.error.status,
+                code: input.error.code,
+                message: input.error.message.slice(0, 400),
+              },
+            }
+          : {}),
+      },
+      signal,
+    }),
+  );
+  const steps = res.steps.map((s, i) => `${i + 1}. ${s}`).join(' ');
+  return {
+    kind: 'answer',
+    text: steps ? `${res.answer} ${steps}` : res.answer,
+    citations: [],
+    runId: res.runId,
+  };
+}

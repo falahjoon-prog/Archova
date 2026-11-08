@@ -12,14 +12,28 @@ import {
   type ResultRow,
 } from '../../src/domain/report';
 
-const tool = (open: number, overdue: number, restricted = false) => ({ restricted, open, overdue });
+const tool = (open: number, overdue: number, restricted = false) => ({
+  restricted,
+  open,
+  overdue,
+  dueSoon: 0,
+});
 const counts = (r: [number, number], d: [number, number], s: [number, number]): ProjectCounts => ({
   rfis: tool(...r),
   defects: tool(...d),
   submittals: tool(...s),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
   programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
 });
 
@@ -122,6 +136,7 @@ describe('budget against forecast', () => {
     spentCents: 0,
     varianceCents: revised - forecast,
     overBudgetCodes: over,
+    monthly: [{ month: '2026-09', spentCents: 12_345 }],
   });
   const none = { ...b(0, 0), hasBudget: false };
   const locked = { ...b(900_000, 100), restricted: true };
@@ -135,6 +150,7 @@ describe('budget against forecast', () => {
       spent: '0.00',
       variance: '-1999.50',
       overBudgetCodes: 2,
+      monthly: [{ month: '2026-09', spent: '123.45' }],
     });
   });
 
@@ -148,6 +164,7 @@ describe('budget against forecast', () => {
       hasBudget: false,
       revised: '0.00',
       overBudgetCodes: 0,
+      monthly: [],
     });
   });
 

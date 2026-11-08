@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useRef, useState } from 'react';
 import {
   ActivityTimeline,
@@ -16,6 +17,7 @@ import {
   Tabs,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { OnProgramme } from '@/features/schedule';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
@@ -172,6 +174,12 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="rfi"
+        entityId={rfi.id}
+        projectId={project.projectId}
+        title={`${formatRfiNumber(rfi.number)} ${rfi.subject}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.rfis(org.orgSlug, project.projectId)}>
           RFIs
@@ -192,6 +200,13 @@ function RfiView({ rfi }: { rfi: Rfi }) {
         actions={
           <>
             {primaryButton}
+            <BookmarkButton
+              entityType="rfi"
+              entityId={rfi.id}
+              projectId={project.projectId}
+              title={`${formatRfiNumber(rfi.number)} ${rfi.subject}`}
+              subtitle={rfi.status}
+            />
             {primary === 'close' ? (
               <Button variant="secondary" onClick={startRespond}>
                 Add response

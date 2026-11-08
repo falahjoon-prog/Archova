@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProjectPhoto } from '../data/photos';
 
@@ -21,12 +22,12 @@ const photo = (id: string, module: string): ProjectPhoto =>
     expiresAt: '2026-11-05T01:05:00Z',
   }) as ProjectPhoto;
 
-const renderCard = () =>
+const renderCard = (extra: Partial<Parameters<typeof PhotosCard>[0]> = {}) =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <PhotosCard projectId="prj_1" timeZone="Australia/Sydney" />
+      <PhotosCard projectId="prj_1" timeZone="Australia/Sydney" {...extra} />
     </QueryClientProvider>,
   );
 
@@ -44,5 +45,23 @@ describe('PhotosCard', () => {
     fetchProjectPhotos.mockResolvedValue([]);
     renderCard();
     expect(await screen.findByText(/No photos yet/)).toBeTruthy();
+  });
+
+  it('lets an editor pick a photo as the project photo, and others not', async () => {
+    fetchProjectPhotos.mockResolvedValue([photo('fil_a', 'diary')]);
+    const onUseAsHero = vi.fn();
+    const user = userEvent.setup();
+    renderCard({ onUseAsHero });
+    await user.click(await screen.findByRole('button', { name: 'Open fil_a.jpg, Site diary' }));
+    await user.click(screen.getByRole('button', { name: 'Use as project photo' }));
+    expect(onUseAsHero).toHaveBeenCalledWith('fil_a');
+  });
+
+  it('offers no project-photo button without edit rights', async () => {
+    fetchProjectPhotos.mockResolvedValue([photo('fil_a', 'diary')]);
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(await screen.findByRole('button', { name: 'Open fil_a.jpg, Site diary' }));
+    expect(screen.queryByRole('button', { name: 'Use as project photo' })).toBeNull();
   });
 });

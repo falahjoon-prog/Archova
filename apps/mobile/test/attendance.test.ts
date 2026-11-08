@@ -11,6 +11,7 @@ import {
 
 vi.mock('../features/attendance/screens/SiteSignInScreen', () => ({}));
 vi.mock('../features/attendance/screens/RollCallScreen', () => ({}));
+vi.mock('../features/attendance/screens/SafetyBadgeScreen', () => ({}));
 
 const result = (over: Partial<SignInResult>): SignInResult =>
   ({ outcome: 'accepted', eligibility: null, session: null, worker: {}, ...over }) as SignInResult;
