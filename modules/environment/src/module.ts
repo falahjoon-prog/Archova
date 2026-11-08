@@ -19,7 +19,10 @@ export function createEnvironmentModule(services: KernelServices, deps: Environm
   return {
     definition: defineModule({ name: 'environment', permissions: ENVIRONMENT_PERMISSIONS }),
     routes: environmentRoutes(services.database, conditions, register, monitoring, waste, carbon),
-    api: {},
+    api: {
+      /** One project's sustainability counts for the company portfolio (`reporting`). */
+      portfolioSummary: register.portfolioSummary,
+    },
   };
 }
 

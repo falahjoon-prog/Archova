@@ -1,5 +1,6 @@
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
+import type { ProjectSustainability } from '../domain/sustainability';
 import {
   PROJECT_LIMIT,
   type BudgetSummary,
@@ -19,6 +20,10 @@ interface SourceRows {
 /** What `reporting` needs from the tool modules; each narrows to what the caller may read on that project. */
 export interface ReportingDeps {
   platform: Pick<PlatformApi, 'listProjects'>;
+  /** Waste, carbon, monitoring and permit-condition counts per project (`environment`); restricted unless readable. */
+  environment: {
+    portfolioSummary(scope: TenantScope, projectId: string): Promise<ProjectSustainability>;
+  };
   rfis: Tool;
   defects: Tool;
   submittals: Tool;

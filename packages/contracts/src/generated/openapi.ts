@@ -3463,6 +3463,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/portfolio/sustainability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Sustainability across projects, with company totals and Nova's flags.
+         * @description One row per project the caller can see: open monitoring breaches, permit conditions non-compliant or overdue,
+         *     waste diverted from landfill (and whether it is trending down), and emissions against the 30 days before.
+         *     A project where the caller cannot read the environmental tools is `restricted` and counts nothing, and is left
+         *     out of the company totals. `flags` are rule-based checks across projects, most serious first (no model cost).
+         *     Staff only.
+         */
+        get: operations["getSustainabilityPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/search": {
         parameters: {
             query?: never;
@@ -11986,6 +12012,83 @@ export interface components {
             /** @description True when more than 200 projects matched and the rest were left out. */
             truncated: boolean;
         };
+        ProjectSustainability: {
+            restricted: boolean;
+            hasPlan: boolean;
+            conditions: {
+                nonCompliant: number;
+                overdue: number;
+                compliancePercent: number | null;
+            };
+            documentsLapsing: number;
+            monitoring: {
+                points: number;
+                openBreaches: number;
+                overdue: number;
+            };
+            waste: {
+                totalTonnes: number;
+                divertedTonnes: number;
+                landfillTonnes: number;
+                diversionPercent: number | null;
+                last30Tonnes: number;
+                last30DivertedTonnes: number;
+                last30DiversionPercent: number | null;
+                previous30Tonnes: number;
+                previous30DivertedTonnes: number;
+                previous30DiversionPercent: number | null;
+                regulatedWithoutDocket: number;
+            };
+            carbon: {
+                totalKg: number;
+                last30Kg: number;
+                previous30Kg: number;
+                changePercent: number | null;
+            };
+        };
+        SustainabilityProject: components["schemas"]["ProjectSustainability"] & {
+            id: string;
+            name: string;
+            number: string | null;
+            status: string;
+            phase: string | null;
+            state: string | null;
+            /** @description What needs chasing on the project; orders the list. */
+            attention: number;
+        };
+        SustainabilityFlag: {
+            /** @enum {string} */
+            code: "breach_open" | "conditions_non_compliant" | "docket_missing" | "diversion_falling" | "diversion_low" | "carbon_rising" | "plan_missing";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            projectId: string;
+            projectName: string;
+            message: string;
+        };
+        SustainabilityTotals: {
+            projectsCovered: number;
+            projectsRestricted: number;
+            projectsWithoutPlan: number;
+            openBreaches: number;
+            nonCompliantConditions: number;
+            overdueConditions: number;
+            documentsLapsing: number;
+            wasteTonnes: number;
+            landfillTonnes: number;
+            diversionPercent: number | null;
+            last30DiversionPercent: number | null;
+            previous30DiversionPercent: number | null;
+            carbonKg: number;
+            carbonLast30Kg: number;
+            carbonPrevious30Kg: number;
+            carbonChangePercent: number | null;
+        };
+        SustainabilityPortfolio: {
+            totals: components["schemas"]["SustainabilityTotals"];
+            projects: components["schemas"]["SustainabilityProject"][];
+            flags: components["schemas"]["SustainabilityFlag"][];
+            truncated: boolean;
+        };
         ReadinessPackPdf: {
             filename: string;
             /** @enum {string} */
@@ -20493,7 +20596,7 @@ export interface components {
         };
         EnvironmentFlag: {
             /** @enum {string} */
-            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending" | "waste_diversion_low" | "waste_docket_missing" | "carbon_rising";
+            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending" | "waste_diversion_low" | "waste_diversion_falling" | "waste_docket_missing" | "carbon_rising";
             /** @enum {string} */
             severity: "info" | "warning" | "critical";
             message: string;
@@ -26839,6 +26942,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSustainabilityPortfolio: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sustainability portfolio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SustainabilityPortfolio"];
                 };
             };
             default: components["responses"]["Problem"];

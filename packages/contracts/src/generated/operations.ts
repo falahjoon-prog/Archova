@@ -1039,6 +1039,12 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetSustainabilityPortfolioParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSustainabilityPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
 export const SearchOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -6133,6 +6139,18 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  getSustainabilityPortfolio: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/portfolio/sustainability',
+    module: "reporting",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetSustainabilityPortfolioParams,
+    query: GetSustainabilityPortfolioQuery,
     body: null,
   },
   searchOrg: {

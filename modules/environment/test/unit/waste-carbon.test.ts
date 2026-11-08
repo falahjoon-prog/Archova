@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FACTORS, kgCo2e, SOURCE_SCOPE } from '../../src/domain/carbon';
 import { environmentFlags } from '../../src/domain/flags';
-import { diversionPercent, isDiverted, percentChange } from '../../src/domain/waste';
+import {
+  diversionPercent,
+  isDiverted,
+  isDiversionFalling,
+  percentChange,
+} from '../../src/domain/waste';
 
 const base = { today: '2026-11-08', plan: null, conditions: [], documents: [] };
 const codes = (i: Parameters<typeof environmentFlags>[0]) => environmentFlags(i).map((f) => f.code);
@@ -81,5 +86,29 @@ describe('waste and carbon flags', () => {
     expect(
       codes({ ...base, carbon: { last30Kg: 600, previous30Kg: 200, changePercent: 200 } }),
     ).not.toContain('carbon_rising');
+  });
+});
+
+describe('falling diversion', () => {
+  const w = (tonnes: number, diversionPercent: number | null) => ({ tonnes, diversionPercent });
+  it('needs a drop of 10 points or more, with enough waste in both windows', () => {
+    expect(isDiversionFalling(w(10, 70), w(10, 85))).toBe(true);
+    expect(isDiversionFalling(w(10, 76), w(10, 85))).toBe(false);
+    expect(isDiversionFalling(w(0.5, 10), w(10, 85))).toBe(false);
+    expect(isDiversionFalling(w(10, 70), w(10, null))).toBe(false);
+  });
+
+  it('raises the project flag with both rates in the message', () => {
+    const f = environmentFlags({
+      ...base,
+      waste: {
+        totalTonnes: 40,
+        diversionPercent: 85,
+        regulatedWithoutDocket: 0,
+        last30: w(10, 70),
+        previous30: w(10, 90),
+      },
+    }).find((x) => x.code === 'waste_diversion_falling');
+    expect(f?.message).toContain('fell from 90% to 70%');
   });
 });

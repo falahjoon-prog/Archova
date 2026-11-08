@@ -17,6 +17,50 @@ import type { WasteService } from './waste';
 import type { MonitoringService } from './monitoring';
 import { checkFiles, projectToday, type EnvironmentDeps } from './shared';
 
+export interface PortfolioSustainability {
+  restricted: boolean;
+  hasPlan: boolean;
+  conditions: { nonCompliant: number; overdue: number; compliancePercent: number | null };
+  documentsLapsing: number;
+  monitoring: { points: number; openBreaches: number; overdue: number };
+  waste: {
+    totalTonnes: number;
+    divertedTonnes: number;
+    landfillTonnes: number;
+    diversionPercent: number | null;
+    last30Tonnes: number;
+    last30DivertedTonnes: number;
+    last30DiversionPercent: number | null;
+    previous30Tonnes: number;
+    previous30DivertedTonnes: number;
+    previous30DiversionPercent: number | null;
+    regulatedWithoutDocket: number;
+  };
+  carbon: { totalKg: number; last30Kg: number; previous30Kg: number; changePercent: number | null };
+}
+
+const EMPTY_PORTFOLIO: PortfolioSustainability = {
+  restricted: false,
+  hasPlan: false,
+  conditions: { nonCompliant: 0, overdue: 0, compliancePercent: null },
+  documentsLapsing: 0,
+  monitoring: { points: 0, openBreaches: 0, overdue: 0 },
+  waste: {
+    totalTonnes: 0,
+    divertedTonnes: 0,
+    landfillTonnes: 0,
+    diversionPercent: null,
+    last30Tonnes: 0,
+    last30DivertedTonnes: 0,
+    last30DiversionPercent: null,
+    previous30Tonnes: 0,
+    previous30DivertedTonnes: 0,
+    previous30DiversionPercent: null,
+    regulatedWithoutDocket: 0,
+  },
+  carbon: { totalKg: 0, last30Kg: 0, previous30Kg: 0, changePercent: null },
+};
+
 export type PlanRow = typeof plans.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
 
@@ -301,6 +345,9 @@ export function createRegisterService(
         diversionPercent: wasteView.diversionPercent,
       },
       carbon: { totalKg: carbonView.totalKg, last30Kg: carbonView.last30Kg },
+      // The full waste and carbon overviews, for the portfolio roll-up; the summary DTO leaves them out.
+      wasteDetail: wasteView,
+      carbonDetail: carbonView,
       flags: environmentFlags({
         today,
         plan: plan ? { status: plan.status, nextReviewDate: plan.nextReviewDate } : null,
@@ -313,7 +360,60 @@ export function createRegisterService(
     };
   }
 
+  /**
+   * One project's sustainability position for the company portfolio (`reporting`). Counts only. A project where the
+   * caller cannot read the whole tool is `restricted` and counts nothing, so the roll-up never shows more than the
+   * caller could open on that project.
+   */
+  async function portfolioSummary(
+    scope: TenantScope,
+    projectId: string,
+  ): Promise<PortfolioSustainability> {
+    const keys = [
+      'environment.plan.read',
+      'environment.monitoring.read',
+      'environment.waste.read',
+      'environment.carbon.read',
+    ];
+    const allowed = await Promise.all(keys.map((k) => deps.access.can(scope, k, { projectId })));
+    if (allowed.some((ok) => !ok)) return { ...EMPTY_PORTFOLIO, restricted: true };
+    const s = await summary(scope, projectId);
+    const w = s.wasteDetail;
+    const c = s.carbonDetail;
+    return {
+      restricted: false,
+      hasPlan: s.plan !== null,
+      conditions: {
+        nonCompliant: s.conditions.byStatus.non_compliant,
+        overdue: s.conditions.overdue,
+        compliancePercent: s.conditions.compliancePercent,
+      },
+      documentsLapsing: s.documents.expired + s.documents.expiring,
+      monitoring: s.monitoring,
+      waste: {
+        totalTonnes: w.totalTonnes,
+        divertedTonnes: w.divertedTonnes,
+        landfillTonnes: w.byDestination.landfill,
+        diversionPercent: w.diversionPercent,
+        last30Tonnes: w.last30.tonnes,
+        last30DivertedTonnes: w.last30.divertedTonnes,
+        last30DiversionPercent: w.last30.diversionPercent,
+        previous30Tonnes: w.previous30.tonnes,
+        previous30DivertedTonnes: w.previous30.divertedTonnes,
+        previous30DiversionPercent: w.previous30.diversionPercent,
+        regulatedWithoutDocket: w.regulatedWithoutDocket,
+      },
+      carbon: {
+        totalKg: c.totalKg,
+        last30Kg: c.last30Kg,
+        previous30Kg: c.previous30Kg,
+        changePercent: c.changePercent,
+      },
+    };
+  }
+
   return {
+    portfolioSummary,
     getPlan,
     upsertPlan,
     approvePlan,

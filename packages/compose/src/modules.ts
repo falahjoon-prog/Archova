@@ -506,6 +506,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     platform: platform.api,
     access: access.api,
+    environment: environment.api,
     rfis: rfis.api,
     defects: defects.api,
     submittals: submittals.api,
