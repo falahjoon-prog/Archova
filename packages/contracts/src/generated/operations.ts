@@ -2560,6 +2560,30 @@ export const CloseInspectionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
 });
+export const ListObservationTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationTypesQuery = z.object({
+  "q": z.string().max(100).optional(),
+});
+export const CreateObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateObservationTypeBody = s.CreateObservationTypeRequestSchema;
+export const UpdateObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "typeKey": z.string().max(80),
+});
+export const UpdateObservationTypeBody = s.UpdateObservationTypeRequestSchema;
+export const SuggestObservationTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^iti_[0-9A-Za-z]{26}$")),
+});
 export const ListObservationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9038,6 +9062,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: CloseInspectionParams,
+    query: null,
+    body: null,
+  },
+  listObservationTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: ListObservationTypesParams,
+    query: ListObservationTypesQuery,
+    body: null,
+  },
+  createObservationType: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateObservationTypeParams,
+    query: null,
+    body: CreateObservationTypeBody,
+  },
+  updateObservationType: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observation-types/{typeKey}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateObservationTypeParams,
+    query: null,
+    body: UpdateObservationTypeBody,
+  },
+  suggestObservationType: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/observation-type-suggestion',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: null,
+    params: SuggestObservationTypeParams,
     query: null,
     body: null,
   },

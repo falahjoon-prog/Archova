@@ -27,6 +27,8 @@ import {
   templateItems,
   type Priority,
 } from '../infra/tables';
+import { createObservationTypeService, loadTypes } from './observation-types';
+import { typeProblem } from '../domain/observation-types';
 import { checkFiles, liveObservation, requireInternal, viewerOf, type QualityDeps } from './shared';
 
 export type ObservationRow = typeof observations.$inferSelect;
@@ -34,6 +36,8 @@ export type ObservationView = ObservationRow & { isOverdue: boolean };
 
 export interface ObservationFields {
   type?: ObservationType;
+  /** A built-in key or `custom:<id>` from the type picker. It sets `type` to the register category. */
+  typeKey?: string | null;
   hazard?: string | null;
   description?: string;
   location?: string | null;
@@ -167,16 +171,53 @@ export function createObservationService(deps: QualityDeps) {
     };
   }
 
+  /** The register category and picker type an observation is filed under, and its attachment rule. */
+  async function resolveType(
+    scope: TenantScope,
+    projectId: string,
+    typeKey: string | null | undefined,
+    legacy: ObservationType | undefined,
+    fileCount: number,
+    allowHidden = false,
+  ): Promise<{ type: ObservationType; typeKey: string | null }> {
+    if (!typeKey) {
+      if (!legacy)
+        throw new AppError('validation_failed', 'Choose an observation type.', [
+          { path: 'type', message: 'Required' },
+        ]);
+      return { type: legacy, typeKey: null };
+    }
+    const { types } = await loadTypes(scope, projectId);
+    const t = types.find((x) => x.key === typeKey && (allowHidden || !x.hidden));
+    if (!t)
+      throw new AppError('validation_failed', 'Choose a type from the list.', [
+        { path: 'typeKey', message: 'Unknown or hidden type' },
+      ]);
+    const problem = typeProblem(t, fileCount);
+    if (problem)
+      throw new AppError(problem.code, problem.message, [
+        { path: 'fileIds', message: 'An attachment is required' },
+      ]);
+    return { type: t.category, typeKey: t.key };
+  }
+
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: ObservationFields & { type: ObservationType; description: string },
+    input: ObservationFields & { description: string },
   ) {
     const v = await viewerOf(deps, scope, projectId);
     await deps.platform.getProject(scope, projectId);
     if (input.assigneeCompanyId) await checkAssignee(scope, projectId, input.assigneeCompanyId);
     if (input.swmsId) await checkSwms(scope, projectId, input.swmsId);
     await checkFiles(deps, scope, projectId, input.fileIds ?? []);
+    const filed = await resolveType(
+      scope,
+      projectId,
+      input.typeKey,
+      input.type,
+      new Set(input.fileIds ?? []).size,
+    );
     const id = uuidv7();
     const number = await nextNumber(scope, projectId, 'observation');
     const [row] = await scope.tx
@@ -186,7 +227,8 @@ export function createObservationService(deps: QualityDeps) {
         orgId: scope.ctx.orgId,
         projectId,
         number,
-        type: input.type,
+        type: filed.type,
+        typeKey: filed.typeKey,
         hazard: input.hazard ?? null,
         description: input.description.trim(),
         location: input.location ?? null,
@@ -212,7 +254,7 @@ export function createObservationService(deps: QualityDeps) {
       data: {
         observationId: id,
         number,
-        type: input.type,
+        type: filed.type,
         assigneeCompanyId: row!.assigneeCompanyId,
       },
     });
@@ -267,9 +309,22 @@ export function createObservationService(deps: QualityDeps) {
       )
       .limit(1);
     const comment = input.comment ?? answer?.note ?? null;
+    const files = input.fileIds ?? answer?.fileIds ?? [];
+    // No type chosen: start from the suggested one, unless it needs an attachment the item doesn't have yet.
+    let suggested: string | undefined;
+    if (!input.typeKey && !input.type) {
+      const s = await createObservationTypeService(deps).suggest(
+        scope,
+        projectId,
+        inspectionId,
+        templateItemId,
+      );
+      if (s && (!s.type.requiresAttachment || files.length > 0)) suggested = s.key;
+    }
     const created = await create(scope, projectId, {
       ...input,
-      type: input.type ?? 'quality',
+      ...(suggested ? { typeKey: suggested } : {}),
+      ...(input.typeKey || suggested ? {} : { type: input.type ?? 'quality' }),
       description:
         input.description ??
         observationDraft({
@@ -321,10 +376,26 @@ export function createObservationService(deps: QualityDeps) {
     if (patch.assigneeCompanyId) await checkAssignee(scope, projectId, patch.assigneeCompanyId);
     if (patch.swmsId) await checkSwms(scope, projectId, patch.swmsId);
     if (patch.fileIds) await checkFiles(deps, scope, projectId, patch.fileIds);
+    // A new type, or new files on a type that needs one, is checked against the files the observation will have.
+    const refiled =
+      patch.typeKey !== undefined || (patch.fileIds !== undefined && observation.typeKey)
+        ? await resolveType(
+            scope,
+            projectId,
+            patch.typeKey !== undefined ? patch.typeKey : observation.typeKey,
+            patch.type ?? observation.type,
+            new Set(patch.fileIds ?? observation.fileIds).size,
+            patch.typeKey === undefined,
+          )
+        : null;
     const [row] = await scope.tx
       .update(observations)
       .set({
-        ...(patch.type !== undefined ? { type: patch.type } : {}),
+        ...(refiled
+          ? { type: refiled.type, typeKey: refiled.typeKey }
+          : patch.type !== undefined
+            ? { type: patch.type }
+            : {}),
         ...(patch.hazard !== undefined ? { hazard: patch.hazard } : {}),
         ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
         ...(patch.location !== undefined ? { location: patch.location } : {}),
