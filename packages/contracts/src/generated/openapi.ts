@@ -11376,6 +11376,24 @@ export interface components {
             /** @description Open and due from today through the next 7 days in the project zone. Open items with no due date are in neither this nor overdue. */
             dueSoon: number;
         };
+        PortfolioIncidents: components["schemas"]["PortfolioTool"] & {
+            /**
+             * Format: date
+             * @description Project-local date of the latest injury; null when none is recorded or the caller cannot read incidents.
+             */
+            lastInjuryOn: string | null;
+            /**
+             * Format: date
+             * @description Latest incident of any type except a near miss, same rule.
+             */
+            lastIncidentOn: string | null;
+            /** @description Whole days from the latest injury to today in the project zone; null when none is recorded. */
+            daysSinceInjury: number | null;
+            /** @description Same for the latest incident other than a near miss. */
+            daysSinceIncident: number | null;
+            /** @description Incidents of any type, near misses included, in the last 12 months. */
+            last12Months: number;
+        };
         PortfolioProgramme: components["schemas"]["PortfolioTool"] & {
             /** @description Activities at 0% complete. */
             notStarted: number;
@@ -11409,7 +11427,13 @@ export interface components {
             number: string | null;
             status: string;
             phase: components["schemas"]["ProjectPhase"] | null;
+            /** @description The state the site is in, for grouping by region. */
+            state: components["schemas"]["AuState"] | null;
             siteLocation: components["schemas"]["GeoPoint"] | null;
+            /** @description Open observations the caller can see; overdue means past the due date. */
+            observations: components["schemas"]["PortfolioTool"];
+            /** @description Inspections not yet closed, builder staff only; overdue means past the due date. */
+            inspections: components["schemas"]["PortfolioTool"];
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
@@ -11418,7 +11442,7 @@ export interface components {
             /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
             variations: components["schemas"]["PortfolioTool"];
             /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
-            incidents: components["schemas"]["PortfolioTool"];
+            incidents: components["schemas"]["PortfolioIncidents"];
             /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
             programme: components["schemas"]["PortfolioProgramme"];
             budget: components["schemas"]["PortfolioBudget"];

@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { daysBetween, localDateOf } from '@archova/time';
 import type { TenantScope } from '@archova/kernel';
 import { awaitingRegulatorNotice, incidentLabel, type IncidentStatus } from '../domain/incident';
 import { incidents } from '../infra/tables';
@@ -10,7 +11,8 @@ type State = 'open' | 'closed' | 'all';
  * Feeds `reporting` (portfolio counts and report rows) for incidents. Needs `safety.incidents.read` on the project;
  * rows carry the reference, title and status only, never people, injury or medical detail.
  */
-export function createReportingSources(deps: Pick<SafetyDeps, 'access'>) {
+export function createReportingSources(deps: Pick<SafetyDeps, 'access' | 'platform' | 'now'>) {
+  const now = deps.now ?? (() => new Date());
   const allowed = (scope: TenantScope, projectId: string) =>
     deps.access.can(scope, 'safety.incidents.read', { projectId });
 
@@ -23,7 +25,32 @@ export function createReportingSources(deps: Pick<SafetyDeps, 'access'>) {
 
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await allowed(scope, projectId)))
-      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
+      return {
+        restricted: true,
+        open: 0,
+        overdue: 0,
+        dueSoon: 0,
+        lastInjuryOn: null,
+        lastIncidentOn: null,
+        daysSinceInjury: null,
+        daysSinceIncident: null,
+        last12Months: 0,
+      };
+    const zone = (await deps.platform.getProject(scope, projectId)).timezone;
+    const history = await scope.tx
+      .select({ type: incidents.type, occurredAt: incidents.occurredAt })
+      .from(incidents)
+      .where(and(eq(incidents.projectId, projectId), isNull(incidents.deletedAt)));
+    const latest = (rows: readonly { occurredAt: Date }[]) =>
+      rows.length === 0
+        ? null
+        : localDateOf(new Date(Math.max(...rows.map((r) => r.occurredAt.getTime()))), zone);
+    const todayLocal = localDateOf(now(), zone);
+    const since = (d: string | null) =>
+      d === null ? null : Math.max(daysBetween(d, todayLocal), 0);
+    const lastInjuryOn = latest(history.filter((h) => h.type === 'injury'));
+    const lastIncidentOn = latest(history.filter((h) => h.type !== 'near_miss'));
+    const yearAgo = now().getTime() - 365 * 86_400_000;
     const rows = await scope.tx
       .select({
         status: incidents.status,
@@ -44,6 +71,12 @@ export function createReportingSources(deps: Pick<SafetyDeps, 'access'>) {
       overdue: rows.filter(awaitingRegulatorNotice).length,
       // An incident has no due date apart from the regulator notice already counted as overdue.
       dueSoon: 0,
+      // Near misses are not accidents, so they do not break a streak; every other type does. Dates are the project's own.
+      lastInjuryOn,
+      lastIncidentOn,
+      daysSinceInjury: since(lastInjuryOn),
+      daysSinceIncident: since(lastIncidentOn),
+      last12Months: history.filter((h) => h.occurredAt.getTime() >= yearAgo).length,
     };
   }
 

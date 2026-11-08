@@ -6,6 +6,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useBranding, useSaveBranding } from '@/features/branding';
 import { DashboardEditor, type Tile, type TileContext } from '@/features/dashboard';
+import { QualitySafety } from '../components/QualitySafety';
 import { ProjectOverviewTable } from '../components/ProjectOverviewTable';
 import { StatusReport } from '../components/StatusReport';
 import { usePortfolio } from '../hooks/useReporting';
@@ -90,11 +91,18 @@ export function PortfolioScreen() {
           { id: 'overview', label: 'Overview' },
           { id: 'status', label: 'Status report' },
           { id: 'project-overview', label: 'Project overview' },
+          { id: 'quality-safety', label: 'Quality & Safety' },
         ]}
         value={view}
         onValueChange={setView}
       >
-        {view === 'project-overview' ? (
+        {view === 'quality-safety' ? (
+          portfolio.data ? (
+            <QualitySafety portfolio={portfolio.data} />
+          ) : (
+            <SkeletonRows label="Loading quality and safety…" />
+          )
+        ) : view === 'project-overview' ? (
           portfolio.data ? (
             <ProjectOverviewTable portfolio={portfolio.data} />
           ) : (

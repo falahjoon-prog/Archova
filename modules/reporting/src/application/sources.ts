@@ -3,6 +3,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import {
   PROJECT_LIMIT,
   type BudgetSummary,
+  type IncidentCounts,
   type ProgrammeCounts,
   type ReportSource,
   type SourceRow,
@@ -23,7 +24,9 @@ export interface ReportingDeps {
   submittals: Tool;
   claims: Tool;
   variations: Tool;
-  incidents: Tool;
+  incidents: Tool<IncidentCounts>;
+  observations: Tool;
+  inspections: Tool;
   programme: Tool<ProgrammeCounts>;
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
@@ -109,6 +112,8 @@ export interface ProjectRef {
   number: string | null;
   status: string;
   phase: string | null;
+  /** The Australian state the site is in, used to group the safety streaks by region. */
+  state: string | null;
   siteLocation: { lat: number; lng: number } | null;
 }
 
@@ -138,6 +143,7 @@ export async function visibleProjects(
         number: p.number,
         status: p.status,
         phase: p.phase ?? null,
+        state: p.state ?? null,
         siteLocation:
           p.siteLat !== null && p.siteLng !== null ? { lat: p.siteLat, lng: p.siteLng } : null,
       });

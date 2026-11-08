@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
+import { localDateOf } from '@archova/time';
 import {
   AppError,
   decodeCursor,
@@ -1135,7 +1136,42 @@ export function createInspectionService(deps: QualityDeps) {
     return out;
   }
 
+  /**
+   * Portfolio dashboard (`reporting`): inspections not yet closed, those past their due date and those due in the next
+   * 7 days. Inspections are the builder's, so anyone else reads `restricted`; private ones are hidden as on the list.
+   */
+  async function portfolioCounts(scope: TenantScope, projectId: string) {
+    const allowed =
+      scope.ctx.principalType === 'member' &&
+      (await deps.access.can(scope, 'quality.inspections.read', { projectId }));
+    if (!allowed) return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
+    const project = await deps.platform.getProject(scope, projectId);
+    const date = localDateOf(now(), project.timezone);
+    const conditions: SQL[] = [
+      eq(inspections.projectId, projectId),
+      isNull(inspections.deletedAt),
+      sql`${inspections.status} <> 'closed'`,
+    ];
+    const hide = (await privacy(scope, projectId)).where;
+    if (hide) conditions.push(hide);
+    const [row] = await scope.tx
+      .select({
+        open: sql<number>`count(*)::int`,
+        overdue: sql<number>`(count(*) filter (where ${inspections.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${inspections.dueDate} >= ${date}::date and ${inspections.dueDate} <= ${date}::date + 7))::int`,
+      })
+      .from(inspections)
+      .where(and(...conditions));
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
+  }
+
   return {
+    portfolioCounts,
     projectOf,
     templateProjectOf,
     templatesAmong,
