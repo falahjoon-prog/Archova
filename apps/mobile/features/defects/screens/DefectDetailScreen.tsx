@@ -22,7 +22,7 @@ import {
 } from '../commands';
 import { actionLabel, stageLabel, statusLabel } from './labels';
 
-const NEEDS_REASON: ReadonlySet<DefectAction> = new Set(['reject', 'dispute', 'void']);
+const NEEDS_REASON: ReadonlySet<DefectAction> = new Set(['reject', 'dispute', 'void', 'reopen']);
 
 const errorText: Partial<Record<CommandError, string>> = {
   'defect.reason_required': 'Add a reason. The other company will see it.',

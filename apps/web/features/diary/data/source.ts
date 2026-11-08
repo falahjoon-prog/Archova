@@ -17,6 +17,7 @@ import {
 import type {
   DiaryContent,
   DiaryEntry,
+  DiaryGap,
   DiaryPhoto,
   NovaDiarySummary,
   NovaWeekSummary,
@@ -359,6 +360,11 @@ export const diarySource = {
       },
       300,
     );
+  },
+
+  /** Preview data has no site activity to compare against, so no gaps. */
+  async gaps(_projectId: string, _from: LocalDate, _to: LocalDate): Promise<DiaryGap[]> {
+    return [];
   },
 
   async novaWeekSummary(projectId: string, weekStart: LocalDate): Promise<NovaWeekSummary> {
