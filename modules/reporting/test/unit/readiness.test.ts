@@ -89,7 +89,19 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     submittals: tool,
     claims: tool,
     variations: tool,
-    incidents: tool,
+    incidents: {
+      ...tool,
+      portfolioCounts: async () => ({
+        ...(await tool.portfolioCounts()),
+        lastInjuryOn: null,
+        lastIncidentOn: null,
+        daysSinceInjury: null,
+        daysSinceIncident: null,
+        last12Months: 0,
+      }),
+    },
+    observations: tool,
+    inspections: tool,
     programme: {
       ...tool,
       portfolioCounts: async () => ({
