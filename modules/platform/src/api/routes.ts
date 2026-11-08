@@ -10,6 +10,11 @@ import {
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-identity';
 import type { AccountDeletionService } from '../application/account-deletion';
+import {
+  DASHBOARD_WIDGETS,
+  type BrandingService,
+  type BrandingView,
+} from '../application/branding';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
 import type { LocationService } from '../application/locations';
@@ -48,6 +53,7 @@ export interface PlatformRouteDeps {
   database: Database;
   identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
+  branding: BrandingService;
   projects: ProjectService;
   keyDates: KeyDateService;
   locations: LocationService;
@@ -83,6 +89,15 @@ const decodeRef = (kind: 'company' | 'permissionTemplate', id: string) => {
     throw new AppError(kind === 'company' ? 'company.not_found' : 'permission_template.not_found');
   return uuid;
 };
+
+const toBrandingDto = (b: BrandingView) => ({
+  logoFileId: b.logoFileId ? encodeId('file', b.logoFileId) : null,
+  accentColor: b.accentColor,
+  dashboardWidgets: b.dashboardWidgets,
+  dashboardLayout: b.dashboardLayout,
+  availableWidgets: DASHBOARD_WIDGETS.map((w) => ({ ...w })),
+  version: b.version,
+});
 
 export function platformRoutes(d: PlatformRouteDeps) {
   const ro = { readOnly: true } as const;
@@ -135,6 +150,33 @@ export function platformRoutes(d: PlatformRouteDeps) {
     getOrg: async (input) => {
       const org = await d.database.withTenantTx(requireTenant(input), (s) => d.orgs.getOrg(s), ro);
       return { status: 200, body: toOrgDto(org), headers: { etag: etag(org.version) } };
+    },
+    getOrgBranding: async (input) => {
+      const t = requireTenant(input);
+      if (t.principalType !== 'member') throw new AppError('access.denied');
+      const b = await d.database.withTenantTx(t, (s) => d.branding.get(s), ro);
+      return { status: 200, body: toBrandingDto(b) };
+    },
+    updateOrgBranding: async (input) => {
+      const t = requireOrgAdmin(input);
+      const body = input.body;
+      const logo = body.logoFileId === undefined ? undefined : body.logoFileId;
+      const logoUuid = logo ? decodeId('file', logo) : logo;
+      if (logo && !logoUuid)
+        throw new AppError('validation_failed', 'Upload a logo first.', [
+          { path: 'logoFileId', message: 'Not a file' },
+        ]);
+      const b = await d.database.withTenantTx(t, (s) =>
+        d.branding.update(s, {
+          ...(logoUuid !== undefined ? { logoFileId: logoUuid } : {}),
+          ...(body.accentColor !== undefined ? { accentColor: body.accentColor } : {}),
+          ...(body.dashboardWidgets !== undefined
+            ? { dashboardWidgets: body.dashboardWidgets }
+            : {}),
+          ...(body.dashboardLayout !== undefined ? { dashboardLayout: body.dashboardLayout } : {}),
+        }),
+      );
+      return { status: 200, body: toBrandingDto(b) };
     },
     getSupportAccess: async (input) => {
       const t = requireOrgAdmin(input);

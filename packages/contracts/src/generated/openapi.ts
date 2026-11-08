@@ -341,6 +341,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The company's logo, accent colour and Portfolio widgets (members only). */
+        get: operations["getOrgBranding"];
+        /**
+         * Change the logo, accent colour or Portfolio widgets (org owners and admins).
+         * @description Only the fields sent change. `accentColor: null` goes back to the Archova amber and `logoFileId: null` to the
+         *     Archova logo. The logo is an org-level image upload (`module: branding`, no project). The accent replaces the
+         *     brand amber only; buttons, links, status and safety colours never change.
+         */
+        put: operations["updateOrgBranding"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access": {
         parameters: {
             query?: never;
@@ -11582,6 +11607,39 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        OrgBranding: {
+            logoFileId: string | null;
+            /** @description Six-digit hex such as #1F6FEB. */
+            accentColor: string | null;
+            /** @description The Portfolio widgets that show, in order. */
+            dashboardWidgets: string[];
+            /** @description The saved Portfolio tile layout, or null while the default one is used. */
+            dashboardLayout: components["schemas"]["DashboardTile"][] | null;
+            availableWidgets: {
+                key: string;
+                label: string;
+            }[];
+            version: number;
+        };
+        UpdateOrgBrandingRequest: {
+            logoFileId?: string | null;
+            accentColor?: string | null;
+            dashboardWidgets?: string[];
+            /** @description Replaces the tile layout; null puts the default layout back. */
+            dashboardLayout?: components["schemas"]["DashboardTile"][] | null;
+        };
+        /** @description A tile on the 12-column dashboard grid. `type` is a tile from the web tile library. */
+        DashboardTile: {
+            id: string;
+            type: string;
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            config?: {
+                [key: string]: unknown;
+            };
+        };
         SupportAccessGrant: {
             /** Format: uuid */
             id: string;
@@ -19551,6 +19609,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Org"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOrgBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Branding */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgBranding"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOrgBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrgBrandingRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgBranding"];
                 };
             };
             default: components["responses"]["Problem"];

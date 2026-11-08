@@ -3582,3 +3582,203 @@ fieldset.worker-card > legend {
   flex-direction: column;
   gap: var(--space-2);
 }
+
+/* White-label: the company's own logo in the top bar, never taller than the bar's logo slot. */
+.app-shell__org-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+}
+@media (max-width: 640px) {
+  .app-shell__org-logo {
+    height: 28px;
+    max-width: 112px;
+  }
+}
+
+/* Dashboard board and tile library (features/dashboard). 12 columns; rows are 72px with a 12px gap. */
+.dash-board {
+  --dash-row: 72px;
+  --dash-gap: var(--space-3);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dash-gap);
+}
+.dash-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.dash-tile__body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-3);
+  overflow: auto;
+}
+.dash-tile__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.dash-tile__handle {
+  flex: 1;
+  min-height: 2.75rem;
+  min-width: 8rem;
+  font: inherit;
+  text-align: start;
+  color: var(--c-text);
+  background: none;
+  border: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.dash-tile__handle:focus-visible {
+  outline: 2px solid var(--c-text);
+  outline-offset: 2px;
+}
+.dash-tile--active {
+  outline: 2px solid var(--brand-amber);
+  z-index: 1;
+}
+.dash-tile__resize {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-end: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--c-text-secondary) 50%);
+  border-end-end-radius: var(--radius-md);
+}
+.dash-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dash-logo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.dash-big {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.dash-big__label {
+  font-size: var(--font-sm, 0.875rem);
+  color: var(--c-text-secondary);
+}
+.dash-big__value {
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--c-text);
+}
+.dash-toolbar {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dash-edit-only {
+  display: none;
+}
+@media (min-width: 768px) {
+  .dash-edit-only {
+    display: inline-flex;
+  }
+  .dash-board {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: var(--dash-row);
+  }
+  .dash-tile {
+    grid-column: var(--x) / span var(--w);
+    grid-row: var(--y) / span var(--h);
+  }
+}
+@media (max-width: 767px) {
+  .dash-tile__body {
+    max-height: 28rem;
+  }
+}
+.dash-library {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 768px) {
+  .dash-library {
+    grid-template-columns: 12rem 1fr;
+  }
+}
+.dash-library__cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+@media (min-width: 768px) {
+  .dash-library__cats {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+}
+.dash-library__cat {
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  font: inherit;
+  text-align: start;
+  color: var(--c-text);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.dash-library__cat[aria-pressed='true'] {
+  background: var(--c-surface-sunken, var(--c-border-divider));
+  font-weight: 600;
+}
+.dash-library__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-library__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.dash-library__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--space-1);
+}
+.dash-preview {
+  height: 7rem;
+  overflow: hidden;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+.dash-preview__inner {
+  width: 200%;
+  padding: var(--space-3);
+  transform: scale(0.5);
+  transform-origin: top left;
+}

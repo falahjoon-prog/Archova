@@ -58,6 +58,13 @@ export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetOrgBrandingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOrgBrandingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOrgBrandingBody = s.UpdateOrgBrandingRequestSchema;
 export const GetSupportAccessParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3620,6 +3627,30 @@ export const operations = {
     params: GetOrgParams,
     query: null,
     body: null,
+  },
+  getOrgBranding: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/branding',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetOrgBrandingParams,
+    query: null,
+    body: null,
+  },
+  updateOrgBranding: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/branding',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOrgBrandingParams,
+    query: null,
+    body: UpdateOrgBrandingBody,
   },
   getSupportAccess: {
     method: 'GET',
