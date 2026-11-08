@@ -48,6 +48,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: bookmarks
   - name: recents
   - name: reporting
   - name: search
@@ -710,6 +711,60 @@ paths:
         '204':
           description: Recorded
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bookmarks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listBookmarks
+      tags: [bookmarks]
+      x-module: platform
+      summary: The caller's bookmarks, newest first.
+      description: |
+        Only the caller's own bookmarks are ever returned (at most 200). Pass `projectId` to list one project's.
+      parameters:
+        - name: projectId
+          in: query
+          schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: The bookmarks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: saveBookmark
+      tags: [bookmarks]
+      x-module: platform
+      summary: Bookmark a record (idempotent; saving it again refreshes the title).
+      description: |
+        `title` and `subtitle` are what the person saw on the record, kept so the list needs no lookup in the
+        record's own module. A person can keep up to 200 bookmarks (`bookmark.limit_reached`, 409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkInput' }
+      responses:
+        '200':
+          description: The bookmark
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bookmarks/{bookmarkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BookmarkId'
+    delete:
+      operationId: deleteBookmark
+      tags: [bookmarks]
+      x-module: platform
+      summary: Remove one of the caller's bookmarks (idempotent).
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -845,6 +900,85 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/KeyDateChangeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectLocations
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: The project's pinned locations (site office, gates, laydown, parking, nearest hospital), each with a Get Directions link and its site-access note.
+      responses:
+        '200':
+          description: Locations, in the order the project set
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Pin a location. The first one becomes the default; at most 30 per project.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectLocationRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: locationId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^plc_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Change a location. Send `If-Match`. Making it the default clears the previous default.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectLocationRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectLocation' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteProjectLocation
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Remove a location. If it was the default, the next one takes over.
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/delay-register:
     parameters:
@@ -14022,6 +14156,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
+    BookmarkId:
+      name: bookmarkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
     AccountingProvider:
       name: provider
       in: path
@@ -16318,6 +16457,95 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/KeyDateChange' }
+    LocationKind:
+      type: string
+      enum: [site_office, gate, laydown, parking, hospital, other]
+    ProjectLocation:
+      type: object
+      required:
+        [
+          id,
+          name,
+          kind,
+          address,
+          point,
+          directionsUrl,
+          accessNote,
+          contactName,
+          contactPhone,
+          usedFor,
+          isDefault,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'] }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        directionsUrl:
+          type: [string, 'null']
+          description: A plain maps link to the point (or address). No maps key is involved.
+        accessNote:
+          { type: [string, 'null'], description: 'Gate code, parking instructions, site contact.' }
+        contactName: { type: [string, 'null'] }
+        contactPhone: { type: [string, 'null'] }
+        usedFor:
+          type: array
+          items: { type: string }
+          description: What the point is for ("deliveries", "visitors"); Nova matches arrivals to these.
+        isDefault: { type: boolean }
+        version: { type: integer }
+    ProjectLocationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectLocation' }
+    CreateProjectLocationRequest:
+      type: object
+      additionalProperties: false
+      required: [name, kind]
+      description: Give an address, a map point, or both.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'], maxLength: 300 }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        accessNote: { type: [string, 'null'], maxLength: 2000 }
+        contactName: { type: [string, 'null'], maxLength: 120 }
+        contactPhone: { type: [string, 'null'], maxLength: 40 }
+        usedFor:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 40 }
+        isDefault: { type: boolean }
+    UpdateProjectLocationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        kind: { $ref: '#/components/schemas/LocationKind' }
+        address: { type: [string, 'null'], maxLength: 300 }
+        point:
+          oneOf:
+            - { $ref: '#/components/schemas/GeoPoint' }
+            - { type: 'null' }
+        accessNote: { type: [string, 'null'], maxLength: 2000 }
+        contactName: { type: [string, 'null'], maxLength: 120 }
+        contactPhone: { type: [string, 'null'], maxLength: 40 }
+        usedFor:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 40 }
+        isDefault: { type: boolean }
     DelayRegisterRow:
       type: object
       required:
@@ -16656,6 +16884,37 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/RecentView' }
+    BookmarkEntityType:
+      type: string
+      enum: [rfi, submittal, defect, drawing_sheet, meeting]
+    BookmarkInput:
+      type: object
+      required: [entityType, entityId, projectId, title]
+      properties:
+        entityType: { $ref: '#/components/schemas/BookmarkEntityType' }
+        entityId:
+          { type: string, description: Public id of the record, of the kind `entityType` names. }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        subtitle: { type: string, maxLength: 200 }
+    Bookmark:
+      type: object
+      required: [id, entityType, entityId, projectId, title, subtitle, createdAt]
+      properties:
+        id: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
+        entityType: { $ref: '#/components/schemas/BookmarkEntityType' }
+        entityId: { type: string }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        subtitle: { type: string }
+        createdAt: { type: string, format: date-time }
+    BookmarkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Bookmark' }
     FeatureFlags:
       type: object
       required: [orgId, flags]

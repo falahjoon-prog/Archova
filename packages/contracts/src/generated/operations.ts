@@ -108,6 +108,20 @@ export const RecordRecentViewParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const RecordRecentViewBody = s.RecentViewInputSchema;
+export const ListBookmarksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListBookmarksQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+});
+export const SaveBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SaveBookmarkBody = s.BookmarkInputSchema;
+export const DeleteBookmarkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bookmarkId": z.string().regex(new RegExp("^bmk_[0-9A-Za-z]{26}$")),
+});
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -140,6 +154,26 @@ export const UpdateKeyDatesBody = s.UpdateKeyDatesRequestSchema;
 export const ListKeyDateChangesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectLocationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectLocationBody = s.CreateProjectLocationRequestSchema;
+export const UpdateProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^plc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectLocationBody = s.UpdateProjectLocationRequestSchema;
+export const DeleteProjectLocationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^plc_[0-9A-Za-z]{26}$")),
 });
 export const GetDelayRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3725,6 +3759,42 @@ export const operations = {
     query: null,
     body: RecordRecentViewBody,
   },
+  listBookmarks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bookmarks',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListBookmarksParams,
+    query: ListBookmarksQuery,
+    body: null,
+  },
+  saveBookmark: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/bookmarks',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SaveBookmarkParams,
+    query: null,
+    body: SaveBookmarkBody,
+  },
+  deleteBookmark: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/bookmarks/{bookmarkId}',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: DeleteBookmarkParams,
+    query: null,
+    body: null,
+  },
   listProjects: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects',
@@ -3806,6 +3876,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ListKeyDateChangesParams,
+    query: null,
+    body: null,
+  },
+  listProjectLocations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectLocationsParams,
+    query: null,
+    body: null,
+  },
+  createProjectLocation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectLocationParams,
+    query: null,
+    body: CreateProjectLocationBody,
+  },
+  updateProjectLocation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectLocationParams,
+    query: null,
+    body: UpdateProjectLocationBody,
+  },
+  deleteProjectLocation: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/locations/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: null,
+    params: DeleteProjectLocationParams,
     query: null,
     body: null,
   },
