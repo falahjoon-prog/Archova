@@ -49,6 +49,12 @@ export const clearancePreview: ClearanceSource = {
           detail: 'Not completed for this project',
         },
         { key: 'swms', label: 'SWMS sign-off', status: 'pass', detail: 'Read and acknowledged' },
+        {
+          key: 'insurance',
+          label: 'Company insurance',
+          status: 'pass',
+          detail: 'Certificates and bonds in date',
+        },
       ],
       flag: {
         severity: 'blocking',

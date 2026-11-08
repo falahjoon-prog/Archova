@@ -16769,7 +16769,7 @@ export interface components {
             result: "cleared" | "warning" | "blocked";
             checks: {
                 /** @enum {string} */
-                key: "worker" | "white_card" | "licences" | "induction" | "swms";
+                key: "worker" | "white_card" | "licences" | "induction" | "swms" | "insurance";
                 label: string;
                 /** @enum {string} */
                 status: "pass" | "warn" | "fail" | "na";
