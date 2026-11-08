@@ -4,6 +4,8 @@ import { financialsRoutes } from './api/routes';
 import { directCostRoutes } from './api/directCostRoutes';
 import { tmTicketRoutes } from './api/tmRoutes';
 import { createTmTicketsService } from './application/tmTickets';
+import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
+import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
 import { productivityRoutes } from './api/productivityRoutes';
@@ -50,6 +52,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     getFile: deps.getFile,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const ownerInvoices = createOwnerInvoicesService({
+    access: deps.access,
+    requireStaff: service.requireStaff,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const reportingSources = createReportingSources({
     access: deps.access,
     platform: deps.platform,
@@ -69,6 +76,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
       ...tmTicketRoutes(services.database, tmTickets),
+      ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
     },
     api: {
