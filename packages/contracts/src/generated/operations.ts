@@ -1742,6 +1742,14 @@ export const ListDiaryEntriesQuery = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
 });
+export const ListDiaryGapsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDiaryGapsQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
 export const GetDiaryEntryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3006,6 +3014,35 @@ export const SetVariationCostCodeParams = z.object({
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
+export const GetOwnerInvoicePrefillParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const GetOwnerInvoicePrefillQuery = z.object({
+  "periodEnd": z.string().date(),
+});
+export const ListOwnerInvoicesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerInvoiceBody = s.CreateOwnerInvoiceRequestSchema;
+export const GetOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
+export const DiscardOwnerInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "ownerInvoiceId": z.string().regex(new RegExp("^oiv_[0-9A-Za-z]{26}$")),
+});
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3238,6 +3275,60 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListCoversParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCoversQuery = z.object({
+  "kind": s.CoverKindSchema.optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.CoverStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCoverBody = s.CreateCoverRequestSchema;
+export const ListCoverFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCoverFlagsQuery = z.object({
+  "windowDays": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const GetCoverRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetCoverRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetCoverRequirementsBody = s.SetCoverRequirementsRequestSchema;
+export const GetCompanyClearanceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")),
+});
+export const GetCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCoverBody = s.UpdateCoverRequestSchema;
+export const TransitionCoverParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
+});
+export const TransitionCoverBody = s.CoverTransitionRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -7053,6 +7144,18 @@ export const operations = {
     query: ListDiaryEntriesQuery,
     body: null,
   },
+  listDiaryGaps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/gaps',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: ListDiaryGapsParams,
+    query: ListDiaryGapsQuery,
+    body: null,
+  },
   getDiaryEntry: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}',
@@ -9901,6 +10004,66 @@ export const operations = {
     query: null,
     body: SetVariationCostCodeBody,
   },
+  getOwnerInvoicePrefill: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoicePrefillParams,
+    query: GetOwnerInvoicePrefillQuery,
+    body: null,
+  },
+  listOwnerInvoices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerInvoicesParams,
+    query: null,
+    body: null,
+  },
+  createOwnerInvoice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerInvoiceParams,
+    query: null,
+    body: CreateOwnerInvoiceBody,
+  },
+  getOwnerInvoice: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerInvoiceParams,
+    query: null,
+    body: null,
+  },
+  discardOwnerInvoice: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: null,
+    params: DiscardOwnerInvoiceParams,
+    query: null,
+    body: null,
+  },
   listPaymentClaims: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims',
@@ -10380,6 +10543,114 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listCovers: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: ListCoversParams,
+    query: ListCoversQuery,
+    body: null,
+  },
+  createCover: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCoverParams,
+    query: null,
+    body: CreateCoverBody,
+  },
+  listCoverFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/flags',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: ListCoverFlagsParams,
+    query: ListCoverFlagsQuery,
+    body: null,
+  },
+  getCoverRequirements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/requirements',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCoverRequirementsParams,
+    query: null,
+    body: null,
+  },
+  setCoverRequirements: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/requirements',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetCoverRequirementsParams,
+    query: null,
+    body: SetCoverRequirementsBody,
+  },
+  getCompanyClearance: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/companies/{companyId}/clearance',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCompanyClearanceParams,
+    query: null,
+    body: null,
+  },
+  getCover: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.read",
+    internal: false,
+    contentType: null,
+    params: GetCoverParams,
+    query: null,
+    body: null,
+  },
+  updateCover: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCoverParams,
+    query: null,
+    body: UpdateCoverBody,
+  },
+  transitionCover: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}/transition',
+    module: "insurance",
+    auth: "required",
+    permission: "insurance.covers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionCoverParams,
+    query: null,
+    body: TransitionCoverBody,
   },
 } as const satisfies Record<string, OperationDef>;
 

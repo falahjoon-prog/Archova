@@ -37,6 +37,7 @@ tags:
   - name: financials
   - name: quality
   - name: precon
+  - name: insurance
   - name: safety
   - name: estimating
   - name: integrations
@@ -7427,6 +7428,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DiaryEntryList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/gaps:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDiaryGaps
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.read
+      summary: Days with site activity (a sign-in or an equipment log) but no submitted daily log, newest first.
+      description: |
+        A rule, not a model: Nova shows it as "no daily log for a day with site activity". Today is never listed.
+        `missing` is no entry at all, `draft` is an entry nobody has submitted. Readers limited to their own
+        company get an empty list. At most 93 days.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Gap days
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryGapList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12859,6 +12884,99 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoice-prefill:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getOwnerInvoicePrefill
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: Approved subcontractor claims that can be compiled into the next owner invoice, each checked by Nova.
+      description: >-
+        Builder staff only, head contract only. Lists subcontractor claims with a payment schedule issued (or paid),
+        up to the period end, that no owner invoice has taken yet. Each carries Nova's rule-based flags (possible
+        duplicate, outlier, over contract sum, missing statement, invalid claim) and what backs it up.
+      parameters:
+        - { name: periodEnd, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerInvoicePrefill' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/owner-invoices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: listOwnerInvoices
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: Owner invoice drafts on a head contract, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerInvoiceList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerInvoice
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: Compile the chosen subcontractor claims into an owner invoice draft with its backup pack.
+      description: >-
+        Every claim Nova flagged must be listed in `confirmedClaimIds`, otherwise 422. A claim sits on one draft
+        only; discarding the draft frees it.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerInvoiceRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerInvoiceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-invoices/{ownerInvoiceId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/OwnerInvoiceId'
+    get:
+      operationId: getOwnerInvoice
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: One owner invoice draft with the claims in it and its backup pack.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerInvoiceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: discardOwnerInvoice
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: Discard a draft, freeing its claims for another owner invoice.
+      responses:
+        '204':
+          description: Discarded
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13697,6 +13815,192 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/covers:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCovers
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.read
+      summary: The insurance certificates and bonds register for a project, with each item's status today.
+      parameters:
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/CoverKind' } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/CoverStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCover
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.manage
+      summary: Add a certificate of currency or bond for a company on the project. It is numbered INS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCoverRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCoverFlags
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.read
+      summary: "Nova's rule-based flags for the project (no model): covers expiring or expired, required types missing, and amounts below the project minimum."
+      parameters:
+        - { name: windowDays, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/requirements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getCoverRequirements
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.read
+      summary: The cover types each tracked company is expected to hold, with reminder lead time and optional minimum amount.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setCoverRequirements
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.manage
+      summary: Replace the expected cover types. An empty list switches the missing and below-minimum checks off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCoverRequirementsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/companies/{companyId}/clearance:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CompanyId'
+    get:
+      operationId: getCompanyClearance
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.read
+      summary: 'Where one company stands on insurance and bonds today, for the site gate: cleared, warning or blocked, with the reasons.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyCoverClearance' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoverId'
+    get:
+      operationId: getCover
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.read
+      summary: A cover with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCover
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.manage
+      summary: Edit a cover's details.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCoverRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/insurance/covers/{coverId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoverId'
+    post:
+      operationId: transitionCover
+      tags: [insurance]
+      x-module: insurance
+      x-permission: insurance.covers.manage
+      summary: startRenewal, markRenewed (needs the new expiry date), close or reopen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CoverTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverDetail' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     PlantAssetId:
@@ -13754,6 +14058,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    CoverId:
+      name: coverId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cvr_[0-9A-Za-z]{26}$' }
+    CompanyId:
+      name: companyId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -13899,6 +14213,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+    OwnerInvoiceId:
+      name: ownerInvoiceId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^oiv_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -16539,7 +16858,17 @@ components:
         entityType:
           {
             type: string,
-            enum: [meeting, tender_package, contract, incident, compliance_document, conversation],
+            enum:
+              [
+                meeting,
+                tender_package,
+                contract,
+                incident,
+                compliance_document,
+                conversation,
+                permit,
+                cover,
+              ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
@@ -21941,7 +22270,7 @@ components:
       enum: [pre_pc, pc, dlp]
     DefectAction:
       type: string
-      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void]
+      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void, reopen]
     DefectSource:
       type: string
       enum: [manual, inspection, ai_suggested]
@@ -21963,6 +22292,10 @@ components:
           pin,
           assigneeCompanyId,
           assigneeUserId,
+          assigneeUserIds,
+          managerUserId,
+          finalApproverUserId,
+          distributionUserIds,
           dueDate,
           isOverdue,
           raisedByCompanyId,
@@ -21992,7 +22325,20 @@ components:
         pin:
           oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
         assigneeCompanyId: { type: [string, 'null'] }
-        assigneeUserId: { type: [string, 'null'] }
+        assigneeUserId:
+          { type: [string, 'null'], description: 'The first assignee (kept for older clients).' }
+        assigneeUserIds:
+          type: array
+          description: Everyone the punch item is assigned to, in the assigned company.
+          items: { type: string }
+        managerUserId: { type: [string, 'null'], description: 'Punch Item Manager.' }
+        finalApproverUserId:
+          type: [string, 'null']
+          description: When set, only this person closes, rejects or reopens the item.
+        distributionUserIds:
+          type: array
+          description: Told about changes but not assigned.
+          items: { type: string }
         dueDate: { type: [string, 'null'], format: date }
         isOverdue:
           {
@@ -23158,6 +23504,144 @@ components:
       required: [note]
       properties:
         note: { type: string, minLength: 1, maxLength: 5000 }
+    OwnerInvoiceFlag:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          { type: string, enum: [duplicate, outlier, overclaim, statement_missing, invalid_claim] }
+        message: { type: string }
+    OwnerInvoiceBackupItem:
+      type: object
+      required: [kind, status, detail]
+      properties:
+        kind: { type: string, enum: [claim_pdf, payment_schedule_pdf, subcontractor_statement] }
+        status: { type: string, enum: [attached, missing, not_required] }
+        detail:
+          type: [string, 'null']
+          description: For the statement, the day it was signed.
+    OwnerInvoiceCandidate:
+      type: object
+      required:
+        [
+          claimId,
+          contractId,
+          contractTitle,
+          number,
+          periodEnd,
+          status,
+          thisPeriod,
+          completedToDate,
+          amount,
+          withheld,
+          flags,
+          backup,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        contractTitle: { type: string }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        status: { $ref: '#/components/schemas/PaymentClaimStatus' }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        withheld: { $ref: '#/components/schemas/FinancialsMoney' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceFlag' }
+        backup:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceBackupItem' }
+    OwnerInvoicePrefill:
+      type: object
+      required: [periodEnd, candidates]
+      properties:
+        periodEnd: { type: string, format: date }
+        candidates:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceCandidate' }
+    CreateOwnerInvoiceRequest:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, markupPct, claimIds, confirmedClaimIds]
+      properties:
+        periodEnd: { type: string, format: date }
+        markupPct:
+          type: string
+          pattern: '^\d{1,3}(\.\d{1,2})?$'
+          description: Margin added on the subcontract cost, in per cent (for example 12.5).
+        note: { type: string, maxLength: 1000 }
+        claimIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        confirmedClaimIds:
+          type: array
+          maxItems: 200
+          items: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+    OwnerInvoice:
+      type: object
+      required:
+        [
+          id,
+          contractId,
+          number,
+          periodEnd,
+          markupPct,
+          subTotal,
+          markupAmount,
+          total,
+          note,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^oiv_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        markupPct: { type: string }
+        subTotal: { $ref: '#/components/schemas/FinancialsMoney' }
+        markupAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    OwnerInvoiceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoice' }
+    OwnerInvoiceLine:
+      type: object
+      required: [claimId, contractTitle, number, periodEnd, amount, flags, flagsConfirmedAt, backup]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        contractTitle: { type: string }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceFlag' }
+        flagsConfirmedAt: { type: [string, 'null'], format: date-time }
+        backup:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceBackupItem' }
+    OwnerInvoiceDetail:
+      type: object
+      required: [invoice, lines, missingBackup]
+      properties:
+        invoice: { $ref: '#/components/schemas/OwnerInvoice' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerInvoiceLine' }
+        missingBackup:
+          type: integer
+          description: Backup items still missing across all claims.
     CommitmentList:
       type: object
       required: [data]
@@ -23415,6 +23899,16 @@ components:
         stage: { $ref: '#/components/schemas/DefectStage' }
         assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
         assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        assigneeUserIds:
+          type: array
+          maxItems: 25
+          items: { $ref: '#/components/schemas/UserRef' }
+        managerUserId: { $ref: '#/components/schemas/UserRef' }
+        finalApproverUserId: { $ref: '#/components/schemas/UserRef' }
+        distributionUserIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
         aiSuggestionId:
@@ -23435,6 +23929,16 @@ components:
         assigneeCompanyId:
           { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
         assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        assigneeUserIds:
+          type: array
+          maxItems: 25
+          items: { $ref: '#/components/schemas/UserRef' }
+        managerUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        finalApproverUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        distributionUserIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/UserRef' }
         dueDate: { type: [string, 'null'], format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
     DefectTransitionRequest:
@@ -23447,7 +23951,7 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
-          description: Required for reject, dispute and void. A reject reason is shown to the subcontractor.
+          description: Required for reject, dispute, reopen and void. A reject reason is shown to the subcontractor.
         fileIds:
           type: array
           maxItems: 20
@@ -23549,6 +24053,19 @@ components:
       required: [data]
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/DiaryEntry' } }
+    DiaryGapList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [date, state, sources]
+            properties:
+              date: { type: string, format: date }
+              state: { type: string, enum: [missing, draft] }
+              sources: { type: array, items: { type: string, enum: [attendance, equipment] } }
     DiaryAmendment:
       type: object
       required: [id, targetType, targetId, action, changes, reason, amendedBy, amendedAt]
@@ -26855,6 +27372,233 @@ components:
           type: array
           maxItems: 50
           items: { $ref: '#/components/schemas/IncidentPersonInput' }
+    CoverKind:
+      type: string
+      enum:
+        [
+          public_liability,
+          workers_comp,
+          contract_works,
+          professional_indemnity,
+          personal_accident,
+          other_insurance,
+          performance_bond,
+          retention_bond,
+          advance_payment_bond,
+          bank_guarantee,
+          other_bond,
+        ]
+    CoverCategory:
+      type: string
+      enum: [insurance, bond]
+    CoverStatus:
+      type: string
+      description: Derived from the lifecycle and the expiry date in the project's own calendar day.
+      enum: [active, expiring_soon, expired, renewal_in_progress, closed]
+    CoverLifecycle:
+      type: string
+      enum: [active, renewal_in_progress, closed]
+    Cover:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          companyId,
+          kind,
+          category,
+          title,
+          issuer,
+          referenceNumber,
+          amountCents,
+          issuedOn,
+          expiresOn,
+          lifecycle,
+          status,
+          daysToExpiry,
+          renewalStartedOn,
+          notes,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        companyId: { type: string }
+        kind: { $ref: '#/components/schemas/CoverKind' }
+        category: { $ref: '#/components/schemas/CoverCategory' }
+        title: { type: string }
+        issuer: { type: [string, 'null'] }
+        referenceNumber: { type: [string, 'null'] }
+        amountCents:
+          { type: [integer, 'null'], description: Sum insured or bond face value, in cents. }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        lifecycle: { $ref: '#/components/schemas/CoverLifecycle' }
+        status: { $ref: '#/components/schemas/CoverStatus' }
+        daysToExpiry: { type: [integer, 'null'], description: Negative once expired. }
+        renewalStartedOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CoverEvent:
+      type: object
+      required: [id, action, fromLifecycle, toLifecycle, expiresOn, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromLifecycle:
+          { oneOf: [{ $ref: '#/components/schemas/CoverLifecycle' }, { type: 'null' }] }
+        toLifecycle: { $ref: '#/components/schemas/CoverLifecycle' }
+        expiresOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    CoverDetail:
+      type: object
+      required: [cover, events]
+      properties:
+        cover: { $ref: '#/components/schemas/Cover' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/CoverEvent' }
+    CoverPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Cover' }
+        nextCursor: { type: [string, 'null'] }
+    CreateCoverRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, companyId]
+      properties:
+        kind: { $ref: '#/components/schemas/CoverKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuer: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdateCoverRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/CoverKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        issuer: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    CoverTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [startRenewal, markRenewed, close, reopen] }
+        newExpiresOn:
+          type: [string, 'null']
+          format: date
+          description: Required for markRenewed; must be after the current expiry.
+        note: { type: [string, 'null'], maxLength: 1000 }
+    CoverRequirement:
+      type: object
+      required: [kind, leadDays, minAmountCents]
+      properties:
+        kind: { $ref: '#/components/schemas/CoverKind' }
+        leadDays: { type: integer, minimum: 1, maximum: 365 }
+        minAmountCents: { type: [integer, 'null'], minimum: 0 }
+    CoverRequirementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CoverRequirement' }
+    SetCoverRequirementsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/CoverRequirement' }
+    CoverFlag:
+      type: object
+      required: [kind, severity, companyId, title, detail, coverId, coverKind, expiresOn, daysLeft]
+      properties:
+        kind: { $ref: '#/components/schemas/CoverIssueKind' }
+        severity: { type: string, enum: [info, warn, high] }
+        companyId: { type: string }
+        title: { type: string }
+        detail: { type: string }
+        coverId: { type: [string, 'null'] }
+        coverKind: { oneOf: [{ $ref: '#/components/schemas/CoverKind' }, { type: 'null' }] }
+        expiresOn: { type: [string, 'null'], format: date }
+        daysLeft: { type: [integer, 'null'] }
+    CoverIssueKind:
+      type: string
+      enum: [expired, expired_while_renewing, expiring, missing, below_minimum]
+    CoverFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CoverFlag' }
+    CompanyCoverClearance:
+      type: object
+      required: [companyId, state, requirementsSet, coverCount, issues]
+      properties:
+        companyId: { type: string }
+        state: { type: string, enum: [cleared, warning, blocked] }
+        requirementsSet:
+          {
+            type: boolean,
+            description: False when the project has set no requirements,
+            so nothing can be missing.,
+          }
+        coverCount: { type: integer }
+        issues:
+          type: array
+          items:
+            type: object
+            required: [kind, level, coverId, coverKind, expiresOn, daysLeft, message]
+            properties:
+              kind: { $ref: '#/components/schemas/CoverIssueKind' }
+              level: { type: string, enum: [blocking, warning] }
+              coverId: { type: [string, 'null'] }
+              coverKind: { oneOf: [{ $ref: '#/components/schemas/CoverKind' }, { type: 'null' }] }
+              expiresOn: { type: [string, 'null'], format: date }
+              daysLeft: { type: [integer, 'null'] }
+              message: { type: string }
     UpdateIncidentRequest:
       type: object
       additionalProperties: false
