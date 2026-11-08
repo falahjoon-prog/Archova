@@ -1,4 +1,4 @@
--- Composed from modules/correspondence/db/migrations/20261108070000_correspondence_emails.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/correspondence/db/migrations/20261108070100_correspondence_emails.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Emails sent about a correspondence item to people on the project. The worker claims queued rows and sends them;
 -- the mail carries the number, subject, the sender's note and a link, never the body of the item.
 create table correspondence.item_emails (

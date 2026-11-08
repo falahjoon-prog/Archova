@@ -1,4 +1,4 @@
--- Composed from modules/correspondence/db/migrations/20261107110100_correspondence_private_fields_history.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/correspondence/db/migrations/20261108100000_correspondence_private_fields_history.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- correspondence: a private flag with a who-can-see list, type-specific fields, and a change history.
 
 -- Extra fields a type asks for (for example a Construction Start Date): [{key, label, kind, required}], at most 12.
