@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@archova/kernel": "workspace:*",
+    "@archova/domain": "workspace:*",
     "@archova/mod-access": "workspace:*",
     "@archova/mod-ai": "workspace:*",
     "@archova/mod-backoffice": "workspace:*",

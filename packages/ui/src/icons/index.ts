@@ -79,6 +79,7 @@ export {
   FileUp as ImportsIcon,
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
+  BadgeCheck as WarrantyIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,

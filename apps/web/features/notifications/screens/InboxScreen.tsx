@@ -21,6 +21,8 @@ function target(orgSlug: string, n: Notification): string | null {
     return webRoutes.tenderPackage(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'contract') return webRoutes.contract(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'incident') return webRoutes.incidents(orgSlug, n.projectId, n.entityId);
+  if (n.entityType === 'warranty_item')
+    return webRoutes.warrantyItem(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'conversation')
     return `${webRoutes.conversations(orgSlug, n.projectId)}?thread=${encodeURIComponent(n.entityId)}`;
   if (n.entityType === 'announcement')

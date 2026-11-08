@@ -8,7 +8,9 @@ import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
 import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
+import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
+import { createProductionService } from './application/production';
 import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
@@ -35,6 +37,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   const productivity = createProductivityService({
     access: deps.access,
     timesheetMinutes: deps.timesheetMinutes,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const production = createProductionService({
+    access: deps.access,
+    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
@@ -85,6 +92,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...tmTicketRoutes(services.database, tmTickets),
       ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
+      ...productionRoutes(services.database, production),
     },
     api: {
       ledgerSource: service.ledgerSource,

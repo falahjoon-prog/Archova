@@ -752,6 +752,25 @@ export const AskNovaParams = z.object({
 export const AskNovaBody = z.object({
   "question": z.string().min(1).max(1000),
 }).strict();
+export const AssistNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AssistNovaBody = z.object({
+  "question": z.string().min(1).max(1000),
+  "history": z.array(z.object({
+  "role": z.enum(["user", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict()).max(6).optional(),
+  "context": z.object({
+  "screen": z.string().max(60).optional(),
+  "record": z.object({
+  "type": z.string().min(1).max(40),
+  "id": z.string().min(1).max(80),
+  "label": z.string().max(120).optional(),
+}).strict().optional(),
+}).strict().optional(),
+}).strict();
 export const SearchProjectWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1100,6 +1119,12 @@ export const GetPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const GetPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const GetDbpInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDbpInsightsQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
 export const GetSustainabilityPortfolioParams = z.object({
@@ -1601,6 +1626,7 @@ export const ListDefectsQuery = z.object({
   "trade": z.string().min(1).max(100).optional(),
   "overdue": z.enum(["true", "false"]).optional(),
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "warrantyItemId": s.WarrantyItemRefSchema.optional(),
   "q": z.string().min(1).max(200).optional(),
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
@@ -1621,6 +1647,46 @@ export const UpdateDefectParams = z.object({
   "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const UpdateDefectBody = s.UpdateDefectRequestSchema;
+export const ListWarrantyItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyItemsQuery = z.object({
+  "state": s.WarrantyStateSchema.optional(),
+  "system": s.WarrantySystemSchema.optional(),
+});
+export const CreateWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateWarrantyItemBody = s.CreateWarrantyItemRequestSchema;
+export const GetWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWarrantyItemBody = s.UpdateWarrantyItemRequestSchema;
+export const DeleteWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyClaimsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyClaimsQuery = z.object({
+  "warrantyItemId": s.WarrantyItemRefSchema.optional(),
+});
+export const GetWarrantySummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const TransitionDefectParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3428,6 +3494,37 @@ export const SetCostCodeProductionParams = z.object({
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
 });
 export const SetCostCodeProductionBody = s.CostCodeProductionSchema;
+export const GetProductionReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetProductionReportQuery = z.object({
+  "trade": z.string().max(60).optional(),
+  "location": z.string().max(80).optional(),
+  "includeArchived": z.boolean().optional(),
+});
+export const CreateProductionItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProductionItemBody = s.CreateProductionItemRequestSchema;
+export const UpdateProductionItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProductionItemBody = s.UpdateProductionItemRequestSchema;
+export const ListProductionEntriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const LogProductionEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+});
+export const LogProductionEntryBody = s.LogProductionEntryRequestSchema;
 export const LockBudgetParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3576,6 +3673,12 @@ export const SignTmTicketParams = z.object({
   "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
 });
 export const SignTmTicketBody = s.SignTmTicketRequestSchema;
+export const ReviewTmTicketParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "tmTicketId": z.string().regex(new RegExp("^tmt_[0-9A-Za-z]{26}$")),
+});
+export const ReviewTmTicketBody = s.ReviewTmTicketRequestSchema;
 export const VoidTmTicketParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5869,6 +5972,18 @@ export const operations = {
     query: null,
     body: AskNovaBody,
   },
+  assistNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/assist',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: AssistNovaParams,
+    query: null,
+    body: AssistNovaBody,
+  },
   searchProjectWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/search',
@@ -6408,6 +6523,18 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  getDbpInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/dbp-insights',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetDbpInsightsParams,
+    query: GetDbpInsightsQuery,
     body: null,
   },
   getSustainabilityPortfolio: {
@@ -7576,6 +7703,90 @@ export const operations = {
     params: UpdateDefectParams,
     query: null,
     body: UpdateDefectBody,
+  },
+  listWarrantyItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: ListWarrantyItemsParams,
+    query: ListWarrantyItemsQuery,
+    body: null,
+  },
+  createWarrantyItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWarrantyItemParams,
+    query: null,
+    body: CreateWarrantyItemBody,
+  },
+  getWarrantyItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: GetWarrantyItemParams,
+    query: null,
+    body: null,
+  },
+  updateWarrantyItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWarrantyItemParams,
+    query: null,
+    body: UpdateWarrantyItemBody,
+  },
+  deleteWarrantyItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteWarrantyItemParams,
+    query: null,
+    body: null,
+  },
+  listWarrantyClaims: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty/claims',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: ListWarrantyClaimsParams,
+    query: ListWarrantyClaimsQuery,
+    body: null,
+  },
+  getWarrantySummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty/summary',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: GetWarrantySummaryParams,
+    query: null,
+    body: null,
   },
   transitionDefect: {
     method: 'POST',
@@ -11457,6 +11668,66 @@ export const operations = {
     query: null,
     body: SetCostCodeProductionBody,
   },
+  getProductionReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/report',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetProductionReportParams,
+    query: GetProductionReportQuery,
+    body: null,
+  },
+  createProductionItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProductionItemParams,
+    query: null,
+    body: CreateProductionItemBody,
+  },
+  updateProductionItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProductionItemParams,
+    query: null,
+    body: UpdateProductionItemBody,
+  },
+  listProductionEntries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListProductionEntriesParams,
+    query: null,
+    body: null,
+  },
+  logProductionEntry: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/production/items/{itemId}/entries',
+    module: "financials",
+    auth: "required",
+    permission: "financials.production.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogProductionEntryParams,
+    query: null,
+    body: LogProductionEntryBody,
+  },
   lockBudget: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lock',
@@ -11792,6 +12063,18 @@ export const operations = {
     params: SignTmTicketParams,
     query: null,
     body: SignTmTicketBody,
+  },
+  reviewTmTicket: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tm-tickets/{tmTicketId}/review',
+    module: "financials",
+    auth: "required",
+    permission: "financials.tm_tickets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewTmTicketParams,
+    query: null,
+    body: ReviewTmTicketBody,
   },
   voidTmTicket: {
     method: 'POST',
