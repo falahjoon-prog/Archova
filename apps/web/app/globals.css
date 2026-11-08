@@ -3518,7 +3518,12 @@ fieldset.worker-card > legend {
 }
 .drw-group .ac-table {
   table-layout: fixed;
-  min-width: 56rem;
+  /* Fixed columns below total 58rem; the title column takes the rest, so keep
+     min-width at fixed total + 16rem or the title collapses to one letter per line. */
+  min-width: 74rem;
+}
+.drw-group .drw-col-title {
+  min-width: 16rem;
 }
 .drw-group .drw-col-no {
   width: 8rem;
