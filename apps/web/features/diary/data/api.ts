@@ -482,6 +482,13 @@ export function createDiaryApi(orgId: string): DiarySource {
       return rows.data.map((e) => toEntry(e, null, people));
     },
 
+    async gaps(projectId, from, to) {
+      const rows = await api
+        .GET(`${P}/gaps`, { params: { path: { orgId, projectId }, query: { from, to } } })
+        .then(unwrap);
+      return rows.data.map((g) => ({ date: g.date, state: g.state, sources: g.sources }));
+    },
+
     async getDay(projectId, date, today) {
       const d = await fetchDetail(projectId, date);
       if (d) return view(projectId, d);

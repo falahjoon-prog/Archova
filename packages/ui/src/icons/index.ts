@@ -69,6 +69,7 @@ export {
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,
   FileBadge as PermitsIcon,
+  ShieldCheck as InsuranceIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   Boxes as CoordinationIcon,

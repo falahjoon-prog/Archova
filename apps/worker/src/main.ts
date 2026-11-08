@@ -19,6 +19,7 @@ import { trustReminders } from './jobs/trust-reminders';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
 import { permitNotices } from './jobs/permit-notices';
+import { coverNotices } from './jobs/cover-notices';
 import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
@@ -120,6 +121,7 @@ async function main() {
     trustReminders,
     incidentActionNotices,
     permitNotices,
+    coverNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
