@@ -5483,6 +5483,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** The emails sent about the item and whether they went out. */
+        get: operations["listCorrespondenceEmails"];
+        put?: never;
+        /** Email a sent item to people on the project who can open it. The email names the item and carries the note and a link, not the item's text. */
+        post: operations["emailCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close": {
         parameters: {
             query?: never;
@@ -15398,6 +15420,25 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             version: number;
+        };
+        CorrespondenceEmail: {
+            id: string;
+            senderId: string;
+            recipientUserId: string;
+            message: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "failed";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        CorrespondenceEmailList: {
+            data: components["schemas"]["CorrespondenceEmail"][];
+        };
+        EmailCorrespondenceRequest: {
+            userIds: components["schemas"]["UserRef"][];
+            message?: string;
         };
         CorrespondenceResponse: {
             id: string;
@@ -30017,6 +30058,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceEmails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceEmailList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    emailCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceEmailList"];
                 };
             };
             default: components["responses"]["Problem"];

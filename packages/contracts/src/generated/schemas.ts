@@ -1589,6 +1589,22 @@ export const CorrespondenceDetailSchema = z.object({
 });
 export type CorrespondenceDetail = z.infer<typeof CorrespondenceDetailSchema>;
 
+export const CorrespondenceEmailSchema = z.object({
+  "id": z.string(),
+  "senderId": z.string(),
+  "recipientUserId": z.string(),
+  "message": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "failed"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type CorrespondenceEmail = z.infer<typeof CorrespondenceEmailSchema>;
+
+export const CorrespondenceEmailListSchema = z.object({
+  "data": z.array(CorrespondenceEmailSchema),
+});
+export type CorrespondenceEmailList = z.infer<typeof CorrespondenceEmailListSchema>;
+
 export const CorrespondencePageSchema = z.object({
   "data": z.array(CorrespondenceItemSchema),
   "nextCursor": z.string().nullable(),
@@ -3671,6 +3687,12 @@ export const EligibilityCheckSchema = z.object({
   "checkedAt": z.string().datetime({ offset: true }),
 });
 export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
+
+export const EmailCorrespondenceRequestSchema = z.object({
+  "userIds": z.array(UserRefSchema).min(1).max(20),
+  "message": z.string().max(1000).optional(),
+}).strict();
+export type EmailCorrespondenceRequest = z.infer<typeof EmailCorrespondenceRequestSchema>;
 
 export const EmergencyContactSchema = z.object({
   "name": z.string(),

@@ -1,12 +1,13 @@
 import { encodeId } from '@archova/domain';
 import type {
   CorrespondenceDetail,
+  CorrespondenceEmail,
   CorrespondenceItem,
   CorrespondenceResponse,
   CorrespondenceTemplate,
   CorrespondenceType,
 } from '@archova/contracts';
-import type { ItemView, ResponseRow, TypeRow } from '../application/correspondence';
+import type { EmailRow, ItemView, ResponseRow, TypeRow } from '../application/correspondence';
 import type { TypeTemplate } from '../domain/templates';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -79,4 +80,16 @@ export const toDetail = (d: {
 }): CorrespondenceDetail => ({
   item: toItemDto(d.item),
   responses: d.responses.map(toResponse),
+});
+
+export const toEmails = (rows: EmailRow[]): { data: CorrespondenceEmail[] } => ({
+  data: rows.map((r) => ({
+    id: encodeId('correspondenceEmail', r.id),
+    senderId: encodeId('user', r.senderId),
+    recipientUserId: encodeId('user', r.recipientUserId),
+    message: r.message,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+    sentAt: isoOrNull(r.sentAt),
+  })),
 });

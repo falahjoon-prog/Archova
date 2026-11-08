@@ -7386,6 +7386,42 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/emails:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: listCorrespondenceEmails
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: The emails sent about the item and whether they went out.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceEmailList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: emailCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.send
+      summary: Email a sent item to people on the project who can open it. The email names the item and carries the note and a link, not the item's text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailCorrespondenceRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceEmailList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -22238,6 +22274,35 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    CorrespondenceEmail:
+      type: object
+      required: [id, senderId, recipientUserId, message, status, createdAt, sentAt]
+      properties:
+        id: { type: string }
+        senderId: { type: string }
+        recipientUserId: { type: string }
+        message: { type: string }
+        status: { type: string, enum: [queued, sending, sent, failed] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+    CorrespondenceEmailList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceEmail' }
+    EmailCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        message: { type: string, maxLength: 1000 }
     CorrespondenceResponse:
       type: object
       required: [id, authorId, authorCompanyId, body, fileIds, sentAt]
