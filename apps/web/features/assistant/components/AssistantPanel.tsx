@@ -10,7 +10,7 @@ import { resolveCitation } from '@/shared/lib/citations';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { askNova, askNovaHelp, sendAnswerFeedback } from '../data/ask';
+import { askNovaHelp, assistNova, sendAnswerFeedback, type AssistTurn } from '../data/ask';
 import { actionRedirect } from '../data/actions';
 import { errorHelpAnswer, navHelpAnswer } from '../data/help';
 import type { ErrorView } from '@/shared/lib/errors';
@@ -150,7 +150,13 @@ export function AssistantPanel() {
   const update = (id: number, patch: Partial<Turn>) =>
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = async (id: number, question: string, s: AssistantScope, error?: ErrorView) => {
+  const run = async (
+    id: number,
+    question: string,
+    s: AssistantScope,
+    error?: ErrorView,
+    history: AssistTurn[] = [],
+  ) => {
     const controller = new AbortController();
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
@@ -169,7 +175,17 @@ export function AssistantPanel() {
               s,
               todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
             )))
-          : await askNova(org.orgId, s.projectId, question, controller.signal));
+          : await assistNova(
+              org.orgId,
+              s.projectId,
+              question,
+              // The screen and record the person has open, so "this" means something (ai/07 §3).
+              {
+                ...(s.record ? { screen: s.record.type, record: s.record } : {}),
+              },
+              history,
+              controller.signal,
+            ));
       if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
@@ -187,6 +203,14 @@ export function AssistantPanel() {
   const ask = (question: string, error?: ErrorView) => {
     const q = question.trim();
     if (!q || busy || exhausted) return;
+    // The last few finished exchanges, so a follow-up ("and the defects?") keeps its meaning.
+    const history: AssistTurn[] = turns
+      .filter((t) => t.status === 'done' && t.answer)
+      .slice(-3)
+      .flatMap((t) => [
+        { role: 'user' as const, text: t.question.slice(0, 1500) },
+        { role: 'nova' as const, text: t.answer!.text.slice(0, 1500) },
+      ]);
     const id = nextId.current++;
     const turn: Turn = {
       id,
@@ -201,7 +225,7 @@ export function AssistantPanel() {
     };
     setTurns((ts) => [...ts, turn]);
     setDraft('');
-    void run(id, q, effective, error);
+    void run(id, q, effective, error, history);
   };
 
   // "Ask Nova what to do" on an error alert: explain it and suggest a fix, once per click.

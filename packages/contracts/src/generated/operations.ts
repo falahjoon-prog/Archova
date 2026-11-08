@@ -752,6 +752,25 @@ export const AskNovaParams = z.object({
 export const AskNovaBody = z.object({
   "question": z.string().min(1).max(1000),
 }).strict();
+export const AssistNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AssistNovaBody = z.object({
+  "question": z.string().min(1).max(1000),
+  "history": z.array(z.object({
+  "role": z.enum(["user", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict()).max(6).optional(),
+  "context": z.object({
+  "screen": z.string().max(60).optional(),
+  "record": z.object({
+  "type": z.string().min(1).max(40),
+  "id": z.string().min(1).max(80),
+  "label": z.string().max(120).optional(),
+}).strict().optional(),
+}).strict().optional(),
+}).strict();
 export const SearchProjectWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5844,6 +5863,18 @@ export const operations = {
     params: AskNovaParams,
     query: null,
     body: AskNovaBody,
+  },
+  assistNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/assist',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: AssistNovaParams,
+    query: null,
+    body: AssistNovaBody,
   },
   searchProjectWithNova: {
     method: 'POST',

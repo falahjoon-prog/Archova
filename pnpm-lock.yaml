@@ -2453,6 +2453,9 @@ importers:
 
   packages/compose:
     dependencies:
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@archova/kernel':
         specifier: workspace:*
         version: link:../kernel

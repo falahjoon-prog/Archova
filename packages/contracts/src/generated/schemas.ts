@@ -5914,6 +5914,23 @@ export const NovaAnswerSchema = z.object({
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
+export const NovaAssistAnswerSchema = z.object({
+  "runId": z.string().nullable(),
+  "found": z.boolean(),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "sourceType": z.string(),
+  "sourceId": z.string(),
+  "title": z.string(),
+  "quote": z.string(),
+}).strict()),
+  "lookups": z.array(z.object({
+  "tool": z.string(),
+  "summary": z.string(),
+}).strict()),
+}).strict();
+export type NovaAssistAnswer = z.infer<typeof NovaAssistAnswerSchema>;
+
 export const NovaCaptureScanSchema = z.object({
   "runId": z.string(),
   "scanId": z.string(),
