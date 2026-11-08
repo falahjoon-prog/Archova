@@ -42,6 +42,7 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
     spent: '0.00',
     variance: '0.00',
     overBudgetCodes: 0,
+    monthly: [],
   },
   attention: 0,
   ...over,
@@ -93,6 +94,10 @@ describe('PortfolioScreen', () => {
             spent: '40000.00',
             variance: '-12500.00',
             overBudgetCodes: 2,
+            monthly: [
+              { month: '2026-09', spent: '10000.00' },
+              { month: '2026-11', spent: '30000.00' },
+            ],
           },
         }),
         project('prj_b', 'Bravo Lofts', { defects: tool(1, 0), rfis: tool(0, 0, true) }),
@@ -183,6 +188,7 @@ describe('PortfolioScreen charts', () => {
             spent: '40000.00',
             variance: '10000.00',
             overBudgetCodes: 0,
+            monthly: [],
           },
         }),
         project('prj_b', 'Bravo Lofts'),
@@ -208,6 +214,7 @@ describe('Status report', () => {
     spent: '1000.00',
     variance,
     overBudgetCodes: 0,
+    monthly: [],
   });
   const programme = (late: number, lateDays: number) => ({
     restricted: false,
@@ -243,7 +250,13 @@ describe('Status report', () => {
       },
       projects: [
         project('prj_a', 'Alpha Tower', {
-          budget: budget('100000.00', '90000.00', '10000.00'),
+          budget: {
+            ...budget('100000.00', '90000.00', '10000.00'),
+            monthly: [
+              { month: '2026-09', spent: '1000.00' },
+              { month: '2026-11', spent: '2500.00' },
+            ],
+          },
           programme: programme(0, 0),
         }),
         project('prj_b', 'Bravo Lofts', {
@@ -265,6 +278,9 @@ describe('Status report', () => {
     expect(within(bars).getByText('Over budget, off schedule').nextSibling).toBeTruthy();
     expect(within(bars).getByText('Not enough data')).toBeTruthy();
     expect(screen.getByText('4.5')).toBeTruthy(); // 9 days over 2 late tasks
+    const flow = screen.getByRole('list', { name: 'Spend by month with running total' });
+    expect(within(flow).getAllByRole('listitem')).toHaveLength(3); // Sep, a quiet Oct, Nov
+    expect(within(flow).getByText('Oct 2026')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Project'), 'prj_a');
     expect(screen.getByText('under budget')).toBeTruthy();
     expect(screen.getByText('90%')).toBeTruthy();

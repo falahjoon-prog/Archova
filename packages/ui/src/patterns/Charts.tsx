@@ -328,3 +328,47 @@ export function ToneBars({ bars, ariaLabel }: { bars: readonly TonedBar[]; ariaL
     </ul>
   );
 }
+
+export interface FlowRow {
+  id: string;
+  /** Month name, e.g. "Sep 2026". */
+  label: string;
+  value: number;
+  /** Text read out for the value, e.g. "$1.2m". */
+  formatted: string;
+  /** Running total up to and including this month, as text. */
+  cumulative: string;
+}
+
+/**
+ * Spend by month, one row per month on a shared scale, newest last. Each row reads out the month's amount and the
+ * running total as text, so the bar is never the only carrier of the number.
+ */
+export function FlowBars({ rows, ariaLabel }: { rows: readonly FlowRow[]; ariaLabel: string }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <ul className="ac-flow" aria-label={ariaLabel}>
+      {rows.map((r) => (
+        <li key={r.id} className="ac-flow__row">
+          <span className="ac-flow__label">{r.label}</span>
+          <span className="ac-bars__track" aria-hidden="true">
+            <span
+              className="ac-bars__bar"
+              style={{
+                width: `${(Math.max(0, r.value) / max) * 100}%`,
+                background: SLICE_COLOURS[0],
+              }}
+            />
+          </span>
+          <span className="ac-flow__value">
+            {r.formatted}
+            <span className="ac-flow__cum">
+              <span className="ac-visually-hidden">Running total </span>
+              {r.cumulative}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}

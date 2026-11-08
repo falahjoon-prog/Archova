@@ -14587,7 +14587,8 @@ components:
               }
     PortfolioBudget:
       type: object
-      required: [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes]
+      required:
+        [restricted, hasBudget, revised, forecastFinal, spent, variance, overBudgetCodes, monthly]
       description: >-
         Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
         margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
@@ -14609,6 +14610,22 @@ components:
         variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         overBudgetCodes:
           { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
+        monthly:
+          type: array
+          description: >-
+            Spend by calendar month, oldest first, with quiet months between the first and last as zero (the cash-flow
+            chart). Same sources and the same margin-line rule as spent. Empty when restricted or there is no spend.
+          items:
+            type: object
+            required: [month, spent]
+            properties:
+              month:
+                {
+                  type: string,
+                  pattern: '^\d{4}-(0[1-9]|1[0-2])$',
+                  description: 'Calendar month, YYYY-MM.',
+                }
+              spent: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     PortfolioProject:
       type: object
       required:
