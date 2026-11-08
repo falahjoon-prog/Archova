@@ -2219,6 +2219,9 @@ export const DrawingPinSchema = z.object({
 }).strict();
 export type DrawingPin = z.infer<typeof DrawingPinSchema>;
 
+export const WarrantyItemRefSchema = z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$"));
+export type WarrantyItemRef = z.infer<typeof WarrantyItemRefSchema>;
+
 export const CreateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300),
   "description": z.string().max(20000).optional(),
@@ -2238,6 +2241,7 @@ export const CreateDefectRequestSchema = z.object({
   "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().optional(),
   "pin": DrawingPinSchema,
+  "warrantyItemId": WarrantyItemRefSchema.optional(),
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
@@ -3193,6 +3197,24 @@ export const CreateVariationRequestSchema = z.object({
 }).strict();
 export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
 
+export const WarrantySystemSchema = z.enum(["structure", "roof", "waterproofing", "facade_windows", "plumbing", "electrical", "hvac", "fire_services", "lifts", "finishes", "appliances", "landscaping", "other"]);
+export type WarrantySystem = z.infer<typeof WarrantySystemSchema>;
+
+export const WarrantyResponsibleTypeSchema = z.enum(["builder", "subcontractor", "supplier"]);
+export type WarrantyResponsibleType = z.infer<typeof WarrantyResponsibleTypeSchema>;
+
+export const CreateWarrantyItemRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "system": WarrantySystemSchema,
+  "description": z.string().max(5000).optional(),
+  "responsibleType": WarrantyResponsibleTypeSchema,
+  "responsibleCompanyId": CompanyRefSchema.optional(),
+  "responsibleName": z.string().min(1).max(200).optional(),
+  "startDate": z.string().date(),
+  "durationMonths": z.number().int().min(1).max(600),
+}).strict();
+export type CreateWarrantyItemRequest = z.infer<typeof CreateWarrantyItemRequestSchema>;
+
 export const WasteTypeSchema = z.enum(["general", "concrete", "bricks_masonry", "timber", "metals", "plastics", "plasterboard", "soil_fill", "cardboard_paper", "glass", "green_waste", "hazardous", "asbestos", "other"]);
 export type WasteType = z.infer<typeof WasteTypeSchema>;
 
@@ -3380,6 +3402,7 @@ export const DefectSchema = z.object({
   "closedAt": z.string().datetime({ offset: true }).nullable(),
   "closedBy": z.string().nullable(),
   "source": DefectSourceSchema,
+  "warrantyItemId": z.string().nullable().optional(),
   "availableActions": z.array(DefectActionSchema),
   "createdBy": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -5950,7 +5973,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "announcement", "permit", "cover"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "announcement", "permit", "cover", "warranty_item"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -9538,6 +9561,7 @@ export const UpdateDefectRequestSchema = z.object({
   "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().nullable().optional(),
   "pin": DrawingPinSchema.optional(),
+  "warrantyItemId": z.union([WarrantyItemRefSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDefectRequest = z.infer<typeof UpdateDefectRequestSchema>;
 
@@ -10074,6 +10098,18 @@ export const UpdateToolboxTopicRequestSchema = z.object({
 }).strict();
 export type UpdateToolboxTopicRequest = z.infer<typeof UpdateToolboxTopicRequestSchema>;
 
+export const UpdateWarrantyItemRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "system": WarrantySystemSchema.optional(),
+  "description": z.string().max(5000).optional(),
+  "responsibleType": WarrantyResponsibleTypeSchema.optional(),
+  "responsibleCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "responsibleName": z.string().min(1).max(200).nullable().optional(),
+  "startDate": z.string().date().optional(),
+  "durationMonths": z.number().int().min(1).max(600).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateWarrantyItemRequest = z.infer<typeof UpdateWarrantyItemRequestSchema>;
+
 export const UpdateWorkerRequestSchema = z.object({
   "fullName": z.string().min(1).max(200).optional(),
   "companyId": z.union([CompanyRefSchema, z.null()]).optional(),
@@ -10149,6 +10185,84 @@ export const VoidTmTicketRequestSchema = z.object({
   "note": z.string().min(1).max(5000),
 }).strict();
 export type VoidTmTicketRequest = z.infer<typeof VoidTmTicketRequestSchema>;
+
+export const WarrantyClaimSchema = z.object({
+  "defectId": z.string(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "status": DefectStatusSchema,
+  "priority": DefectPrioritySchema,
+  "trade": z.string().nullable(),
+  "warrantyItemId": z.string().nullable(),
+  "assigneeCompanyId": z.string().nullable(),
+  "raisedAt": z.string().datetime({ offset: true }),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "daysOpen": z.number().int(),
+  "isOverdue": z.boolean(),
+});
+export type WarrantyClaim = z.infer<typeof WarrantyClaimSchema>;
+
+export const WarrantyClaimListSchema = z.object({
+  "data": z.array(WarrantyClaimSchema),
+});
+export type WarrantyClaimList = z.infer<typeof WarrantyClaimListSchema>;
+
+export const WarrantyFlagSchema = z.object({
+  "kind": z.enum(["warranty_expiring", "warranty_expired_open_claim", "claim_response_overdue", "repeat_claims"]),
+  "severity": z.enum(["info", "warning", "critical"]),
+  "message": z.string(),
+  "itemId": z.string().nullable(),
+  "claimId": z.string().nullable(),
+});
+export type WarrantyFlag = z.infer<typeof WarrantyFlagSchema>;
+
+export const WarrantyStateSchema = z.enum(["active", "expiring", "expired"]);
+export type WarrantyState = z.infer<typeof WarrantyStateSchema>;
+
+export const WarrantyItemSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "system": WarrantySystemSchema,
+  "description": z.string(),
+  "responsibleType": WarrantyResponsibleTypeSchema,
+  "responsibleCompanyId": z.string().nullable(),
+  "responsibleName": z.string().nullable(),
+  "startDate": z.string().date(),
+  "durationMonths": z.number().int(),
+  "expiryDate": z.string().date(),
+  "state": WarrantyStateSchema,
+  "daysToExpiry": z.number().int(),
+  "claimCount": z.number().int(),
+  "openClaimCount": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type WarrantyItem = z.infer<typeof WarrantyItemSchema>;
+
+export const WarrantyItemDetailSchema = z.object({
+  "item": WarrantyItemSchema,
+  "claims": z.array(WarrantyClaimSchema),
+});
+export type WarrantyItemDetail = z.infer<typeof WarrantyItemDetailSchema>;
+
+export const WarrantyItemListSchema = z.object({
+  "data": z.array(WarrantyItemSchema),
+});
+export type WarrantyItemList = z.infer<typeof WarrantyItemListSchema>;
+
+export const WarrantySummarySchema = z.object({
+  "itemCount": z.number().int(),
+  "expiringCount": z.number().int(),
+  "expiredCount": z.number().int(),
+  "openClaimCount": z.number().int(),
+  "closedClaimCount": z.number().int(),
+  "flags": z.array(WarrantyFlagSchema),
+});
+export type WarrantySummary = z.infer<typeof WarrantySummarySchema>;
 
 export const WasteDocketSchema = z.object({
   "id": z.string(),
