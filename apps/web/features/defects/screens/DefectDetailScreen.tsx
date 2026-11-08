@@ -16,6 +16,7 @@ import {
   TextField,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useSheetPicker } from '@/features/drawings';
@@ -32,7 +33,7 @@ import { useDefect, useDefectMutations, useDefectsSource } from '../hooks/useDef
 import { defectCan } from '../lib/lifecycle';
 import { PRIORITY_LABELS, STATUS_LABELS, formatDefectNumber, type Defect } from '../lib/types';
 
-type Pending = 'ready' | 'close' | 'reject' | 'dispute' | 'void' | 'reassign' | null;
+type Pending = 'ready' | 'close' | 'reject' | 'dispute' | 'void' | 'reassign' | 'reopen' | null;
 
 const DIALOG: Record<
   Exclude<Pending, null>,
@@ -47,6 +48,11 @@ const DIALOG: Record<
     title: 'Close defect',
     description: 'Closing confirms the fix was inspected. Add a photo as evidence if you have one.',
     confirm: 'Close defect',
+  },
+  reopen: {
+    title: 'Reopen',
+    description: 'The defect goes back to the company as open. They see your reason.',
+    confirm: 'Reopen',
   },
   reject: {
     title: 'Reject the fix',
@@ -127,7 +133,12 @@ function DefectView({ d }: { d: Defect }) {
       m.markReady.mutate({ id: d.id, note, photos }, done);
     } else if (pending === 'close') {
       m.close.mutate({ id: d.id, note, photos }, done);
-    } else if (pending === 'reject' || pending === 'dispute' || pending === 'void') {
+    } else if (
+      pending === 'reject' ||
+      pending === 'dispute' ||
+      pending === 'void' ||
+      pending === 'reopen'
+    ) {
       if (!note.trim()) return setProblem('Give a reason.');
       m.withReason.mutate({ id: d.id, action: pending, reason: note }, done);
     } else if (pending === 'reassign') {
@@ -145,6 +156,13 @@ function DefectView({ d }: { d: Defect }) {
 
   const actions = (
     <>
+      <BookmarkButton
+        entityType="defect"
+        entityId={d.id}
+        projectId={project.projectId}
+        title={`${formatDefectNumber(d.number)} ${d.title}`}
+        subtitle={STATUS_LABELS[d.status]}
+      />
       {defectCan(d, 'issue') && d.assigneeCompanyId ? (
         <Button disabled={m.issue.isPending} onClick={() => m.issue.mutate(d.id)}>
           Send to company
@@ -162,6 +180,11 @@ function DefectView({ d }: { d: Defect }) {
             </Button>
           ) : null}
         </>
+      ) : null}
+      {defectCan(d, 'reopen') ? (
+        <Button variant="secondary" onClick={() => open('reopen')}>
+          Reopen
+        </Button>
       ) : null}
       {defectCan(d, 'reassign') ? (
         <Button
@@ -201,8 +224,10 @@ function DefectView({ d }: { d: Defect }) {
       }
     : null;
 
+  const personOrDash = (id: string | null) => (id ? dir.personName(id) : '—');
   const photoName = (id: string) => d.photos.find((p) => p.id === id)?.name ?? id;
-  const needsReason = pending === 'reject' || pending === 'dispute' || pending === 'void';
+  const needsReason =
+    pending === 'reject' || pending === 'dispute' || pending === 'void' || pending === 'reopen';
   const takesPhotos = pending === 'ready' || pending === 'close';
 
   return (
@@ -271,6 +296,20 @@ function DefectView({ d }: { d: Defect }) {
                     ),
                   },
                   { label: 'Trade', value: d.trade || '—' },
+                  { label: 'Punch item manager', value: personOrDash(d.managerUserId) },
+                  { label: 'Final approver', value: personOrDash(d.finalApproverUserId) },
+                  {
+                    label: 'Assignees',
+                    value: d.assigneeUserIds.length
+                      ? d.assigneeUserIds.map((u) => dir.personName(u)).join(', ')
+                      : '—',
+                  },
+                  {
+                    label: 'Distribution',
+                    value: d.distributionUserIds.length
+                      ? d.distributionUserIds.map((u) => dir.personName(u)).join(', ')
+                      : '—',
+                  },
                   { label: 'Priority', value: PRIORITY_LABELS[d.priority] },
                   {
                     label: 'Raised by',

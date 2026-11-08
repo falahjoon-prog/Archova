@@ -3500,6 +3500,70 @@ fieldset.worker-card > legend {
   overflow-wrap: anywhere;
 }
 
+/* Project directions: pinned locations with access notes, and Nova's pick of entrance */
+.location-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.location {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.location:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.location > p,
+.location-nova__result > p {
+  margin: 0;
+}
+.location__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.location__address,
+.location__note {
+  overflow-wrap: anywhere;
+}
+.location__note {
+  white-space: pre-line;
+}
+.location__directions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+}
+.location-nova {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.location-nova > .panel-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.location-nova__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 /* Project overview (v4 mockup, john 6 Nov 2026): two columns of cards above the full-width members table. */
 .project-overview {
   display: grid;

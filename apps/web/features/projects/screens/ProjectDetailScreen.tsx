@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { BookmarksCard } from '@/features/bookmarks';
 import { ConversationsCard } from '@/features/conversations';
 import { RecentsCard } from '@/features/recents';
 import { KeyDatesCard } from '@/features/schedule';
@@ -13,6 +14,7 @@ import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { DirectionsCard } from '../components/DirectionsCard';
 import { PhotosCard } from '../components/PhotosCard';
 import { MemberList } from '../components/MemberList';
 import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
@@ -104,11 +106,16 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             timeZone={p.timezone}
             permissions={permissions.data as EffectivePermissions | undefined}
           />
+          <BookmarksCard projectId={projectId} />
           <ConversationsCard projectId={projectId} timeZone={p.timezone} />
         </div>
         <div className="project-overview__col">
           <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
           <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <DirectionsCard
+            projectId={projectId}
+            permissions={permissions.data as EffectivePermissions | undefined}
+          />
           <RecentsCard projectId={projectId} />
           <PhotosCard projectId={projectId} timeZone={p.timezone} />
         </div>
