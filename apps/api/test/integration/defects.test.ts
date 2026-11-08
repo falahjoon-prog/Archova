@@ -181,7 +181,7 @@ describe('Defect lifecycle (product/06)', () => {
     expect(closed.json().defect).toMatchObject({
       status: 'closed',
       closedBy: s.pm.userId,
-      availableActions: [],
+      availableActions: ['reopen'],
     });
     expect(closed.json().events.map((e: { action: string }) => e.action)).toEqual([
       'create',
@@ -391,5 +391,155 @@ describe('Defect lifecycle (product/06)', () => {
     ]);
     expect((await near(s.sub.userId, 'external')).map((d) => d.title)).toEqual(['Open here']);
     expect(await near(s.other.userId, 'external')).toEqual([]);
+  });
+});
+
+describe('Punch list roles', () => {
+  it('names a manager, final approver, assignees and a distribution list, and reopens after close', async () => {
+    const s = await setup();
+    const made = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Damaged siding',
+      assigneeCompanyId: s.subCo.companyId,
+      assigneeUserIds: [s.sub.userId],
+      managerUserId: s.pm.userId,
+      finalApproverUserId: s.pm.userId,
+      distributionUserIds: [s.other.userId],
+      pin: s.pin,
+    });
+    expect(made.statusCode).toBe(201);
+    const d = made.json().defect;
+    expect(d).toMatchObject({
+      assigneeUserId: s.sub.userId,
+      assigneeUserIds: [s.sub.userId],
+      managerUserId: s.pm.userId,
+      finalApproverUserId: s.pm.userId,
+      distributionUserIds: [s.other.userId],
+    });
+
+    const issued = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'issue' },
+      { 'if-match': etagOf(made) },
+    );
+    // A distribution member sees the item although it is another company's.
+    expect((await s.other.browser.get(`${s.base}/defects/${d.id}`)).statusCode).toBe(200);
+
+    // The named approver closes it (the builder with no approver could too), then reopens it with a reason.
+    const closed = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(closed.statusCode).toBe(200);
+    const noReason = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'reopen' },
+      { 'if-match': etagOf(closed) },
+    );
+    expect(noReason.json().code).toBe('defect.reason_required');
+    const reopened = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'reopen', reason: 'Crack is back' },
+      { 'if-match': etagOf(closed) },
+    );
+    expect(reopened.statusCode).toBe(200);
+    expect(reopened.json().defect).toMatchObject({
+      status: 'open',
+      closedAt: null,
+      closedBy: null,
+    });
+    expect(reopened.json().events.at(-1)).toMatchObject({
+      action: 'reopen',
+      note: 'Crack is back',
+    });
+
+    // Naming someone who is not on the project is refused.
+    const stranger = await s.pm.browser.patch(
+      `${s.base}/defects/${d.id}`,
+      { finalApproverUserId: (await signUp(t.app, 'def-stranger')).userId },
+      { 'if-match': etagOf(reopened) },
+    );
+    expect(stranger.statusCode).toBe(422);
+  });
+
+  it('refuses close, reject and reopen from anyone but the named final approver', async () => {
+    const s = await setup();
+    const made = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Scuffed door',
+      assigneeCompanyId: s.subCo.companyId,
+      finalApproverUserId: s.sub.userId,
+      pin: s.pin,
+    });
+    const d = made.json().defect;
+    const issued = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'issue' },
+      { 'if-match': etagOf(made) },
+    );
+    expect(issued.json().defect.availableActions).not.toContain('close');
+    const close = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(close.statusCode).toBe(403);
+    expect(close.json().code).toBe('defect.not_allowed');
+  });
+});
+
+describe('Stand-in approver and close evidence', () => {
+  it('requires evidence to close when asked, and records who a stand-in acted for', async () => {
+    const s = await setup();
+    const made = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Loose handrail',
+      assigneeCompanyId: s.subCo.companyId,
+      finalApproverUserId: s.other.userId,
+      approverDelegateUserId: s.pm.userId,
+      requireCloseEvidence: true,
+      pin: s.pin,
+    });
+    expect(made.statusCode).toBe(201);
+    const d = made.json().defect;
+    expect(d).toMatchObject({
+      approverDelegateUserId: s.pm.userId,
+      requireCloseEvidence: true,
+    });
+    const issued = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'issue' },
+      { 'if-match': etagOf(made) },
+    );
+    const noEvidence = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(noEvidence.statusCode).toBe(422);
+    expect(noEvidence.json().code).toBe('defect.evidence_required');
+    const closed = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close', reason: 'Checked and tightened' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(closed.statusCode).toBe(200);
+    expect(closed.json().events.at(-1)).toMatchObject({
+      action: 'close',
+      actorId: s.pm.userId,
+      onBehalfOf: s.other.userId,
+    });
+  });
+
+  it('refuses a stand-in whose dates run backwards', async () => {
+    const s = await setup();
+    const res = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Cracked sill',
+      assigneeCompanyId: s.subCo.companyId,
+      finalApproverUserId: s.pm.userId,
+      approverDelegateUserId: s.sub.userId,
+      approverDelegateFrom: '2030-02-01',
+      approverDelegateUntil: '2030-01-01',
+      pin: s.pin,
+    });
+    expect(res.statusCode).toBe(422);
   });
 });

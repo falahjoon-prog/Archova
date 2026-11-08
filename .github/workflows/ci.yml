@@ -13,6 +13,9 @@ on:
   push:
     branches: [main]
 
+# Runner choice: unset repo variables mean GitHub-hosted runners. Setting CI_RUNNER (and CI_RUNNER_INTEGRATION for the
+# job that publishes fixed Postgres/Valkey ports) to a JSON label array, e.g. ["self-hosted","archova"], moves the jobs
+# to the self-hosted runner (scripts/ci/setup-selfhosted-runner.sh). Delete the variables to fall back instantly.
 concurrency:
   group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   # Never cancel a run on main: each push to main must finish its own full run.
@@ -24,7 +27,7 @@ permissions:
 jobs:
   changes:
     name: What changed
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 5
     outputs:
       all: ${{ steps.scope.outputs.all }}
@@ -51,21 +54,20 @@ jobs:
           echo "backend=$(any '^(modules/|apps/(api|worker|realtime)/|db/|packages/(kernel|domain|compose|contracts|time|testing)/)')" >> "$GITHUB_OUTPUT"
           echo "ai=$(any '^(modules/ai/|packages/ai-prompts/)')" >> "$GITHUB_OUTPUT"
 
-  checks:
-    name: Lint, typecheck, unit tests, build
+  # The old single job hit its 20-minute limit on main and on pull requests. It is now three jobs that run side by
+  # side, each with its own turbo cache, and `checks` below keeps the original name so the required check holds.
+  static:
+    name: Static checks (format, lint, typecheck)
     needs: changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          turbo-cache-key: static
       - name: Format
         run: pnpm format:check
       - name: Generated contracts are up to date
@@ -79,22 +81,90 @@ jobs:
       - name: Nova evals (fake provider; schema, citation and safety bars gate, ai/06 §4)
         if: needs.changes.outputs.all == 'true' || needs.changes.outputs.ai == 'true' || github.event_name == 'push'
         run: pnpm --filter @archova/mod-ai eval
-      - name: Lint, typecheck, unit tests, build
+      - name: Lint and typecheck
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           ALL: ${{ needs.changes.outputs.all }}
         run: |
           if [ -n "$BASE_SHA" ] && [ "$ALL" != "true" ]; then
-            pnpm turbo run lint typecheck test build --filter="...[$BASE_SHA]"
+            pnpm turbo run lint typecheck --filter="...[$BASE_SHA]"
           else
-            pnpm turbo run lint typecheck test build
+            pnpm turbo run lint typecheck
           fi
+
+  unit:
+    name: Unit tests
+    needs: changes
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          turbo-cache-key: unit
+      - name: Unit tests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ALL: ${{ needs.changes.outputs.all }}
+        run: |
+          if [ -n "$BASE_SHA" ] && [ "$ALL" != "true" ]; then
+            pnpm turbo run test --filter="...[$BASE_SHA]"
+          else
+            pnpm turbo run test
+          fi
+
+  build:
+    name: Build
+    needs: changes
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          turbo-cache-key: build
+      # Next.js keeps its compiler cache outside the turbo outputs; restoring it makes an unchanged app build fast.
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ github.sha }}
+          restore-keys: next-
+      - name: Build
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ALL: ${{ needs.changes.outputs.all }}
+        run: |
+          if [ -n "$BASE_SHA" ] && [ "$ALL" != "true" ]; then
+            pnpm turbo run build --filter="...[$BASE_SHA]"
+          else
+            pnpm turbo run build
+          fi
+
+  # The required check. Its name is what branch protection looks for, so it stays; it passes only when all three
+  # jobs above passed.
+  checks:
+    name: Lint, typecheck, unit tests, build
+    needs: [static, unit, build]
+    if: always()
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: All three passed
+        env:
+          RESULTS: ${{ needs.static.result }} ${{ needs.unit.result }} ${{ needs.build.result }}
+        run: |
+          echo "static unit build: $RESULTS"
+          for r in $RESULTS; do [ "$r" = "success" ] || exit 1; done
 
   integration:
     name: Integration tests (Postgres + Valkey, RLS on)
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.all == 'true' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-latest' }}
     timeout-minutes: 20
     services:
       postgres:

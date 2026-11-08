@@ -63,4 +63,31 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
   // Site supervisors log quantity in place against the production plan; the plan itself needs budget.manage.
   { key: 'financials.production.log', scope: 'project', tool: 'budget', level: 'standard' },
   { key: 'financials.direct_costs.manage', scope: 'project', tool: 'budget', level: 'standard' },
+  // T&M (daywork) tickets sit on the payment_claims tool: the Project Manager signs as the contractor and the
+  // Superintendent as the principal's representative, both builder staff (the use cases refuse outsiders). Signing is
+  // its own key so a signer need not be able to convert a ticket into money, which is admin.
+  {
+    key: 'financials.tm_tickets.read',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.tm_tickets.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.tm_tickets.sign',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.tm_tickets.convert',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'admin',
+  },
 ];
