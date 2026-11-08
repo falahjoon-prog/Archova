@@ -2,6 +2,7 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import { createIncidentService } from './application/incidents';
 import { createSwmsService, type SafetyDeps } from './application/swms';
 import { createReportingSources } from './application/reportingSources';
+import { createToolboxService } from './application/toolbox';
 import { createReadinessService } from './application/readiness';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -12,11 +13,12 @@ export type { SafetyDeps } from './application/swms';
 export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const swms = createSwmsService(deps);
   const incidents = createIncidentService(deps);
+  const toolbox = createToolboxService(deps);
   const readiness = createReadinessService(deps);
   const reportingSources = createReportingSources(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
-    routes: safetyRoutes(services.database, swms, incidents),
+    routes: safetyRoutes(services.database, swms, incidents, toolbox),
     api: {
       /** What the mobile pull reads (modules/sync). */
       syncSource: incidentSyncSource(incidents),

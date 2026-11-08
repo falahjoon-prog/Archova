@@ -64,6 +64,7 @@ export type ProjectTool =
   | 'observations'
   | 'swms'
   | 'incidents'
+  | 'toolbox'
   | 'environment'
   | 'permits'
   | 'insurance'

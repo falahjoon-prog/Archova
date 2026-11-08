@@ -9,6 +9,7 @@ import {
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  ToolboxIcon,
   IncidentsIcon,
   PermitsIcon,
   InsuranceIcon,
@@ -229,6 +230,11 @@ export function projectToolGroups(
       icon: SwmsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.toolboxTalks(orgSlug, projectId),
+      label: 'Toolbox talks',
+      icon: ToolboxIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
@@ -358,6 +364,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Inspections',
       'Observations',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
