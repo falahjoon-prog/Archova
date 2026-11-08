@@ -16,6 +16,7 @@ import {
   type RasterizePage,
 } from '@archova/mod-ai';
 import { createAccessModule } from '@archova/mod-access';
+import { buildNovaTools, type NovaToolSources } from './nova-tools';
 import {
   TRIAL_ENTITLEMENTS,
   createBillingModule,
@@ -153,6 +154,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   );
   // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
+  let schedulingForNova: (() => ReturnType<NovaToolSources['scheduling']>) | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
@@ -449,6 +451,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),
+    novaTools: buildNovaTools({
+      rfis: rfis.api,
+      defects: defects.api,
+      financials: financials.api,
+      scheduling: () => schedulingForNova!(),
+    }),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
@@ -473,6 +481,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     access: access.api,
   });
+
+  schedulingForNova = () => scheduling.api;
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 

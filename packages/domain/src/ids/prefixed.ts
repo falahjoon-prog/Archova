@@ -164,6 +164,8 @@ export const ID_PREFIXES = {
   directCost: 'dcs',
   tmTicket: 'tmt',
   productionLogEntry: 'pgl',
+  productionItem: 'pit',
+  productionEntry: 'pen',
   budgetAdjustment: 'bad',
   budgetSnapshot: 'bsn',
   prequalTemplate: 'pqt',

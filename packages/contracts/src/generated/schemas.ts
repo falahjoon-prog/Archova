@@ -2824,6 +2824,17 @@ export const CreatePrequalificationRequestSchema = z.object({
 }).strict();
 export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificationRequestSchema>;
 
+export const CreateProductionItemRequestSchema = z.object({
+  "name": z.string().min(1).max(80),
+  "uom": z.string().min(1).max(20),
+  "trade": z.string().max(60).nullable().optional(),
+  "location": z.string().max(80).nullable().optional(),
+  "plannedQuantity": z.number().max(999999999999),
+  "plannedStart": z.string().date(),
+  "plannedFinish": z.string().date(),
+});
+export type CreateProductionItemRequest = z.infer<typeof CreateProductionItemRequestSchema>;
+
 export const LocationKindSchema = z.enum(["site_office", "gate", "laydown", "parking", "hospital", "other"]);
 export type LocationKind = z.infer<typeof LocationKindSchema>;
 
@@ -5529,6 +5540,14 @@ export const LogEquipmentHoursRequestSchema = z.object({
 }).strict();
 export type LogEquipmentHoursRequest = z.infer<typeof LogEquipmentHoursRequestSchema>;
 
+export const LogProductionEntryRequestSchema = z.object({
+  "loggedOn": z.string().date(),
+  "quantity": z.number().min(-999999999999).max(999999999999),
+  "crew": z.string().max(60).nullable().optional(),
+  "note": z.string().max(300).nullable().optional(),
+});
+export type LogProductionEntryRequest = z.infer<typeof LogProductionEntryRequestSchema>;
+
 export const LogQuantityRequestSchema = z.object({
   "loggedOn": z.string().date(),
   "quantity": z.number().min(-999999999999).max(999999999999),
@@ -5936,6 +5955,23 @@ export const NovaAnswerSchema = z.object({
   "nccNote": z.string().optional(),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaAssistAnswerSchema = z.object({
+  "runId": z.string().nullable(),
+  "found": z.boolean(),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "sourceType": z.string(),
+  "sourceId": z.string(),
+  "title": z.string(),
+  "quote": z.string(),
+}).strict()),
+  "lookups": z.array(z.object({
+  "tool": z.string(),
+  "summary": z.string(),
+}).strict()),
+}).strict();
+export type NovaAssistAnswer = z.infer<typeof NovaAssistAnswerSchema>;
 
 export const NovaCaptureScanSchema = z.object({
   "runId": z.string(),
@@ -7180,6 +7216,52 @@ export const ProblemSchema = z.object({
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
+export const ProductionCurvePointSchema = z.object({
+  "date": z.string().date(),
+  "planned": z.number(),
+  "actual": z.number().nullable(),
+});
+export type ProductionCurvePoint = z.infer<typeof ProductionCurvePointSchema>;
+
+export const ProductionCurveSchema = z.object({
+  "uom": z.string(),
+  "points": z.array(ProductionCurvePointSchema),
+});
+export type ProductionCurve = z.infer<typeof ProductionCurveSchema>;
+
+export const ProductionEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^pen_[0-9A-Za-z]{26}$")),
+  "loggedOn": z.string().date(),
+  "quantity": z.number(),
+  "crew": z.string().nullable(),
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ProductionEntry = z.infer<typeof ProductionEntrySchema>;
+
+export const ProductionItemSchema = z.object({
+  "id": z.string().regex(new RegExp("^pit_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "uom": z.string(),
+  "trade": z.string().nullable(),
+  "location": z.string().nullable(),
+  "plannedQuantity": z.number(),
+  "plannedStart": z.string().date(),
+  "plannedFinish": z.string().date(),
+  "archived": z.boolean(),
+});
+export type ProductionItem = z.infer<typeof ProductionItemSchema>;
+
+export const ProductionItemRowSchema = z.object({
+  "item": ProductionItemSchema,
+  "actual": z.number(),
+  "pctComplete": z.number(),
+  "plannedToDate": z.number(),
+  "variance": z.number(),
+  "status": z.enum(["not_started", "on_track", "behind", "complete"]),
+});
+export type ProductionItemRow = z.infer<typeof ProductionItemRowSchema>;
+
 export const ProductionLogEntrySchema = z.object({
   "id": z.string().regex(new RegExp("^pgl_[0-9A-Za-z]{26}$")),
   "loggedOn": z.string().date(),
@@ -7188,6 +7270,34 @@ export const ProductionLogEntrySchema = z.object({
   "createdAt": z.string().datetime({ offset: true }),
 });
 export type ProductionLogEntry = z.infer<typeof ProductionLogEntrySchema>;
+
+export const ProductionRateFlagSchema = z.object({
+  "kind": z.enum(["trade", "crew"]),
+  "name": z.string(),
+  "uom": z.string(),
+  "recentRate": z.number(),
+  "baselineRate": z.number(),
+  "dropPct": z.number(),
+});
+export type ProductionRateFlag = z.infer<typeof ProductionRateFlagSchema>;
+
+export const ProductionRollupSchema = z.object({
+  "name": z.string().nullable(),
+  "uom": z.string(),
+  "planned": z.number(),
+  "actual": z.number(),
+});
+export type ProductionRollup = z.infer<typeof ProductionRollupSchema>;
+
+export const ProductionReportSchema = z.object({
+  "asOf": z.string().date(),
+  "items": z.array(ProductionItemRowSchema),
+  "curves": z.array(ProductionCurveSchema),
+  "byTrade": z.array(ProductionRollupSchema),
+  "byLocation": z.array(ProductionRollupSchema),
+  "flags": z.array(ProductionRateFlagSchema),
+});
+export type ProductionReport = z.infer<typeof ProductionReportSchema>;
 
 export const RichRunSchema = z.object({
   "text": z.string().max(2000),
@@ -7870,6 +7980,15 @@ export const RetentionReleaseSchema = z.object({
 })),
 });
 export type RetentionRelease = z.infer<typeof RetentionReleaseSchema>;
+
+export const TmReviewStageSchema = z.enum(["in_progress", "ready_for_review", "field_verified"]);
+export type TmReviewStage = z.infer<typeof TmReviewStageSchema>;
+
+export const ReviewTmTicketRequestSchema = z.object({
+  "stage": TmReviewStageSchema,
+  "note": z.string().min(1).max(1000).optional(),
+}).strict();
+export type ReviewTmTicketRequest = z.infer<typeof ReviewTmTicketRequestSchema>;
 
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
@@ -8943,6 +9062,10 @@ export const TmTicketSchema = z.object({
   "location": z.string().nullable(),
   "contractor": z.string().nullable(),
   "instructedBy": z.string().nullable(),
+  "reference": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "reviewStage": TmReviewStageSchema,
+  "verifyNote": z.string().nullable(),
   "origin": z.enum(["manual", "nova"]),
   "status": z.enum(["draft", "part_signed", "signed", "converted", "void"]),
   "total": FinancialsMoneySchema,
@@ -9024,6 +9147,8 @@ export const TmTicketRequestSchema = z.object({
   "location": z.string().min(1).max(200).optional(),
   "contractor": z.string().min(1).max(200).optional(),
   "instructedBy": z.string().min(1).max(200).optional(),
+  "reference": z.string().min(1).max(100).optional(),
+  "notes": z.string().max(5000).optional(),
   "origin": z.enum(["manual", "nova"]).optional(),
   "lines": z.array(TmTicketLineRequestSchema).min(1).max(200),
 }).strict();
@@ -9751,6 +9876,18 @@ export const UpdatePrequalificationRequestSchema = z.object({
   "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
 }).strict();
 export type UpdatePrequalificationRequest = z.infer<typeof UpdatePrequalificationRequestSchema>;
+
+export const UpdateProductionItemRequestSchema = z.object({
+  "name": z.string().min(1).max(80).optional(),
+  "uom": z.string().min(1).max(20).optional(),
+  "trade": z.string().max(60).nullable().optional(),
+  "location": z.string().max(80).nullable().optional(),
+  "plannedQuantity": z.number().max(999999999999).optional(),
+  "plannedStart": z.string().date().optional(),
+  "plannedFinish": z.string().date().optional(),
+  "archived": z.boolean().optional(),
+}).refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateProductionItemRequest = z.infer<typeof UpdateProductionItemRequestSchema>;
 
 export const UpdateProjectLocationRequestSchema = z.object({
   "name": z.string().min(1).max(120).optional(),
