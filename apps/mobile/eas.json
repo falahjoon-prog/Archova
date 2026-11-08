@@ -35,8 +35,8 @@
       },
       "env": {
         "APP_VARIANT": "preview",
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-API-HTTPS-URL",
-        "EXPO_PUBLIC_APP_ORIGIN": "https://REPLACE-WITH-WEB-HTTPS-URL"
+        "EXPO_PUBLIC_API_URL": "https://tamil-acquisitions-frontpage-biography.trycloudflare.com",
+        "EXPO_PUBLIC_APP_ORIGIN": "https://tamil-acquisitions-frontpage-biography.trycloudflare.com"
       }
     }
   },

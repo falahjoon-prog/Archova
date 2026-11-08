@@ -110,7 +110,8 @@ Bundle check without a device: `npx expo export --platform ios --output-dir /tmp
 The app needs SQLCipher and native speech modules, so it does **not** run in Expo Go. Use the `phone-test` EAS profile:
 
 1. Make a free account at expo.dev, then on your PC: `npm i -g eas-cli && eas login`.
-2. In `eas.json`, set `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_APP_ORIGIN` under `build.phone-test.env` to the public
+2. `eas.json` already points `phone-test` at the demo tunnel address (the dev web server proxies `/v1` to the API, so one
+   address serves both). Quick tunnels change when restarted: if sign-in fails, update both values and rebuild. Otherwise set `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_APP_ORIGIN` under `build.phone-test.env` to the public
    HTTPS addresses of the API and the web app (the web app hosts the sign-in page). Both must be reachable from the phone.
 3. From `apps/mobile`: `eas init` (first time only), then `eas build --platform android --profile phone-test`.
 4. Open the link EAS prints on the phone, download the APK and allow "install unknown apps". Sign in with the demo login.
