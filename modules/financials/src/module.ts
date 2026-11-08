@@ -1,7 +1,9 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
 import { budgetRoutes } from './api/budgetRoutes';
 import { financialsRoutes } from './api/routes';
+import { commitmentActivityRoutes } from './api/commitmentActivityRoutes';
 import { directCostRoutes } from './api/directCostRoutes';
+import { createCommitmentActivityService } from './application/commitment-activity';
 import { tmTicketRoutes } from './api/tmRoutes';
 import { createTmTicketsService } from './application/tmTickets';
 import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
@@ -48,6 +50,10 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const commitmentActivity = createCommitmentActivityService({
+    access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const directCosts = createDirectCostsService({
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
@@ -88,6 +94,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...financialsRoutes(services.database, service, forecast, commitments, trust, retention),
       ...budgetRoutes(services.database, budget),
       ...directCostRoutes(services.database, directCosts),
+      ...commitmentActivityRoutes(services.database, commitmentActivity),
       ...tmTicketRoutes(services.database, tmTickets),
       ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),

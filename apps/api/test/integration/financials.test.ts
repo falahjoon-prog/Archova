@@ -1520,6 +1520,70 @@ describe('Commitments against the budget', () => {
     expect(bad.statusCode).toBe(404);
     expect((await s.sub.browser.get(`${s.base}/commitments`)).statusCode).toBe(403);
   });
+
+  it('applies change orders to the commitment and caps payments at its revised value', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const cc = (await post('cost-codes', { code: '03', description: 'Electrical' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
+    const committedOf = async () =>
+      (await get('budget')).json().lines.find((l: { id: string }) => l.id === line.id).committed;
+    const c = (
+      await post('commitments', {
+        kind: 'subcontract',
+        title: 'Electrical',
+        lines: [{ budgetLineId: line.id, description: 'All', amount: '20000.00' }],
+      })
+    ).json().commitment;
+    const co = {
+      title: 'Extra circuits',
+      budgetLineId: line.id,
+      amount: '5000.00',
+    };
+    // Change orders and payments need an approved commitment.
+    expect((await post(`commitments/${c.id}/change-orders`, co)).json().code).toBe(
+      'financials.commitment.not_approved',
+    );
+    await post(`commitments/${c.id}/submit`);
+    await post(`commitments/${c.id}/approve`, {});
+
+    const cco = (await post(`commitments/${c.id}/change-orders`, co)).json();
+    expect(cco).toMatchObject({ number: 1, status: 'draft', amount: '5000.00' });
+    await post(`commitments/${c.id}/change-orders/${cco.id}/submit`);
+    expect(
+      (await post(`commitments/${c.id}/change-orders/${cco.id}/approve`, {})).json().status,
+    ).toBe('approved');
+    expect(await committedOf()).toBe('25000.00');
+
+    // Payments are capped at the revised value (20000 + 5000) and can be voided with a reason.
+    const pay = await post(`commitments/${c.id}/payments`, {
+      amount: '24000.00',
+      paidOn: '2026-01-05',
+    });
+    expect(pay.statusCode).toBe(201);
+    expect(
+      (
+        await post(`commitments/${c.id}/payments`, { amount: '1000.01', paidOn: '2026-01-06' })
+      ).json().code,
+    ).toBe('financials.commitment.overpaid');
+    expect((await post(`commitments/${c.id}/void`, { note: 'Cancel' })).json().code).toBe(
+      'financials.commitment.has_activity',
+    );
+    const sum = (await get('commitment-summary')).json();
+    expect(sum.approvedChangeOrders).toEqual({ count: 1, amount: '5000.00' });
+    expect(sum.payments).toEqual({ count: 1, amount: '24000.00' });
+    expect(
+      (
+        await post(`commitments/${c.id}/payments/${pay.json().id}/void`, { note: 'Wrong job' })
+      ).json().status,
+    ).toBe('void');
+    expect((await get('commitment-summary')).json().payments).toEqual({
+      count: 0,
+      amount: '0.00',
+    });
+  });
 });
 
 describe('Owner invoice pre-fill', () => {

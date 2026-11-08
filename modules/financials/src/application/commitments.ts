@@ -3,7 +3,13 @@ import { encodeId, uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, recordRetentionBatch, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fromCents, toCents } from '../domain/money';
-import { budgetLines, commitmentLines, commitments } from '../infra/tables';
+import {
+  budgetLines,
+  commitmentChangeOrders,
+  commitmentLines,
+  commitmentPayments,
+  commitments,
+} from '../infra/tables';
 
 export type CommitmentRow = typeof commitments.$inferSelect;
 export type CommitmentLineRow = typeof commitmentLines.$inferSelect;
@@ -194,6 +200,29 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
         `Give the reason for ${to === 'void' ? 'voiding' : 'rejecting'} this commitment.`,
         [{ path: 'note', message: 'Required' }],
       );
+    if (to === 'void' && c.status === 'approved') {
+      // Change orders and payments hang off an approved commitment; undo those first.
+      const [co] = await scope.tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(commitmentChangeOrders)
+        .where(
+          and(
+            eq(commitmentChangeOrders.commitmentId, id),
+            eq(commitmentChangeOrders.status, 'approved'),
+          ),
+        );
+      const [pay] = await scope.tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(commitmentPayments)
+        .where(
+          and(eq(commitmentPayments.commitmentId, id), eq(commitmentPayments.status, 'recorded')),
+        );
+      if (co!.n > 0 || pay!.n > 0)
+        throw new AppError(
+          'financials.commitment.has_activity',
+          'This commitment has approved change orders or payments, so it cannot be voided.',
+        );
+    }
     const lines = await linesOf(scope, id);
     let override = false;
     // Approving adds to the budget lines' committed cost and voiding an approved commitment takes it back. The lines

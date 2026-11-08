@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DataTable,
   EmptyState,
@@ -8,15 +9,16 @@ import {
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
+import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { formatMoney } from '@/shared/lib/format';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { Commitment } from '../data/api';
-import { useCommitments } from '../hooks/useCommitments';
-import { rollupCommitments } from '../lib/rollup';
+import { useCommitments, useCommitmentSummary } from '../hooks/useCommitments';
+import { aud, percentOf, sumAmounts } from '../lib/money';
 
-const STATUS: Record<
+export const STATUS: Record<
   Commitment['status'],
   { label: string; tone: 'neutral' | 'info' | 'success' | 'danger' }
 > = {
@@ -30,19 +32,24 @@ const KIND: Record<Commitment['kind'], string> = {
   subcontract: 'Subcontract',
   purchase_order: 'Purchase order',
 };
-const aud = (amount: string) => formatMoney({ amount, currency: 'AUD' });
-const money = (cents: number) => formatMoney({ amount: (cents / 100).toFixed(2), currency: 'AUD' });
 
 /** Subcontracts and purchase orders, with the totals across them at the top. */
 export function CommitmentsScreen() {
+  const org = useCurrentOrg();
   const project = useCurrentProject();
   usePublishAssistantScope({
     projectId: project.projectId,
     record: { type: 'commitments', id: 'commitments' },
   });
   const q = useCommitments(project.projectId);
-  const rows = q.data ?? [];
-  const roll = rollupCommitments(rows);
+  const sum = useCommitmentSummary(project.projectId);
+  const t = sum.data;
+  const revised = t
+    ? sumAmounts(t.approvedCommitments.amount, t.approvedChangeOrders.amount)
+    : '0.00';
+  const pending = t
+    ? sumAmounts(t.pendingCommitments.amount, t.pendingChangeOrders.amount)
+    : '0.00';
 
   const columns: DataTableColumn<Commitment>[] = [
     {
@@ -52,7 +59,16 @@ export function CommitmentsScreen() {
       sortValue: (c) => c.number,
       cell: (c) => `C-${String(c.number).padStart(4, '0')}`,
     },
-    { id: 'title', header: 'Title', sortValue: (c) => c.title, cell: (c) => c.title },
+    {
+      id: 'title',
+      header: 'Title',
+      sortValue: (c) => c.title,
+      cell: (c) => (
+        <Link className="link" href={webRoutes.commitment(org.orgSlug, project.projectId, c.id)}>
+          {c.title}
+        </Link>
+      ),
+    },
     { id: 'kind', header: 'Type', cell: (c) => KIND[c.kind] },
     {
       id: 'status',
@@ -61,7 +77,7 @@ export function CommitmentsScreen() {
     },
     {
       id: 'total',
-      header: 'Value (ex GST)',
+      header: 'Original (ex GST)',
       align: 'end',
       sortValue: (c) => Number(c.total),
       cell: (c) => <span className="u-mono u-nowrap">{aud(c.total)}</span>,
@@ -74,31 +90,45 @@ export function CommitmentsScreen() {
         title="Commitments"
         description="Subcontracts and purchase orders placed against the budget. Only approved commitments count as committed cost."
       />
-      <ErrorAlert error={q.error} title="We couldn't load the commitments" />
+      <ErrorAlert error={q.error ?? sum.error} title="We couldn't load the commitments" />
       <StatGrid
         items={[
           {
-            label: 'Committed (approved)',
-            value: money(roll.committed),
-            hint: `${roll.counts.approved} approved`,
+            label: 'Original commitments',
+            value: aud(t?.approvedCommitments.amount ?? '0.00'),
+            hint: `${t?.approvedCommitments.count ?? 0} approved`,
           },
           {
-            label: 'Awaiting approval',
-            value: money(roll.pending),
-            tone: roll.pending > 0 ? 'warning' : 'neutral',
-            hint: `${roll.counts.submitted} submitted`,
+            label: 'Approved change orders',
+            value: aud(t?.approvedChangeOrders.amount ?? '0.00'),
+            hint: `${t?.approvedChangeOrders.count ?? 0} approved`,
           },
-          { label: 'Drafts', value: money(roll.draft), hint: `${roll.counts.draft} not submitted` },
+          { label: 'Revised committed', value: aud(revised) },
           {
-            label: 'Committed if all approved',
-            value: money(roll.ifApproved),
+            label: 'Pending approval',
+            value: aud(pending),
+            tone: Number(pending) > 0 ? 'warning' : 'neutral',
+            hint: `${(t?.pendingCommitments.count ?? 0) + (t?.pendingChangeOrders.count ?? 0)} waiting`,
           },
+          {
+            label: 'Drafts',
+            value: aud(
+              sumAmounts(t?.draftCommitments.amount ?? '0', t?.draftChangeOrders.amount ?? '0'),
+            ),
+            hint: `${(t?.draftCommitments.count ?? 0) + (t?.draftChangeOrders.count ?? 0)} not submitted`,
+          },
+          {
+            label: 'Payments made',
+            value: aud(t?.payments.amount ?? '0.00'),
+            hint: `${t?.payments.count ?? 0} payments`,
+          },
+          { label: '% paid', value: `${percentOf(t?.payments.amount ?? '0', revised)}%` },
         ]}
       />
       <DataTable
         caption="Commitments"
         columns={columns}
-        rows={rows}
+        rows={q.data ?? []}
         getRowId={(c) => c.id}
         defaultSort={{ columnId: 'number', direction: 'desc' }}
         empty={

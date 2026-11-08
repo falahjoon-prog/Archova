@@ -11401,6 +11401,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitment-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Totals across the project's commitments, change orders and payments for the Commitments totals bar. */
+        get: operations["getCommitmentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** Change orders on a commitment. */
+        get: operations["listCommitmentChangeOrders"];
+        put?: never;
+        /** Raise a draft change order that adds to or reduces an approved commitment, against one budget line. Amount is signed. */
+        post: operations["createCommitmentChangeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a draft change order for approval. */
+        post: operations["submitCommitmentChangeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a submitted change order. Moves the commitment value and the budget line's committed cost. */
+        post: operations["approveCommitmentChangeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted change order. A reason is required. */
+        post: operations["rejectCommitmentChangeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** Payments recorded against a commitment. */
+        get: operations["listCommitmentPayments"];
+        put?: never;
+        /** Record a payment to the vendor against an approved commitment. Capped at the commitment value including approved change orders. */
+        post: operations["recordCommitmentPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments/{paymentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                paymentId: components["parameters"]["CommitmentPaymentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a recorded payment. A reason is required. */
+        post: operations["voidCommitmentPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code": {
         parameters: {
             query?: never;
@@ -19517,6 +19669,64 @@ export interface components {
                 amount: components["schemas"]["FinancialsMoney"];
             }[];
         };
+        CommitmentChangeOrder: {
+            id: string;
+            number: number;
+            title: string;
+            budgetLineId: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            /** @enum {string} */
+            status: "draft" | "submitted" | "approved" | "rejected";
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        CommitmentChangeOrderList: {
+            data: components["schemas"]["CommitmentChangeOrder"][];
+        };
+        CreateCommitmentChangeOrderRequest: {
+            title: string;
+            budgetLineId: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+        };
+        CommitmentPayment: {
+            id: string;
+            number: number;
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            paidOn: string;
+            reference: string | null;
+            /** @enum {string} */
+            status: "recorded" | "void";
+            voidReason: string | null;
+        };
+        CommitmentPaymentList: {
+            data: components["schemas"]["CommitmentPayment"][];
+        };
+        RecordCommitmentPaymentRequest: {
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            paidOn: string;
+            reference?: string;
+        };
+        CommitmentVoidRequest: {
+            note: string;
+        };
+        CommitmentFigure: {
+            count: number;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+        };
+        CommitmentSummary: {
+            approvedCommitments: components["schemas"]["CommitmentFigure"];
+            pendingCommitments: components["schemas"]["CommitmentFigure"];
+            draftCommitments: components["schemas"]["CommitmentFigure"];
+            approvedChangeOrders: components["schemas"]["CommitmentFigure"];
+            pendingChangeOrders: components["schemas"]["CommitmentFigure"];
+            draftChangeOrders: components["schemas"]["CommitmentFigure"];
+            payments: components["schemas"]["CommitmentFigure"];
+        };
         CommitmentDecisionRequest: {
             note?: string;
         };
@@ -23337,6 +23547,8 @@ export interface components {
         DirectCostId: string;
         TmTicketId: string;
         CommitmentId: string;
+        CommitmentChangeOrderId: string;
+        CommitmentPaymentId: string;
         OwnerInvoiceId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
@@ -42206,6 +42418,266 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCommitmentChangeOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentChangeOrderList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCommitmentChangeOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentChangeOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentChangeOrder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitCommitmentChangeOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentChangeOrder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveCommitmentChangeOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentChangeOrder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectCommitmentChangeOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                changeOrderId: components["parameters"]["CommitmentChangeOrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentChangeOrder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCommitmentPayments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentPaymentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordCommitmentPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordCommitmentPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentPayment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidCommitmentPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                paymentId: components["parameters"]["CommitmentPaymentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentVoidRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentPayment"];
                 };
             };
             default: components["responses"]["Problem"];

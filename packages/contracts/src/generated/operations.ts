@@ -3728,6 +3728,59 @@ export const VoidCommitmentParams = z.object({
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
 export const VoidCommitmentBody = s.CommitmentDecisionRequestSchema;
+export const GetCommitmentSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCommitmentChangeOrdersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentChangeOrderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentChangeOrderBody = s.CreateCommitmentChangeOrderRequestSchema;
+export const SubmitCommitmentChangeOrderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "changeOrderId": z.string().regex(new RegExp("^cco_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentChangeOrderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "changeOrderId": z.string().regex(new RegExp("^cco_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentChangeOrderBody = s.CommitmentDecisionRequestSchema;
+export const RejectCommitmentChangeOrderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "changeOrderId": z.string().regex(new RegExp("^cco_[0-9A-Za-z]{26}$")),
+});
+export const RejectCommitmentChangeOrderBody = s.CommitmentDecisionRequestSchema;
+export const ListCommitmentPaymentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const RecordCommitmentPaymentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const RecordCommitmentPaymentBody = s.RecordCommitmentPaymentRequestSchema;
+export const VoidCommitmentPaymentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "paymentId": z.string().regex(new RegExp("^cpy_[0-9A-Za-z]{26}$")),
+});
+export const VoidCommitmentPaymentBody = s.CommitmentVoidRequestSchema;
 export const SetVariationCostCodeParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12226,6 +12279,114 @@ export const operations = {
     params: VoidCommitmentParams,
     query: null,
     body: VoidCommitmentBody,
+  },
+  getCommitmentSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitment-summary',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentSummaryParams,
+    query: null,
+    body: null,
+  },
+  listCommitmentChangeOrders: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: ListCommitmentChangeOrdersParams,
+    query: null,
+    body: null,
+  },
+  createCommitmentChangeOrder: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCommitmentChangeOrderParams,
+    query: null,
+    body: CreateCommitmentChangeOrderBody,
+  },
+  submitCommitmentChangeOrder: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/submit',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: null,
+    params: SubmitCommitmentChangeOrderParams,
+    query: null,
+    body: null,
+  },
+  approveCommitmentChangeOrder: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/approve',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveCommitmentChangeOrderParams,
+    query: null,
+    body: ApproveCommitmentChangeOrderBody,
+  },
+  rejectCommitmentChangeOrder: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/change-orders/{changeOrderId}/reject',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: RejectCommitmentChangeOrderParams,
+    query: null,
+    body: RejectCommitmentChangeOrderBody,
+  },
+  listCommitmentPayments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: ListCommitmentPaymentsParams,
+    query: null,
+    body: null,
+  },
+  recordCommitmentPayment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordCommitmentPaymentParams,
+    query: null,
+    body: RecordCommitmentPaymentBody,
+  },
+  voidCommitmentPayment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/payments/{paymentId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidCommitmentPaymentParams,
+    query: null,
+    body: VoidCommitmentPaymentBody,
   },
   setVariationCostCode: {
     method: 'PUT',
