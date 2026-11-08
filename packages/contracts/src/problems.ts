@@ -477,6 +477,7 @@ export const PROBLEM_CODES = {
   'gate.invalid_code': 422,
   'worker.not_found': 404,
   'attendance.not_on_site': 409,
+  'attendance.session_not_found': 404,
   'roll_call.not_found': 404,
   'roll_call.ended': 409,
   'induction.not_found': 404,

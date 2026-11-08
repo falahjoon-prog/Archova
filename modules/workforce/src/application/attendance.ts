@@ -790,6 +790,48 @@ export function createAttendanceService(deps: WorkforceDeps) {
     });
   }
 
+  /** The project an attendance session belongs to, read from the record (sync: the late-send accept step checks it). */
+  async function projectOfSession(scope: TenantScope, sessionId: string) {
+    const [row] = await scope.tx
+      .select({ projectId: attendanceSessions.projectId })
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.id, sessionId))
+      .limit(1);
+    return row?.projectId ?? null;
+  }
+
+  /**
+   * Signs a session out from a phone's queued command. The sender may only close their own session. When an admin
+   * accepts a change held after the sender lost access (`late`), it runs as the admin and closes whoever's session
+   * it names, at the time the phone recorded.
+   */
+  async function signOutSession(
+    scope: TenantScope,
+    sessionId: string,
+    input: { clientAt: Date; late: boolean },
+  ) {
+    const [session] = await scope.tx
+      .select()
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.id, sessionId))
+      .limit(1);
+    if (!session) throw new AppError('attendance.session_not_found');
+    if (!input.late) {
+      const [mine] = await scope.tx
+        .select({ id: workers.id })
+        .from(workers)
+        .where(and(eq(workers.id, session.workerId), eq(workers.userId, scope.ctx.userId)))
+        .limit(1);
+      // The same answer as a missing session, so a stranger learns nothing about it.
+      if (!mine) throw new AppError('attendance.session_not_found');
+    }
+    return signOut(scope, session.projectId, {
+      session,
+      at: clampOccurredAt(input.clientAt, now()),
+      method: 'manual',
+    });
+  }
+
   /** A site manager signs someone in or out from a tablet at the gate (ATT-US6), or admits a blocked worker. */
   async function record(
     scope: TenantScope,
@@ -1060,6 +1102,8 @@ export function createAttendanceService(deps: WorkforceDeps) {
     updateWorker,
     selfSignIn,
     selfSignOut,
+    projectOfSession,
+    signOutSession,
     record,
     onSite,
     sessionsForDay,

@@ -569,6 +569,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...safety.api.syncCommands,
       ...documents.api.syncCommands,
       ...files.api.syncCommands,
+      ...workforce.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
   });
