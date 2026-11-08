@@ -21,6 +21,7 @@ describe('projectToolGroups', () => {
       'Delay register',
       'Programme',
       'Attendance',
+      'Deliveries',
       'Defects',
       'Warranty',
       'Inspections',

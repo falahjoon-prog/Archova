@@ -144,6 +144,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
   attendanceRoster: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/roster`,
+  deliveries: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/deliveries`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>
