@@ -345,6 +345,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const quality = createQualityModule(services, {
     access: access.api,
     platform: platform.api,
+    documents: documents.api,
     files: files.api,
     safety: safety.api,
   });

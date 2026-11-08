@@ -73,6 +73,10 @@ export const inspections = qualitySchema.table('inspections', {
   specSection: text('spec_section'),
   description: text('description').notNull().default(''),
   fileIds: uuid('file_ids').array().notNull().default([]),
+  isPrivate: boolean('is_private').notNull().default(false),
+  distributionIds: uuid('distribution_ids').array().notNull().default([]),
+  drawingRevisionIds: uuid('drawing_revision_ids').array().notNull().default([]),
+  reopenCount: integer('reopen_count').notNull().default(0),
   completedAt: timestamp('completed_at', { withTimezone: true }),
   signedBy: jsonb('signed_by').$type<SignedBy | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -173,4 +177,18 @@ export const observationTypes = qualitySchema.table('observation_types', {
   updatedBy: uuid('updated_by'),
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export type HistoryKind =
+  'created' | 'updated' | 'section_na' | 'signed' | 'submitted' | 'reopened' | 'closed' | 'deleted';
+
+export const history = qualitySchema.table('inspection_history', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  inspectionId: uuid('inspection_id').notNull(),
+  kind: text('kind').$type<HistoryKind>().notNull(),
+  detail: jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+  actorId: uuid('actor_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });

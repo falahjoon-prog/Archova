@@ -2,6 +2,7 @@ import { encodeId } from '@archova/domain';
 import type {
   Inspection,
   InspectionDetail,
+  InspectionHistoryEvent,
   InspectionItemEvent,
   InspectionItemResponse,
   InspectionSignature,
@@ -83,6 +84,10 @@ export const toInspectionDto = (r: InspectionRow): Inspection => ({
   specSection: r.specSection,
   description: r.description,
   fileIds: r.fileIds.map((f) => encodeId('file', f)),
+  isPrivate: r.isPrivate,
+  distributionIds: r.distributionIds.map((u) => encodeId('user', u)),
+  drawingRevisionIds: r.drawingRevisionIds.map((d) => encodeId('drawingRevision', d)),
+  reopenCount: r.reopenCount,
   completedAt: isoOrNull(r.completedAt),
   signedBy: r.signedBy
     ? {
@@ -144,6 +149,8 @@ export const toInspectionDetail = (d: {
   responses: ResponseRow[];
   missingRequiredItemIds: string[];
   failedItemIds: string[];
+  summary: InspectionDetail['summary'];
+  reopenFlag: InspectionDetail['reopenFlag'];
 }): InspectionDetail => ({
   inspection: toInspectionDto(d.inspection),
   items: d.items.map(toItemDto),
@@ -156,6 +163,24 @@ export const toInspectionDetail = (d: {
   responses: d.responses.map(toResponseDto),
   missingRequiredItemIds: d.missingRequiredItemIds.map((i) => encodeId('inspectionItem', i)),
   failedItemIds: d.failedItemIds.map((i) => encodeId('inspectionItem', i)),
+  summary: d.summary,
+  reopenFlag: d.reopenFlag,
+});
+
+export const toHistoryEvent = (h: {
+  id: string;
+  inspectionId: string;
+  kind: InspectionHistoryEvent['kind'];
+  detail: unknown;
+  actorId: string | null;
+  at: Date;
+}): InspectionHistoryEvent => ({
+  id: h.id,
+  inspectionId: encodeId('inspection', h.inspectionId),
+  kind: h.kind,
+  detail: (h.detail ?? {}) as Record<string, unknown>,
+  actorId: userOrNull(h.actorId),
+  at: h.at.toISOString(),
 });
 
 export const toObservationDto = (
