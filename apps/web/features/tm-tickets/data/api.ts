@@ -13,6 +13,7 @@ export type TmTicketRequest = S['TmTicketRequest'];
 export type TmLineRequest = S['TmTicketLineRequest'];
 export type TmSuggestion = S['TmTicketSuggestion'];
 export type SignTmTicket = S['SignTmTicketRequest'];
+export type TmChecks = S['TmTicketChecks'];
 export type ConvertTmTicket = S['ConvertTmTicketRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
@@ -26,6 +27,13 @@ export function createTmApi(orgId: string) {
     async get(projectId: string, tmTicketId: string): Promise<TmTicketDetail> {
       return unwrap(
         await api.GET(`${P}/tm-tickets/{tmTicketId}`, {
+          params: { path: { orgId, projectId, tmTicketId } },
+        }),
+      );
+    },
+    async checks(projectId: string, tmTicketId: string): Promise<TmChecks> {
+      return unwrap(
+        await api.GET(`${P}/tm-tickets/{tmTicketId}/checks`, {
           params: { path: { orgId, projectId, tmTicketId } },
         }),
       );
