@@ -233,6 +233,11 @@ export function projectToolGroups(
       label: 'Incidents',
       icon: IncidentsIcon,
     },
+    canRead('environment') && {
+      href: webRoutes.environment(orgSlug, projectId),
+      label: 'Environment',
+      icon: InspectionsIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.permits(orgSlug, projectId),
       label: 'Permits',

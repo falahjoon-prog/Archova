@@ -8491,6 +8491,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The environmental register at a glance: condition counts by status and category, document expiry, plan state, and the rule-based flags Nova raises (no model, no credit cost). */
+        get: operations["getEnvironmentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's Environmental Management Plan, or null before one is set up. */
+        get: operations["getEnvironmentPlan"];
+        put?: never;
+        /** Set up the project's EMP (one per project). It starts as a draft. */
+        post: operations["createEnvironmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit the EMP header. */
+        patch: operations["updateEnvironmentPlan"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/plan/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the EMP: it becomes active and the next review is set one review interval out. */
+        post: operations["approveEnvironmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The compliance-condition register in number order. */
+        get: operations["listEnvironmentConditions"];
+        put?: never;
+        /** Add a compliance condition. It is numbered EMC-0001 per project. */
+        post: operations["createEnvironmentCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/starter-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Load the standard Australian construction conditions (dust, noise, sediment, discharge, waste, heritage and more). Conditions already in the register are skipped, so applying it twice adds nothing. */
+        post: operations["applyEnvironmentStarterPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        /** One condition with its sign-off trail. */
+        get: operations["getEnvironmentCondition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a condition. */
+        patch: operations["updateEnvironmentCondition"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** start and flagNonCompliant (site team), signOff, markNotApplicable and reopen (the person accountable for compliance). Sign-off needs evidence or a note; flagging, exemption and reopening need a note. The server checks the caller's level for the action. */
+        post: operations["transitionEnvironmentCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Permits, licences, plans and audit reports with their expiry state. */
+        get: operations["listEnvironmentDocuments"];
+        put?: never;
+        /** Register an environmental document against an uploaded file. */
+        post: operations["createEnvironmentDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/documents/{environmentDocumentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a document from the register. */
+        delete: operations["deleteEnvironmentDocument"];
+        options?: never;
+        head?: never;
+        /** Edit a document, for example a renewed expiry date or a new file. */
+        patch: operations["updateEnvironmentDocument"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incidents": {
         parameters: {
             query?: never;
@@ -19164,6 +19353,233 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        /** @enum {string} */
+        EnvironmentConditionCategory: "air_quality" | "noise_vibration" | "water_quality" | "waste" | "soil_erosion" | "biodiversity" | "heritage" | "hazardous_materials" | "traffic_amenity" | "energy_carbon" | "other";
+        /** @enum {string} */
+        EnvironmentConditionSource: "planning_permit" | "epa_licence" | "cemp" | "council" | "client" | "other";
+        /** @enum {string} */
+        EnvironmentConditionFrequency: "once" | "daily" | "weekly" | "fortnightly" | "monthly" | "quarterly" | "per_event";
+        /** @enum {string} */
+        EnvironmentConditionStatus: "not_started" | "in_progress" | "compliant" | "non_compliant" | "not_applicable";
+        /** @enum {string} */
+        EnvironmentConditionAction: "start" | "signOff" | "flagNonCompliant" | "markNotApplicable" | "reopen";
+        /** @enum {string} */
+        EnvironmentDocumentType: "emp" | "permit" | "epa_licence" | "approval_letter" | "monitoring_plan" | "waste_plan" | "audit_report" | "other";
+        /** @enum {string} */
+        EnvironmentExpiryState: "none" | "valid" | "expiring" | "expired";
+        EnvironmentPlan: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** @description The planning permit or licence this plan answers to. */
+            permitReference: string | null;
+            summary: string | null;
+            /** @enum {string} */
+            status: "draft" | "active";
+            reviewIntervalMonths: number;
+            /** Format: date */
+            nextReviewDate: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            approvedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentPlanResponse: {
+            plan: components["schemas"]["EnvironmentPlan"] | null;
+        };
+        CreateEnvironmentPlanRequest: {
+            title: string;
+            permitReference?: string | null;
+            summary?: string | null;
+            reviewIntervalMonths?: number;
+            /** Format: date */
+            nextReviewDate?: string | null;
+        };
+        UpdateEnvironmentPlanRequest: {
+            title?: string;
+            permitReference?: string | null;
+            summary?: string | null;
+            reviewIntervalMonths?: number;
+            /** Format: date */
+            nextReviewDate?: string | null;
+        };
+        EnvironmentCondition: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description EMC-0042 */
+            numberLabel: string;
+            title: string;
+            requirement: string | null;
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            source: components["schemas"]["EnvironmentConditionSource"];
+            /** @description For example "Permit condition 14". */
+            sourceReference: string | null;
+            frequency: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId: string | null;
+            responsibleUserId: string | null;
+            status: components["schemas"]["EnvironmentConditionStatus"];
+            /** Format: date */
+            dueDate: string | null;
+            /** Format: date */
+            lastReviewedOn: string | null;
+            isOverdue: boolean;
+            /** @description Evidence files. */
+            fileIds: string[];
+            /** @description What the caller can do now, from status and permission level. */
+            availableActions: components["schemas"]["EnvironmentConditionAction"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentConditionEvent: {
+            id: string;
+            /** @enum {string} */
+            action: "start" | "sign_off" | "flag_non_compliant" | "not_applicable" | "reopen";
+            fromStatus: components["schemas"]["EnvironmentConditionStatus"];
+            toStatus: components["schemas"]["EnvironmentConditionStatus"];
+            note: string | null;
+            fileIds: string[];
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        EnvironmentConditionDetail: {
+            condition: components["schemas"]["EnvironmentCondition"];
+            events: components["schemas"]["EnvironmentConditionEvent"][];
+        };
+        EnvironmentConditionPage: {
+            data: components["schemas"]["EnvironmentCondition"][];
+            nextCursor: string | null;
+        };
+        CreateEnvironmentConditionRequest: {
+            title: string;
+            requirement?: string | null;
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            source?: components["schemas"]["EnvironmentConditionSource"];
+            sourceReference?: string | null;
+            frequency?: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId?: string | null;
+            responsibleUserId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            fileIds?: string[];
+        };
+        UpdateEnvironmentConditionRequest: {
+            title?: string;
+            requirement?: string | null;
+            category?: components["schemas"]["EnvironmentConditionCategory"];
+            source?: components["schemas"]["EnvironmentConditionSource"];
+            sourceReference?: string | null;
+            frequency?: components["schemas"]["EnvironmentConditionFrequency"];
+            responsibleCompanyId?: string | null;
+            responsibleUserId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            fileIds?: string[];
+        };
+        EnvironmentConditionTransitionRequest: {
+            action: components["schemas"]["EnvironmentConditionAction"];
+            note?: string;
+            /** @description Evidence to attach. */
+            fileIds?: string[];
+        };
+        EnvironmentStarterPackResult: {
+            created: components["schemas"]["EnvironmentCondition"][];
+            /** @description Starter conditions already in the register. */
+            skipped: number;
+        };
+        EnvironmentDocument: {
+            id: string;
+            projectId: string;
+            title: string;
+            docType: components["schemas"]["EnvironmentDocumentType"];
+            reference: string | null;
+            fileId: string;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            expiry: components["schemas"]["EnvironmentExpiryState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EnvironmentDocumentList: {
+            data: components["schemas"]["EnvironmentDocument"][];
+        };
+        CreateEnvironmentDocumentRequest: {
+            title: string;
+            docType: components["schemas"]["EnvironmentDocumentType"];
+            reference?: string | null;
+            fileId: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+        };
+        UpdateEnvironmentDocumentRequest: {
+            title?: string;
+            docType?: components["schemas"]["EnvironmentDocumentType"];
+            reference?: string | null;
+            fileId?: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+        };
+        EnvironmentFlag: {
+            /** @enum {string} */
+            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            message: string;
+            conditionIds: string[];
+            documentIds: string[];
+        };
+        EnvironmentCategoryTally: {
+            category: components["schemas"]["EnvironmentConditionCategory"];
+            total: number;
+            compliant: number;
+            nonCompliant: number;
+            overdue: number;
+        };
+        EnvironmentSummary: {
+            /**
+             * Format: date
+             * @description Today at the project, which "overdue" is measured against.
+             */
+            today: string;
+            plan: components["schemas"]["EnvironmentPlan"] | null;
+            conditions: {
+                total: number;
+                byStatus: {
+                    not_started: number;
+                    in_progress: number;
+                    compliant: number;
+                    non_compliant: number;
+                    not_applicable: number;
+                };
+                overdue: number;
+                /** @description Signed-off share of applicable conditions; null when there are none. */
+                compliancePercent: number | null;
+                byCategory: components["schemas"]["EnvironmentCategoryTally"][];
+            };
+            documents: {
+                total: number;
+                expired: number;
+                expiring: number;
+            };
+            flags: components["schemas"]["EnvironmentFlag"][];
+        };
         ObservationPage: {
             data: components["schemas"]["Observation"][];
             nextCursor: string | null;
@@ -19895,6 +20311,8 @@ export interface components {
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
+        EnvironmentConditionId: string;
+        EnvironmentDocumentId: string;
         CoverId: string;
         CompanyId: string;
         IncidentId: string;
@@ -33718,6 +34136,438 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEnvironmentSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlanResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveEnvironmentPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentConditions: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["EnvironmentConditionStatus"];
+                category?: components["schemas"]["EnvironmentConditionCategory"];
+                source?: components["schemas"]["EnvironmentConditionSource"];
+                overdue?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentConditionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    applyEnvironmentStarterPack: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentStarterPackResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentConditionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionEnvironmentCondition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                conditionId: components["parameters"]["EnvironmentConditionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentConditionTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentConditionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentDocuments: {
+        parameters: {
+            query?: {
+                docType?: components["schemas"]["EnvironmentDocumentType"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironmentDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEnvironmentDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                environmentDocumentId: components["parameters"]["EnvironmentDocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEnvironmentDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentDocument"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -30,6 +30,7 @@ import {
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
+import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
@@ -93,6 +94,7 @@ export const MODULE_PERMISSIONS = [
   EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
@@ -350,6 +352,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   qualityApi = quality.api;
 
+  const environment = createEnvironmentModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
   // Wallet licences are read lazily: workforce is built later.
   let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
     null;
@@ -558,6 +565,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     recents,
     financials,
     quality,
+    environment,
     precon,
     safety,
     permits,
@@ -602,6 +610,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     recents,
     financials,
     quality,
+    environment,
     precon,
     safety,
     permits,
