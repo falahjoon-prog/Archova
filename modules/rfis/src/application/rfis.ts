@@ -1158,7 +1158,7 @@ export function createRfiService(deps: RfisDeps) {
    */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const { date } = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -1172,10 +1172,16 @@ export function createRfiService(deps: RfisDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${rfis.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${rfis.dueDate} >= ${date}::date and ${rfis.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(rfis)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): RFIs the caller can see, one flat row each. `state` open = waiting for an answer. */

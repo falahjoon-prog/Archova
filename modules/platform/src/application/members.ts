@@ -65,6 +65,20 @@ export function createMemberService(deps: {
     });
   }
 
+  /** Everyone active on the project (up to 2,000), with company and whether they are outside the builder's org. */
+  async function listActiveMembers(scope: TenantScope, projectId: string) {
+    return scope.tx
+      .select({
+        userId: projectMembers.userId,
+        companyId: projectMembers.companyId,
+        isExternal: projectMembers.isExternal,
+      })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.status, 'active')))
+      .orderBy(asc(projectMembers.id))
+      .limit(2000);
+  }
+
   /** Adds an existing user. Invitations for people without an account come with the invite flow. */
   async function add(
     scope: TenantScope,
@@ -300,10 +314,31 @@ export function createMemberService(deps: {
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    // An organisation-level hold (suspended membership) is not an ordinary removal; the drain grant fails closed.
+    const [hold] = await scope.tx
+      .select({ id: memberships.id })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.orgId, scope.ctx.orgId),
+          eq(memberships.userId, userId),
+          eq(memberships.status, 'suspended'),
+        ),
+      )
+      .limit(1);
+    return { ...row, held: Boolean(hold) };
   }
 
-  return { list, add, remove, getProjectMembership, getProjectAccessState, contactsOfCompany };
+  return {
+    list,
+    add,
+    remove,
+    getProjectMembership,
+    getProjectAccessState,
+    contactsOfCompany,
+    listActiveMembers,
+  };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;

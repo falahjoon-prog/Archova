@@ -20,6 +20,8 @@ export function createInsightsService(deps: ReportingDeps & RiskDeps) {
       claims: await deps.claims.portfolioCounts(scope, projectId),
       variations: await deps.variations.portfolioCounts(scope, projectId),
       incidents: await deps.incidents.portfolioCounts(scope, projectId),
+      observations: await deps.observations.portfolioCounts(scope, projectId),
+      inspections: await deps.inspections.portfolioCounts(scope, projectId),
       programme: await deps.programme.portfolioCounts(scope, projectId),
     };
     const budget = await deps.budget.portfolioSummary(scope, projectId);

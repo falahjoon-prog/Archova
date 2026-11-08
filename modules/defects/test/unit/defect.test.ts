@@ -81,3 +81,80 @@ describe('permissionFor', () => {
       expect(permissionFor(a)).toBe('defects.defects.close');
   });
 });
+
+describe('punch list roles', () => {
+  const open = (over = {}) => ({
+    status: 'ready_for_review' as const,
+    assigneeCompanyId: 'sparky',
+    ...over,
+  });
+
+  it('lets only the named final approver close, reject or reopen', () => {
+    const approver = { userId: 'u9', companyId: 'client', isInternal: false };
+    const withApprover = open({ finalApproverUserId: 'u9' });
+    expect(resolveTransition(withApprover, builder, { action: 'close' }).ok).toBe(false);
+    expect(resolveTransition(withApprover, approver, { action: 'close' })).toEqual({
+      ok: true,
+      to: 'closed',
+    });
+    expect(
+      resolveTransition(withApprover, approver, { action: 'reject', reason: 'still chipped' }).ok,
+    ).toBe(true);
+  });
+
+  it('keeps builder-side close when no approver is named', () => {
+    expect(resolveTransition(open(), builder, { action: 'close' }).ok).toBe(true);
+  });
+
+  it('reopens a closed defect with a reason', () => {
+    const closed = { status: 'closed' as const, assigneeCompanyId: 'sparky' };
+    expect(resolveTransition(closed, builder, { action: 'reopen' })).toEqual({
+      ok: false,
+      code: 'defect.reason_required',
+    });
+    expect(
+      resolveTransition(closed, builder, { action: 'reopen', reason: 'crack came back' }),
+    ).toEqual({ ok: true, to: 'open' });
+    expect(resolveTransition(closed, sub, { action: 'reopen', reason: 'x' }).ok).toBe(false);
+  });
+
+  it('shows a named person the item whatever their company', () => {
+    const d = defect('open', { distributionUserIds: ['u3'], managerUserId: 'u4' });
+    expect(canSeeDefect(d, other)).toBe(true);
+    expect(canSeeDefect(d, client)).toBe(true);
+    expect(canSeeDefect(defect('open'), other)).toBe(false);
+  });
+});
+
+describe('stand-in approver', () => {
+  const ready = {
+    status: 'ready_for_review' as const,
+    assigneeCompanyId: 'sparky',
+    finalApproverUserId: 'u9',
+    approverDelegateUserId: 'u8',
+    approverDelegateFrom: '2026-11-10',
+    approverDelegateUntil: '2026-11-14',
+  };
+  const deputy = { userId: 'u8', companyId: 'client', isInternal: false };
+
+  it('gives the stand-in the builder side only inside their dates', () => {
+    expect(actorsFor(ready, deputy, '2026-11-12')).toEqual(['builder']);
+    expect(actorsFor(ready, deputy, '2026-11-20')).toEqual([]);
+    expect(resolveTransition(ready, deputy, { action: 'close' }, '2026-11-12')).toEqual({
+      ok: true,
+      to: 'closed',
+    });
+    expect(resolveTransition(ready, deputy, { action: 'close' }, '2026-11-20').ok).toBe(false);
+  });
+
+  it('applies the evidence rule from the defect', () => {
+    const d = { ...ready, requireCloseEvidence: true };
+    expect(resolveTransition(d, deputy, { action: 'close' }, '2026-11-12')).toEqual({
+      ok: false,
+      code: 'defect.evidence_required',
+    });
+    expect(
+      resolveTransition(d, deputy, { action: 'close', reason: 'checked on site' }, '2026-11-12').ok,
+    ).toBe(true);
+  });
+});

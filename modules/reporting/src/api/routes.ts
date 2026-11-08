@@ -8,8 +8,10 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { InsightsService } from '../application/insights';
+import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
 import type { RiskService } from '../application/risk';
+import type { SustainabilityService } from '../application/sustainability';
 import type { ReadinessService } from '../application/readiness';
 import type { ReportsService } from '../application/reports';
 
@@ -20,6 +22,8 @@ export function reportingRoutes(
   risk: RiskService,
   readiness: ReadinessService,
   insights: InsightsService,
+  audit: AuditService,
+  sustainability: SustainabilityService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -32,10 +36,20 @@ export function reportingRoutes(
   };
 
   return defineRoutes({
+    listAuditLog: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => audit.list(s, input.query ?? {})),
+    }),
     getPortfolio: async (input) => ({
       status: 200,
       body: await read(input, (s) =>
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
+      ),
+    }),
+    getSustainabilityPortfolio: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        sustainability.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
     getLateSopaClaimRisk: async (input) => ({

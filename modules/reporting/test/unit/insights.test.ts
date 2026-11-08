@@ -4,7 +4,7 @@ import { buildInsights, dollars } from '../../src/domain/insights';
 const counts = (
   over: Record<string, Partial<{ open: number; overdue: number; restricted: boolean }>> = {},
 ) => {
-  const base = { restricted: false, open: 0, overdue: 0 };
+  const base = { restricted: false, open: 0, overdue: 0, dueSoon: 0 };
   const pick = (k: string) => ({ ...base, ...(over[k] ?? {}) });
   return {
     rfis: pick('rfis'),
@@ -12,7 +12,16 @@ const counts = (
     submittals: pick('submittals'),
     claims: pick('claims'),
     variations: pick('variations'),
-    incidents: pick('incidents'),
+    incidents: {
+      ...pick('incidents'),
+      lastInjuryOn: null,
+      lastIncidentOn: null,
+      daysSinceInjury: null,
+      daysSinceIncident: null,
+      last12Months: 0,
+    },
+    observations: pick('observations'),
+    inspections: pick('inspections'),
     programme: { ...pick('programme'), notStarted: 0, completed: 0, lateDays: 0 },
   };
 };
@@ -21,6 +30,7 @@ const budget = (over = {}) => ({
   hasBudget: true,
   revisedCents: 420_000_000,
   spentCents: 0,
+  monthly: [],
   forecastFinalCents: 420_000_000,
   varianceCents: 0,
   overBudgetCodes: 0,
