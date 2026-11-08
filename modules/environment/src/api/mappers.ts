@@ -3,6 +3,8 @@ import type {
   EnvironmentCondition,
   EnvironmentConditionEvent,
   EnvironmentDocument,
+  MonitoringPoint,
+  MonitoringReading,
   EnvironmentPlan,
   EnvironmentSummary,
 } from '@archova/contracts';
@@ -10,6 +12,7 @@ import { conditionLabel } from '../domain/condition';
 import type { ConditionEventRow, ConditionView } from '../application/conditions';
 import type { DocumentRow, PlanRow, RegisterService } from '../application/register';
 import type { ExpiryState } from '../domain/document';
+import type { PointView, Reading } from '../application/monitoring';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
@@ -88,9 +91,50 @@ export const toSummaryDto = (s: Summary): EnvironmentSummary => ({
   plan: s.plan ? toPlanDto(s.plan) : null,
   conditions: s.conditions,
   documents: s.documents,
+  monitoring: s.monitoring,
   flags: s.flags.map((f) => ({
     ...f,
     conditionIds: f.conditionIds.map((id) => encodeId('environmentCondition', id)),
     documentIds: f.documentIds.map((id) => encodeId('environmentDocument', id)),
   })),
+});
+
+export const toReadingDto = (
+  r: Reading,
+  extra?: { pointName: string; unit: string },
+): MonitoringReading => ({
+  id: encodeId('environmentReading', r.id),
+  pointId: encodeId('monitoringPoint', r.pointId),
+  pointName: extra?.pointName ?? null,
+  unit: extra?.unit ?? null,
+  value: r.value,
+  takenAt: r.takenAt.toISOString(),
+  status: r.status,
+  note: r.note,
+  fileIds: r.fileIds.map((f) => encodeId('file', f)),
+  responseNote: r.responseNote,
+  respondedAt: isoOrNull(r.respondedAt),
+  respondedBy: userOrNull(r.respondedBy),
+  incidentId: r.incidentId ? encodeId('incident', r.incidentId) : null,
+});
+
+export const toPointDto = (v: PointView): MonitoringPoint => ({
+  id: encodeId('monitoringPoint', v.point.id),
+  projectId: encodeId('project', v.point.projectId),
+  name: v.point.name,
+  parameter: v.point.parameter,
+  unit: v.point.unit,
+  location: v.point.location,
+  minLimit: v.minLimit,
+  maxLimit: v.maxLimit,
+  warnMargin: v.warnMargin,
+  frequency: v.point.frequency,
+  conditionId: v.point.conditionId ? encodeId('environmentCondition', v.point.conditionId) : null,
+  active: v.point.active,
+  latest: v.latest ? toReadingDto(v.latest) : null,
+  recent: v.recent,
+  openBreaches: v.openBreaches,
+  isOverdue: v.isOverdue,
+  isTrending: v.isTrending,
+  version: v.point.version,
 });

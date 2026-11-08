@@ -136,6 +136,8 @@ export const ID_PREFIXES = {
   environmentPlan: 'epl',
   environmentCondition: 'ecn',
   environmentDocument: 'edc',
+  monitoringPoint: 'mpt',
+  environmentReading: 'erd',
   contract: 'cnt',
   sovItem: 'sov',
   paymentClaim: 'pcl',

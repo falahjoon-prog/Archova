@@ -14,6 +14,13 @@ import {
   type DocumentInput,
   type EnvironmentDocument,
   type Flag,
+  type MonitoringPoint,
+  type PointInput,
+  type Reading,
+  type ReadingFilters,
+  type ReadingInput,
+  type ReadingStatus,
+  type RespondInput,
   type Plan,
   type PlanInput,
   type Summary,
@@ -32,6 +39,15 @@ export interface EnvironmentSource {
   deleteDocument(projectId: string, d: EnvironmentDocument): Promise<void>;
   createPlan(projectId: string, input: PlanInput): Promise<Plan>;
   approvePlan(projectId: string, plan: Plan): Promise<Plan>;
+  listPoints(projectId: string): Promise<MonitoringPoint[]>;
+  createPoint(projectId: string, input: PointInput): Promise<MonitoringPoint>;
+  logReading(projectId: string, point: MonitoringPoint, input: ReadingInput): Promise<Reading>;
+  listReadings(projectId: string, filters: ReadingFilters): Promise<Reading[]>;
+  respond(
+    projectId: string,
+    reading: Reading,
+    input: RespondInput,
+  ): Promise<{ reading: Reading; incidentNumber: number | null }>;
 }
 
 /** Today in the preview, fixed so the seeded dates stay overdue or current. */
@@ -42,7 +58,24 @@ interface Store {
   events: Record<string, ConditionEvent[]>;
   documents: EnvironmentDocument[];
   plan: Plan | null;
+  points: Array<
+    Omit<MonitoringPoint, 'latest' | 'recent' | 'openBreaches' | 'isOverdue' | 'isTrending'>
+  >;
+  readings: Reading[];
   next: number;
+}
+
+/** Same rule as the API: breach outside the limits, warning in the margin near them. */
+function judge(
+  value: number,
+  p: Pick<MonitoringPoint, 'minLimit' | 'maxLimit' | 'warnMargin'>,
+): ReadingStatus {
+  const { minLimit: lo, maxLimit: hi, warnMargin } = p;
+  if ((hi !== null && value > hi) || (lo !== null && value < lo)) return 'breach';
+  const band =
+    lo !== null && hi !== null ? (hi - lo) * warnMargin : Math.abs(hi ?? lo ?? 0) * warnMargin;
+  if ((hi !== null && value >= hi - band) || (lo !== null && value <= lo + band)) return 'warning';
+  return 'ok';
 }
 
 const label = (n: number) => `EMC-${String(n).padStart(4, '0')}`;
@@ -162,6 +195,66 @@ const stores = projectStores<Store>(() => ({
       },
     ],
   },
+  points: [
+    {
+      id: 'mpt_0001',
+      name: 'Dust monitor, north boundary',
+      parameter: 'dust_pm10',
+      unit: 'µg/m³',
+      location: 'North hoarding',
+      minLimit: null,
+      maxLimit: 50,
+      warnMargin: 0.2,
+      frequency: 'daily',
+      conditionId: 'emc_0001',
+      active: true,
+      version: 1,
+    },
+    {
+      id: 'mpt_0002',
+      name: 'Noise logger, Smith St',
+      parameter: 'noise_laeq',
+      unit: 'dB(A)',
+      location: 'Smith St frontage',
+      minLimit: null,
+      maxLimit: 75,
+      warnMargin: 0.2,
+      frequency: 'daily',
+      conditionId: 'emc_0003',
+      active: true,
+      version: 1,
+    },
+  ],
+  readings: [
+    ...[38, 41, 44, 52].map((value, i) => ({
+      id: `erd_000${i + 1}`,
+      pointId: 'mpt_0001',
+      pointName: 'Dust monitor, north boundary',
+      unit: 'µg/m³',
+      value,
+      takenAt: `2026-11-0${i + 3}T22:00:00Z`,
+      status: (value > 50 ? 'breach' : 'ok') as ReadingStatus,
+      note: null,
+      evidenceCount: 0,
+      responseNote: null,
+      respondedAt: null,
+      incidentId: null,
+    })),
+    ...[68, 70, 71].map((value, i) => ({
+      id: `erd_001${i}`,
+      pointId: 'mpt_0002',
+      pointName: 'Noise logger, Smith St',
+      unit: 'dB(A)',
+      value,
+      takenAt: `2026-11-0${i + 5}T22:00:00Z`,
+      status: 'warning' as ReadingStatus,
+      note: null,
+      evidenceCount: 0,
+      responseNote: null,
+      respondedAt: null,
+      incidentId: null,
+    })),
+  ],
   documents: [
     {
       id: 'edc_0001',
@@ -176,8 +269,43 @@ const stores = projectStores<Store>(() => ({
   ],
 }));
 
+const withStats = (s: Store, p: Store['points'][number]): MonitoringPoint => {
+  const own = s.readings
+    .filter((r) => r.pointId === p.id)
+    .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+  const latest = own.at(-1) ?? null;
+  const last3 = own.slice(-3).map((r) => r.value);
+  return {
+    ...p,
+    latest: latest ? { ...latest } : null,
+    recent: own.slice(-14).map((r) => r.value),
+    openBreaches: own.filter((r) => r.status === 'breach' && !r.respondedAt).length,
+    isOverdue: false,
+    isTrending:
+      p.maxLimit !== null &&
+      last3.length === 3 &&
+      last3[0]! < last3[1]! &&
+      last3[1]! < last3[2]! &&
+      latest?.status === 'warning',
+  };
+};
+
 const flagsFor = (s: Store): Flag[] => {
   const flags: Flag[] = [];
+  const openBreaches = s.readings.filter((r) => r.status === 'breach' && !r.respondedAt);
+  if (openBreaches.length)
+    flags.push({
+      code: 'monitoring_breach_open',
+      severity: 'critical',
+      message: `${openBreaches.length} monitoring ${openBreaches.length === 1 ? 'breach is' : 'breaches are'} waiting for a corrective-action response.`,
+    });
+  const rising = s.points.map((p) => withStats(s, p)).filter((p) => p.isTrending);
+  if (rising.length)
+    flags.push({
+      code: 'monitoring_trending',
+      severity: 'warning',
+      message: `${rising.map((p) => p.name).join(', ')} ${rising.length === 1 ? 'is' : 'are'} rising towards the limit. Act before it is breached.`,
+    });
   const bad = s.conditions.filter((c) => c.status === 'non_compliant');
   if (bad.length)
     flags.push({
@@ -252,6 +380,11 @@ export const environmentPreview: EnvironmentSource = {
         compliancePercent:
           applicable === 0 ? null : Math.round((byStatus.compliant / applicable) * 100),
         byCategory: [...cats.values()],
+      },
+      monitoring: {
+        points: s.points.filter((p) => p.active).length,
+        openBreaches: s.readings.filter((r) => r.status === 'breach' && !r.respondedAt).length,
+        overdue: 0,
       },
       documents: {
         total: s.documents.length,
@@ -405,6 +538,80 @@ export const environmentPreview: EnvironmentSource = {
       version: s.plan!.version + 1,
     };
     return delay({ ...s.plan });
+  },
+  listPoints: (projectId) => {
+    const s = stores.get(projectId);
+    return delay(s.points.map((p) => withStats(s, p)));
+  },
+  createPoint: (projectId, input) => {
+    const s = stores.get(projectId);
+    if ((input.minLimit ?? null) === null && (input.maxLimit ?? null) === null)
+      problem(422, 'validation.failed', 'Set at least one limit.');
+    const p = {
+      id: mockId('mpt'),
+      name: input.name,
+      parameter: input.parameter,
+      unit: input.unit,
+      location: input.location ?? null,
+      minLimit: input.minLimit ?? null,
+      maxLimit: input.maxLimit ?? null,
+      warnMargin: 0.2,
+      frequency: input.frequency ?? ('daily' as const),
+      conditionId: input.conditionId ?? null,
+      active: true,
+      version: 1,
+    };
+    s.points.push(p);
+    return delay(withStats(s, p));
+  },
+  logReading: (projectId, point, input) => {
+    const s = stores.get(projectId);
+    const r: Reading = {
+      id: mockId('erd'),
+      pointId: point.id,
+      pointName: point.name,
+      unit: point.unit,
+      value: input.value,
+      takenAt: nowIso(),
+      status: judge(input.value, point),
+      note: input.note?.trim() || null,
+      evidenceCount: input.files?.length ?? 0,
+      responseNote: null,
+      respondedAt: null,
+      incidentId: null,
+    };
+    s.readings.push(r);
+    if (r.status === 'breach' && point.conditionId) {
+      const c = s.conditions.find((x) => x.id === point.conditionId);
+      if (c && c.status !== 'non_compliant' && c.status !== 'not_applicable') {
+        c.status = 'non_compliant';
+        c.availableActions = actionsFor(c);
+        c.version += 1;
+      }
+    }
+    return delay({ ...r });
+  },
+  listReadings: (projectId, f) =>
+    delay(
+      stores
+        .get(projectId)
+        .readings.filter(
+          (r) =>
+            (f.status === undefined || r.status === f.status) &&
+            (f.open === undefined || (f.open ? !r.respondedAt : !!r.respondedAt)),
+        )
+        .sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+        .map((r) => ({ ...r })),
+    ),
+  respond: (projectId, reading, input) => {
+    const hit = stores.get(projectId).readings.find((r) => r.id === reading.id);
+    if (!hit) problem(404, 'environment.reading_not_found', 'That reading was not found.');
+    if (hit!.status !== 'breach' || hit!.respondedAt)
+      problem(409, 'conflict', 'This reading has nothing left to answer.');
+    hit!.responseNote = input.note;
+    hit!.respondedAt = nowIso();
+    if (input.raiseIncident) hit!.incidentId = mockId('inx');
+    return delay({ reading: { ...hit! }, incidentNumber: input.raiseIncident ? 12 : null });
   },
 };
 

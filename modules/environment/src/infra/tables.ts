@@ -1,4 +1,13 @@
-import { date, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  date,
+  integer,
+  numeric,
+  pgSchema,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import type {
   ConditionCategory,
   ConditionFrequency,
@@ -6,6 +15,7 @@ import type {
   ConditionStatus,
 } from '../domain/condition';
 import type { DocumentType } from '../domain/document';
+import type { MonitoringFrequency, Parameter, ReadingStatus } from '../domain/monitoring';
 
 export const environmentSchema = pgSchema('environment');
 
@@ -83,4 +93,44 @@ export const documents = environmentSchema.table('documents', {
   updatedBy: uuid('updated_by'),
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const monitoringPoints = environmentSchema.table('monitoring_points', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  parameter: text('parameter').$type<Parameter>().notNull(),
+  unit: text('unit').notNull(),
+  location: text('location'),
+  minLimit: numeric('min_limit'),
+  maxLimit: numeric('max_limit'),
+  warnMargin: numeric('warn_margin').notNull().default('0.2'),
+  frequency: text('frequency').$type<MonitoringFrequency>().notNull().default('daily'),
+  conditionId: uuid('condition_id'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const readings = environmentSchema.table('readings', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  pointId: uuid('point_id').notNull(),
+  value: numeric('value').notNull(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull(),
+  status: text('status').$type<ReadingStatus>().notNull(),
+  note: text('note'),
+  fileIds: uuid('file_ids').array().notNull().default([]),
+  responseNote: text('response_note'),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  respondedBy: uuid('responded_by'),
+  incidentId: uuid('incident_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
 });

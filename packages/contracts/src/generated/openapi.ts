@@ -8680,6 +8680,111 @@ export interface paths {
         patch: operations["updateEnvironmentDocument"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Monitoring points with their latest reading, recent values for a sparkline, open breaches, and whether a reading is overdue or rising towards the limit. */
+        get: operations["listMonitoringPoints"];
+        put?: never;
+        /** Add a monitoring point (a place and parameter with its limits). A point can be linked to an EMP condition, which a breach then flags non-compliant. */
+        post: operations["createMonitoringPoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a point's limits, frequency or linked condition, or switch it off. */
+        patch: operations["updateMonitoringPoint"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        /** Readings at a point, newest first. */
+        get: operations["listPointReadings"];
+        put?: never;
+        /** Log a reading. Its status (ok, warning, breach) is fixed against the point's limits; a breach flags the linked condition non-compliant. Readings are not edited afterwards. */
+        post: operations["logReading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Recent readings across the project, newest first. Use status=breach and open=true for the breach register. */
+        get: operations["listEnvironmentReadings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                readingId: components["parameters"]["EnvironmentReadingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a breach with a corrective-action note, and optionally report it as an environmental incident in the incident register. A breach is answered once. */
+        post: operations["respondToReading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incidents": {
         parameters: {
             query?: never;
@@ -19354,6 +19459,106 @@ export interface components {
             version: number;
         };
         /** @enum {string} */
+        MonitoringParameter: "dust_pm10" | "dust_pm25" | "dust_deposition" | "noise_laeq" | "noise_lamax" | "vibration_ppv" | "water_ph" | "water_turbidity" | "water_tss" | "other";
+        /** @enum {string} */
+        MonitoringFrequency: "daily" | "weekly" | "fortnightly" | "monthly" | "per_event";
+        /** @enum {string} */
+        MonitoringReadingStatus: "ok" | "warning" | "breach";
+        MonitoringReading: {
+            id: string;
+            pointId: string;
+            /** @description Set on the project-wide list. */
+            pointName: string | null;
+            /** @description Set on the project-wide list. */
+            unit: string | null;
+            value: number;
+            /** Format: date-time */
+            takenAt: string;
+            status: components["schemas"]["MonitoringReadingStatus"];
+            note: string | null;
+            fileIds: string[];
+            responseNote: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+            respondedBy: string | null;
+            /** @description The environmental incident raised for this breach. */
+            incidentId: string | null;
+        };
+        MonitoringReadingPage: {
+            data: components["schemas"]["MonitoringReading"][];
+            nextCursor: string | null;
+        };
+        MonitoringPoint: {
+            id: string;
+            projectId: string;
+            name: string;
+            parameter: components["schemas"]["MonitoringParameter"];
+            unit: string;
+            location: string | null;
+            minLimit: number | null;
+            maxLimit: number | null;
+            /** @description A reading within this fraction of a limit is a warning. */
+            warnMargin: number;
+            frequency: components["schemas"]["MonitoringFrequency"];
+            conditionId: string | null;
+            active: boolean;
+            latest: components["schemas"]["MonitoringReading"] | null;
+            /** @description Latest values, oldest first. */
+            recent: number[];
+            openBreaches: number;
+            isOverdue: boolean;
+            /** @description Three rising readings, the latest close to the maximum. */
+            isTrending: boolean;
+            version: number;
+        };
+        MonitoringPointList: {
+            data: components["schemas"]["MonitoringPoint"][];
+        };
+        CreateMonitoringPointRequest: {
+            name: string;
+            parameter: components["schemas"]["MonitoringParameter"];
+            unit: string;
+            location?: string | null;
+            minLimit?: number | null;
+            maxLimit?: number | null;
+            warnMargin?: number;
+            frequency?: components["schemas"]["MonitoringFrequency"];
+            conditionId?: string | null;
+        };
+        UpdateMonitoringPointRequest: {
+            name?: string;
+            parameter?: components["schemas"]["MonitoringParameter"];
+            unit?: string;
+            location?: string | null;
+            minLimit?: number | null;
+            maxLimit?: number | null;
+            warnMargin?: number;
+            frequency?: components["schemas"]["MonitoringFrequency"];
+            conditionId?: string | null;
+            active?: boolean;
+        };
+        LogReadingRequest: {
+            value: number;
+            /**
+             * Format: date-time
+             * @description Defaults to now.
+             */
+            takenAt?: string;
+            note?: string;
+            fileIds?: string[];
+        };
+        RespondToReadingRequest: {
+            /** @description The corrective action taken. */
+            note: string;
+            /** @description Also report an environmental incident. */
+            raiseIncident?: boolean;
+        };
+        RespondToReadingResult: {
+            reading: components["schemas"]["MonitoringReading"];
+            incidentId: string | null;
+            incidentNumber: number | null;
+        };
+        /** @enum {string} */
         EnvironmentConditionCategory: "air_quality" | "noise_vibration" | "water_quality" | "waste" | "soil_erosion" | "biodiversity" | "heritage" | "hazardous_materials" | "traffic_amenity" | "energy_carbon" | "other";
         /** @enum {string} */
         EnvironmentConditionSource: "planning_permit" | "epa_licence" | "cemp" | "council" | "client" | "other";
@@ -19538,7 +19743,7 @@ export interface components {
         };
         EnvironmentFlag: {
             /** @enum {string} */
-            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due";
+            code: "conditions_non_compliant" | "conditions_overdue" | "documents_expired" | "documents_expiring" | "plan_missing" | "plan_unapproved" | "plan_review_due" | "monitoring_breach_open" | "monitoring_overdue" | "monitoring_trending";
             /** @enum {string} */
             severity: "info" | "warning" | "critical";
             message: string;
@@ -19577,6 +19782,13 @@ export interface components {
                 total: number;
                 expired: number;
                 expiring: number;
+            };
+            monitoring: {
+                points: number;
+                /** @description Breaches not yet answered. */
+                openBreaches: number;
+                /** @description Active points without a recent reading. */
+                overdue: number;
             };
             flags: components["schemas"]["EnvironmentFlag"][];
         };
@@ -20315,6 +20527,8 @@ export interface components {
         EnvironmentDocumentId: string;
         CoverId: string;
         CompanyId: string;
+        MonitoringPointId: string;
+        EnvironmentReadingId: string;
         IncidentId: string;
         IncidentActionId: string;
         PermitId: string;
@@ -34568,6 +34782,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnvironmentDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMonitoringPoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPointList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMonitoringPoint: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMonitoringPointRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPoint"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMonitoringPoint: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMonitoringPointRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPoint"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPointReadings: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["MonitoringReadingStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReadingPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logReading: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                pointId: components["parameters"]["MonitoringPointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogReadingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReading"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEnvironmentReadings: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["MonitoringReadingStatus"];
+                /** @description true: breaches not yet answered. */
+                open?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringReadingPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                readingId: components["parameters"]["EnvironmentReadingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondToReadingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespondToReadingResult"];
                 };
             };
             default: components["responses"]["Problem"];

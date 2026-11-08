@@ -2773,6 +2773,53 @@ export const DeleteEnvironmentDocumentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "environmentDocumentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
 });
+export const ListMonitoringPointsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMonitoringPointParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMonitoringPointBody = s.CreateMonitoringPointRequestSchema;
+export const UpdateMonitoringPointParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMonitoringPointBody = s.UpdateMonitoringPointRequestSchema;
+export const ListPointReadingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const ListPointReadingsQuery = z.object({
+  "status": s.MonitoringReadingStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const LogReadingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "pointId": z.string().regex(new RegExp("^mpt_[0-9A-Za-z]{26}$")),
+});
+export const LogReadingBody = s.LogReadingRequestSchema;
+export const ListEnvironmentReadingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEnvironmentReadingsQuery = z.object({
+  "status": s.MonitoringReadingStatusSchema.optional(),
+  "open": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RespondToReadingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "readingId": z.string().regex(new RegExp("^erd_[0-9A-Za-z]{26}$")),
+});
+export const RespondToReadingBody = s.RespondToReadingRequestSchema;
 export const ListIncidentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9731,6 +9778,90 @@ export const operations = {
     params: DeleteEnvironmentDocumentParams,
     query: null,
     body: null,
+  },
+  listMonitoringPoints: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListMonitoringPointsParams,
+    query: null,
+    body: null,
+  },
+  createMonitoringPoint: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMonitoringPointParams,
+    query: null,
+    body: CreateMonitoringPointBody,
+  },
+  updateMonitoringPoint: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMonitoringPointParams,
+    query: null,
+    body: UpdateMonitoringPointBody,
+  },
+  listPointReadings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListPointReadingsParams,
+    query: ListPointReadingsQuery,
+    body: null,
+  },
+  logReading: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogReadingParams,
+    query: null,
+    body: LogReadingBody,
+  },
+  listEnvironmentReadings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/readings',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.read",
+    internal: false,
+    contentType: null,
+    params: ListEnvironmentReadingsParams,
+    query: ListEnvironmentReadingsQuery,
+    body: null,
+  },
+  respondToReading: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond',
+    module: "environment",
+    auth: "required",
+    permission: "environment.monitoring.respond",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToReadingParams,
+    query: null,
+    body: RespondToReadingBody,
   },
   listIncidents: {
     method: 'GET',

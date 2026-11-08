@@ -11912,6 +11912,172 @@ paths:
       responses:
         '204': { description: No content }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listMonitoringPoints
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Monitoring points with their latest reading, recent values for a sparkline, open breaches, and whether a reading is overdue or rising towards the limit.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPointList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createMonitoringPoint
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.manage
+      summary: 'Add a monitoring point (a place and parameter with its limits). A point can be linked to an EMP condition, which a breach then flags non-compliant.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMonitoringPointRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPoint' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/MonitoringPointId'
+    patch:
+      operationId: updateMonitoringPoint
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.manage
+      summary: "Change a point's limits, frequency or linked condition, or switch it off."
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMonitoringPointRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringPoint' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/monitoring-points/{pointId}/readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/MonitoringPointId'
+    get:
+      operationId: listPointReadings
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Readings at a point, newest first.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/MonitoringReadingStatus' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReadingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logReading
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.log
+      summary: "Log a reading. Its status (ok, warning, breach) is fixed against the point's limits; a breach flags the linked condition non-compliant. Readings are not edited afterwards."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogReadingRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReading' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEnvironmentReadings
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.read
+      summary: 'Recent readings across the project, newest first. Use status=breach and open=true for the breach register.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/MonitoringReadingStatus' },
+          }
+        - {
+            name: open,
+            in: query,
+            schema: { type: string, enum: ['true', 'false'] },
+            description: 'true: breaches not yet answered.',
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitoringReadingPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/environment/readings/{readingId}/respond:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EnvironmentReadingId'
+    post:
+      operationId: respondToReading
+      tags: [environment]
+      x-module: environment
+      x-permission: environment.monitoring.respond
+      summary: 'Answer a breach with a corrective-action note, and optionally report it as an environmental incident in the incident register. A breach is answered once.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondToReadingRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RespondToReadingResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incidents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15111,6 +15277,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    MonitoringPointId:
+      name: pointId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^mpt_[0-9A-Za-z]{26}$' }
+    EnvironmentReadingId:
+      name: readingId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^erd_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -28653,6 +28829,180 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    MonitoringParameter:
+      type: string
+      enum:
+        [
+          dust_pm10,
+          dust_pm25,
+          dust_deposition,
+          noise_laeq,
+          noise_lamax,
+          vibration_ppv,
+          water_ph,
+          water_turbidity,
+          water_tss,
+          other,
+        ]
+    MonitoringFrequency:
+      type: string
+      enum: [daily, weekly, fortnightly, monthly, per_event]
+    MonitoringReadingStatus:
+      type: string
+      enum: [ok, warning, breach]
+    MonitoringReading:
+      type: object
+      required:
+        [
+          id,
+          pointId,
+          pointName,
+          unit,
+          value,
+          takenAt,
+          status,
+          note,
+          fileIds,
+          responseNote,
+          respondedAt,
+          respondedBy,
+          incidentId,
+        ]
+      properties:
+        id: { type: string }
+        pointId: { type: string }
+        pointName: { type: [string, 'null'], description: 'Set on the project-wide list.' }
+        unit: { type: [string, 'null'], description: 'Set on the project-wide list.' }
+        value: { type: number }
+        takenAt: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/MonitoringReadingStatus' }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        responseNote: { type: [string, 'null'] }
+        respondedAt: { type: [string, 'null'], format: date-time }
+        respondedBy: { type: [string, 'null'] }
+        incidentId:
+          {
+            type: [string, 'null'],
+            description: 'The environmental incident raised for this breach.',
+          }
+    MonitoringReadingPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/MonitoringReading' } }
+        nextCursor: { type: [string, 'null'] }
+    MonitoringPoint:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          parameter,
+          unit,
+          location,
+          minLimit,
+          maxLimit,
+          warnMargin,
+          frequency,
+          conditionId,
+          active,
+          latest,
+          recent,
+          openBreaches,
+          isOverdue,
+          isTrending,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string }
+        location: { type: [string, 'null'] }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin:
+          { type: number, description: 'A reading within this fraction of a limit is a warning.' }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+        active: { type: boolean }
+        latest:
+          oneOf:
+            - $ref: '#/components/schemas/MonitoringReading'
+            - type: 'null'
+        recent:
+          { type: array, items: { type: number }, description: 'Latest values, oldest first.' }
+        openBreaches: { type: integer }
+        isOverdue: { type: boolean }
+        isTrending:
+          { type: boolean, description: 'Three rising readings, the latest close to the maximum.' }
+        version: { type: integer }
+    MonitoringPointList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/MonitoringPoint' } }
+    CreateMonitoringPointRequest:
+      type: object
+      required: [name, parameter, unit]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string, minLength: 1, maxLength: 30 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin: { type: number, minimum: 0, maximum: 0.5 }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+    UpdateMonitoringPointRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parameter: { $ref: '#/components/schemas/MonitoringParameter' }
+        unit: { type: string, minLength: 1, maxLength: 30 }
+        location: { type: [string, 'null'], maxLength: 200 }
+        minLimit: { type: [number, 'null'] }
+        maxLimit: { type: [number, 'null'] }
+        warnMargin: { type: number, minimum: 0, maximum: 0.5 }
+        frequency: { $ref: '#/components/schemas/MonitoringFrequency' }
+        conditionId: { type: [string, 'null'] }
+        active: { type: boolean }
+    LogReadingRequest:
+      type: object
+      required: [value]
+      additionalProperties: false
+      properties:
+        value: { type: number }
+        takenAt: { type: string, format: date-time, description: 'Defaults to now.' }
+        note: { type: string, maxLength: 2000 }
+        fileIds: { type: array, maxItems: 20, items: { type: string } }
+    RespondToReadingRequest:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 4000,
+            description: 'The corrective action taken.',
+          }
+        raiseIncident: { type: boolean, description: 'Also report an environmental incident.' }
+    RespondToReadingResult:
+      type: object
+      required: [reading, incidentId, incidentNumber]
+      properties:
+        reading: { $ref: '#/components/schemas/MonitoringReading' }
+        incidentId: { type: [string, 'null'] }
+        incidentNumber: { type: [integer, 'null'] }
     EnvironmentConditionCategory:
       type: string
       enum:
@@ -28956,6 +29306,9 @@ components:
                 plan_missing,
                 plan_unapproved,
                 plan_review_due,
+                monitoring_breach_open,
+                monitoring_overdue,
+                monitoring_trending,
               ],
           }
         severity: { type: string, enum: [info, warning, critical] }
@@ -28973,7 +29326,7 @@ components:
         overdue: { type: integer }
     EnvironmentSummary:
       type: object
-      required: [today, plan, conditions, documents, flags]
+      required: [today, plan, conditions, documents, monitoring, flags]
       properties:
         today:
           {
@@ -29014,6 +29367,13 @@ components:
             total: { type: integer }
             expired: { type: integer }
             expiring: { type: integer }
+        monitoring:
+          type: object
+          required: [points, openBreaches, overdue]
+          properties:
+            points: { type: integer }
+            openBreaches: { type: integer, description: 'Breaches not yet answered.' }
+            overdue: { type: integer, description: 'Active points without a recent reading.' }
         flags: { type: array, items: { $ref: '#/components/schemas/EnvironmentFlag' } }
     ObservationPage:
       type: object

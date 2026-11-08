@@ -214,5 +214,127 @@ export interface Summary {
     byCategory: CategoryTally[];
   };
   documents: { total: number; expired: number; expiring: number };
+  monitoring: { points: number; openBreaches: number; overdue: number };
   flags: Flag[];
+}
+
+export type MonitoringParameter =
+  | 'dust_pm10'
+  | 'dust_pm25'
+  | 'dust_deposition'
+  | 'noise_laeq'
+  | 'noise_lamax'
+  | 'vibration_ppv'
+  | 'water_ph'
+  | 'water_turbidity'
+  | 'water_tss'
+  | 'other';
+export type MonitoringFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'per_event';
+export type ReadingStatus = 'ok' | 'warning' | 'breach';
+
+export const PARAMETER_LABELS: Record<MonitoringParameter, string> = {
+  dust_pm10: 'Dust PM10',
+  dust_pm25: 'Dust PM2.5',
+  dust_deposition: 'Dust deposition',
+  noise_laeq: 'Noise LAeq',
+  noise_lamax: 'Noise LAmax',
+  vibration_ppv: 'Vibration (PPV)',
+  water_ph: 'Water pH',
+  water_turbidity: 'Water turbidity',
+  water_tss: 'Suspended solids',
+  other: 'Other',
+};
+
+export const MONITORING_FREQUENCY_LABELS: Record<MonitoringFrequency, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+  per_event: 'Each event',
+};
+
+export const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
+  ok: 'Within limits',
+  warning: 'Near limit',
+  breach: 'Breach',
+};
+
+/** Typical unit and limits to prefill when a point is added; the user can change every value. */
+export const PARAMETER_DEFAULTS: Record<
+  MonitoringParameter,
+  { unit: string; minLimit?: number; maxLimit?: number }
+> = {
+  dust_pm10: { unit: 'µg/m³', maxLimit: 50 },
+  dust_pm25: { unit: 'µg/m³', maxLimit: 25 },
+  dust_deposition: { unit: 'g/m²/month', maxLimit: 4 },
+  noise_laeq: { unit: 'dB(A)', maxLimit: 75 },
+  noise_lamax: { unit: 'dB(A)', maxLimit: 90 },
+  vibration_ppv: { unit: 'mm/s', maxLimit: 5 },
+  water_ph: { unit: 'pH', minLimit: 6.5, maxLimit: 8.5 },
+  water_turbidity: { unit: 'NTU', maxLimit: 50 },
+  water_tss: { unit: 'mg/L', maxLimit: 50 },
+  other: { unit: '' },
+};
+
+export interface Reading {
+  id: string;
+  pointId: string;
+  pointName: string | null;
+  unit: string | null;
+  value: number;
+  takenAt: string;
+  status: ReadingStatus;
+  note: string | null;
+  evidenceCount: number;
+  responseNote: string | null;
+  respondedAt: string | null;
+  incidentId: string | null;
+}
+
+export interface MonitoringPoint {
+  id: string;
+  name: string;
+  parameter: MonitoringParameter;
+  unit: string;
+  location: string | null;
+  minLimit: number | null;
+  maxLimit: number | null;
+  warnMargin: number;
+  frequency: MonitoringFrequency;
+  conditionId: string | null;
+  active: boolean;
+  latest: Reading | null;
+  /** Latest values, oldest first. */
+  recent: number[];
+  openBreaches: number;
+  isOverdue: boolean;
+  isTrending: boolean;
+  version: number;
+}
+
+export interface PointInput {
+  name: string;
+  parameter: MonitoringParameter;
+  unit: string;
+  location?: string;
+  minLimit?: number | null;
+  maxLimit?: number | null;
+  frequency?: MonitoringFrequency;
+  conditionId?: string | null;
+}
+
+export interface ReadingInput {
+  value: number;
+  note?: string;
+  files?: File[];
+}
+
+export interface RespondInput {
+  note: string;
+  raiseIncident: boolean;
+}
+
+export interface ReadingFilters {
+  status?: ReadingStatus;
+  open?: boolean;
 }

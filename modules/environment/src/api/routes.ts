@@ -1,4 +1,4 @@
-import { decodeId, type IdKind } from '@archova/domain';
+import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
   defineRoutes,
@@ -10,8 +10,17 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { ConditionFields, ConditionService } from '../application/conditions';
+import type { MonitoringService, PointFields } from '../application/monitoring';
 import type { DocumentFields, RegisterService } from '../application/register';
-import { toConditionDto, toDocumentDto, toEventDto, toPlanDto, toSummaryDto } from './mappers';
+import {
+  toConditionDto,
+  toDocumentDto,
+  toEventDto,
+  toPlanDto,
+  toPointDto,
+  toReadingDto,
+  toSummaryDto,
+} from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -72,6 +81,7 @@ export function environmentRoutes(
   database: Database,
   conditions: ConditionService,
   register: RegisterService,
+  monitoring: MonitoringService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -96,6 +106,33 @@ export function environmentRoutes(
     status,
     body: toDocumentDto(d),
     headers: { etag: etag(d.version) },
+  });
+
+  const pointId = (p: { pointId: string }) =>
+    notFound('monitoringPoint', p.pointId, 'environment.point_not_found');
+  const readingId = (p: { readingId: string }) =>
+    notFound('environmentReading', p.readingId, 'environment.reading_not_found');
+
+  function pointFields(b: Omit<PointFields, 'conditionId'> & { conditionId?: string | null }) {
+    const out: PointFields = {};
+    if (b.name !== undefined) out.name = b.name;
+    if (b.parameter !== undefined) out.parameter = b.parameter;
+    if (b.unit !== undefined) out.unit = b.unit;
+    if (b.location !== undefined) out.location = b.location;
+    if (b.minLimit !== undefined) out.minLimit = b.minLimit;
+    if (b.maxLimit !== undefined) out.maxLimit = b.maxLimit;
+    if (b.warnMargin !== undefined) out.warnMargin = b.warnMargin;
+    if (b.frequency !== undefined) out.frequency = b.frequency;
+    if (b.active !== undefined) out.active = b.active;
+    if (b.conditionId !== undefined)
+      out.conditionId =
+        b.conditionId === null ? null : ref('environmentCondition', b.conditionId, 'conditionId');
+    return out;
+  }
+  const okPoint = (status: number, v: Parameters<typeof toPointDto>[0]) => ({
+    status,
+    body: toPointDto(v),
+    headers: { etag: etag(v.point.version) },
   });
 
   return defineRoutes({
@@ -234,6 +271,103 @@ export function environmentRoutes(
         register.deleteDocument(s, project(input.params), documentId(input.params)),
       );
       return { status: 204 };
+    },
+    listMonitoringPoints: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => monitoring.listPoints(s, project(input.params)))).map(
+          toPointDto,
+        ),
+      },
+    }),
+    createMonitoringPoint: async (input) =>
+      okPoint(
+        201,
+        await tx(input, (s) =>
+          monitoring.createPoint(s, project(input.params), {
+            ...pointFields(input.body),
+            name: input.body.name,
+            parameter: input.body.parameter,
+            unit: input.body.unit,
+          }),
+        ),
+      ),
+    updateMonitoringPoint: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return okPoint(
+        200,
+        await tx(input, (s) =>
+          monitoring.updatePoint(
+            s,
+            project(input.params),
+            pointId(input.params),
+            expected,
+            pointFields(input.body),
+          ),
+        ),
+      );
+    },
+    listPointReadings: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        monitoring.listPointReadings(s, project(input.params), pointId(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map((r) => toReadingDto(r)), nextCursor: page.nextCursor },
+      };
+    },
+    logReading: async (input) => {
+      const b = input.body;
+      const r = await tx(input, (s) =>
+        monitoring.logReading(s, project(input.params), pointId(input.params), {
+          value: b.value,
+          ...(b.takenAt ? { takenAt: new Date(b.takenAt) } : {}),
+          ...(b.note ? { note: b.note } : {}),
+          ...(b.fileIds
+            ? { fileIds: b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)) }
+            : {}),
+        }),
+      );
+      return { status: 201, body: toReadingDto(r.reading) };
+    },
+    listEnvironmentReadings: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        monitoring.listReadings(s, project(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.open ? { open: q.open === 'true' } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: {
+          data: page.data.map((r) => toReadingDto(r, { pointName: r.pointName, unit: r.unit })),
+          nextCursor: page.nextCursor,
+        },
+      };
+    },
+    respondToReading: async (input) => {
+      const r = await tx(input, (s) =>
+        monitoring.respond(s, project(input.params), readingId(input.params), {
+          note: input.body.note,
+          raiseIncident: input.body.raiseIncident ?? false,
+        }),
+      );
+      return {
+        status: 200,
+        body: {
+          reading: toReadingDto(r.reading),
+          incidentId: r.incident ? encodeId('incident', r.incident.id) : null,
+          incidentNumber: r.incident?.number ?? null,
+        },
+      };
     },
   });
 }

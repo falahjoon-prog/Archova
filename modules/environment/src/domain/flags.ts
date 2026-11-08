@@ -14,7 +14,10 @@ export interface EnvironmentFlag {
     | 'documents_expiring'
     | 'plan_missing'
     | 'plan_unapproved'
-    | 'plan_review_due';
+    | 'plan_review_due'
+    | 'monitoring_breach_open'
+    | 'monitoring_overdue'
+    | 'monitoring_trending';
   severity: FlagSeverity;
   message: string;
   /** Ids (internal uuids; the route encodes them) of the conditions or documents the flag is about. */
@@ -27,6 +30,12 @@ interface FlagInput {
   plan: { status: 'draft' | 'active'; nextReviewDate: string | null } | null;
   conditions: { id: string; number: number; status: ConditionStatus; dueDate: string | null }[];
   documents: { id: string; title: string; expiresOn: string | null }[];
+  monitoring?: {
+    openBreaches: number;
+    breaching: { name: string }[];
+    overdue: { name: string }[];
+    trending: { name: string }[];
+  };
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -105,5 +114,38 @@ export function environmentFlags(i: FlagInput): EnvironmentFlag[] {
         documentIds: [],
       });
   }
+  const m = i.monitoring;
+  if (m && m.openBreaches > 0)
+    flags.push({
+      code: 'monitoring_breach_open',
+      severity: 'critical',
+      message: `${plural(m.openBreaches, 'monitoring breach', 'monitoring breaches')} waiting for a response at ${names(m.breaching)}. Record the corrective action or raise an incident.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  if (m && m.overdue.length > 0)
+    flags.push({
+      code: 'monitoring_overdue',
+      severity: 'warning',
+      message: `${plural(m.overdue.length, 'monitoring point')} without a recent reading: ${names(m.overdue)}.`,
+      conditionIds: [],
+      documentIds: [],
+    });
+  if (m && m.trending.length > 0)
+    flags.push({
+      code: 'monitoring_trending',
+      severity: 'warning',
+      message: `Readings are rising towards the limit at ${names(m.trending)}. Act before it breaches.`,
+      conditionIds: [],
+      documentIds: [],
+    });
   return flags;
 }
+
+const names = (list: { name: string }[]) =>
+  list.length > 3
+    ? `${list
+        .slice(0, 3)
+        .map((p) => p.name)
+        .join(', ')} and ${list.length - 3} more`
+    : list.map((p) => p.name).join(', ');

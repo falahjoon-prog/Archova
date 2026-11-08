@@ -2,7 +2,15 @@ import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
 import { uploadFile } from '@/shared/lib/uploads';
-import type { Condition, ConditionDetail, EnvironmentDocument, Plan, Summary } from '../lib/types';
+import type {
+  Condition,
+  ConditionDetail,
+  EnvironmentDocument,
+  MonitoringPoint,
+  Plan,
+  Reading,
+  Summary,
+} from '../lib/types';
 import type { EnvironmentSource } from './source';
 
 type ApiCondition = components['schemas']['EnvironmentCondition'];
@@ -10,6 +18,8 @@ type ApiDetail = components['schemas']['EnvironmentConditionDetail'];
 type ApiDocument = components['schemas']['EnvironmentDocument'];
 type ApiPlan = components['schemas']['EnvironmentPlan'];
 type ApiSummary = components['schemas']['EnvironmentSummary'];
+type ApiReading = components['schemas']['MonitoringReading'];
+type ApiPoint = components['schemas']['MonitoringPoint'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/environment' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
@@ -68,10 +78,46 @@ export const toDocument = (d: ApiDocument): EnvironmentDocument => ({
   version: d.version,
 });
 
+export const toReading = (r: ApiReading): Reading => ({
+  id: r.id,
+  pointId: r.pointId,
+  pointName: r.pointName,
+  unit: r.unit,
+  value: r.value,
+  takenAt: r.takenAt,
+  status: r.status,
+  note: r.note,
+  evidenceCount: r.fileIds.length,
+  responseNote: r.responseNote,
+  respondedAt: r.respondedAt,
+  incidentId: r.incidentId,
+});
+
+export const toPoint = (p: ApiPoint): MonitoringPoint => ({
+  id: p.id,
+  name: p.name,
+  parameter: p.parameter,
+  unit: p.unit,
+  location: p.location,
+  minLimit: p.minLimit,
+  maxLimit: p.maxLimit,
+  warnMargin: p.warnMargin,
+  frequency: p.frequency,
+  conditionId: p.conditionId,
+  active: p.active,
+  latest: p.latest ? toReading(p.latest) : null,
+  recent: p.recent,
+  openBreaches: p.openBreaches,
+  isOverdue: p.isOverdue,
+  isTrending: p.isTrending,
+  version: p.version,
+});
+
 const toSummary = (s: ApiSummary): Summary => ({
   plan: s.plan ? toPlan(s.plan) : null,
   conditions: s.conditions,
   documents: s.documents,
+  monitoring: s.monitoring,
   flags: s.flags.map((f) => ({ code: f.code, severity: f.severity, message: f.message })),
 });
 
@@ -199,6 +245,67 @@ export function createEnvironmentApi(orgId: string): EnvironmentSource {
           }),
         ),
       );
+    },
+    async listPoints(projectId) {
+      const r = unwrap(
+        await api.GET(`${P}/monitoring-points`, { params: { path: path(projectId) } }),
+      );
+      return r.data.map(toPoint);
+    },
+    async createPoint(projectId, input) {
+      return toPoint(
+        unwrap(
+          await api.POST(`${P}/monitoring-points`, {
+            params: { path: path(projectId), header: idempotencyKey() },
+            body: input,
+          }),
+        ),
+      );
+    },
+    async logReading(projectId, point, input) {
+      const fileIds: string[] = [];
+      for (const file of input.files ?? []) {
+        fileIds.push((await uploadFile(orgId, { file, projectId, module: 'environment' })).id);
+      }
+      return toReading(
+        unwrap(
+          await api.POST(`${P}/monitoring-points/{pointId}/readings`, {
+            params: {
+              path: { ...path(projectId), pointId: point.id },
+              header: idempotencyKey(),
+            },
+            body: {
+              value: input.value,
+              ...(input.note ? { note: input.note } : {}),
+              ...(fileIds.length ? { fileIds } : {}),
+            },
+          }),
+        ),
+      );
+    },
+    async listReadings(projectId, f) {
+      const r = unwrap(
+        await api.GET(`${P}/readings`, {
+          params: {
+            path: path(projectId),
+            query: {
+              status: f.status,
+              open: f.open === undefined ? undefined : f.open ? 'true' : 'false',
+              limit: 100,
+            },
+          },
+        }),
+      );
+      return r.data.map(toReading);
+    },
+    async respond(projectId, reading, input) {
+      const r = unwrap(
+        await api.POST(`${P}/readings/{readingId}/respond`, {
+          params: { path: { ...path(projectId), readingId: reading.id } },
+          body: input,
+        }),
+      );
+      return { reading: toReading(r.reading), incidentNumber: r.incidentNumber };
     },
   };
 }

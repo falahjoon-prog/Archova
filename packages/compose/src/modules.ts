@@ -356,6 +356,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    safety: safety.api,
   });
   // Wallet licences are read lazily: workforce is built later.
   let lapsedLicences: ((scope: TenantScope, today: string) => Promise<LapsedLicence[]>) | null =
