@@ -3735,6 +3735,9 @@ fieldset.worker-card > legend {
 @media (min-width: 768px) {
   .tasks__fields {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Project directions: pinned locations with access notes, and Nova's pick of entrance */
 .location-list {
   display: flex;
