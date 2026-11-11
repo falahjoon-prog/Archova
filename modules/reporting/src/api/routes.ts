@@ -7,6 +7,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { InsightsService } from '../application/insights';
 import type { DbpService } from '../application/dbp';
 import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
@@ -21,6 +22,7 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  insights: InsightsService,
   audit: AuditService,
   sustainability: SustainabilityService,
   dbp: DbpService,
@@ -65,6 +67,11 @@ export function reportingRoutes(
         risk.lateSopaClaims(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
+    getProjectInsights: async (input) => {
+      const projectId = decodeId('project', input.params.projectId);
+      if (!projectId) throw new AppError('project.not_found');
+      return { status: 200, body: await read(input, (s) => insights.forProject(s, projectId)) };
+    },
     getReadinessPack: async (input) => ({
       status: 200,
       body: await read(input, (s) => readiness.build(s)),

@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { AnnouncementsCard } from '@/features/announcements';
 import { BookmarksCard } from '@/features/bookmarks';
+import { InsightsCard } from '@/features/insights';
 import { RecentsCard } from '@/features/recents';
 import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
@@ -147,6 +148,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             permissions={permissions.data as EffectivePermissions | undefined}
           />
           <RecentsCard projectId={projectId} />
+          <InsightsCard projectId={projectId} />
           <PhotosCard
             projectId={projectId}
             timeZone={p.timezone}

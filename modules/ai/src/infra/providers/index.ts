@@ -11,6 +11,7 @@ import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
 import { heuristicHelpExplain } from '../../eval/suites/help-explain';
 import { heuristicDiaryWeekly } from '../../eval/suites/diary-weekly';
+import { heuristicInsightsDiscuss } from '../../eval/suites/insights-discuss';
 import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicDrawingCompareVisual } from '../../eval/suites/drawing-compare-visual';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
@@ -53,6 +54,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'assist.answer': heuristicAssistAnswer,
   'diary.summary': heuristicDiarySummary,
   'diary.weekly': heuristicDiaryWeekly,
+  'insights.discuss': heuristicInsightsDiscuss,
   'help.explain': heuristicHelpExplain,
   'minutes.extract': heuristicMeetingMinutes,
   'rfi.draft': heuristicRfiDraft,

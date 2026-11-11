@@ -14,6 +14,7 @@ import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
 import { captureScanSuite } from './suites/capture-scan';
 import { helpExplainSuite } from './suites/help-explain';
 import { hazardScanSuite } from './suites/hazard-scan';
+import { insightsDiscussSuite } from './suites/insights-discuss';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
@@ -47,6 +48,7 @@ export const SUITES: readonly AnySuite[] = [
   diarySummarySuite,
   helpExplainSuite,
   diaryWeeklySuite,
+  insightsDiscussSuite,
   meetingMinutesSuite,
   rfiDraftSuite,
   rfiAnswerSuite,

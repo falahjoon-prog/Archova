@@ -3813,6 +3813,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Ranked notes for the project home - budget risk, overdue items and programme slip.
+         * @description The Insights card on the project home. Reads this one project's counts, budget forecast and programme slip as
+         *     the caller (a tool the caller cannot read adds nothing) and returns the notes worth a look, worst first. Every
+         *     sentence and figure comes from fixed rules, not a model; Nova only discusses them (`discussProjectInsight`)
+         *     and never changes data. An empty list means nothing needs attention. Staff only.
+         */
+        get: operations["getProjectInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/insights/discuss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova a follow-up about the project home insights (read-only).
+         * @description Nova answers from the project's current insight figures only (the same notes `getProjectInsights` returns,
+         *     read as the caller). It can explain a note, compare notes, suggest what to look at first and propose options,
+         *     but it only suggests: it never changes any record, and every suggestion is for a person to review and carry
+         *     out. A sentence whose figures are not in the notes is dropped; when nothing is left, `grounded` is false and
+         *     the answer says Nova cannot answer from the figures. `insightId` focuses the question on one note. Costs one
+         *     Nova credit when the model is called; nothing when the project has no notes.
+         */
+        post: operations["discussProjectInsight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/risk/late-sopa-claims": {
         parameters: {
             query?: never;
@@ -13005,6 +13059,31 @@ export interface components {
             /** @enum {string} */
             insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
             summary: string;
+        };
+        /** @enum {string} */
+        InsightKind: "budget" | "programme" | "rfis" | "defects" | "submittals" | "variations" | "claims" | "incidents";
+        ProjectInsight: {
+            id: components["schemas"]["InsightKind"];
+            kind: components["schemas"]["InsightKind"];
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            title: string;
+            detail: string;
+            facts: string[];
+        };
+        ProjectInsights: {
+            projectId: string;
+            projectName: string;
+            insights: components["schemas"]["ProjectInsight"][];
+        };
+        InsightDiscussion: {
+            runId: string | null;
+            grounded: boolean;
+            answer: string;
+            /** @description Options Nova proposes, for a person to review. Nothing here has been done. */
+            suggestions: string[];
+            /** @description Always true: Nova only suggests, a person decides. */
+            reviewRequired: boolean;
         };
         /**
          * @description The building element an inspection or observation concerns.
@@ -29030,6 +29109,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    discussProjectInsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                    insightId?: components["schemas"]["InsightKind"];
+                    /** @description The earlier turns of this conversation, oldest first; the server keeps none. */
+                    history?: {
+                        /** @enum {string} */
+                        role: "user" | "nova";
+                        text: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightDiscussion"];
                 };
             };
             default: components["responses"]["Problem"];

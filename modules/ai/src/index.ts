@@ -23,6 +23,7 @@ import { createHelpService } from './application/help';
 import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
+import { createInsightsDiscussService } from './application/insights-discuss';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
@@ -253,6 +254,19 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** reporting.api.projectInsights: the project home notes as the caller may see them (insights follow-up). */
+    projectInsights: (
+      scope: TenantScope,
+      projectId: string,
+    ) => Promise<{
+      insights: readonly {
+        id: string;
+        severity: 'high' | 'medium' | 'low';
+        title: string;
+        detail: string;
+        facts: readonly string[];
+      }[];
+    }>;
     /** financials.api.laborFactsForNova: a cost code's labor productivity figures for Nova's read of it. */
     laborFacts?: (scope: TenantScope, projectId: string, costCodeId: string) => Promise<LaborFacts>;
     /** diary.api.dayForSummary: one diary day as the caller may read it, or null (F4). */
@@ -528,6 +542,11 @@ export function createAiModule(
     gateway,
     dayForSummary: deps.dayForSummary,
   });
+  const insightsDiscuss = createInsightsDiscussService({
+    database: services.database,
+    gateway,
+    insights: deps.projectInsights,
+  });
   const minutesExtract = createMinutesExtractService({
     database: services.database,
     gateway,
@@ -557,6 +576,7 @@ export function createAiModule(
       drawingCompare,
       diarySummary,
       diaryWeekly,
+      insightsDiscuss,
       defectTags,
       importMappings,
       quoteReads,
@@ -630,6 +650,8 @@ export function createAiModule(
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
       summariseDiaryDay: diarySummary.summariseDay,
       summariseDiaryWeek: diaryWeekly.summariseWeek,
+      /** Project home insights: Nova explains and compares the notes and proposes options; read-only. */
+      discussInsight: insightsDiscuss.discuss,
       /** F7: proposed minute items from typed meeting notes; `meetings.api.forMinutesDraft` supplies the meeting. */
       extractMinutes: minutesExtract.extract,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
