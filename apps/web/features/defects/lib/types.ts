@@ -103,6 +103,8 @@ export interface DefectInput {
   requireCloseEvidence: boolean;
   dueDate: string | null;
   category: string | null;
+  /** The warranty item a liability-period claim is against (live data only). */
+  warrantyItemId?: string | null;
   /** Photos picked on the form; uploaded when the defect is saved. */
   photos: File[];
 }
