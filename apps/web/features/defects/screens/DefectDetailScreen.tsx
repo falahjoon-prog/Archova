@@ -168,6 +168,17 @@ function DefectView({ d }: { d: Defect }) {
           Send to company
         </Button>
       ) : null}
+      {d.status === 'open' &&
+      d.assigneeUserIds.includes(org.user.id) &&
+      !d.completedUserIds.includes(org.user.id) ? (
+        <Button
+          variant="secondary"
+          disabled={m.completePart.isPending}
+          onClick={() => m.completePart.mutate(d.id)}
+        >
+          My part is done
+        </Button>
+      ) : null}
       {defectCan(d, 'ready') ? (
         <Button onClick={() => open('ready')}>Mark ready for inspection</Button>
       ) : null}
@@ -312,7 +323,12 @@ function DefectView({ d }: { d: Defect }) {
                   {
                     label: 'Assignees',
                     value: d.assigneeUserIds.length
-                      ? d.assigneeUserIds.map((u) => dir.personName(u)).join(', ')
+                      ? `${d.assigneeUserIds
+                          .map(
+                            (u) =>
+                              `${dir.personName(u)}${d.completedUserIds.includes(u) ? ' (done)' : ''}`,
+                          )
+                          .join(', ')}`
                       : '—',
                   },
                   {

@@ -7230,6 +7230,26 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WarrantySummary' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    post:
+      operationId: completeDefectPart
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.respond
+      summary: >-
+        An assignee marks their own part of an open defect done. When every assignee has, the final approver (or
+        the manager) is told. Saying it twice changes nothing.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20795,6 +20815,7 @@ components:
                 compliance_document,
                 conversation,
                 announcement,
+                defect,
                 permit,
                 cover,
                 warranty_item,
@@ -26767,6 +26788,7 @@ components:
           assigneeCompanyId,
           assigneeUserId,
           assigneeUserIds,
+          completedUserIds,
           managerUserId,
           finalApproverUserId,
           distributionUserIds,
@@ -26808,6 +26830,10 @@ components:
         assigneeUserIds:
           type: array
           description: Everyone the punch item is assigned to, in the assigned company.
+          items: { type: string }
+        completedUserIds:
+          type: array
+          description: Assignees who have marked their own part done this round.
           items: { type: string }
         managerUserId: { type: [string, 'null'], description: 'Punch Item Manager.' }
         finalApproverUserId:
