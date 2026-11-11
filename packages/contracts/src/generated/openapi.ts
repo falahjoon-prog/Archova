@@ -3786,6 +3786,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/dbp-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Inspection pass rates and observation risk classifications by building element, for DBP Act reporting.
+         * @description Counts only; Archova records what a person classified and never classifies a defect itself. Covers the projects
+         *     the caller can see (same rules as the portfolio) and, per project, only what the caller may read in the
+         *     inspections tool: other projects count in `restrictedProjects` and add nothing. Observations that are not
+         *     closed are counted; "late" is an inspection still open past its scheduled date or an open observation past its
+         *     due date, in the project's local date. The pass-rate trend covers the last 12 months by submission month.
+         */
+        get: operations["getDbpInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/portfolio/sustainability": {
         parameters: {
             query?: never;
@@ -5346,6 +5372,107 @@ export interface paths {
         head?: never;
         /** Edit a defect that is not closed or void. Builder staff edit any; an author edits their own draft. */
         patch: operations["updateDefect"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The warranty register, soonest expiry first, with claim counts per item.
+         * @description Everyone who can read the project's warranty (owners and clients included) sees every item. `state` is worked
+         *     out in the project's time zone: expiring is within 90 days of the last day, expired is after it.
+         */
+        get: operations["listWarrantyItems"];
+        put?: never;
+        /** Add a system or product with a warranty period. It is numbered WAR-0001 per project. */
+        post: operations["createWarrantyItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        /** One warranty item with its claim history. */
+        get: operations["getWarrantyItem"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove an item from the register. Claims already raised against it stay on the defect register.
+         * @description Each claim tied to the item is unlinked and gets a line in its history saying so.
+         */
+        delete: operations["deleteWarrantyItem"];
+        options?: never;
+        head?: never;
+        /** Edit a warranty item. Changing the start or length recalculates the expiry. */
+        patch: operations["updateWarrantyItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Claim history for the project, newest first (defects raised in the liability period or against a warranty item).
+         * @description A summary for everyone who can read the warranty, so an owner or client can follow every claim on their
+         *     building: number, title, status, dates. This deliberately bypasses the defect register's own visibility rules.
+         *     Owners and clients get the narrow form: a disputed claim reads as open and the answerable company is null.
+         *     Description, photos and history stay on the defect. Subcontractors see only claims assigned to their company.
+         */
+        get: operations["listWarrantyClaims"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/warranty/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Warranty counts and what Nova flags, from rules alone (no model).
+         * @description Flags: a warranty ending within 90 days, a lapsed warranty that still has an open claim, a claim open past the
+         *     14 day response target, and three or more claims on one system within a year.
+         */
+        get: operations["getWarrantySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition": {
@@ -12078,6 +12205,194 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/logistics/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The docks, laydown areas, cranes, hoists and lifts deliveries can be booked against. */
+        get: operations["listLogisticsResources"];
+        put?: never;
+        /** Add a dock, crane, hoist or other bookable resource. */
+        post: operations["createLogisticsResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/logistics/resources/{resourceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                resourceId: components["parameters"]["LogisticsResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a resource, change how many trucks or lifts it takes at once, or take it out of use. */
+        patch: operations["updateLogisticsResource"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Material deliveries whose window touches a date-time range, earliest first. */
+        get: operations["listDeliveries"];
+        put?: never;
+        /** Book a material delivery into a window, with an optional dock, crane or hoist and purchase order. */
+        post: operations["createDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        /** A delivery with its history. */
+        get: operations["getDelivery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a delivery's details or logistics plan. Moving the window is a reschedule. */
+        patch: operations["updateDelivery"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Site staff log that the truck arrived, or that the load is unloaded, at the time it happened. */
+        post: operations["checkInDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a delivery delayed, missed or cancelled, or move it to a new window. */
+        post: operations["changeDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nova drafts a note to the supplier (confirm, chase a late truck, ask for a new time or cancel). Nothing is sent. */
+        post: operations["draftDeliveryNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delivery-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's read of the delivery board, by rule: late and overdue trucks, double-booked docks and cranes, deliveries with no plan. */
+        get: operations["getDeliveryInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delivery-slot-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Free windows inside site hours at a dock (and a crane or hoist if needed), earliest first. Reads only; books nothing. */
+        post: operations["suggestDeliverySlots"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity": {
         parameters: {
             query?: never;
@@ -12274,6 +12589,221 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        LogisticsResourceKind: "dock" | "laydown" | "crane" | "hoist" | "lift" | "forklift";
+        LogisticsResource: {
+            id: string;
+            name: string;
+            kind: components["schemas"]["LogisticsResourceKind"];
+            /** @description How many trucks or lifts it takes at once. */
+            capacity: number;
+            active: boolean;
+            note: string | null;
+            version: number;
+        };
+        LogisticsResourceList: {
+            data: components["schemas"]["LogisticsResource"][];
+        };
+        CreateLogisticsResourceRequest: {
+            name: string;
+            kind: components["schemas"]["LogisticsResourceKind"];
+            capacity?: number;
+            note?: string;
+        };
+        UpdateLogisticsResourceRequest: {
+            name?: string;
+            capacity?: number;
+            active?: boolean;
+            note?: string;
+        };
+        /** @enum {string} */
+        DeliveryStatus: "scheduled" | "arrived" | "unloaded" | "delayed" | "missed" | "cancelled";
+        DeliveryItem: {
+            description: string;
+            quantity?: string | null;
+            unit?: string | null;
+        };
+        Delivery: {
+            id: string;
+            number: number;
+            title: string;
+            supplierName: string;
+            supplierCompanyId: string | null;
+            supplierContact: string | null;
+            supplierEmail: string | null;
+            supplierPhone: string | null;
+            items: components["schemas"]["DeliveryItem"][];
+            /** Format: date-time */
+            windowStart: string;
+            /** Format: date-time */
+            windowEnd: string;
+            zoneId: string | null;
+            needsLift: boolean;
+            liftResourceId: string | null;
+            /** Format: date-time */
+            liftStart: string | null;
+            /** Format: date-time */
+            liftEnd: string | null;
+            vehicle: string | null;
+            accessNotes: string | null;
+            status: components["schemas"]["DeliveryStatus"];
+            /** Format: date-time */
+            arrivedAt: string | null;
+            /** Format: date-time */
+            unloadedAt: string | null;
+            statusReason: string | null;
+            commitmentId: string | null;
+            commitmentLabel: string | null;
+            version: number;
+        };
+        DeliveryList: {
+            data: components["schemas"]["Delivery"][];
+        };
+        DeliveryEvent: {
+            id: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "rescheduled" | "arrived" | "unloaded" | "delayed" | "missed" | "cancelled" | "notice_drafted";
+            detail: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DeliveryDetail: {
+            delivery: components["schemas"]["Delivery"];
+            events: components["schemas"]["DeliveryEvent"][];
+        };
+        CreateDeliveryRequest: {
+            title: string;
+            supplierName: string;
+            supplierCompanyId?: string;
+            supplierContact?: string;
+            /** Format: email */
+            supplierEmail?: string;
+            supplierPhone?: string;
+            items?: components["schemas"]["DeliveryItem"][];
+            /** Format: date-time */
+            windowStart: string;
+            /** Format: date-time */
+            windowEnd: string;
+            zoneId?: string;
+            needsLift?: boolean;
+            liftResourceId?: string;
+            /** Format: date-time */
+            liftStart?: string;
+            /** Format: date-time */
+            liftEnd?: string;
+            vehicle?: string;
+            accessNotes?: string;
+            commitmentId?: string;
+        };
+        UpdateDeliveryRequest: {
+            title?: string;
+            supplierName?: string;
+            supplierCompanyId?: string;
+            supplierContact?: string;
+            supplierEmail?: string;
+            supplierPhone?: string;
+            items?: components["schemas"]["DeliveryItem"][];
+            zoneId?: string;
+            needsLift?: boolean;
+            liftResourceId?: string;
+            /** Format: date-time */
+            liftStart?: string;
+            /** Format: date-time */
+            liftEnd?: string;
+            vehicle?: string;
+            accessNotes?: string;
+            commitmentId?: string;
+            /** @description Take these off the delivery. Clearing the lift also clears its times. */
+            clear?: ("zoneId" | "liftResourceId" | "commitmentId")[];
+        };
+        CheckInDeliveryRequest: {
+            /** @enum {string} */
+            event: "arrived" | "unloaded";
+            /**
+             * Format: date-time
+             * @description When it happened; defaults to now.
+             */
+            at?: string;
+            note?: string;
+        };
+        ChangeDeliveryRequest: {
+            /** @enum {string} */
+            action: "delay" | "miss" | "cancel" | "reschedule";
+            /** @description Required to delay or cancel. */
+            reason?: string;
+            /** Format: date-time */
+            windowStart?: string;
+            /** Format: date-time */
+            windowEnd?: string;
+            zoneId?: string;
+            liftResourceId?: string;
+        };
+        DeliveryFlag: {
+            deliveryId: string;
+            /** @enum {string} */
+            kind: "late" | "overdue" | "arrived_late" | "double_booked" | "lift_clash" | "no_plan";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            relatedDeliveryIds: string[];
+        };
+        DeliveryInsights: {
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date */
+            today: string;
+            counts: {
+                today: number;
+                arrivedToday: number;
+                late: number;
+                clashes: number;
+                noPlan: number;
+            };
+            flags: components["schemas"]["DeliveryFlag"][];
+        };
+        DeliverySlotRequest: {
+            durationMinutes: number;
+            /**
+             * Format: date
+             * @description First day to look at, in the project's zone; defaults to today.
+             */
+            fromDate?: string;
+            days?: number;
+            zoneId?: string;
+            needsLift?: boolean;
+            liftMinutes?: number;
+            liftResourceId?: string;
+            ignoreDeliveryId?: string;
+        };
+        DeliverySlot: {
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+            zoneId: string;
+            liftResourceId: string | null;
+            /** Format: date-time */
+            liftEnd: string | null;
+        };
+        DeliverySlotList: {
+            data: components["schemas"]["DeliverySlot"][];
+        };
+        DeliveryNoticeRequest: {
+            /** @enum {string} */
+            kind: "confirm" | "late" | "reschedule" | "cancel";
+            reason?: string;
+            senderName?: string;
+        };
+        DeliveryNotice: {
+            /** @description The supplier's email when one is on file. */
+            to: string | null;
+            subject: string;
+            body: string;
+            /** @description For a reschedule, the free slot Nova offers; apply it with a reschedule change. */
+            proposed: null | (components["schemas"]["DeliverySlot"] & {
+                zoneName: string | null;
+            });
+        };
         /** @enum {string} */
         ScheduleSource: "native" | "msp" | "p6";
         /** @enum {string} */
@@ -12526,6 +13056,60 @@ export interface components {
             /** @enum {string} */
             insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
             summary: string;
+        };
+        /**
+         * @description The building element an inspection or observation concerns.
+         * @enum {string}
+         */
+        TradeCategory: "fire_safety" | "waterproofing" | "structural" | "external_cladding" | "building_services" | "other";
+        /**
+         * @description A person's risk classification of an observation (serious defect as in the NSW DBP and RAB Acts).
+         * @enum {string}
+         */
+        ObservationClassification: "serious_defect" | "potential_serious_defect" | "low_risk";
+        /** @enum {string} */
+        ContributingCondition: "workmanship" | "design" | "materials" | "supervision" | "weather" | "coordination" | "documentation";
+        DbpClassCounts: {
+            serious_defect: number;
+            potential_serious_defect: number;
+            low_risk: number;
+            unclassified: number;
+        };
+        DbpInsights: {
+            categories: {
+                category: components["schemas"]["TradeCategory"] | "uncategorised";
+                itemsPassing: {
+                    pass: number;
+                    fail: number;
+                    /** @description Whole percent; null when nothing was answered. */
+                    rate: number | null;
+                };
+                lateInspections: number;
+                lateObservations: number;
+                classifications: components["schemas"]["DbpClassCounts"];
+            }[];
+            classificationTotals: components["schemas"]["DbpClassCounts"];
+            passRateTrend: {
+                /** @description yyyy-mm */
+                month: string;
+                pass: number;
+                fail: number;
+                rate: number | null;
+            }[];
+            conditions: {
+                condition: components["schemas"]["ContributingCondition"] | "not_recorded";
+                count: number;
+            }[];
+            projects: {
+                id: string;
+                name: string;
+                restricted: boolean;
+                classifications: components["schemas"]["DbpClassCounts"];
+                lateInspections: number;
+                lateObservations: number;
+            }[];
+            restrictedProjects: number;
+            truncated: boolean;
         };
         SearchResults: {
             /** @description The words searched for, trimmed. */
@@ -14096,7 +14680,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -17935,6 +18519,8 @@ export interface components {
             closedAt: string | null;
             closedBy: string | null;
             source: components["schemas"]["DefectSource"];
+            /** @description The warranty item this claim is against (liability period claims). */
+            warrantyItemId?: string | null;
             /** @description Actions the caller can take now, for showing buttons */
             availableActions: components["schemas"]["DefectAction"][];
             createdBy: string | null;
@@ -19147,6 +19733,7 @@ export interface components {
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
+            warrantyItemId?: components["schemas"]["WarrantyItemRef"];
             /** @description The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`. */
             aiSuggestionId?: string;
         };
@@ -19172,6 +19759,117 @@ export interface components {
             /** Format: date */
             dueDate?: string | null;
             pin?: components["schemas"]["DrawingPin"];
+            warrantyItemId?: components["schemas"]["WarrantyItemRef"] | null;
+        };
+        WarrantyItemRef: string;
+        /** @enum {string} */
+        WarrantySystem: "structure" | "roof" | "waterproofing" | "facade_windows" | "plumbing" | "electrical" | "hvac" | "fire_services" | "lifts" | "finishes" | "appliances" | "landscaping" | "other";
+        /** @enum {string} */
+        WarrantyResponsibleType: "builder" | "subcontractor" | "supplier";
+        /**
+         * @description Active, expiring (within 90 days of the last day) or expired, in the project's time zone.
+         * @enum {string}
+         */
+        WarrantyState: "active" | "expiring" | "expired";
+        WarrantyItem: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description WAR-0007 */
+            numberLabel: string;
+            name: string;
+            system: components["schemas"]["WarrantySystem"];
+            description: string;
+            responsibleType: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId: string | null;
+            /** @description A supplier or installer that is not a company on the project. */
+            responsibleName: string | null;
+            /** Format: date */
+            startDate: string;
+            durationMonths: number;
+            /**
+             * Format: date
+             * @description The last day covered.
+             */
+            expiryDate: string;
+            state: components["schemas"]["WarrantyState"];
+            /** @description Negative once expired. */
+            daysToExpiry: number;
+            claimCount: number;
+            openClaimCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        WarrantyItemList: {
+            data: components["schemas"]["WarrantyItem"][];
+        };
+        WarrantyClaim: {
+            defectId: string;
+            numberLabel: string;
+            title: string;
+            status: components["schemas"]["DefectStatus"];
+            priority: components["schemas"]["DefectPriority"];
+            trade: string | null;
+            warrantyItemId: string | null;
+            assigneeCompanyId: string | null;
+            /** Format: date-time */
+            raisedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description Whole days from issue to close */
+            daysOpen: number;
+            /** @description Open past the 14 day response target. */
+            isOverdue: boolean;
+        };
+        WarrantyClaimList: {
+            data: components["schemas"]["WarrantyClaim"][];
+        };
+        WarrantyItemDetail: {
+            item: components["schemas"]["WarrantyItem"];
+            claims: components["schemas"]["WarrantyClaim"][];
+        };
+        WarrantyFlag: {
+            /** @enum {string} */
+            kind: "warranty_expiring" | "warranty_expired_open_claim" | "claim_response_overdue" | "repeat_claims";
+            /** @enum {string} */
+            severity: "info" | "warning" | "critical";
+            message: string;
+            itemId: string | null;
+            /** @description The defect id. */
+            claimId: string | null;
+        };
+        WarrantySummary: {
+            itemCount: number;
+            expiringCount: number;
+            expiredCount: number;
+            openClaimCount: number;
+            closedClaimCount: number;
+            flags: components["schemas"]["WarrantyFlag"][];
+        };
+        CreateWarrantyItemRequest: {
+            name: string;
+            system: components["schemas"]["WarrantySystem"];
+            description?: string;
+            responsibleType: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"];
+            responsibleName?: string;
+            /** Format: date */
+            startDate: string;
+            durationMonths: number;
+        };
+        UpdateWarrantyItemRequest: {
+            name?: string;
+            system?: components["schemas"]["WarrantySystem"];
+            description?: string;
+            responsibleType?: components["schemas"]["WarrantyResponsibleType"];
+            responsibleCompanyId?: components["schemas"]["CompanyRef"] | null;
+            responsibleName?: string | null;
+            /** Format: date */
+            startDate?: string;
+            durationMonths?: number;
         };
         DefectTransitionRequest: {
             action: components["schemas"]["DefectAction"];
@@ -20981,6 +21679,7 @@ export interface components {
             name: string;
             /** @description ITP, pre-pour, handover, safety walk or your own */
             type: string;
+            tradeCategory: components["schemas"]["TradeCategory"] | null;
             version: number;
             published: boolean;
             /** Format: date-time */
@@ -21022,11 +21721,13 @@ export interface components {
         CreateInspectionTemplateRequest: {
             name: string;
             type?: string;
+            tradeCategory?: components["schemas"]["TradeCategory"];
             items: components["schemas"]["InspectionTemplateItemInput"][];
         };
         UpdateInspectionTemplateRequest: {
             name?: string;
             type?: string;
+            tradeCategory?: components["schemas"]["TradeCategory"] | null;
             items?: components["schemas"]["InspectionTemplateItemInput"][];
         };
         InspectionSignature: {
@@ -21275,6 +21976,9 @@ export interface components {
             description: string;
             location: string | null;
             priority: components["schemas"]["DefectPriority"];
+            tradeCategory: components["schemas"]["TradeCategory"] | null;
+            classification: components["schemas"]["ObservationClassification"] | null;
+            contributingCondition: components["schemas"]["ContributingCondition"] | null;
             assigneeCompanyId: string | null;
             raisedByCompanyId: string | null;
             status: components["schemas"]["ObservationStatus"];
@@ -21787,6 +22491,9 @@ export interface components {
             description: string;
             location?: string;
             priority?: components["schemas"]["DefectPriority"];
+            tradeCategory?: components["schemas"]["TradeCategory"];
+            classification?: components["schemas"]["ObservationClassification"];
+            contributingCondition?: components["schemas"]["ContributingCondition"];
             assigneeCompanyId?: components["schemas"]["CompanyRef"];
             /** Format: date */
             dueDate?: string;
@@ -21800,6 +22507,9 @@ export interface components {
             description?: string;
             location?: string | null;
             priority?: components["schemas"]["DefectPriority"];
+            tradeCategory?: components["schemas"]["TradeCategory"] | null;
+            classification?: components["schemas"]["ObservationClassification"] | null;
+            contributingCondition?: components["schemas"]["ContributingCondition"] | null;
             assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
             /** Format: date */
             dueDate?: string | null;
@@ -22631,6 +23341,8 @@ export interface components {
         };
     };
     parameters: {
+        LogisticsResourceId: string;
+        DeliveryId: string;
         InspectionItemId: string;
         PlantAssetId: string;
         PlantAllocationId: string;
@@ -22691,6 +23403,7 @@ export interface components {
         OwnerInvoiceId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
+        WarrantyItemId: string;
         DefectId: string;
         TenderPackageId: string;
         QuoteId: string;
@@ -28398,6 +29111,31 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getDbpInsights: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The insights */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DbpInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getSustainabilityPortfolio: {
         parameters: {
             query?: {
@@ -30936,6 +31674,7 @@ export interface operations {
                 trade?: string;
                 overdue?: "true" | "false";
                 drawingRevisionId?: string;
+                warrantyItemId?: components["schemas"]["WarrantyItemRef"];
                 q?: string;
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
@@ -31046,6 +31785,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWarrantyItems: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["WarrantyState"];
+                system?: components["schemas"]["WarrantySystem"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWarrantyItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWarrantyItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWarrantyItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWarrantyItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWarrantyItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["WarrantyItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWarrantyItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWarrantyClaims: {
+        parameters: {
+            query?: {
+                warrantyItemId?: components["schemas"]["WarrantyItemRef"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getWarrantySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantySummary"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -42706,6 +43638,340 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listLogisticsResources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsResourceList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createLogisticsResource: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLogisticsResourceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsResource"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateLogisticsResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                resourceId: components["parameters"]["LogisticsResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLogisticsResourceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogisticsResource"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeliveries: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                status?: components["schemas"]["DeliveryStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDelivery: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    checkInDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckInDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    changeDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftDeliveryNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                deliveryId: components["parameters"]["DeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryNoticeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryNotice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDeliveryInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestDeliverySlots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliverySlotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliverySlotList"];
                 };
             };
             default: components["responses"]["Problem"];

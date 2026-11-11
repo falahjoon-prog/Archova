@@ -47,6 +47,7 @@ tags:
   - name: sync
   - name: diary
   - name: workforce
+  - name: logistics
   - name: scheduling
   - name: meetings
   - name: ownerportal
@@ -5031,6 +5032,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/dbp-insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getDbpInsights
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Inspection pass rates and observation risk classifications by building element, for DBP Act reporting.
+      description: |
+        Counts only; Archova records what a person classified and never classifies a defect itself. Covers the projects
+        the caller can see (same rules as the portfolio) and, per project, only what the caller may read in the
+        inspections tool: other projects count in `restrictedProjects` and add nothing. Observations that are not
+        closed are counted; "late" is an inspection still open past its scheduled date or an open observation past its
+        due date, in the project's local date. The pass-rate trend covers the last 12 months by submission month.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The insights
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DbpInsights' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/portfolio/sustainability:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7088,6 +7118,11 @@ paths:
             in: query,
             schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
           }
+        - {
+            name: warrantyItemId,
+            in: query,
+            schema: { $ref: '#/components/schemas/WarrantyItemRef' },
+          }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
@@ -7160,6 +7195,155 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWarrantyItems
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: The warranty register, soonest expiry first, with claim counts per item.
+      description: |
+        Everyone who can read the project's warranty (owners and clients included) sees every item. `state` is worked
+        out in the project's time zone: expiring is within 90 days of the last day, expired is after it.
+      parameters:
+        - { name: state, in: query, schema: { $ref: '#/components/schemas/WarrantyState' } }
+        - { name: system, in: query, schema: { $ref: '#/components/schemas/WarrantySystem' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Add a system or product with a warranty period. It is numbered WAR-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWarrantyItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/WarrantyItemId'
+    get:
+      operationId: getWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: One warranty item with its claim history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Edit a warranty item. Changing the start or length recalculates the expiry.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWarrantyItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteWarrantyItem
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.manage
+      summary: Remove an item from the register. Claims already raised against it stay on the defect register.
+      description: |
+        Each claim tied to the item is unlinked and gets a line in its history saying so.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty/claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWarrantyClaims
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: Claim history for the project, newest first (defects raised in the liability period or against a warranty item).
+      description: |
+        A summary for everyone who can read the warranty, so an owner or client can follow every claim on their
+        building: number, title, status, dates. This deliberately bypasses the defect register's own visibility rules.
+        Owners and clients get the narrow form: a disputed claim reads as open and the answerable company is null.
+        Description, photos and history stay on the defect. Subcontractors see only claims assigned to their company.
+      parameters:
+        - {
+            name: warrantyItemId,
+            in: query,
+            schema: { $ref: '#/components/schemas/WarrantyItemRef' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantyClaimList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/warranty/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getWarrantySummary
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.warranty.read
+      summary: Warranty counts and what Nova flags, from rules alone (no model).
+      description: |
+        Flags: a warranty ending within 90 days, a lapsed warranty that still has an open claim, a claim open past the
+        14 day response target, and three or more claims on one system within a year.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WarrantySummary' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
     parameters:
@@ -16451,6 +16635,251 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/logistics/resources:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listLogisticsResources
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.view
+      summary: The docks, laydown areas, cranes, hoists and lifts deliveries can be booked against.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LogisticsResourceList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createLogisticsResource
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Add a dock, crane, hoist or other bookable resource.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLogisticsResourceRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LogisticsResource' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/logistics/resources/{resourceId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/LogisticsResourceId'
+    patch:
+      operationId: updateLogisticsResource
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Rename a resource, change how many trucks or lifts it takes at once, or take it out of use.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateLogisticsResourceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LogisticsResource' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeliveries
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.view
+      summary: Material deliveries whose window touches a date-time range, earliest first.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DeliveryStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDelivery
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Book a material delivery into a window, with an optional dock, crane or hoist and purchase order.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDeliveryRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delivery' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeliveryId'
+    get:
+      operationId: getDelivery
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.view
+      summary: A delivery with its history.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDelivery
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Change a delivery's details or logistics plan. Moving the window is a reschedule.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDeliveryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delivery' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/check-in:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeliveryId'
+    post:
+      operationId: checkInDelivery
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.checkin
+      summary: Site staff log that the truck arrived, or that the load is unloaded, at the time it happened.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckInDeliveryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delivery' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeliveryId'
+    post:
+      operationId: changeDelivery
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Mark a delivery delayed, missed or cancelled, or move it to a new window.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeDeliveryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delivery' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/notice:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeliveryId'
+    post:
+      operationId: draftDeliveryNotice
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.manage
+      summary: Nova drafts a note to the supplier (confirm, chase a late truck, ask for a new time or cancel). Nothing is sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeliveryNoticeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryNotice' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delivery-insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDeliveryInsights
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.view
+      summary: "Nova's read of the delivery board, by rule: late and overdue trucks, double-booked docks and cranes, deliveries with no plan."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delivery-slot-suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: suggestDeliverySlots
+      tags: [logistics]
+      x-module: workforce
+      x-permission: logistics.deliveries.view
+      summary: Free windows inside site hours at a dock (and a crane or hoist if needed), earliest first. Reads only; books nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeliverySlotRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliverySlotList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/items/{itemId}/activity:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16713,6 +17142,16 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    LogisticsResourceId:
+      name: resourceId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    DeliveryId:
+      name: deliveryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
     InspectionItemId:
       name: itemId
       in: path
@@ -17013,6 +17452,11 @@ components:
       in: path
       required: true
       schema: { type: string, enum: [claim, schedule] }
+    WarrantyItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wri_[0-9A-Za-z]{26}$' }
     DefectId:
       name: defectId
       in: path
@@ -17193,6 +17637,316 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    LogisticsResourceKind:
+      type: string
+      enum: [dock, laydown, crane, hoist, lift, forklift]
+    LogisticsResource:
+      type: object
+      required: [id, name, kind, capacity, active, note, version]
+      properties:
+        id: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/LogisticsResourceKind' }
+        capacity:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 20,
+            description: 'How many trucks or lifts it takes at once.',
+          }
+        active: { type: boolean }
+        note: { type: [string, 'null'] }
+        version: { type: integer }
+    LogisticsResourceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/LogisticsResource' }
+    CreateLogisticsResourceRequest:
+      type: object
+      additionalProperties: false
+      required: [name, kind]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        kind: { $ref: '#/components/schemas/LogisticsResourceKind' }
+        capacity: { type: integer, minimum: 1, maximum: 20 }
+        note: { type: string, minLength: 1, maxLength: 1000 }
+    UpdateLogisticsResourceRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        capacity: { type: integer, minimum: 1, maximum: 20 }
+        active: { type: boolean }
+        note: { type: string, maxLength: 1000 }
+    DeliveryStatus:
+      type: string
+      enum: [scheduled, arrived, unloaded, delayed, missed, cancelled]
+    DeliveryItem:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 300 }
+        quantity: { type: [string, 'null'], maxLength: 40 }
+        unit: { type: [string, 'null'], maxLength: 40 }
+    Delivery:
+      type: object
+      required:
+        [
+          id,
+          number,
+          title,
+          supplierName,
+          supplierCompanyId,
+          supplierContact,
+          supplierEmail,
+          supplierPhone,
+          items,
+          windowStart,
+          windowEnd,
+          zoneId,
+          needsLift,
+          liftResourceId,
+          liftStart,
+          liftEnd,
+          vehicle,
+          accessNotes,
+          status,
+          arrivedAt,
+          unloadedAt,
+          statusReason,
+          commitmentId,
+          commitmentLabel,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        supplierName: { type: string }
+        supplierCompanyId: { type: [string, 'null'] }
+        supplierContact: { type: [string, 'null'] }
+        supplierEmail: { type: [string, 'null'] }
+        supplierPhone: { type: [string, 'null'] }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryItem' }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        zoneId: { type: [string, 'null'], pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        needsLift: { type: boolean }
+        liftResourceId: { type: [string, 'null'], pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftStart: { type: [string, 'null'], format: date-time }
+        liftEnd: { type: [string, 'null'], format: date-time }
+        vehicle: { type: [string, 'null'] }
+        accessNotes: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/DeliveryStatus' }
+        arrivedAt: { type: [string, 'null'], format: date-time }
+        unloadedAt: { type: [string, 'null'], format: date-time }
+        statusReason: { type: [string, 'null'] }
+        commitmentId: { type: [string, 'null'], pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        commitmentLabel: { type: [string, 'null'] }
+        version: { type: integer }
+    DeliveryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Delivery' }
+    DeliveryEvent:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^dle_[0-9A-Za-z]{26}$' }
+        kind:
+          type: string
+          enum:
+            [
+              created,
+              updated,
+              rescheduled,
+              arrived,
+              unloaded,
+              delayed,
+              missed,
+              cancelled,
+              notice_drafted,
+            ]
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DeliveryDetail:
+      type: object
+      required: [delivery, events]
+      properties:
+        delivery: { $ref: '#/components/schemas/Delivery' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryEvent' }
+    CreateDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [title, supplierName, windowStart, windowEnd]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        supplierName: { type: string, minLength: 1, maxLength: 200 }
+        supplierCompanyId: { type: string }
+        supplierContact: { type: string, maxLength: 200 }
+        supplierEmail: { type: string, format: email, maxLength: 320 }
+        supplierPhone: { type: string, maxLength: 40 }
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/DeliveryItem' }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        zoneId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        needsLift: { type: boolean }
+        liftResourceId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftStart: { type: string, format: date-time }
+        liftEnd: { type: string, format: date-time }
+        vehicle: { type: string, maxLength: 200 }
+        accessNotes: { type: string, maxLength: 2000 }
+        commitmentId: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+    UpdateDeliveryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        supplierName: { type: string, minLength: 1, maxLength: 200 }
+        supplierCompanyId: { type: string }
+        supplierContact: { type: string, maxLength: 200 }
+        supplierEmail: { type: string, maxLength: 320 }
+        supplierPhone: { type: string, maxLength: 40 }
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/DeliveryItem' }
+        zoneId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        needsLift: { type: boolean }
+        liftResourceId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftStart: { type: string, format: date-time }
+        liftEnd: { type: string, format: date-time }
+        vehicle: { type: string, maxLength: 200 }
+        accessNotes: { type: string, maxLength: 2000 }
+        commitmentId: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        clear:
+          type: array
+          description: Take these off the delivery. Clearing the lift also clears its times.
+          items: { type: string, enum: [zoneId, liftResourceId, commitmentId] }
+    CheckInDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [event]
+      properties:
+        event: { type: string, enum: [arrived, unloaded] }
+        at: { type: string, format: date-time, description: 'When it happened; defaults to now.' }
+        note: { type: string, minLength: 1, maxLength: 1000 }
+    ChangeDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [delay, miss, cancel, reschedule] }
+        reason: { type: string, maxLength: 1000, description: 'Required to delay or cancel.' }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        zoneId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftResourceId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    DeliveryFlag:
+      type: object
+      required: [deliveryId, kind, severity, message, relatedDeliveryIds]
+      properties:
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        kind:
+          { type: string, enum: [late, overdue, arrived_late, double_booked, lift_clash, no_plan] }
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        relatedDeliveryIds:
+          type: array
+          items: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+    DeliveryInsights:
+      type: object
+      required: [asOf, today, counts, flags]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        counts:
+          type: object
+          required: [today, arrivedToday, late, clashes, noPlan]
+          properties:
+            today: { type: integer }
+            arrivedToday: { type: integer }
+            late: { type: integer }
+            clashes: { type: integer }
+            noPlan: { type: integer }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryFlag' }
+    DeliverySlotRequest:
+      type: object
+      additionalProperties: false
+      required: [durationMinutes]
+      properties:
+        durationMinutes: { type: integer, minimum: 15, maximum: 480 }
+        fromDate:
+          {
+            type: string,
+            format: date,
+            description: "First day to look at, in the project's zone; defaults to today.",
+          }
+        days: { type: integer, minimum: 1, maximum: 14 }
+        zoneId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        needsLift: { type: boolean }
+        liftMinutes: { type: integer, minimum: 15, maximum: 480 }
+        liftResourceId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        ignoreDeliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+    DeliverySlot:
+      type: object
+      required: [start, end, zoneId, liftResourceId, liftEnd]
+      properties:
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        zoneId: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftResourceId: { type: [string, 'null'], pattern: '^lgr_[0-9A-Za-z]{26}$' }
+        liftEnd: { type: [string, 'null'], format: date-time }
+    DeliverySlotList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeliverySlot' }
+    DeliveryNoticeRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [confirm, late, reschedule, cancel] }
+        reason: { type: string, maxLength: 1000 }
+        senderName: { type: string, maxLength: 200 }
+    DeliveryNotice:
+      type: object
+      required: [to, subject, body, proposed]
+      properties:
+        to: { type: [string, 'null'], description: The supplier's email when one is on file. }
+        subject: { type: string }
+        body: { type: string }
+        proposed:
+          description: For a reschedule, the free slot Nova offers; apply it with a reschedule change.
+          oneOf:
+            - type: 'null'
+            - allOf:
+                - $ref: '#/components/schemas/DeliverySlot'
+                - type: object
+                  required: [zoneName]
+                  properties:
+                    zoneName: { type: [string, 'null'] }
     ScheduleSource:
       type: string
       enum: [native, msp, p6]
@@ -17655,6 +18409,98 @@ components:
           type: string
           enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
         summary: { type: string }
+    TradeCategory:
+      type: string
+      description: The building element an inspection or observation concerns.
+      enum: [fire_safety, waterproofing, structural, external_cladding, building_services, other]
+    ObservationClassification:
+      type: string
+      description: A person's risk classification of an observation (serious defect as in the NSW DBP and RAB Acts).
+      enum: [serious_defect, potential_serious_defect, low_risk]
+    ContributingCondition:
+      type: string
+      enum: [workmanship, design, materials, supervision, weather, coordination, documentation]
+    DbpClassCounts:
+      type: object
+      required: [serious_defect, potential_serious_defect, low_risk, unclassified]
+      properties:
+        serious_defect: { type: integer }
+        potential_serious_defect: { type: integer }
+        low_risk: { type: integer }
+        unclassified: { type: integer }
+    DbpInsights:
+      type: object
+      required:
+        [
+          categories,
+          classificationTotals,
+          passRateTrend,
+          conditions,
+          projects,
+          restrictedProjects,
+          truncated,
+        ]
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            required: [category, itemsPassing, lateInspections, lateObservations, classifications]
+            properties:
+              category:
+                oneOf:
+                  - { $ref: '#/components/schemas/TradeCategory' }
+                  - { type: string, enum: [uncategorised] }
+              itemsPassing:
+                type: object
+                required: [pass, fail, rate]
+                properties:
+                  pass: { type: integer }
+                  fail: { type: integer }
+                  rate:
+                    {
+                      type: [integer, 'null'],
+                      description: 'Whole percent; null when nothing was answered.',
+                    }
+              lateInspections: { type: integer }
+              lateObservations: { type: integer }
+              classifications: { $ref: '#/components/schemas/DbpClassCounts' }
+        classificationTotals: { $ref: '#/components/schemas/DbpClassCounts' }
+        passRateTrend:
+          type: array
+          items:
+            type: object
+            required: [month, pass, fail, rate]
+            properties:
+              month: { type: string, description: 'yyyy-mm' }
+              pass: { type: integer }
+              fail: { type: integer }
+              rate: { type: [integer, 'null'] }
+        conditions:
+          type: array
+          items:
+            type: object
+            required: [condition, count]
+            properties:
+              condition:
+                oneOf:
+                  - { $ref: '#/components/schemas/ContributingCondition' }
+                  - { type: string, enum: [not_recorded] }
+              count: { type: integer }
+        projects:
+          type: array
+          items:
+            type: object
+            required: [id, name, restricted, classifications, lateInspections, lateObservations]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              restricted: { type: boolean }
+              classifications: { $ref: '#/components/schemas/DbpClassCounts' }
+              lateInspections: { type: integer }
+              lateObservations: { type: integer }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
     SearchResults:
       type: object
       required: [query, results, truncated]
@@ -20066,6 +20912,7 @@ components:
                 announcement,
                 permit,
                 cover,
+                warranty_item,
               ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
@@ -26121,6 +26968,11 @@ components:
         closedAt: { type: [string, 'null'], format: date-time }
         closedBy: { type: [string, 'null'] }
         source: { $ref: '#/components/schemas/DefectSource' }
+        warrantyItemId:
+          {
+            type: [string, 'null'],
+            description: The warranty item this claim is against (liability period claims).,
+          }
         availableActions:
           type: array
           description: Actions the caller can take now, for showing buttons
@@ -28088,6 +28940,7 @@ components:
         requireCloseEvidence: { type: boolean }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
+        warrantyItemId: { $ref: '#/components/schemas/WarrantyItemRef' }
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
@@ -28123,6 +28976,190 @@ components:
         requireCloseEvidence: { type: boolean }
         dueDate: { type: [string, 'null'], format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
+        warrantyItemId:
+          { oneOf: [{ $ref: '#/components/schemas/WarrantyItemRef' }, { type: 'null' }] }
+    WarrantyItemRef:
+      type: string
+      pattern: '^wri_[0-9A-Za-z]{26}$'
+    WarrantySystem:
+      type: string
+      enum:
+        [
+          structure,
+          roof,
+          waterproofing,
+          facade_windows,
+          plumbing,
+          electrical,
+          hvac,
+          fire_services,
+          lifts,
+          finishes,
+          appliances,
+          landscaping,
+          other,
+        ]
+    WarrantyResponsibleType:
+      type: string
+      enum: [builder, subcontractor, supplier]
+    WarrantyState:
+      type: string
+      description: Active, expiring (within 90 days of the last day) or expired, in the project's time zone.
+      enum: [active, expiring, expired]
+    WarrantyItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          name,
+          system,
+          description,
+          responsibleType,
+          responsibleCompanyId,
+          responsibleName,
+          startDate,
+          durationMonths,
+          expiryDate,
+          state,
+          daysToExpiry,
+          claimCount,
+          openClaimCount,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'WAR-0007' }
+        name: { type: string }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        responsibleName:
+          {
+            type: [string, 'null'],
+            description: A supplier or installer that is not a company on the project.,
+          }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer }
+        expiryDate: { type: string, format: date, description: The last day covered. }
+        state: { $ref: '#/components/schemas/WarrantyState' }
+        daysToExpiry: { type: integer, description: Negative once expired. }
+        claimCount: { type: integer }
+        openClaimCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    WarrantyItemList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WarrantyItem' }
+    WarrantyClaim:
+      type: object
+      required:
+        [
+          defectId,
+          numberLabel,
+          title,
+          status,
+          priority,
+          trade,
+          warrantyItemId,
+          assigneeCompanyId,
+          raisedAt,
+          closedAt,
+          daysOpen,
+          isOverdue,
+        ]
+      properties:
+        defectId: { type: string }
+        numberLabel: { type: string }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/DefectStatus' }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        trade: { type: [string, 'null'] }
+        warrantyItemId: { type: [string, 'null'] }
+        assigneeCompanyId: { type: [string, 'null'] }
+        raisedAt: { type: string, format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        daysOpen:
+          {
+            type: integer,
+            description: Whole days from issue to close,
+            or to today while still open.,
+          }
+        isOverdue: { type: boolean, description: Open past the 14 day response target. }
+    WarrantyClaimList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WarrantyClaim' }
+    WarrantyItemDetail:
+      type: object
+      required: [item, claims]
+      properties:
+        item: { $ref: '#/components/schemas/WarrantyItem' }
+        claims: { type: array, items: { $ref: '#/components/schemas/WarrantyClaim' } }
+    WarrantyFlag:
+      type: object
+      required: [kind, severity, message, itemId, claimId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [warranty_expiring, warranty_expired_open_claim, claim_response_overdue, repeat_claims]
+        severity: { type: string, enum: [info, warning, critical] }
+        message: { type: string }
+        itemId: { type: [string, 'null'] }
+        claimId: { type: [string, 'null'], description: The defect id. }
+    WarrantySummary:
+      type: object
+      required: [itemCount, expiringCount, expiredCount, openClaimCount, closedClaimCount, flags]
+      properties:
+        itemCount: { type: integer }
+        expiringCount: { type: integer }
+        expiredCount: { type: integer }
+        openClaimCount: { type: integer }
+        closedClaimCount: { type: integer }
+        flags: { type: array, items: { $ref: '#/components/schemas/WarrantyFlag' } }
+    CreateWarrantyItemRequest:
+      type: object
+      additionalProperties: false
+      required: [name, system, responsibleType, startDate, durationMonths]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string, maxLength: 5000 }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        responsibleName: { type: string, minLength: 1, maxLength: 200 }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer, minimum: 1, maximum: 600 }
+    UpdateWarrantyItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        system: { $ref: '#/components/schemas/WarrantySystem' }
+        description: { type: string, maxLength: 5000 }
+        responsibleType: { $ref: '#/components/schemas/WarrantyResponsibleType' }
+        responsibleCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        responsibleName: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        startDate: { type: string, format: date }
+        durationMonths: { type: integer, minimum: 1, maximum: 600 }
     DefectTransitionRequest:
       type: object
       additionalProperties: false
@@ -30998,12 +32035,13 @@ components:
       enum: [scheduled, in_progress, submitted, closed]
     InspectionTemplate:
       type: object
-      required: [id, projectId, name, type, version, published, createdAt, updatedAt]
+      required: [id, projectId, name, type, tradeCategory, version, published, createdAt, updatedAt]
       properties:
         id: { type: string }
         projectId: { type: string }
         name: { type: string }
         type: { type: string, description: 'ITP, pre-pour, handover, safety walk or your own' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
         version: { type: integer }
         published: { type: boolean }
         createdAt: { type: string, format: date-time }
@@ -31071,6 +32109,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { type: string, minLength: 1, maxLength: 50 }
+        tradeCategory: { $ref: '#/components/schemas/TradeCategory' }
         items:
           type: array
           maxItems: 300
@@ -31082,6 +32121,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         type: { type: string, minLength: 1, maxLength: 50 }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
         items:
           type: array
           maxItems: 300
@@ -31500,6 +32540,9 @@ components:
           description,
           location,
           priority,
+          tradeCategory,
+          classification,
+          contributingCondition,
           assigneeCompanyId,
           raisedByCompanyId,
           status,
@@ -31529,6 +32572,11 @@ components:
         description: { type: string }
         location: { type: [string, 'null'] }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
+        classification:
+          oneOf: [{ $ref: '#/components/schemas/ObservationClassification' }, { type: 'null' }]
+        contributingCondition:
+          oneOf: [{ $ref: '#/components/schemas/ContributingCondition' }, { type: 'null' }]
         assigneeCompanyId: { type: [string, 'null'] }
         raisedByCompanyId: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ObservationStatus' }
@@ -32376,6 +33424,9 @@ components:
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: string, minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { $ref: '#/components/schemas/TradeCategory' }
+        classification: { $ref: '#/components/schemas/ObservationClassification' }
+        contributingCondition: { $ref: '#/components/schemas/ContributingCondition' }
         assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
         dueDate: { type: string, format: date }
         swmsId: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
@@ -32394,6 +33445,11 @@ components:
         description: { type: string, minLength: 1, maxLength: 20000 }
         location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
         priority: { $ref: '#/components/schemas/DefectPriority' }
+        tradeCategory: { oneOf: [{ $ref: '#/components/schemas/TradeCategory' }, { type: 'null' }] }
+        classification:
+          oneOf: [{ $ref: '#/components/schemas/ObservationClassification' }, { type: 'null' }]
+        contributingCondition:
+          oneOf: [{ $ref: '#/components/schemas/ContributingCondition' }, { type: 'null' }]
         assigneeCompanyId:
           { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
         dueDate: { type: [string, 'null'], format: date }

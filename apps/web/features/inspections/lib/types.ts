@@ -63,6 +63,13 @@ export interface TemplateItemInput {
 export interface TemplateInput {
   name: string;
   type?: string;
+  tradeCategory?:
+    | 'fire_safety'
+    | 'waterproofing'
+    | 'structural'
+    | 'external_cladding'
+    | 'building_services'
+    | 'other';
   items: TemplateItemInput[];
 }
 

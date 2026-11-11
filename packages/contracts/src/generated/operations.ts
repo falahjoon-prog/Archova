@@ -1147,6 +1147,12 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetDbpInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDbpInsightsQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
 export const GetSustainabilityPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1646,6 +1652,7 @@ export const ListDefectsQuery = z.object({
   "trade": z.string().min(1).max(100).optional(),
   "overdue": z.enum(["true", "false"]).optional(),
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "warrantyItemId": s.WarrantyItemRefSchema.optional(),
   "q": z.string().min(1).max(200).optional(),
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
@@ -1666,6 +1673,46 @@ export const UpdateDefectParams = z.object({
   "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const UpdateDefectBody = s.UpdateDefectRequestSchema;
+export const ListWarrantyItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyItemsQuery = z.object({
+  "state": s.WarrantyStateSchema.optional(),
+  "system": s.WarrantySystemSchema.optional(),
+});
+export const CreateWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateWarrantyItemBody = s.CreateWarrantyItemRequestSchema;
+export const GetWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWarrantyItemBody = s.UpdateWarrantyItemRequestSchema;
+export const DeleteWarrantyItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^wri_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyClaimsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWarrantyClaimsQuery = z.object({
+  "warrantyItemId": s.WarrantyItemRefSchema.optional(),
+});
+export const GetWarrantySummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const TransitionDefectParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3974,6 +4021,73 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListLogisticsResourcesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateLogisticsResourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateLogisticsResourceBody = s.CreateLogisticsResourceRequestSchema;
+export const UpdateLogisticsResourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "resourceId": z.string().regex(new RegExp("^lgr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateLogisticsResourceBody = s.UpdateLogisticsResourceRequestSchema;
+export const ListDeliveriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeliveriesQuery = z.object({
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "status": s.DeliveryStatusSchema.optional(),
+});
+export const CreateDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDeliveryBody = s.CreateDeliveryRequestSchema;
+export const GetDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeliveryBody = s.UpdateDeliveryRequestSchema;
+export const CheckInDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const CheckInDeliveryBody = s.CheckInDeliveryRequestSchema;
+export const ChangeDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const ChangeDeliveryBody = s.ChangeDeliveryRequestSchema;
+export const DraftDeliveryNoticeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")),
+});
+export const DraftDeliveryNoticeBody = s.DeliveryNoticeRequestSchema;
+export const GetDeliveryInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestDeliverySlotsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestDeliverySlotsBody = s.DeliverySlotRequestSchema;
 export const ListInspectionItemActivityParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6504,6 +6618,18 @@ export const operations = {
     query: GetPortfolioQuery,
     body: null,
   },
+  getDbpInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/dbp-insights',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetDbpInsightsParams,
+    query: GetDbpInsightsQuery,
+    body: null,
+  },
   getSustainabilityPortfolio: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/portfolio/sustainability',
@@ -7670,6 +7796,90 @@ export const operations = {
     params: UpdateDefectParams,
     query: null,
     body: UpdateDefectBody,
+  },
+  listWarrantyItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: ListWarrantyItemsParams,
+    query: ListWarrantyItemsQuery,
+    body: null,
+  },
+  createWarrantyItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWarrantyItemParams,
+    query: null,
+    body: CreateWarrantyItemBody,
+  },
+  getWarrantyItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: GetWarrantyItemParams,
+    query: null,
+    body: null,
+  },
+  updateWarrantyItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWarrantyItemParams,
+    query: null,
+    body: UpdateWarrantyItemBody,
+  },
+  deleteWarrantyItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty-items/{itemId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteWarrantyItemParams,
+    query: null,
+    body: null,
+  },
+  listWarrantyClaims: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty/claims',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: ListWarrantyClaimsParams,
+    query: ListWarrantyClaimsQuery,
+    body: null,
+  },
+  getWarrantySummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/warranty/summary',
+    module: "defects",
+    auth: "required",
+    permission: "defects.warranty.read",
+    internal: false,
+    contentType: null,
+    params: GetWarrantySummaryParams,
+    query: null,
+    body: null,
   },
   transitionDefect: {
     method: 'POST',
@@ -12618,6 +12828,150 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listLogisticsResources: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: ListLogisticsResourcesParams,
+    query: null,
+    body: null,
+  },
+  createLogisticsResource: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateLogisticsResourceParams,
+    query: null,
+    body: CreateLogisticsResourceBody,
+  },
+  updateLogisticsResource: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources/{resourceId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateLogisticsResourceParams,
+    query: null,
+    body: UpdateLogisticsResourceBody,
+  },
+  listDeliveries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: ListDeliveriesParams,
+    query: ListDeliveriesQuery,
+    body: null,
+  },
+  createDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDeliveryParams,
+    query: null,
+    body: CreateDeliveryBody,
+  },
+  getDelivery: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: GetDeliveryParams,
+    query: null,
+    body: null,
+  },
+  updateDelivery: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDeliveryParams,
+    query: null,
+    body: UpdateDeliveryBody,
+  },
+  checkInDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/check-in',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.checkin",
+    internal: false,
+    contentType: "application/json",
+    params: CheckInDeliveryParams,
+    query: null,
+    body: CheckInDeliveryBody,
+  },
+  changeDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/changes',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ChangeDeliveryParams,
+    query: null,
+    body: ChangeDeliveryBody,
+  },
+  draftDeliveryNotice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/notice',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftDeliveryNoticeParams,
+    query: null,
+    body: DraftDeliveryNoticeBody,
+  },
+  getDeliveryInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delivery-insights',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: null,
+    params: GetDeliveryInsightsParams,
+    query: null,
+    body: null,
+  },
+  suggestDeliverySlots: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delivery-slot-suggestions',
+    module: "workforce",
+    auth: "required",
+    permission: "logistics.deliveries.view",
+    internal: false,
+    contentType: "application/json",
+    params: SuggestDeliverySlotsParams,
+    query: null,
+    body: SuggestDeliverySlotsBody,
   },
   listInspectionItemActivity: {
     method: 'GET',
