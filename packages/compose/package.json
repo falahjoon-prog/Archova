@@ -40,6 +40,7 @@
     "@archova/mod-environment": "workspace:*",
     "@archova/mod-estimating": "workspace:*",
     "@archova/mod-files": "workspace:*",
+    "@archova/mod-forms": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-platform": "workspace:*",

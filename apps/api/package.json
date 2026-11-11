@@ -32,6 +32,7 @@
     "@archova/mod-estimating": "workspace:*",
     "@archova/mod-exports": "workspace:*",
     "@archova/mod-files": "workspace:*",
+    "@archova/mod-forms": "workspace:*",
     "@archova/mod-financials": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-integrations": "workspace:*",

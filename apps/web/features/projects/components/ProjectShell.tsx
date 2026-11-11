@@ -8,6 +8,7 @@ import {
   AttendanceIcon,
   DeliveriesIcon,
   ObservationsIcon,
+  FormsIcon,
   InspectionsIcon,
   SwmsIcon,
   ToolboxIcon,
@@ -230,6 +231,11 @@ export function projectToolGroups(
       href: webRoutes.inspections(orgSlug, projectId),
       label: 'Inspections',
       icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.forms(orgSlug, projectId),
+      label: 'Forms',
+      icon: FormsIcon,
     },
     canRead('inspections') && {
       href: webRoutes.observations(orgSlug, projectId),

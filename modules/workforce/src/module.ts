@@ -118,6 +118,8 @@ export function createWorkforceModule(
     api: {
       /** What the mobile pull reads (modules/sync): attendance sessions. */
       syncSource,
+      /** For `forms`: who signed in on each local day in a range, by name only. */
+      namesOnSite: attendance.namesOnSite,
       /** Scheduled job (every 15 minutes per org): closes sessions left open after the site's day end. */
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */

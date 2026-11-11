@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: forms
   - name: announcements
   - name: bim
   - name: defects
@@ -7784,6 +7785,241 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AnnouncementDraft' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFormTemplates
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.read
+      summary: The templates a form can start from, the built-in library and the organisation's own, by name.
+      description: Archived templates are left out. A built-in template has an id starting `library:` and cannot be edited; copy it into the organisation's own to change it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/form-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listOrgFormTemplates
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Every template for the organisation's template builder, archived ones included.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Build a template, or copy a built-in one into the organisation's own with `copyFromLibraryKey`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFormTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/form-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FormTemplateId'
+    patch:
+      operationId: updateFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Change a template's fields or settings, or archive and restore it. Forms already started keep the fields they were started with.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFormTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/forms:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listForms
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.read
+      summary: The project's forms, newest first. The screen groups them by template.
+      parameters:
+        - { name: templateId, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/FormStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: startForm
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.fill
+      summary: Start a form from a template. The template's fields are copied onto the form, so later template edits never change it.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartFormRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/forms/attention:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFormAttention
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.read
+      summary: Nova flags from the last fortnight, such as someone signing a form who wasn't signed in to site that day, or a form that is overdue while the crew is on site.
+      description: Rule-based from the attendance records. Nothing is changed or blocked; a person decides.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormAttentionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/forms/{formId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormId'
+    get:
+      operationId: getForm
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.read
+      summary: One form with its fields, answers and signatures.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: saveForm
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.fill
+      summary: Save the answers (and title) of a form that is not yet submitted.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveFormRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/signatures:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormId'
+    post:
+      operationId: signForm
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.fill
+      summary: Add a signature to a signature field. The time is set by the server, and a name can sign a field once.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignFormRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormId'
+    post:
+      operationId: submitForm
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.forms.fill
+      summary: Submit a form. Required fields must be filled and each required signature field needs at least one signature first; a submitted form can no longer be changed.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -17262,6 +17498,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
+    FormTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^frt_[0-9A-Za-z]{26}$' }
+    FormId:
+      name: formId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^frm_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -24738,6 +24984,260 @@ components:
           type: array
           description: What code removed or changed because the notes didn't support it.
           items: { type: string }
+    FormCategory:
+      type: string
+      enum: [safety, quality, site, admin, general]
+    FormStatus:
+      type: string
+      enum: [draft, submitted]
+    FormFieldType:
+      type: string
+      enum:
+        [
+          heading,
+          text,
+          longtext,
+          number,
+          date,
+          checkbox,
+          select,
+          checklist,
+          table,
+          photo,
+          signature,
+        ]
+    FormTableColumn:
+      type: object
+      additionalProperties: false
+      required: [key, label]
+      properties:
+        key: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+        label: { type: string, minLength: 1, maxLength: 100 }
+    FormField:
+      type: object
+      additionalProperties: false
+      required: [key, type, label]
+      properties:
+        key: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+        type: { $ref: '#/components/schemas/FormFieldType' }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        help: { type: string, maxLength: 500 }
+        required: { type: boolean }
+        options:
+          type: array
+          maxItems: 50
+          description: Choices of a `select`, items of a `checklist`.
+          items: { type: string, minLength: 1, maxLength: 200 }
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 8
+          description: Columns of a `table`.
+          items: { $ref: '#/components/schemas/FormTableColumn' }
+        rows:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Rows a `table` starts with.
+        slots:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: The most people who can sign a `signature` field. A required one needs at least one.
+    FormTemplate:
+      type: object
+      required:
+        [
+          id,
+          source,
+          name,
+          description,
+          category,
+          fields,
+          linkModule,
+          cadenceDays,
+          status,
+          version,
+          updatedAt,
+        ]
+      properties:
+        id:
+          {
+            type: string,
+            description: "frt_… for the organisation's own, `library:<key>` for a built-in",
+          }
+        source: { type: string, enum: [library, custom] }
+        name: { type: string }
+        description: { type: string }
+        category: { $ref: '#/components/schemas/FormCategory' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        linkModule:
+          { type: [string, 'null'], enum: [diary, incidents, inspections, attendance, null] }
+        cadenceDays:
+          type: [integer, 'null']
+          description: How often a submitted form is expected while the crew is on site. Nova flags it when it is overdue.
+        status: { type: string, enum: [active, archived] }
+        version: { type: integer }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    FormTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormTemplate' }
+    CreateFormTemplateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        copyFromLibraryKey: { type: string, maxLength: 80 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 1000 }
+        category: { $ref: '#/components/schemas/FormCategory' }
+        fields:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/FormField' }
+        linkModule:
+          { type: [string, 'null'], enum: [diary, incidents, inspections, attendance, null] }
+        cadenceDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+    UpdateFormTemplateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 1000 }
+        category: { $ref: '#/components/schemas/FormCategory' }
+        fields:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/FormField' }
+        linkModule:
+          { type: [string, 'null'], enum: [diary, incidents, inspections, attendance, null] }
+        cadenceDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        status: { type: string, enum: [active, archived] }
+    FormSignature:
+      type: object
+      required: [id, fieldKey, signerName, signedAt]
+      properties:
+        id: { type: string }
+        fieldKey: { type: string }
+        signerName: { type: string }
+        signedAt: { type: string, format: date-time }
+    FormSummary:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          numberLabel,
+          templateId,
+          templateName,
+          category,
+          title,
+          status,
+          createdById,
+          createdByName,
+          createdAt,
+          submittedAt,
+          signatureCount,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        numberLabel: { type: string }
+        templateId: { type: string }
+        templateName: { type: string }
+        category: { $ref: '#/components/schemas/FormCategory' }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/FormStatus' }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        signatureCount: { type: integer }
+    FormPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormSummary' }
+        nextCursor: { type: [string, 'null'] }
+    FormFlag:
+      type: object
+      required: [kind, message]
+      properties:
+        kind: { type: string, enum: [signer_not_on_site, overdue] }
+        message: { type: string }
+        signerNames:
+          type: array
+          items: { type: string }
+    FormAttention:
+      type: object
+      required: [kind, message, templateId, templateName, formId, signerNames]
+      properties:
+        kind: { type: string, enum: [signer_not_on_site, overdue] }
+        message: { type: string }
+        templateId: { type: string }
+        templateName: { type: string }
+        formId: { type: [string, 'null'] }
+        signerNames:
+          type: array
+          items: { type: string }
+    FormAttentionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormAttention' }
+    FormDetail:
+      type: object
+      required:
+        [form, templateName, linkModule, fields, answers, signatures, flags, canEdit, version]
+      properties:
+        form: { $ref: '#/components/schemas/FormSummary' }
+        templateName: { type: string }
+        linkModule:
+          { type: [string, 'null'], enum: [diary, incidents, inspections, attendance, null] }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        answers:
+          type: object
+          additionalProperties: true
+          description: 'By field key: text, number, date as text, true/false, a choice, the ticked items, table rows as objects by column key, or photo file ids.'
+        signatures:
+          type: array
+          items: { $ref: '#/components/schemas/FormSignature' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/FormFlag' }
+        canEdit: { type: boolean }
+        version: { type: integer }
+    StartFormRequest:
+      type: object
+      additionalProperties: false
+      required: [templateId]
+      properties:
+        templateId: { type: string, minLength: 1, maxLength: 80 }
+        title: { type: string, maxLength: 200 }
+    SaveFormRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        answers: { type: object, additionalProperties: true }
+    SignFormRequest:
+      type: object
+      additionalProperties: false
+      required: [fieldKey, signerName]
+      properties:
+        fieldKey: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+        signerName: { type: string, minLength: 1, maxLength: 200 }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]
