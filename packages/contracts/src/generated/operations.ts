@@ -3705,6 +3705,17 @@ export const GetCommitmentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
+export const LinkCommitmentContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const LinkCommitmentContractBody = s.LinkCommitmentContractRequestSchema;
+export const GetCommitmentInvoicesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
 export const SubmitCommitmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12176,6 +12187,30 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetCommitmentParams,
+    query: null,
+    body: null,
+  },
+  linkCommitmentContract: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: LinkCommitmentContractParams,
+    query: null,
+    body: LinkCommitmentContractBody,
+  },
+  getCommitmentInvoices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentInvoicesParams,
     query: null,
     body: null,
   },

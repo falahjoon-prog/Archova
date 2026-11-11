@@ -8,9 +8,12 @@ import {
   StatusPill,
   type DataTableColumn,
 } from '@archova/ui';
+import Link from 'next/link';
+import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatMoney } from '@/shared/lib/format';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { Commitment } from '../data/api';
 import { useCommitments } from '../hooks/useCommitments';
@@ -35,6 +38,7 @@ const money = (cents: number) => formatMoney({ amount: (cents / 100).toFixed(2),
 
 /** Subcontracts and purchase orders, with the totals across them at the top. */
 export function CommitmentsScreen() {
+  const org = useCurrentOrg();
   const project = useCurrentProject();
   usePublishAssistantScope({
     projectId: project.projectId,
@@ -52,7 +56,16 @@ export function CommitmentsScreen() {
       sortValue: (c) => c.number,
       cell: (c) => `C-${String(c.number).padStart(4, '0')}`,
     },
-    { id: 'title', header: 'Title', sortValue: (c) => c.title, cell: (c) => c.title },
+    {
+      id: 'title',
+      header: 'Title',
+      sortValue: (c) => c.title,
+      cell: (c) => (
+        <Link className="link" href={webRoutes.commitment(org.orgSlug, project.projectId, c.id)}>
+          {c.title}
+        </Link>
+      ),
+    },
     { id: 'kind', header: 'Type', cell: (c) => KIND[c.kind] },
     {
       id: 'status',

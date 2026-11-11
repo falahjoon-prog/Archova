@@ -19,6 +19,7 @@ import { isMoney } from '../domain/money';
 import {
   toClaimDto,
   toCommitmentDto,
+  toCommitmentInvoicesDto,
   toCommitmentLineDto,
   toContractDto,
   toLineDto,
@@ -189,6 +190,31 @@ export function financialsRoutes(
       body: commitmentBody(
         await read(input, (s) =>
           commitments.getCommitment(
+            s,
+            project(input.params),
+            ref('commitment', input.params.commitmentId, 'commitmentId'),
+          ),
+        ),
+      ),
+    }),
+    linkCommitmentContract: async (input) => ({
+      status: 200,
+      body: commitmentBody(
+        await tx(input, (s) =>
+          commitments.linkContract(
+            s,
+            project(input.params),
+            ref('commitment', input.params.commitmentId, 'commitmentId'),
+            input.body.contractId ? ref('contract', input.body.contractId, 'contractId') : null,
+          ),
+        ),
+      ),
+    }),
+    getCommitmentInvoices: async (input) => ({
+      status: 200,
+      body: toCommitmentInvoicesDto(
+        await read(input, (s) =>
+          commitments.invoicesFor(
             s,
             project(input.params),
             ref('commitment', input.params.commitmentId, 'commitmentId'),

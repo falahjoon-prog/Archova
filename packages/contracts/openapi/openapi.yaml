@@ -15469,6 +15469,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    put:
+      operationId: linkCommitmentContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Link a subcontract commitment to the contract its payment claims are made on, or clear the link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkCommitmentContractRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: getCommitmentInvoices
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: The commitment's invoices (payment claims on its linked contract) with contract sum, retainage and payments.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentInvoices' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -28079,9 +28120,11 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          contractId,
         ]
       properties:
         id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
         number: { type: integer }
         kind: { type: string, enum: [subcontract, purchase_order] }
         title: { type: string }
@@ -28099,6 +28142,89 @@ components:
         budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
         description: { type: string }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    LinkCommitmentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [contractId]
+      properties:
+        contractId:
+          description: The subcontract to link, or null to clear the link.
+          type: [string, 'null']
+          pattern: '^cnt_[0-9A-Za-z]{26}$'
+    CommitmentInvoice:
+      type: object
+      required:
+        [
+          claimId,
+          number,
+          periodStart,
+          periodEnd,
+          receivedAt,
+          status,
+          thisPeriod,
+          completedToDate,
+          retainage,
+          earnedLessRetainage,
+          payable,
+          paid,
+          paymentDue,
+          paymentDueOn,
+          balanceToFinish,
+          percentComplete,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodStart: { type: [string, 'null'], format: date }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        status: { type: string }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        earnedLessRetainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        payable: { $ref: '#/components/schemas/FinancialsMoney' }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        paymentDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        percentComplete: { type: string }
+    CommitmentInvoiceSummary:
+      type: object
+      required:
+        [
+          originalSum,
+          netChange,
+          revisedSum,
+          invoiced,
+          retainage,
+          paid,
+          remaining,
+          percentPaid,
+          rows,
+        ]
+      properties:
+        originalSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        netChange: { $ref: '#/components/schemas/FinancialsMoney' }
+        revisedSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        invoiced: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        remaining: { $ref: '#/components/schemas/FinancialsMoney' }
+        percentPaid: { type: string }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentInvoice' }
+    CommitmentInvoices:
+      type: object
+      required: [linked, contractId, summary]
+      properties:
+        linked: { type: boolean }
+        contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        summary:
+          oneOf:
+            - { $ref: '#/components/schemas/CommitmentInvoiceSummary' }
+            - { type: 'null' }
     CommitmentDetail:
       type: object
       required: [commitment, lines]

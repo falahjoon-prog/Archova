@@ -1086,6 +1086,7 @@ export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
 
 export const CommitmentSchema = z.object({
   "id": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
   "number": z.number().int(),
   "kind": z.enum(["subcontract", "purchase_order"]),
   "title": z.string(),
@@ -1135,6 +1136,46 @@ export const CommitmentForecastSchema = z.object({
   "pendingVariations": FinancialsMoneySchema,
 });
 export type CommitmentForecast = z.infer<typeof CommitmentForecastSchema>;
+
+export const CommitmentInvoiceSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "periodStart": z.string().date().nullable(),
+  "periodEnd": z.string().date(),
+  "receivedAt": z.string().datetime({ offset: true }),
+  "status": z.string(),
+  "thisPeriod": FinancialsSignedMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "retainage": FinancialsSignedMoneySchema,
+  "earnedLessRetainage": FinancialsSignedMoneySchema,
+  "payable": FinancialsMoneySchema,
+  "paid": FinancialsSignedMoneySchema,
+  "paymentDue": FinancialsMoneySchema,
+  "paymentDueOn": z.string().date().nullable(),
+  "balanceToFinish": FinancialsSignedMoneySchema,
+  "percentComplete": z.string(),
+});
+export type CommitmentInvoice = z.infer<typeof CommitmentInvoiceSchema>;
+
+export const CommitmentInvoiceSummarySchema = z.object({
+  "originalSum": FinancialsMoneySchema,
+  "netChange": FinancialsMoneySchema,
+  "revisedSum": FinancialsMoneySchema,
+  "invoiced": FinancialsMoneySchema,
+  "retainage": FinancialsSignedMoneySchema,
+  "paid": FinancialsSignedMoneySchema,
+  "remaining": FinancialsMoneySchema,
+  "percentPaid": z.string(),
+  "rows": z.array(CommitmentInvoiceSchema),
+});
+export type CommitmentInvoiceSummary = z.infer<typeof CommitmentInvoiceSummarySchema>;
+
+export const CommitmentInvoicesSchema = z.object({
+  "linked": z.boolean(),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
+  "summary": z.union([CommitmentInvoiceSummarySchema, z.null()]),
+});
+export type CommitmentInvoices = z.infer<typeof CommitmentInvoicesSchema>;
 
 export const CommitmentListSchema = z.object({
   "data": z.array(CommitmentSchema),
@@ -5762,6 +5803,11 @@ export const LateSubmissionListSchema = z.object({
   "pendingCount": z.number().int().min(0),
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
+
+export const LinkCommitmentContractRequestSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
+}).strict();
+export type LinkCommitmentContractRequest = z.infer<typeof LinkCommitmentContractRequestSchema>;
 
 export const LogEquipmentHoursRequestSchema = z.object({
   "date": z.string().date(),
