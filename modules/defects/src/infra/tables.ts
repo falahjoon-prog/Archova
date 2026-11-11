@@ -36,6 +36,7 @@ export const defects = defectsSchema.table('defects', {
   approverDelegateFrom: date('approver_delegate_from'),
   approverDelegateUntil: date('approver_delegate_until'),
   requireCloseEvidence: boolean('require_close_evidence').notNull().default(false),
+  completedUserIds: uuid('completed_user_ids').array().notNull().default([]),
   assigneeUserIds: uuid('assignee_user_ids').array().notNull().default([]),
   distributionUserIds: uuid('distribution_user_ids').array().notNull().default([]),
   dueDate: date('due_date'),

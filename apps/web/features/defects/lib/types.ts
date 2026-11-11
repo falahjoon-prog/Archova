@@ -51,6 +51,8 @@ export interface Defect {
   assigneeUserId: string | null;
   /** Everyone it is assigned to (people at the assigned company); `assigneeUserId` is the first. */
   assigneeUserIds: string[];
+  /** Assignees who have marked their own part done this round. */
+  completedUserIds: string[];
   /** Punch Item Manager. */
   managerUserId: string | null;
   /** Final Approver: when set, only they close, reject or reopen the item. */

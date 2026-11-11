@@ -93,6 +93,7 @@ export function toDefect(
     assigneeCompanyId: d.assigneeCompanyId,
     assigneeUserId: d.assigneeUserId,
     assigneeUserIds: d.assigneeUserIds,
+    completedUserIds: d.completedUserIds,
     managerUserId: d.managerUserId,
     finalApproverUserId: d.finalApproverUserId,
     distributionUserIds: d.distributionUserIds,
@@ -296,6 +297,18 @@ export function createDefectsApi(orgId: string): DefectsSource {
         assigneeCompanyId: input.assigneeCompanyId,
         ...(fileIds.length ? { fileIds } : {}),
       });
+    },
+
+    async completePart(projectId, id) {
+      await ensureCsrfToken();
+      return detail(
+        projectId,
+        unwrap(
+          await api.POST(`${P}/{defectId}/complete-part`, {
+            params: { path: { orgId, projectId, defectId: id } },
+          }),
+        ),
+      );
     },
 
     issue(projectId, id) {

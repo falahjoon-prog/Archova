@@ -5424,6 +5424,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** An assignee marks their own part of an open defect done. When every assignee has, the final approver (or the manager) is told. Saying it twice changes nothing. */
+        post: operations["completeDefectPart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition": {
         parameters: {
             query?: never;
@@ -14629,7 +14650,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -18429,6 +18450,8 @@ export interface components {
             assigneeUserId: string | null;
             /** @description Everyone the punch item is assigned to, in the assigned company. */
             assigneeUserIds: string[];
+            /** @description Assignees who have marked their own part done this round. */
+            completedUserIds: string[];
             /** @description Punch Item Manager. */
             managerUserId: string | null;
             /** @description When set, only this person closes, rejects or reopens the item. */
@@ -31826,6 +31849,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WarrantySummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeDefectPart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
                 };
             };
             default: components["responses"]["Problem"];

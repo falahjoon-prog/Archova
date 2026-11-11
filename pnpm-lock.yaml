@@ -1132,6 +1132,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files
+      '@archova/mod-notifications':
+        specifier: workspace:*
+        version: link:../notifications
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform

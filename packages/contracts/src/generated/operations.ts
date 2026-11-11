@@ -1687,6 +1687,11 @@ export const GetWarrantySummaryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const CompleteDefectPartParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
+});
 export const TransitionDefectParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7828,6 +7833,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetWarrantySummaryParams,
+    query: null,
+    body: null,
+  },
+  completeDefectPart: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.respond",
+    internal: false,
+    contentType: null,
+    params: CompleteDefectPartParams,
     query: null,
     body: null,
   },

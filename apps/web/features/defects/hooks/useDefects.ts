@@ -93,6 +93,10 @@ export function useDefectMutations() {
       mutationFn: (id: string) => defectsSource.issue(projectId, id, actor),
       onSuccess: settle,
     }),
+    completePart: useMutation({
+      mutationFn: (id: string) => defectsSource.completePart(projectId, id, actor),
+      onSuccess: settle,
+    }),
     reassign: useMutation({
       mutationFn: (v: {
         id: string;

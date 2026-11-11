@@ -543,3 +543,83 @@ describe('Stand-in approver and close evidence', () => {
     expect(res.statusCode).toBe(422);
   });
 });
+
+describe('Assignees finishing their parts', () => {
+  it('tells the final approver once every assignee has marked their part done', async () => {
+    const s = await setup();
+    const mate = await signUp(t.app, 'def-mate');
+    const templates = (await s.pm.browser.get(`/v1/orgs/${s.org.id}/permission-templates`)).json()
+      .data as Array<{ id: string; name: string }>;
+    const joined = await s.pm.browser.post(`${s.base}/members`, {
+      email: mate.email,
+      companyId: s.subCo.companyId,
+      permissionTemplateId: templates.find((x) => x.name === 'Subcontractor')?.id,
+    });
+    expect(joined.statusCode).toBe(201);
+    const made = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Two-trade fix',
+      assigneeCompanyId: s.subCo.companyId,
+      assigneeUserIds: [s.sub.userId, mate.userId],
+      finalApproverUserId: s.pm.userId,
+      pin: s.pin,
+    });
+    expect(made.statusCode).toBe(201);
+    const d = made.json().defect;
+    await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'issue' },
+      { 'if-match': etagOf(made) },
+    );
+    const inbox = async () =>
+      (await s.pm.browser.get(`/v1/orgs/${s.org.id}/notifications`))
+        .json()
+        .data.filter((n: { kind: string }) => n.kind === 'defect.parts_complete');
+    expect(await inbox()).toHaveLength(0);
+
+    // Someone who is not assigned can't mark a part done.
+    expect(
+      (await s.other.browser.post(`${s.base}/defects/${d.id}/complete-part`, {})).statusCode,
+    ).toBe(404);
+    expect(
+      (await s.pm.browser.post(`${s.base}/defects/${d.id}/complete-part`, {})).statusCode,
+    ).toBe(403);
+
+    const first = await s.sub.browser.post(`${s.base}/defects/${d.id}/complete-part`, {});
+    expect(first.statusCode).toBe(200);
+    expect(first.json().defect.completedUserIds).toEqual([s.sub.userId]);
+    expect(await inbox()).toHaveLength(0);
+    // Saying it twice changes nothing.
+    const again = await s.sub.browser.post(`${s.base}/defects/${d.id}/complete-part`, {});
+    expect(again.json().defect.version).toBe(first.json().defect.version);
+
+    const last = await mate.browser.post(`${s.base}/defects/${d.id}/complete-part`, {});
+    expect(last.statusCode).toBe(200);
+    const told = await inbox();
+    expect(told).toHaveLength(1);
+    expect(told[0]).toMatchObject({ entityType: 'defect', entityId: d.id });
+    expect(last.json().events.map((e: { action: string }) => e.action)).toContain('partComplete');
+
+    // A reject starts a new round: the parts are cleared.
+    const photo = await uploadFile(
+      t,
+      s.sub.browser,
+      s.org.id,
+      s.project.id,
+      'after.pdf',
+      'defects',
+    );
+    const sent = await s.sub.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'markReadyForReview', fileIds: [photo] },
+      { 'if-match': etagOf(last) },
+    );
+    expect(sent.statusCode).toBe(200);
+    const rejected = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'reject', reason: 'Still not right' },
+      { 'if-match': etagOf(sent) },
+    );
+    expect(rejected.statusCode).toBe(200);
+    expect(rejected.json().defect.completedUserIds).toEqual([]);
+  });
+});

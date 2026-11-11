@@ -23,6 +23,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
 import type { FilesModule } from '@archova/mod-files';
+import { createNotifications } from '@archova/mod-notifications';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   canSeeDefect,
@@ -503,6 +504,10 @@ export function createDefectService(deps: DefectsDeps) {
       throw new AppError('access.denied', "You can't change this defect.");
     if (defect.version !== expectedVersion) throw versionConflict();
     const values = await fieldValues(scope, projectId, patch);
+    if (values.assigneeUserIds)
+      values.completedUserIds = defect.completedUserIds.filter((u) =>
+        values.assigneeUserIds!.includes(u),
+      );
     checkDelegateDates(
       'approverDelegateFrom' in values ? values.approverDelegateFrom : defect.approverDelegateFrom,
       'approverDelegateUntil' in values
@@ -619,6 +624,8 @@ export function createDefectService(deps: DefectsDeps) {
       values.closedAt = at;
       values.closedBy = scope.ctx.userId;
     }
+    if (input.action === 'reject' || input.action === 'reopen' || input.action === 'reassign')
+      values.completedUserIds = [];
     if (input.action === 'reject') values.readyForReviewAt = null;
     if (input.action === 'reopen') {
       values.readyForReviewAt = null;
@@ -673,6 +680,80 @@ export function createDefectService(deps: DefectsDeps) {
         photoCount: fileIds.length,
       },
     });
+    return detail(scope, projectId, defectId);
+  }
+
+  /**
+   * An assignee says their own part is done. It is a history line and a version bump, not a status change. When
+   * every assignee has said so, the final approver (or the manager when none is named), and the stand-in if there
+   * is one, are told. Saying it twice changes nothing.
+   */
+  async function completePart(scope: TenantScope, projectId: string, defectId: string) {
+    const { defect } = await getVisible(scope, projectId, defectId);
+    if (!(await deps.access.can(scope, 'defects.defects.respond', { projectId })))
+      throw new AppError('access.denied', "You can't mark your part of this defect done.");
+    const me = scope.ctx.userId;
+    if (!defect.assigneeUserIds.includes(me))
+      throw new AppError('defect.not_allowed', 'Only the people it is assigned to can do that.');
+    if (defect.status !== 'open')
+      throw new AppError(
+        'defect.invalid_transition',
+        `A defect that is ${defect.status} can't have its parts marked done.`,
+        undefined,
+        { status: defect.status },
+      );
+    if (defect.completedUserIds.includes(me)) return detail(scope, projectId, defectId);
+    const [row] = await scope.tx
+      .update(defects)
+      .set({
+        completedUserIds: sql`array_append(${defects.completedUserIds}, ${me}::uuid)`,
+        version: sql`${defects.version} + 1`,
+        updatedBy: me,
+        updatedAt: now(),
+      })
+      .where(
+        and(
+          eq(defects.id, defectId),
+          eq(defects.status, 'open'),
+          sql`not (${me}::uuid = any(${defects.completedUserIds}))`,
+        ),
+      )
+      .returning();
+    if (!row) return detail(scope, projectId, defectId);
+    await recordEvent(scope, row, { action: 'partComplete', from: row.status });
+    await changed(scope, row);
+    const allDone = row.assigneeUserIds.every((u) => row.completedUserIds.includes(u));
+    if (allDone) {
+      const approvers = [
+        ...new Set(
+          [row.finalApproverUserId ?? row.managerUserId, row.approverDelegateUserId].filter(
+            (u): u is string => !!u && u !== me,
+          ),
+        ),
+      ];
+      await createNotifications(
+        scope,
+        approvers.map((userId) => ({
+          userId,
+          projectId,
+          kind: 'defect.parts_complete',
+          entityType: 'defect' as const,
+          entityId: row.id,
+          title: `${defectLabel(row.number)} is ready for your sign-off`,
+          body: `Everyone assigned to "${row.title}" has marked their part done.`,
+          // One per round: a reject or reopen clears the parts and bumps the version.
+          dedupeKey: `defect-parts-done:${row.id}:${row.version}`,
+        })),
+      );
+      scope.events.add({
+        type: 'defects.defect.parts_complete.v1',
+        projectId,
+        entityType: 'defect',
+        entityId: defectId,
+        entityVersion: row.version,
+        data: { defectId, notify: approvers },
+      });
+    }
     return detail(scope, projectId, defectId);
   }
 
@@ -979,6 +1060,7 @@ export function createDefectService(deps: DefectsDeps) {
     detail,
     update,
     transition,
+    completePart,
     attachPhoto,
     openNear,
     openForMeeting,
