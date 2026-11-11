@@ -66,6 +66,7 @@ export {
 export {
   BookOpen as DiaryIcon,
   HardHat as AttendanceIcon,
+  Truck as DeliveriesIcon,
   Eye as ObservationsIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
