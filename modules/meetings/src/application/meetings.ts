@@ -1331,7 +1331,40 @@ export function createMeetingService(deps: MeetingsDeps) {
     };
   }
 
+  /** One open action assigned to a person, for the cross-project "my tasks" rollup (`tasks`). */
+  async function openActionsForUser(scope: TenantScope, userId: string) {
+    // Only the live copy in each series' latest meeting counts, as in `actions` above. Actions owned by a company
+    // rather than a person are not anyone's task until a person is named.
+    const rows = await scope.tx
+      .select({ i: items, m: meetings })
+      .from(items)
+      .innerJoin(meetings, eq(items.meetingId, meetings.id))
+      .where(
+        and(
+          eq(items.ownerUserId, userId),
+          eq(items.kind, 'action'),
+          eq(items.status, 'open'),
+          isNull(items.deletedAt),
+          isNull(meetings.deletedAt),
+          sql`${meetings.number} = (select max(m2.number) from meetings.meetings m2
+                where m2.series_id = ${meetings.seriesId} and m2.deleted_at is null)`,
+        ),
+      )
+      .orderBy(sql`${items.dueDate} asc nulls last`, asc(items.id))
+      .limit(500);
+    return rows.map(({ i, m }) => ({
+      id: i.id,
+      projectId: i.projectId,
+      meetingId: m.id,
+      meetingTitle: m.title,
+      itemNo: i.itemNo,
+      body: i.body,
+      dueDate: i.dueDate,
+    }));
+  }
+
   return {
+    openActionsForUser,
     listSeries,
     createSeries,
     updateSeries,

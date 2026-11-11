@@ -43,6 +43,8 @@ export function createMeetingsModule(services: KernelServices, deps: MeetingsMod
     api: {
       /** The meeting's title, day, sections and attendees for Nova minutes drafting (MTG-US7). */
       forMinutesDraft: service.forMinutesDraft,
+      /** Open actions assigned to a person across projects, for the "my tasks" rollup (`tasks`). */
+      openActionsForUser: service.openActionsForUser,
     },
   };
 }

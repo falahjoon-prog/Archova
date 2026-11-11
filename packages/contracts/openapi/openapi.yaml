@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: tasks
   - name: announcements
   - name: bim
   - name: defects
@@ -7533,6 +7534,100 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/my-tasks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listMyTasks
+      tags: [tasks]
+      x-module: tasks
+      summary: Everything assigned to the caller across the organisation's projects, with a "my day" digest.
+      description: |
+        One list per person: ad-hoc tasks plus the open meeting actions and incident corrective actions
+        assigned to the caller. Projects the caller is no longer an active member of are left out. Only ad-hoc
+        tasks are edited here; the other sources open in their own module. `status=done` returns the caller's
+        ad-hoc tasks completed in the last 30 days. Project team only; outside users get 403.
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, done], default: open }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyTasks' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tasks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectTasks
+      tags: [tasks]
+      x-module: tasks
+      x-permission: tasks.tasks.read
+      summary: The project's ad-hoc tasks, soonest due first.
+      description: Project team only; outside users (subcontractors, owners) get 403.
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, done, cancelled, all], default: open }
+        - name: assigneeId
+          in: query
+          description: Only tasks assigned to this person.
+          schema: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTask
+      tags: [tasks]
+      x-module: tasks
+      x-permission: tasks.tasks.create
+      summary: Add a task, optionally assigned to a project team member.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTaskRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      x-module: tasks
+      x-permission: tasks.tasks.update
+      summary: Edit, reassign, complete, cancel or reopen a task.
+      description: Only the person who created the task or the person it is assigned to may change it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTaskRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/conversations:
     parameters:
@@ -17252,6 +17347,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tsk_[0-9A-Za-z]{26}$' }
     AnnouncementId:
       name: announcementId
       in: path
@@ -24456,6 +24556,133 @@ components:
         responses:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    Task:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          assigneeId,
+          assigneeName,
+          dueDate,
+          priority,
+          status,
+          completedAt,
+          createdById,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        assigneeId: { type: [string, 'null'] }
+        assigneeName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        priority: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [open, done, cancelled] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdById: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    TaskList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+    CreateTaskRequest:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        assigneeId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: string, format: date }
+        priority: { type: string, enum: [low, medium, high] }
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        assigneeId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: [string, 'null'], format: date }
+        priority: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [open, done, cancelled] }
+    MyTask:
+      type: object
+      required:
+        [
+          key,
+          source,
+          id,
+          parentId,
+          projectId,
+          projectName,
+          title,
+          ref,
+          dueDate,
+          bucket,
+          priority,
+          status,
+        ]
+      properties:
+        key: { type: string, description: 'Stable list key, source plus id.' }
+        source: { type: string, enum: [task, meeting_action, incident_action] }
+        id: { type: string, description: 'Id of the task, meeting item or incident action.' }
+        parentId:
+          { type: [string, 'null'], description: 'The meeting or incident the item belongs to.' }
+        projectId: { type: string }
+        projectName: { type: string }
+        title: { type: string }
+        ref:
+          {
+            type: [string, 'null'],
+            description: 'Short reference, e.g. "T-12", "3.2" or "INC-4 / 2".',
+          }
+        dueDate: { type: [string, 'null'], format: date }
+        bucket: { type: string, enum: [overdue, today, week, later, none] }
+        priority: { type: [string, 'null'], enum: [low, medium, high, null] }
+        status: { type: string, enum: [open, done, cancelled] }
+    MyTasksDigestRow:
+      type: object
+      required: [key, title, projectName, dueDate, bucket]
+      properties:
+        key: { type: string }
+        title: { type: string }
+        projectName: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        bucket: { type: string, enum: [overdue, today, week, later, none] }
+    MyTasksDigest:
+      type: object
+      required: [overdue, dueToday, dueThisWeek, focus, summary]
+      properties:
+        overdue: { type: integer }
+        dueToday: { type: integer }
+        dueThisWeek: { type: integer }
+        focus:
+          type: array
+          items: { $ref: '#/components/schemas/MyTasksDigestRow' }
+        summary:
+          { type: string, description: 'Plain-language "my day" written by rule, not by a model.' }
+    MyTasks:
+      type: object
+      required: [data, digest]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MyTask' }
+        digest: { $ref: '#/components/schemas/MyTasksDigest' }
     ConversationMessage:
       type: object
       required: [id, authorId, authorName, body, mentionedUserIds, createdAt]

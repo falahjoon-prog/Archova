@@ -46,6 +46,7 @@
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-scheduling": "workspace:*",
     "@archova/mod-submittals": "workspace:*",
+    "@archova/mod-tasks": "workspace:*",
     "@archova/mod-sync": "workspace:*",
     "@archova/mod-workforce": "workspace:*",
     "@fastify/cookie": "^11.0.2",

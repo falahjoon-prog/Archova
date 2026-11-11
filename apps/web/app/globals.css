@@ -3823,6 +3823,88 @@ fieldset.worker-card > legend {
   overflow-wrap: anywhere;
 }
 
+/* My tasks: the cross-project to-do list */
+.tasks__summary {
+  margin: 0;
+}
+.tasks__group {
+  min-width: 0;
+}
+.tasks__heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-md);
+}
+.tasks__count {
+  color: var(--c-text-secondary);
+  font-weight: 400;
+}
+.tasks__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.tasks__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-3);
+}
+.tasks__row + .tasks__row {
+  border-top: 1px solid var(--c-border-divider);
+}
+.tasks__row[data-done] .tasks__title {
+  color: var(--c-text-secondary);
+  text-decoration: line-through;
+}
+.tasks__check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--c-action-primary);
+}
+.tasks__check--source {
+  border: 2px dashed var(--c-border-divider);
+  border-radius: var(--radius-sm);
+}
+.tasks__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tasks__title,
+.tasks__meta {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.tasks__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-weight: 600;
+}
+.tasks__meta {
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.tasks__side {
+  flex: none;
+}
+.tasks__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+@media (min-width: 768px) {
+  .tasks__fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Project directions: pinned locations with access notes, and Nova's pick of entrance */
 .location-list {
   display: flex;

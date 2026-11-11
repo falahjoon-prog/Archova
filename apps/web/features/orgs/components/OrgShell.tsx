@@ -62,6 +62,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
             { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
+              ? [{ href: webRoutes.myTasks(orgSlug), label: 'My tasks' }]
+              : []),
+            ...(membership.kind === 'member'
               ? [
                   {
                     label: 'Portfolio',

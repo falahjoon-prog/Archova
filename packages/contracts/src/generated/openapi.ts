@@ -5631,6 +5631,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/my-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Everything assigned to the caller across the organisation's projects, with a "my day" digest.
+         * @description One list per person: ad-hoc tasks plus the open meeting actions and incident corrective actions
+         *     assigned to the caller. Projects the caller is no longer an active member of are left out. Only ad-hoc
+         *     tasks are edited here; the other sources open in their own module. `status=done` returns the caller's
+         *     ad-hoc tasks completed in the last 30 days. Project team only; outside users get 403.
+         */
+        get: operations["listMyTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The project's ad-hoc tasks, soonest due first.
+         * @description Project team only; outside users (subcontractors, owners) get 403.
+         */
+        get: operations["listProjectTasks"];
+        put?: never;
+        /** Add a task, optionally assigned to a project team member. */
+        post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tasks/{taskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit, reassign, complete, cancel or reopen a task.
+         * @description Only the person who created the task or the person it is assigned to may change it.
+         */
+        patch: operations["updateTask"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/conversations": {
         parameters: {
             query?: never;
@@ -16956,6 +17029,96 @@ export interface components {
             item: components["schemas"]["CorrespondenceItem"];
             responses: components["schemas"]["CorrespondenceResponse"][];
         };
+        Task: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string | null;
+            assigneeId: string | null;
+            assigneeName: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            /** @enum {string} */
+            priority: "low" | "medium" | "high";
+            /** @enum {string} */
+            status: "open" | "done" | "cancelled";
+            /** Format: date-time */
+            completedAt: string | null;
+            createdById: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        TaskList: {
+            data: components["schemas"]["Task"][];
+        };
+        CreateTaskRequest: {
+            title: string;
+            description?: string;
+            assigneeId?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** @enum {string} */
+            priority?: "low" | "medium" | "high";
+        };
+        UpdateTaskRequest: {
+            title?: string;
+            description?: string | null;
+            assigneeId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            /** @enum {string} */
+            priority?: "low" | "medium" | "high";
+            /** @enum {string} */
+            status?: "open" | "done" | "cancelled";
+        };
+        MyTask: {
+            /** @description Stable list key, source plus id. */
+            key: string;
+            /** @enum {string} */
+            source: "task" | "meeting_action" | "incident_action";
+            /** @description Id of the task, meeting item or incident action. */
+            id: string;
+            /** @description The meeting or incident the item belongs to. */
+            parentId: string | null;
+            projectId: string;
+            projectName: string;
+            title: string;
+            /** @description Short reference, e.g. "T-12", "3.2" or "INC-4 / 2". */
+            ref: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            /** @enum {string} */
+            bucket: "overdue" | "today" | "week" | "later" | "none";
+            /** @enum {string|null} */
+            priority: "low" | "medium" | "high" | null;
+            /** @enum {string} */
+            status: "open" | "done" | "cancelled";
+        };
+        MyTasksDigestRow: {
+            key: string;
+            title: string;
+            projectName: string;
+            /** Format: date */
+            dueDate: string | null;
+            /** @enum {string} */
+            bucket: "overdue" | "today" | "week" | "later" | "none";
+        };
+        MyTasksDigest: {
+            overdue: number;
+            dueToday: number;
+            dueThisWeek: number;
+            focus: components["schemas"]["MyTasksDigestRow"][];
+            /** @description Plain-language "my day" written by rule, not by a model. */
+            summary: string;
+        };
+        MyTasks: {
+            data: components["schemas"]["MyTask"][];
+            digest: components["schemas"]["MyTasksDigest"];
+        };
         ConversationMessage: {
             id: string;
             authorId: string;
@@ -23323,6 +23486,7 @@ export interface components {
         CorrespondenceTypeId: string;
         SiteCaptureId: string;
         CoordinationIssueId: string;
+        TaskId: string;
         AnnouncementId: string;
         ConversationId: string;
         CorrespondenceId: string;
@@ -32210,6 +32374,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorrespondenceTypeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: {
+                status?: "open" | "done";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTasks"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectTasks: {
+        parameters: {
+            query?: {
+                status?: "open" | "done" | "cancelled" | "all";
+                /** @description Only tasks assigned to this person. */
+                assigneeId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTask: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
                 };
             };
             default: components["responses"]["Problem"];

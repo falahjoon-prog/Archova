@@ -49,6 +49,7 @@
     "@archova/mod-search": "workspace:*",
     "@archova/mod-scheduling": "workspace:*",
     "@archova/mod-submittals": "workspace:*",
+    "@archova/mod-tasks": "workspace:*",
     "@archova/mod-sync": "workspace:*",
     "@archova/mod-workforce": "workspace:*"
   },
