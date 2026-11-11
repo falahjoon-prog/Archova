@@ -1881,7 +1881,7 @@ describe('T&M tickets', () => {
     const created = await post('tm-tickets', body);
     expect(created.statusCode).toBe(201);
     const t1 = created.json();
-    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '1970.00' });
+    expect(t1).toMatchObject({ number: 1, status: 'draft', total: '2036.00' });
     expect(t1.lines.map((l: { amount: string }) => l.amount)).toEqual([
       '680.00',
       '630.00',
@@ -1899,6 +1899,42 @@ describe('T&M tickets', () => {
       budgetLineId: line.id,
     });
     expect(convertEarly.json().code).toBe('financials.tm_ticket.bad_state');
+
+    // Review before signing: a ticket cannot be signed until it is ready and then field verified by someone else.
+    expect(edited.json()).toMatchObject({ reviewStage: 'in_progress' });
+    expect(
+      (
+        await post(`tm-tickets/${t1.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' })
+      ).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'field_verified' })).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'ready_for_review' })).json(),
+    ).toMatchObject({ reviewStage: 'ready_for_review' });
+    // The person who marked it ready cannot verify it.
+    expect(
+      (await post(`tm-tickets/${t1.id}/review`, { stage: 'field_verified' })).json().code,
+    ).toBe('financials.tm_ticket.bad_state');
+    // Hand-typed lines are not tied to a timesheet, so there are no differing hours to explain and no note is needed.
+    const verified = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+      stage: 'field_verified',
+    });
+    expect(verified.json()).toMatchObject({ reviewStage: 'field_verified' });
+    // Editing sends it back, so it must be re-verified.
+    expect(
+      (
+        await s.pm.browser.put(`${s.base}/tm-tickets/${t1.id}`, {
+          ...body,
+          title: 'Extra excavation C',
+        })
+      ).json(),
+    ).toMatchObject({ reviewStage: 'in_progress' });
+    await post(`tm-tickets/${t1.id}/review`, { stage: 'ready_for_review' });
+    await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+      stage: 'field_verified',
+    });
 
     // First signature freezes the ticket; the same person cannot sign twice or in the other role.
     const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
@@ -1980,7 +2016,7 @@ describe('T&M tickets', () => {
     });
     expect(conv.json()).toMatchObject({ status: 'converted', convertedTo: 'direct_cost' });
     const dcs = (await get('direct-costs')).json();
-    expect(dcs.total).toBe('1970.00');
+    expect(dcs.total).toBe('2036.00');
     expect(dcs.data.map((d: { category: string }) => d.category).sort()).toEqual([
       'labour',
       'materials',
@@ -2008,7 +2044,7 @@ describe('T&M tickets', () => {
     expect(asVar.json()).toMatchObject({ status: 'converted', convertedTo: 'variation' });
     expect(asVar.json().variationId).toMatch(/^var_/);
     const vars = (await get(`contracts/${contract.id}/variations`)).json();
-    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '1970.00' });
+    expect(vars.data[0]).toMatchObject({ status: 'draft', amount: '2036.00' });
 
     const t3 = (await post('tm-tickets', body)).json();
     expect((await post(`tm-tickets/${t3.id}/void`, { note: '' })).statusCode).toBe(422);
@@ -2157,6 +2193,90 @@ describe('Labor productivity', () => {
     ).toBe(403);
     expect(
       (await s.sub.browser.post(`${s.base}/ai/labor-productivity`, { costCodeId: code.id }))
+        .statusCode,
+    ).toBe(403);
+  });
+});
+
+describe('Production tracking', () => {
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+
+  it('defines custom production items, logs quantity by crew, reports the curve and flags a rate drop', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
+    const created = await post('production/items', {
+      name: 'Panels installed',
+      uom: 'panels',
+      trade: 'Solar',
+      location: 'Block A',
+      plannedQuantity: 1000,
+      plannedStart: day(-40),
+      plannedFinish: day(20),
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const item = created.json();
+    expect(item).toMatchObject({ uom: 'panels', trade: 'Solar', archived: false });
+
+    // Bad plans are refused.
+    expect(
+      (await post('production/items', { ...item, id: undefined, plannedFinish: day(-50) }))
+        .statusCode,
+    ).toBe(422);
+
+    // 20 weekdays of steady work in the baseline window, then a slow last week.
+    const entries = `production/items/${item.id}/entries`;
+    for (let o = -34; o <= -7; o++) {
+      const dow = new Date(day(o)).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      const r = await post(entries, { loggedOn: day(o), quantity: 10, crew: 'Crew 1' });
+      expect(r.statusCode, r.body).toBe(201);
+    }
+    for (let o = -6; o <= 0; o++) {
+      const dow = new Date(day(o)).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      await post(entries, { loggedOn: day(o), quantity: 3, crew: 'Crew 1' });
+    }
+
+    // Corrections need a note, the total cannot go below zero, and the future is closed.
+    expect((await post(entries, { loggedOn: day(0), quantity: -1 })).statusCode).toBe(422);
+    expect(
+      (await post(entries, { loggedOn: day(0), quantity: -99999, note: 'x' })).statusCode,
+    ).toBe(422);
+    expect((await post(entries, { loggedOn: day(5), quantity: 1 })).statusCode).toBe(422);
+    const fix = await post(entries, { loggedOn: day(0), quantity: -1, note: 'Double counted' });
+    expect(fix.statusCode, fix.body).toBe(201);
+    expect((await get(entries)).json().data[0]).toMatchObject({ quantity: -1, crew: null });
+
+    const rep = (await get('production/report')).json();
+    expect(rep.items).toHaveLength(1);
+    expect(rep.items[0]).toMatchObject({ status: 'behind' });
+    expect(rep.curves).toHaveLength(1);
+    expect(rep.curves[0].uom).toBe('panels');
+    expect(rep.byTrade).toEqual([
+      { name: 'Solar', uom: 'panels', planned: 1000, actual: rep.items[0].actual },
+    ]);
+    expect(rep.byLocation[0].name).toBe('Block A');
+    expect(
+      rep.flags.map((f: { kind: string; name: string }) => `${f.kind}:${f.name}`).sort(),
+    ).toEqual(['crew:Crew 1', 'trade:Solar']);
+    expect((await get('production/report?trade=Plumbing')).json().items).toEqual([]);
+
+    // Archiving hides the item and stops further logging.
+    const arch = await s.pm.browser.patch(`${s.base}/production/items/${item.id}`, {
+      archived: true,
+    });
+    expect(arch.json().archived).toBe(true);
+    expect((await get('production/report')).json().items).toEqual([]);
+    expect((await post(entries, { loggedOn: day(0), quantity: 1 })).json().code).toBe(
+      'financials.production.item_archived',
+    );
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/production/report`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/${entries}`, { loggedOn: day(0), quantity: 1 }))
         .statusCode,
     ).toBe(403);
   });

@@ -10,6 +10,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { ItemResult, InspectionStatus, ResponseType } from '../domain/inspection';
+import type { Classification, ContributingCondition, TradeCategory } from '../domain/dbp';
 import type { ItemEventKind } from '../domain/item-activity';
 import type { ObservationStatus, ObservationType } from '../domain/observation';
 
@@ -23,6 +24,7 @@ export const templates = qualitySchema.table('inspection_templates', {
   projectId: uuid('project_id').notNull(),
   name: text('name').notNull(),
   type: text('type').notNull().default('ITP'),
+  tradeCategory: text('trade_category').$type<TradeCategory>(),
   version: integer('version').notNull().default(1),
   published: boolean('published').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -121,6 +123,9 @@ export const observations = qualitySchema.table('observations', {
   status: text('status').$type<ObservationStatus>().notNull().default('open'),
   dueDate: date('due_date'),
   swmsId: uuid('swms_id'),
+  tradeCategory: text('trade_category').$type<TradeCategory>(),
+  classification: text('classification').$type<Classification>(),
+  contributingCondition: text('contributing_condition').$type<ContributingCondition>(),
   inspectionId: uuid('inspection_id'),
   inspectionItemId: uuid('inspection_item_id'),
   resolutionNote: text('resolution_note'),

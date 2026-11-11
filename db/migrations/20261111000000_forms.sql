@@ -1,4 +1,4 @@
--- Composed from modules/forms/db/migrations/20261108110000_forms.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/forms/db/migrations/20261111000000_forms.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- forms: fill-in forms (job hazard analysis, toolbox talks, permits) from built-in or organisation-built templates.
 -- Built-in templates live in code. A form copies its template's fields when it starts, so template edits never
 -- change a form already started. Signatures are one row each, with a server time.
