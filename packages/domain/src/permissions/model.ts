@@ -21,6 +21,7 @@ export const TOOLS = [
   'schedule',
   'inspections',
   'incidents',
+  'environment',
   'budget',
   'commitments',
   'variations',

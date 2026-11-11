@@ -1,4 +1,4 @@
-import { date, integer, pgSchema, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgSchema, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { DefectPriority, DefectStage, DefectStatus } from '@archova/domain';
 
 export const defectsSchema = pgSchema('defects');
@@ -24,6 +24,14 @@ export const defects = defectsSchema.table('defects', {
   pinY: real('pin_y'),
   assigneeCompanyId: uuid('assignee_company_id'),
   assigneeUserId: uuid('assignee_user_id'),
+  managerUserId: uuid('manager_user_id'),
+  finalApproverUserId: uuid('final_approver_user_id'),
+  approverDelegateUserId: uuid('approver_delegate_user_id'),
+  approverDelegateFrom: date('approver_delegate_from'),
+  approverDelegateUntil: date('approver_delegate_until'),
+  requireCloseEvidence: boolean('require_close_evidence').notNull().default(false),
+  assigneeUserIds: uuid('assignee_user_ids').array().notNull().default([]),
+  distributionUserIds: uuid('distribution_user_ids').array().notNull().default([]),
   dueDate: date('due_date'),
   raisedByCompanyId: uuid('raised_by_company_id'),
   issuedAt: timestamp('issued_at', { withTimezone: true }),
@@ -52,5 +60,6 @@ export const events = defectsSchema.table('events', {
   note: text('note'),
   fileIds: uuid('file_ids').array().notNull().default([]),
   actorId: uuid('actor_id'),
+  onBehalfOf: uuid('on_behalf_of'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });
