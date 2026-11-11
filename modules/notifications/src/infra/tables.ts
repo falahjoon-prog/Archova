@@ -13,6 +13,7 @@ export type NotificationEntity =
   | 'announcement'
   | 'permit'
   | 'cover'
+  | 'warranty_item'
   | 'project_plan_item';
 
 export const notifications = notificationsSchema.table('notifications', {
