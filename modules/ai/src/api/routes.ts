@@ -49,6 +49,7 @@ import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-dra
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
 import type { CaptureObservationView, CaptureScanService } from '../application/capture-scan';
 import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
+import type { PhotoTagService } from '../application/photo-tag';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
@@ -320,6 +321,7 @@ export function aiRoutes(
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
+  photoTags: PhotoTagService,
   assist: AssistService,
   captureScans: CaptureScanService,
   help: HelpService,
@@ -867,6 +869,26 @@ export function aiRoutes(
           dropped: r.dropped,
           unsupportedNumbers: r.unsupportedNumbers,
           disclaimer: r.disclaimer,
+        },
+      };
+    },
+    suggestPhotoTagsWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const photoFileId = decodeId('file', input.body.photo.fileId);
+      if (!photoFileId) throw new AppError('file.not_found');
+      const r = await photoTags.suggest(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        knownAreas: input.body.knownAreas ?? [],
+        photoFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          area: r.area,
+          trade: r.trade,
+          tags: r.tags,
+          photoUnclear: r.photoUnclear,
         },
       };
     },

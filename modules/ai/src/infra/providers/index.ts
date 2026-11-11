@@ -7,6 +7,7 @@ import { heuristicBudgetReview } from '../../eval/suites/budget-review';
 import { heuristicDefectTag } from '../../eval/suites/defect-tag';
 import { heuristicCaptureScan } from '../../eval/suites/capture-scan';
 import { heuristicHazardScan } from '../../eval/suites/hazard-scan';
+import { heuristicPhotoTag } from '../../eval/suites/photo-tag';
 import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
 import { heuristicHelpExplain } from '../../eval/suites/help-explain';
@@ -62,6 +63,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'drawing.compare_visual': heuristicDrawingCompareVisual,
   'defect.tag': heuristicDefectTag,
   'safety.hazard_scan': heuristicHazardScan,
+  'photo.tag': heuristicPhotoTag,
   'coordination.capture_scan': heuristicCaptureScan,
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,

@@ -36,6 +36,8 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   // F35: anyone who can report an incident can ask Nova to look at a site photo; reviewing the signals and reading the
   // patterns is the builder's safety admin (same level as managing incidents).
   { key: 'ai.safety.scan', scope: 'project', tool: 'inspections', level: 'standard' },
+  // Anyone who can add photos to the project can ask Nova to suggest tags for one.
+  { key: 'ai.photo_tag.suggest', scope: 'project', tool: 'documents', level: 'standard' },
   { key: 'ai.safety.review', scope: 'project', tool: 'inspections', level: 'admin' },
   // Site Capture "Ask Nova about this view": anyone who can add a capture can have Nova read a still from it; the
   // people who coordinate issues decide on what Nova noticed.

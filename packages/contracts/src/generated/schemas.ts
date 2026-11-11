@@ -194,7 +194,7 @@ export const AdjustTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AdjustTimesheetLineRequest = z.infer<typeof AdjustTimesheetLineRequestSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "site_capture", "minutes", "estimating", "contract_review"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "photo_tagging", "site_capture", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -7155,6 +7155,20 @@ export const PermitTransitionRequestSchema = z.object({
 }).strict();
 export type PermitTransitionRequest = z.infer<typeof PermitTransitionRequestSchema>;
 
+export const PhotoFacetSchema = z.object({
+  "value": z.string(),
+  "count": z.number().int(),
+});
+export type PhotoFacet = z.infer<typeof PhotoFacetSchema>;
+
+export const PhotoTagsSchema = z.object({
+  "area": z.string().nullable(),
+  "trade": z.string().nullable(),
+  "tags": z.array(z.string()),
+  "source": z.enum(["person", "nova"]),
+});
+export type PhotoTags = z.infer<typeof PhotoTagsSchema>;
+
 export const PlantAllocationSchema = z.object({
   "id": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
@@ -7662,6 +7676,7 @@ export type ProjectPage = z.infer<typeof ProjectPageSchema>;
 
 export const ProjectPhotoSchema = z.object({
   "file": FileObjectSchema,
+  "tags": z.union([PhotoTagsSchema, z.null()]),
   "url": z.string(),
   "expiresAt": z.string().datetime({ offset: true }),
 });

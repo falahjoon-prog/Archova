@@ -31,6 +31,7 @@ import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createCaptureScanService } from './application/capture-scan';
 import { createHazardScanService } from './application/hazard-scan';
+import { createPhotoTagService } from './application/photo-tag';
 import { createImportMappingService } from './application/import-mapping';
 import { createAnnouncementDraftService } from './application/announcement-draft';
 import {
@@ -448,6 +449,12 @@ export function createAiModule(
     assert: deps.assert,
     readFile: deps.readFile,
   });
+  const photoTags = createPhotoTagService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const importMappings = createImportMappingService({
     database: services.database,
     gateway,
@@ -571,6 +578,7 @@ export function createAiModule(
       minutesExtract,
       swmsDrafts,
       hazardScans,
+      photoTags,
       assist,
       captureScans,
       help,

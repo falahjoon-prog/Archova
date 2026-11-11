@@ -1555,6 +1555,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a project photo's area, trade and tags, replacing what was there. Empty removes them.
+         * @description Same access as adding a photo to the project. Pass `novaRunId` when the person confirmed a Nova suggestion (`suggestPhotoTagsWithNova`), so the tags are marked as Nova-suggested.
+         */
+        put: operations["setProjectPhotoTags"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -2719,6 +2743,33 @@ export interface paths {
          *     is a 422.
          */
         post: operations["scanSitePhotoForHazardsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/photos/tag-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests an area, a trade and a few tags for a project photo.
+         * @description Nova looks at a site photo already uploaded to this project and suggests where on the job it is (only when the
+         *     note or a visible sign says so), the trade the work shows, and up to five short tags. `knownAreas` lets a new
+         *     suggestion reuse the project's own spelling. Nothing is stored: the person confirms or edits the suggestion
+         *     with `setProjectPhotoTags`, passing `runId` as `novaRunId`. Costs a tenth of a Nova credit. The photo is a PNG,
+         *     JPEG or WebP already uploaded to this project, up to 3 MB; anything else is a 422.
+         */
+        post: operations["suggestPhotoTagsWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14883,7 +14934,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "site_capture" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "photo_tagging" | "site_capture" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -15831,8 +15882,20 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        PhotoFacet: {
+            value: string;
+            count: number;
+        };
+        PhotoTags: {
+            area: string | null;
+            trade: string | null;
+            tags: string[];
+            /** @enum {string} */
+            source: "person" | "nova";
+        };
         ProjectPhoto: {
             file: components["schemas"]["FileObject"];
+            tags: components["schemas"]["PhotoTags"] | null;
             url: string;
             /** Format: date-time */
             expiresAt: string;
@@ -25779,6 +25842,14 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description Only photos tagged with this area (any case). */
+                area?: string;
+                /** @description Only photos tagged with this trade. */
+                trade?: string;
+                /** @description Only photos carrying this tag. */
+                tag?: string;
+                /** @description Only photos taken (or uploaded) in the last this many days. */
+                sinceDays?: number;
             };
             header?: never;
             path: {
@@ -25797,6 +25868,47 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ProjectPhoto"][];
+                        /** @description Areas and trades in use across the whole gallery, for a filter bar. Not narrowed by the filters. */
+                        facets: {
+                            areas: components["schemas"]["PhotoFacet"][];
+                            trades: components["schemas"]["PhotoFacet"][];
+                        };
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setProjectPhotoTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    area?: string | null;
+                    trade?: string | null;
+                    tags?: string[];
+                    novaRunId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The tags now on the photo, or null when they were cleared */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tags: components["schemas"]["PhotoTags"] | null;
                     };
                 };
             };
@@ -27743,6 +27855,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaHazardScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestPhotoTagsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    note?: string;
+                    knownAreas?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        runId: string;
+                        area: string | null;
+                        trade: string | null;
+                        tags: string[];
+                        photoUnclear: boolean;
+                    };
                 };
             };
             default: components["responses"]["Problem"];

@@ -2,7 +2,7 @@ import { decodeId, encodeId } from '@archova/domain';
 import type { FileObject } from '@archova/contracts';
 import { AppError, defineRoutes, requireTenant, type Database } from '@archova/kernel';
 import type { FilesService } from '../application/files-service';
-import type { fileObjects } from '../infra/tables';
+import type { fileObjects, photoTags } from '../infra/tables';
 import { rowToCapture } from '../domain/capture';
 
 const toFileDto = (f: typeof fileObjects.$inferSelect): FileObject => ({
@@ -16,6 +16,13 @@ const toFileDto = (f: typeof fileObjects.$inferSelect): FileObject => ({
   status: f.status,
   capture: rowToCapture(f),
   createdAt: f.createdAt.toISOString(),
+});
+
+const toTagsDto = (t: typeof photoTags.$inferSelect) => ({
+  area: t.area,
+  trade: t.trade,
+  tags: t.tags,
+  source: t.source,
 });
 
 const fileUuid = (id: string) => {
@@ -63,20 +70,46 @@ export function filesRoutes(database: Database, files: FilesService) {
     listProjectPhotos: async (input) => {
       const projectId = decodeId('project', input.params.projectId);
       if (!projectId) throw new AppError('project.not_found');
-      const photos = await database.withTenantTx(requireTenant(input), (s) =>
-        files.listProjectPhotos(s, projectId, input.query.limit ?? 12),
+      const q = input.query;
+      const since = q.sinceDays ? new Date(Date.now() - q.sinceDays * 86_400_000) : undefined;
+      const r = await database.withTenantTx(requireTenant(input), (s) =>
+        files.listProjectPhotos(s, projectId, {
+          limit: q.limit ?? 12,
+          ...(q.area ? { area: q.area } : {}),
+          ...(q.trade ? { trade: q.trade } : {}),
+          ...(q.tag ? { tag: q.tag } : {}),
+          ...(since ? { since } : {}),
+        }),
       );
       return {
         status: 200,
         body: {
-          data: photos.map((p) => ({
+          data: r.photos.map((p) => ({
             file: toFileDto(p.file),
             url: p.url,
             expiresAt: p.expiresAt.toISOString(),
+            tags: p.tag ? toTagsDto(p.tag) : null,
           })),
+          facets: r.facets,
         },
         headers: { 'cache-control': 'no-store' },
       };
+    },
+    setProjectPhotoTags: async (input) => {
+      const projectId = decodeId('project', input.params.projectId);
+      if (!projectId) throw new AppError('project.not_found');
+      const fid = fileUuid(input.params.fileId);
+      const runId = input.body.novaRunId ? decodeId('aiRun', input.body.novaRunId) : null;
+      if (input.body.novaRunId && !runId) throw new AppError('validation_failed');
+      const row = await database.withTenantTx(requireTenant(input), (s) =>
+        files.setPhotoTags(s, projectId, fid, {
+          area: input.body.area ?? null,
+          trade: input.body.trade ?? null,
+          tags: input.body.tags ?? [],
+          runId,
+        }),
+      );
+      return { status: 200, body: { tags: row ? toTagsDto(row) : null } };
     },
     getFileDownload: async (input) => {
       const id = fileUuid(input.params.fileId);

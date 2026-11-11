@@ -2116,6 +2116,43 @@ fieldset.worker-card > legend {
   object-fit: contain;
 }
 
+.photo-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+@media (min-width: 768px) {
+  .photo-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+.photo-filters__tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.photo-tag-chip {
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  color: inherit;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.photo-tags__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.photo-tags__bar p {
+  margin: 0;
+}
+
 /* Key dates and delay register */
 .key-dates__headline {
   display: flex;
