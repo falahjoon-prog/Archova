@@ -20,6 +20,11 @@ const denied: NovaToolSources = {
   defects: {
     openForMeeting: async () => ({ rows: [], truncated: false, restricted: true }),
   },
+  quality: {
+    overdueInspections: async () => ({ rows: [], truncated: false, restricted: true }),
+    failedInspectionItems: async () => ({ rows: [], truncated: false, restricted: true }),
+    inspectionSummaries: async () => [],
+  },
   financials: {
     budgetReviewFacts: async () => {
       throw new AppError('access.denied');

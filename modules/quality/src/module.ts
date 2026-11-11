@@ -257,6 +257,12 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
         observations: { portfolioCounts: observations.portfolioCounts },
         inspections: { portfolioCounts: inspections.portfolioCounts },
       },
+      /** Read-only lookups for Nova's inspection tools (`compose/nova-tools`); each returns a Listing and refuses a caller without access. */
+      nova: {
+        overdueInspections: inspections.overdueForNova,
+        failedInspectionItems: inspections.failedItemsForNova,
+        inspectionSummaries: inspections.summariesForNova,
+      },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (
         scope: TenantScope,
