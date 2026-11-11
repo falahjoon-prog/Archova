@@ -112,6 +112,14 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         lateDays: 0,
       }),
     },
+    quality: {
+      dbpRows: async () => ({
+        restricted: true,
+        truncated: false,
+        inspections: [],
+        observations: [],
+      }),
+    },
     budget: {
       portfolioSummary: async () => ({
         restricted: true,
