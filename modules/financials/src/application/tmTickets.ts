@@ -8,6 +8,7 @@ import {
   DIRECT_COST_CATEGORY,
   isQuantity,
   lineCents,
+  ACK_VERSIONS,
   statusAfterSigning,
   totalCents,
   totalsByKind,
@@ -409,7 +410,7 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         'Attach a photo of the docket signed on site by the principal’s representative.',
         [{ path: 'evidenceFileId', message: 'Required for the principal’s representative' }],
       );
-    if (!input.acknowledgementVersion)
+    if (!input.acknowledgementVersion || !ACK_VERSIONS.includes(input.acknowledgementVersion))
       throw new AppError('validation_failed', 'The signer must accept the acknowledgement.', [
         { path: 'acknowledgementVersion', message: 'Required' },
       ]);

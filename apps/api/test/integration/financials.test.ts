@@ -1973,6 +1973,16 @@ describe('T&M tickets', () => {
         await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
           role: 'principal_rep',
           signerName: 'Sam Lee',
+          acknowledgementVersion: 'made-up',
+          evidenceFileId: docket,
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(
+      (
+        await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+          role: 'principal_rep',
+          signerName: 'Sam Lee',
           evidenceFileId: docket,
         })
       ).statusCode,
