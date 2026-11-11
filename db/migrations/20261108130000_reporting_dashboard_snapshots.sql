@@ -1,4 +1,4 @@
--- Composed from modules/reporting/db/migrations/20261108120000_reporting_dashboard_snapshots.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/reporting/db/migrations/20261108130000_reporting_dashboard_snapshots.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- reporting: dashboard snapshots. A snapshot is the whole portfolio dashboard as its maker saw it at one moment, stored
 -- as data (not a rendered page) so it can be reopened exactly as it was and compared with now or another snapshot.
 -- Visible to its maker and org owners/admins only, because the stored numbers were narrowed to what the maker could open.
