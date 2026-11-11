@@ -6,6 +6,7 @@ import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createSustainabilityService } from './application/sustainability';
 import { createReadinessService } from './application/readiness';
+import { createTimeService } from './application/time';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
 import { REPORTING_PERMISSIONS } from './permissions';
@@ -25,6 +26,7 @@ export function createReportingModule(
   const readiness = createReadinessService(deps);
   const audit = createAuditService(deps);
   const sustainability = createSustainabilityService(deps);
+  const time = createTimeService(deps);
   const dbp = createDbpService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
@@ -34,6 +36,7 @@ export function createReportingModule(
       reports,
       risk,
       readiness,
+      time,
       audit,
       sustainability,
       dbp,

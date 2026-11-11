@@ -130,6 +130,8 @@ export function createWorkforceModule(
       lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `reporting` (time dashboard): paid time per timesheet line, by project and date range. */
+      timeForReporting: sheets.timeForReporting,
       /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
       dayActivity: sheets.dayActivity,
       /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */

@@ -3787,6 +3787,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/reports/time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hours worked in one week by employee, project, class and cost code.
+         * @description The company time dashboard (FP Dashboard). One Monday to Sunday week of paid timesheet time (time worked less
+         *     unpaid breaks) across the projects the caller can see, or the projects named in `projectIds`. `weekStart` is any
+         *     date in the week wanted and defaults to this week. Each project's lines are read as the caller: a project where
+         *     the caller may not read timesheets is counted in `restrictedProjects` and left out; where the caller may not
+         *     read cost codes, its hours are grouped as "Cost codes not visible". A class is the top-level cost code above the
+         *     one a line is booked to. Employees and cost codes are the top 50 by hours. Staff only.
+         */
+        get: operations["getTimeDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/search": {
         parameters: {
             query?: never;
@@ -12888,6 +12915,61 @@ export interface components {
             completed: number;
             /** @description Days late summed over the late activities; divide by `overdue` for the average. */
             lateDays: number;
+        };
+        TimeDashboard: {
+            /** Format: date */
+            weekStart: string;
+            /** Format: date */
+            weekEnd: string;
+            /**
+             * Format: date
+             * @description Monday of the week before.
+             */
+            previousWeek: string;
+            /**
+             * Format: date
+             * @description Monday of the week after.
+             */
+            nextWeek: string;
+            totalHours: number;
+            byEmployee: {
+                workerId: string;
+                name: string;
+                hours: number;
+                projects: {
+                    projectId: string;
+                    name: string;
+                    hours: number;
+                }[];
+            }[];
+            byClass: {
+                /** @description Top-level cost code; "none" for time with no cost code, "hidden" where cost codes cannot be read. */
+                key: string;
+                label: string;
+                hours: number;
+                /** @description Share of the week total, one decimal. */
+                percent: number;
+            }[];
+            byProject: {
+                projectId: string;
+                name: string;
+                hours: number;
+                /** @description Hours on timesheets not yet submitted, or sent back. */
+                draft: number;
+                submitted: number;
+                /** @description Approved or exported. */
+                approved: number;
+            }[];
+            byCostCode: {
+                projectId: string;
+                projectName: string;
+                costCodeId: string | null;
+                code: string;
+                description: string;
+                hours: number;
+            }[];
+            restrictedProjects: number;
+            truncated: boolean;
         };
         /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
         PortfolioBudget: {
@@ -29004,6 +29086,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SustainabilityPortfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTimeDashboard: {
+        parameters: {
+            query?: {
+                weekStart?: string;
+                /** @description Comma-separated project ids; empty means every project the caller can see. */
+                projectIds?: string;
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeDashboard"];
                 };
             };
             default: components["responses"]["Problem"];
