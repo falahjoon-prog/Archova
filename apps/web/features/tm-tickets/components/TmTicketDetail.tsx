@@ -5,8 +5,11 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   DataTable,
   Select,
+  SignaturePad,
+  type SignatureValue,
   StatusPill,
   Textarea,
   TextField,
@@ -19,7 +22,8 @@ import { useBudget } from '@/features/budget';
 import { useContracts } from '@/features/claims';
 import type { TmTicketDetail } from '../data/api';
 import { useTmChecks, useTmMutations, useTmTicket } from '../hooks/useTmTickets';
-import { aud, currentFix, GEO_LABEL, KIND_LABEL } from '../lib/tm';
+import { signatureToPng } from '@/shared/lib/signature-image';
+import { ACK_TEXT, ACK_VERSION, aud, currentFix, GEO_LABEL, KIND_LABEL } from '../lib/tm';
 
 type Line = TmTicketDetail['lines'][number];
 
@@ -101,6 +105,8 @@ export function TmTicketDetailCard({
   const [signerName, setSignerName] = useState('');
   const [position, setPosition] = useState('');
   const [evidence, setEvidence] = useState<File | null>(null);
+  const [signature, setSignature] = useState<SignatureValue>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [verifyNote, setVerifyNote] = useState('');
   const [role, setRole] = useState<'contractor' | 'principal_rep'>('contractor');
   const [target, setTarget] = useState<'direct_cost' | 'variation'>('direct_cost');
@@ -130,10 +136,20 @@ export function TmTicketDetailCard({
       return setError(
         'Attach a photo of the docket signed on site by the principal’s representative.',
       );
+    if (!signature) return setError('Capture the signature, or confirm the typed one.');
+    if (!acknowledged) return setError('The signer must accept the acknowledgement.');
     const fix = await currentFix();
+    let image: Blob;
+    try {
+      image = await signatureToPng(signature);
+    } catch {
+      return setError('We couldn’t make the signature image. Try again.');
+    }
     sign.mutate({
       id,
       body: {
+        acknowledgementVersion: ACK_VERSION,
+        signature: { image, method: signature.method },
         ...(fix ? { fix } : {}),
         role: activeRole,
         signerName: signerName.trim(),
@@ -350,6 +366,12 @@ export function TmTicketDetailCard({
                   />
                 </div>
               ) : null}
+              <SignaturePad name={signerName} onChange={setSignature} />
+              <Checkbox
+                label={ACK_TEXT}
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+              />
               <div className="row-actions">
                 <Button type="submit" disabled={sign.isPending}>
                   {sign.isPending ? 'Signing…' : 'Record signature'}

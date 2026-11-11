@@ -1904,7 +1904,11 @@ describe('T&M tickets', () => {
     expect(edited.json()).toMatchObject({ reviewStage: 'in_progress' });
     expect(
       (
-        await post(`tm-tickets/${t1.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' })
+        await post(`tm-tickets/${t1.id}/sign`, {
+          role: 'contractor',
+          signerName: 'Pat Manager',
+          acknowledgementVersion: 'tm-sign-v1',
+        })
       ).json().code,
     ).toBe('financials.tm_ticket.bad_state');
     expect(
@@ -1940,6 +1944,7 @@ describe('T&M tickets', () => {
     const sign1 = await post(`tm-tickets/${t1.id}/sign`, {
       role: 'contractor',
       signerName: 'Pat Manager',
+      acknowledgementVersion: 'tm-sign-v1',
       fix: { lat: -33.87, lng: 151.21, accuracyM: 12 },
     });
     expect(sign1.json()).toMatchObject({ status: 'part_signed' });
@@ -1954,23 +1959,59 @@ describe('T&M tickets', () => {
     );
     expect(
       (
-        await post(`tm-tickets/${t1.id}/sign`, { role: 'principal_rep', signerName: 'Pat Manager' })
+        await post(`tm-tickets/${t1.id}/sign`, {
+          role: 'principal_rep',
+          signerName: 'Pat Manager',
+          acknowledgementVersion: 'tm-sign-v1',
+        })
       ).json().code,
     ).toBe('financials.tm_ticket.bad_state');
+
+    // A signature needs the acknowledgement, and the image needs its method.
+    expect(
+      (
+        await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+          role: 'principal_rep',
+          signerName: 'Sam Lee',
+          evidenceFileId: docket,
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(
+      (
+        await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
+          role: 'principal_rep',
+          signerName: 'Sam Lee',
+          acknowledgementVersion: 'tm-sign-v1',
+          evidenceFileId: docket,
+          signatureFileId: docket,
+        })
+      ).statusCode,
+    ).toBe(422);
 
     // The principal's representative needs evidence of the on-site signature.
     const noEvidence = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
       role: 'principal_rep',
       signerName: 'Sam Lee',
+      acknowledgementVersion: 'tm-sign-v1',
     });
     expect(noEvidence.statusCode).toBe(422);
     const sign2 = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
       role: 'principal_rep',
       signerName: 'Sam Lee',
+      acknowledgementVersion: 'tm-sign-v1',
       signerPosition: 'Superintendent',
       evidenceFileId: docket,
+      signatureFileId: docket,
+      signatureMethod: 'drawn',
     });
-    expect(sign2.json().signoffs[1]).toMatchObject({ hasEvidence: true, evidenceFileId: docket });
+    expect(sign2.json().signoffs[1]).toMatchObject({
+      hasEvidence: true,
+      evidenceFileId: docket,
+      signatureFileId: docket,
+      signatureMethod: 'drawn',
+      acknowledgementVersion: 'tm-sign-v1',
+    });
     expect(sign2.json()).toMatchObject({ status: 'signed' });
     // The superintendent can sign but not convert.
     expect(
@@ -2032,10 +2073,15 @@ describe('T&M tickets', () => {
     const contract = (await post('contracts', contractBody())).json().contract;
     const t2 = (await post('tm-tickets', body)).json();
     expect(t2.number).toBe(2);
-    await post(`tm-tickets/${t2.id}/sign`, { role: 'contractor', signerName: 'Pat Manager' });
+    await post(`tm-tickets/${t2.id}/sign`, {
+      role: 'contractor',
+      signerName: 'Pat Manager',
+      acknowledgementVersion: 'tm-sign-v1',
+    });
     await principal.browser.post(`${s.base}/tm-tickets/${t2.id}/sign`, {
       role: 'principal_rep',
       signerName: 'Sam Lee',
+      acknowledgementVersion: 'tm-sign-v1',
     });
     const asVar = await post(`tm-tickets/${t2.id}/convert`, {
       to: 'variation',
@@ -2067,6 +2113,7 @@ describe('T&M tickets', () => {
         await s.sub.browser.post(`${s.base}/tm-tickets/${t1.id}/sign`, {
           role: 'contractor',
           signerName: 'x',
+          acknowledgementVersion: 'tm-sign-v1',
         })
       ).statusCode,
     ).toBe(403);

@@ -28337,12 +28337,18 @@ components:
           signerPosition,
           hasEvidence,
           evidenceFileId,
+          signatureFileId,
+          signatureMethod,
+          acknowledgementVersion,
           geofenceStatus,
           hasPosition,
           contentHash,
           signedAt,
         ]
       properties:
+        signatureFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        signatureMethod: { type: [string, 'null'], enum: [drawn, typed, null] }
+        acknowledgementVersion: { type: [string, 'null'] }
         geofenceStatus:
           type: string
           enum: [inside, outside, uncertain, unknown]
@@ -28493,10 +28499,20 @@ components:
     SignTmTicketRequest:
       type: object
       additionalProperties: false
-      required: [role, signerName]
+      required: [role, signerName, acknowledgementVersion]
       properties:
         role: { type: string, enum: [contractor, principal_rep] }
         signerName: { type: string, minLength: 1, maxLength: 200 }
+        signatureFileId:
+          type: string
+          pattern: '^fil_[0-9A-Za-z]{26}$'
+          description: The drawn or typed signature as an image, uploaded to this project first. Send with signatureMethod.
+        signatureMethod: { type: string, enum: [drawn, typed] }
+        acknowledgementVersion:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: The version of the legal acknowledgement wording the signer accepted.
         signerPosition: { type: string, minLength: 1, maxLength: 200 }
         evidenceFileId:
           type: string

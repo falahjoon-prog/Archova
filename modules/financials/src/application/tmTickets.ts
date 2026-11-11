@@ -370,6 +370,11 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
       signerPosition?: string;
       /** A ready file on this project: the photo of the docket signed on site. Required for the principal's rep. */
       evidenceFileId?: string;
+      /** The drawn or typed signature image (a ready file on this project). */
+      signatureFileId?: string;
+      signatureMethod?: 'drawn' | 'typed';
+      /** The wording of the legal acknowledgement the signer was shown. Required. */
+      acknowledgementVersion?: string;
       /** Device position when signing; optional, and never required to sign. */
       fix?: { lat: number; lng: number; accuracyM?: number | undefined };
       ip?: string | undefined;
@@ -404,11 +409,23 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         'Attach a photo of the docket signed on site by the principal’s representative.',
         [{ path: 'evidenceFileId', message: 'Required for the principal’s representative' }],
       );
-    if (input.evidenceFileId) {
-      const f = await deps.getFile(scope, input.evidenceFileId);
+    if (!input.acknowledgementVersion)
+      throw new AppError('validation_failed', 'The signer must accept the acknowledgement.', [
+        { path: 'acknowledgementVersion', message: 'Required' },
+      ]);
+    if (Boolean(input.signatureFileId) !== Boolean(input.signatureMethod))
+      throw new AppError('validation_failed', 'Send the signature image with its method.', [
+        { path: 'signatureFileId', message: 'Needs both the image and the method' },
+      ]);
+    for (const [path, fileId] of [
+      ['evidenceFileId', input.evidenceFileId],
+      ['signatureFileId', input.signatureFileId],
+    ] as const) {
+      if (!fileId) continue;
+      const f = await deps.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach a file uploaded to this project.', [
-          { path: 'evidenceFileId', message: 'Not a ready file in this project' },
+          { path, message: 'Not a ready file in this project' },
         ]);
     }
     if (input.fix && !isGeoPoint(input.fix))
@@ -455,6 +472,9 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         signedBy: scope.ctx.userId!,
         contentHash: hash,
         evidenceFileId: input.evidenceFileId ?? null,
+        signatureFileId: input.signatureFileId ?? null,
+        signatureMethod: input.signatureMethod ?? null,
+        acknowledgementVersion: input.acknowledgementVersion,
         lat: input.fix?.lat ?? null,
         lng: input.fix?.lng ?? null,
         accuracyM: input.fix?.accuracyM !== undefined ? Math.round(input.fix.accuracyM) : null,
