@@ -1,5 +1,6 @@
 // Registered eval suites, one per Nova task (ai/06 §2). Each feature PR adds its suite here.
 import type { EvalSuite } from './harness';
+import { assistAnswerSuite, assistPlanSuite } from './suites/assist';
 import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
@@ -66,4 +67,6 @@ export const SUITES: readonly AnySuite[] = [
   contractAskSuite,
   contractCompareSuite,
   takeoffDetectSuite,
+  assistPlanSuite,
+  assistAnswerSuite,
 ];

@@ -2,6 +2,7 @@ import { defineModule, type Database } from '@archova/kernel';
 import { reportingRoutes } from './api/routes';
 import { createInsightsService } from './application/insights';
 import { createAuditService, type AuditDeps } from './application/audit';
+import { createDbpService } from './application/dbp';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createSustainabilityService } from './application/sustainability';
@@ -26,6 +27,7 @@ export function createReportingModule(
   const insights = createInsightsService(deps);
   const audit = createAuditService(deps);
   const sustainability = createSustainabilityService(deps);
+  const dbp = createDbpService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
     routes: reportingRoutes(
@@ -37,6 +39,7 @@ export function createReportingModule(
       insights,
       audit,
       sustainability,
+      dbp,
     ),
     api: {
       /** For `ai` (Nova discussing the project home insights): the ranked notes, read as the caller. */
