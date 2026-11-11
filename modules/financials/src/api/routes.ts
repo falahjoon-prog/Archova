@@ -17,19 +17,12 @@ import { toAdjustmentDto, toForecastDto } from './forecast-mappers';
 import type { FinancialsService } from '../application/financials';
 import { isMoney } from '../domain/money';
 import {
-  DEFAULT_PDF_OPTIONS,
-  PDF_COLUMNS,
-  PDF_SECTIONS,
-  type PdfOptions,
-} from '../domain/payment-application-pdf';
-import {
   toClaimDto,
   toCommitmentDto,
   toCommitmentInvoicesDto,
   toCommitmentLineDto,
   toContractDto,
   toLineDto,
-  toPaymentApplicationDto,
   toScheduleDto,
   toStatementDto,
   toSovDto,
@@ -41,31 +34,6 @@ const ref = (kind: IdKind, value: string, path: string) => {
   if (!uuid)
     throw new AppError('validation_failed', 'Invalid id', [{ path, message: 'Invalid id' }]);
   return uuid;
-};
-/** The PDF layout from the request body; anything left out takes the default. */
-const pdfOptions = (q: {
-  sections?: string[];
-  columns?: string[];
-  paper?: 'a4' | 'letter';
-  orientation?: 'portrait' | 'landscape';
-  notes?: string;
-  signatureBlock?: boolean;
-  amountCertified?: string;
-}): PdfOptions => {
-  const pick = <T extends string>(
-    chosen: string[] | undefined,
-    all: readonly T[],
-    fallback: T[],
-  ) => (chosen?.length ? all.filter((x) => chosen.includes(x)) : fallback);
-  return {
-    sections: pick(q.sections, PDF_SECTIONS, DEFAULT_PDF_OPTIONS.sections),
-    columns: pick(q.columns, PDF_COLUMNS, DEFAULT_PDF_OPTIONS.columns),
-    paper: q.paper ?? DEFAULT_PDF_OPTIONS.paper,
-    orientation: q.orientation ?? DEFAULT_PDF_OPTIONS.orientation,
-    notes: q.notes ?? '',
-    signatureBlock: q.signatureBlock === true,
-    amountCertified: q.amountCertified ?? null,
-  };
 };
 const project = (p: { projectId: string }) => {
   const id = decodeId('project', p.projectId);
@@ -251,33 +219,6 @@ export function financialsRoutes(
             project(input.params),
             ref('commitment', input.params.commitmentId, 'commitmentId'),
           ),
-        ),
-      ),
-    }),
-    getCommitmentInvoice: async (input) => {
-      const claimUuid = ref('paymentClaim', input.params.claimId, 'claimId');
-      const d = await read(input, (s) =>
-        commitments.invoiceDetail(
-          s,
-          project(input.params),
-          ref('commitment', input.params.commitmentId, 'commitmentId'),
-          claimUuid,
-        ),
-      );
-      return {
-        status: 200,
-        body: toPaymentApplicationDto(input.params.claimId, d.commitmentTitle, d.application),
-      };
-    },
-    getCommitmentInvoicePdf: async (input) => ({
-      status: 200,
-      body: await read(input, (s) =>
-        commitments.invoicePdf(
-          s,
-          project(input.params),
-          ref('commitment', input.params.commitmentId, 'commitmentId'),
-          ref('paymentClaim', input.params.claimId, 'claimId'),
-          pdfOptions(input.body ?? {}),
         ),
       ),
     }),

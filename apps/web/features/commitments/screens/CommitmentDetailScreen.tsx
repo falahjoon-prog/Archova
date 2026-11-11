@@ -177,12 +177,7 @@ function InvoicesTab({
       cell: (r) => (
         <Link
           className="link"
-          href={webRoutes.commitmentInvoice(
-            org.orgSlug,
-            project.projectId,
-            commitmentId,
-            r.claimId,
-          )}
+          href={webRoutes.paymentClaim(org.orgSlug, project.projectId, r.claimId)}
         >
           {r.number}
         </Link>

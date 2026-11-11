@@ -46,7 +46,6 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   });
   const commitments = createCommitmentsService({
     access: deps.access,
-    platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const directCosts = createDirectCostsService({

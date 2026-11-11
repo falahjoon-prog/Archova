@@ -3716,19 +3716,6 @@ export const GetCommitmentInvoicesParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
-export const GetCommitmentInvoiceParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
-  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
-  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
-});
-export const GetCommitmentInvoicePdfParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
-  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
-  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
-});
-export const GetCommitmentInvoicePdfBody = s.CommitmentInvoicePdfRequestSchema;
 export const SubmitCommitmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12226,30 +12213,6 @@ export const operations = {
     params: GetCommitmentInvoicesParams,
     query: null,
     body: null,
-  },
-  getCommitmentInvoice: {
-    method: 'GET',
-    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}',
-    module: "financials",
-    auth: "required",
-    permission: "financials.claims.read",
-    internal: false,
-    contentType: null,
-    params: GetCommitmentInvoiceParams,
-    query: null,
-    body: null,
-  },
-  getCommitmentInvoicePdf: {
-    method: 'POST',
-    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf',
-    module: "financials",
-    auth: "required",
-    permission: "financials.claims.read",
-    internal: false,
-    contentType: "application/json",
-    params: GetCommitmentInvoicePdfParams,
-    query: null,
-    body: GetCommitmentInvoicePdfBody,
   },
   submitCommitment: {
     method: 'POST',
