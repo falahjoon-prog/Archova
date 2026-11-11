@@ -70,6 +70,8 @@ export interface DefectFormProps {
   busy: boolean;
   error: unknown;
   /** `another` keeps location, trade and company for the next one in a walk (DEF-US2). */
+  /** Starting values, e.g. a warranty claim opened from the warranty register. */
+  initial?: Partial<DefectInput>;
   onSave: (
     input: DefectInput,
     meta: { aiSuggestionId: string | null; another: boolean },
@@ -81,13 +83,13 @@ export interface DefectFormProps {
  * data uses the location tree. Nova suggests title, trade and priority (from the photo on live data) and checks for
  * duplicates beside the same spot; nothing applies until accepted, and the person picks the company.
  */
-export function DefectForm({ busy, error, onSave }: DefectFormProps) {
+export function DefectForm({ busy, error, initial, onSave }: DefectFormProps) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const nova = useDefectNova();
   const { live } = useDefectsSource();
   const dir = useProjectDirectory();
-  const [v, setV] = useState<DefectInput>(emptyDefectInput);
+  const [v, setV] = useState<DefectInput>(() => ({ ...emptyDefectInput(), ...initial }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [aiFields, setAiFields] = useState<Set<keyof DefectInput>>(new Set());
   const [fileKey, setFileKey] = useState(0);
@@ -137,6 +139,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         trade: prev.trade,
         assigneeCompanyId: prev.assigneeCompanyId,
         stage: prev.stage,
+        warrantyItemId: prev.warrantyItemId ?? null,
         dueDate: prev.dueDate,
       }));
       setAiFields(new Set());

@@ -1,4 +1,4 @@
--- Composed from modules/platform/db/migrations/20261107040000_platform_location_tree.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/platform/db/migrations/20261111010000_platform_location_tree.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- platform: the project location tree (site > building > level > zone > room, any depth up to 8). Defects, RFIs,
 -- inspections, observations and diary lines point at a row here instead of carrying free text.
 -- Rows are archived, never deleted, so old records keep a readable place.

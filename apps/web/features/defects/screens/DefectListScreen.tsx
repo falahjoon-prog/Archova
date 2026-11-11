@@ -19,6 +19,7 @@ import {
 import { DefectsIcon, Download, Plus } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { isDefectOverdue } from '../lib/lifecycle';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
@@ -59,11 +60,21 @@ export function DefectListScreen() {
   // A subcontractor can't list the org's companies, so their own company is named from the project context.
   const assignee = (id: string | null) =>
     id ? (id === project.companyId ? 'Your company' : dir.companyName(id)) : 'Unassigned';
+  const today = todayIn(project.timezone);
+  const all = useDefectList({});
   usePublishAssistantScope({
     projectId: project.projectId,
     record: { type: 'defects', id: 'register' },
+    ...(all.data
+      ? {
+          counts: {
+            open: all.data.filter((d) => d.status === 'open').length,
+            overdue: all.data.filter((d) => isDefectOverdue(d, today)).length,
+            review: all.data.filter((d) => d.status === 'ready_for_review').length,
+          },
+        }
+      : {}),
   });
-  const today = todayIn(project.timezone);
   const [params, setParams] = useUrlState([
     'status',
     'stage',
@@ -86,7 +97,6 @@ export function DefectListScreen() {
     overdueOn: params.overdue ? today : undefined,
     q: params.q || undefined,
   });
-  const all = useDefectList({});
   const m = useDefectMutations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState({ companyId: '', dueDate: '', stage: '' });

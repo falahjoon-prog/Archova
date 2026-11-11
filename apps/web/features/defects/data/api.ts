@@ -288,6 +288,7 @@ export function createDefectsApi(orgId: string): DefectsSource {
               : {}),
             ...(input.requireCloseEvidence ? { requireCloseEvidence: true } : {}),
             ...(input.dueDate ? { dueDate: input.dueDate } : {}),
+            ...(input.warrantyItemId ? { warrantyItemId: input.warrantyItemId } : {}),
             ...(aiSuggestionId ? { aiSuggestionId } : {}),
           },
         }),

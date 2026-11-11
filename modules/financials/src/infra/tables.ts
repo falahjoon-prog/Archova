@@ -450,6 +450,17 @@ export const tmTickets = financialsSchema.table('tm_tickets', {
   location: text('location'),
   contractor: text('contractor'),
   instructedBy: text('instructed_by'),
+  reference: text('reference'),
+  notes: text('notes'),
+  reviewStage: text('review_stage')
+    .$type<'in_progress' | 'ready_for_review' | 'field_verified'>()
+    .notNull()
+    .default('in_progress'),
+  readyAt: timestamp('ready_at', { withTimezone: true }),
+  readyBy: uuid('ready_by'),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  verifiedBy: uuid('verified_by'),
+  verifyNote: text('verify_note'),
   origin: text('origin').$type<'manual' | 'nova'>().notNull().default('manual'),
   status: text('status')
     .$type<'draft' | 'part_signed' | 'signed' | 'converted' | 'void'>()
@@ -608,6 +619,37 @@ export const productionLog = financialsSchema.table('production_log', {
   costCodeId: uuid('cost_code_id').notNull(),
   loggedOn: date('logged_on').notNull(),
   quantity: numeric('quantity', { precision: 14, scale: 2 }).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const productionItems = financialsSchema.table('production_items', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  uom: text('uom').notNull(),
+  trade: text('trade'),
+  location: text('location'),
+  plannedQuantity: numeric('planned_quantity', { precision: 14, scale: 2 }).notNull(),
+  plannedStart: date('planned_start').notNull(),
+  plannedFinish: date('planned_finish').notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const productionEntries = financialsSchema.table('production_entries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  loggedOn: date('logged_on').notNull(),
+  quantity: numeric('quantity', { precision: 14, scale: 2 }).notNull(),
+  crew: text('crew'),
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
