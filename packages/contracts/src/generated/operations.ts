@@ -416,6 +416,52 @@ export const ListProjectPhotosParams = z.object({
 export const ListProjectPhotosQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(30).default(12),
 });
+export const BrowseProjectPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const BrowseProjectPhotosQuery = z.object({
+  "album": z.string().optional(),
+  "q": z.string().max(100).optional(),
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "cursor": z.string().optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(48),
+});
+export const FilePhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const FilePhotoBody = s.PhotoFilingRequestSchema;
+export const ListPhotoAlbumsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePhotoAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePhotoAlbumBody = z.object({
+  "name": z.string().min(1).max(80),
+});
+export const DeletePhotoAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+});
+export const AddPhotoToAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const RemovePhotoFromAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
 export const ListFoldersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5281,6 +5327,90 @@ export const operations = {
     contentType: null,
     params: ListProjectPhotosParams,
     query: ListProjectPhotosQuery,
+    body: null,
+  },
+  browseProjectPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos/browse',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: BrowseProjectPhotosParams,
+    query: BrowseProjectPhotosQuery,
+    body: null,
+  },
+  filePhoto: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: FilePhotoParams,
+    query: null,
+    body: FilePhotoBody,
+  },
+  listPhotoAlbums: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListPhotoAlbumsParams,
+    query: null,
+    body: null,
+  },
+  createPhotoAlbum: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: CreatePhotoAlbumParams,
+    query: null,
+    body: CreatePhotoAlbumBody,
+  },
+  deletePhotoAlbum: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: DeletePhotoAlbumParams,
+    query: null,
+    body: null,
+  },
+  addPhotoToAlbum: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: AddPhotoToAlbumParams,
+    query: null,
+    body: null,
+  },
+  removePhotoFromAlbum: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RemovePhotoFromAlbumParams,
+    query: null,
     body: null,
   },
   listFolders: {

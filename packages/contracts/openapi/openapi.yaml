@@ -1910,6 +1910,142 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/ProjectPhoto' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos/browse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: browseProjectPhotos
+      tags: [files]
+      x-module: files
+      summary: Page through the project's site photos, newest first, for the Photos tool (feed, timeline and album views).
+      description: |
+        Filter by `album` (an auto album key such as `punch_list`, or a project album id), by filename (`q`) and by a
+        capture-date range. Photos nobody has filed carry `needsReview` once they have sat unfiled for 24 hours, and a
+        rule-based `suggestion` taken from already-filed photos taken nearby or by the same person at the same time.
+        Incident and induction photos are never listed. Links work for 5 minutes.
+      parameters:
+        - { name: album, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 48 },
+          }
+      responses:
+        '200':
+          description: A page of photos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, next]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/SitePhoto' }
+                  next: { type: [string, 'null'], description: Pass as `cursor` for the next page. }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: filePhoto
+      tags: [files]
+      x-module: files
+      summary: File a photo under an album, optionally on the record it belongs to. Accepts a Nova suggestion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhotoFilingRequest' }
+      responses:
+        '200':
+          description: Filed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoFiling' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPhotoAlbums
+      tags: [files]
+      x-module: files
+      summary: The auto albums (by where each photo was taken or filed) with counts, and the project's own albums.
+      responses:
+        '200':
+          description: Albums
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoAlbums' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPhotoAlbum
+      tags: [files]
+      x-module: files
+      summary: Create an album of your own.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+      responses:
+        '201':
+          description: The album
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoAlbum' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PhotoAlbumId'
+    delete:
+      operationId: deletePhotoAlbum
+      tags: [files]
+      x-module: files
+      summary: Delete an album. The photos stay on the project.
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PhotoAlbumId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: addPhotoToAlbum
+      tags: [files]
+      x-module: files
+      summary: Add a photo to an album. Adding it twice is fine.
+      responses:
+        '204':
+          description: Added
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removePhotoFromAlbum
+      tags: [files]
+      x-module: files
+      summary: Take a photo out of an album.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/folders:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17182,6 +17318,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+    PhotoAlbumId:
+      name: albumId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^alb_[0-9A-Za-z]{26}$' }
     FileId:
       name: fileId
       in: path
@@ -22732,6 +22873,87 @@ components:
         file: { $ref: '#/components/schemas/FileObject' }
         url: { type: string }
         expiresAt: { type: string, format: date-time }
+    PhotoCategory:
+      type: string
+      enum: [safety_risk, daily_log, punch_list, drawings, inspections, rfis, unclassified]
+    PhotoRefKind:
+      type: string
+      enum: [rfi, defect, observation, inspection, diary_entry, drawing_revision]
+    PhotoFilingRequest:
+      type: object
+      required: [category]
+      properties:
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'], description: The record's id; sent with `refKind`. }
+        fromSuggestion:
+          { type: boolean, description: True when the person accepted Nova's suggestion. }
+    PhotoFiling:
+      type: object
+      required: [fileId, category, refKind, refId, source]
+      properties:
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'] }
+        source: { type: string, enum: [attach, annotation, manual, nova] }
+    PhotoFilingSuggestion:
+      type: object
+      required: [category, refKind, refId, basedOnFileId, reason]
+      properties:
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'] }
+        basedOnFileId: { $ref: '#/components/schemas/FileRef' }
+        reason: { type: string, enum: [same_place, same_session] }
+    SitePhoto:
+      type: object
+      required: [file, url, expiresAt, category, filing, needsReview, suggestion]
+      properties:
+        file: { $ref: '#/components/schemas/FileObject' }
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        filing: { oneOf: [{ $ref: '#/components/schemas/PhotoFiling' }, { type: 'null' }] }
+        needsReview: { type: boolean, description: Unfiled for 24 hours or more. }
+        suggestion:
+          oneOf: [{ $ref: '#/components/schemas/PhotoFilingSuggestion' }, { type: 'null' }]
+    PhotoAlbum:
+      type: object
+      required: [id, name, count, createdAt]
+      properties:
+        id: { type: string, pattern: '^alb_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        count: { type: integer }
+        createdAt: { type: string, format: date-time }
+    PhotoAlbums:
+      type: object
+      required: [auto, own]
+      properties:
+        auto:
+          type: array
+          items:
+            type: object
+            required: [category, count, needsReview, cover]
+            properties:
+              category: { $ref: '#/components/schemas/PhotoCategory' }
+              count: { type: integer }
+              needsReview:
+                {
+                  type: integer,
+                  description: Photos unfiled for 24 hours or more (Unclassified only).,
+                }
+              cover:
+                oneOf:
+                  - type: object
+                    required: [url, expiresAt]
+                    properties:
+                      url: { type: string }
+                      expiresAt: { type: string, format: date-time }
+                  - type: 'null'
+        own:
+          type: array
+          items: { $ref: '#/components/schemas/PhotoAlbum' }
     DownloadLink:
       type: object
       required: [url, expiresAt]

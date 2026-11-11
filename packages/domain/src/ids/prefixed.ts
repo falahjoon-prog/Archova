@@ -133,6 +133,7 @@ export const ID_PREFIXES = {
   inspectionItem: 'iti',
   inspection: 'ins',
   observation: 'obs',
+  photoAlbum: 'alb',
   observationType: 'obt',
   swms: 'sws',
   swmsEvent: 'swe',

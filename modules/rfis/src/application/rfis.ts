@@ -13,7 +13,7 @@ import {
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   ballInCourt,
@@ -41,7 +41,7 @@ export interface RfisDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   now?: () => Date;
 }
 
@@ -419,13 +419,27 @@ export function createRfiService(deps: RfisDeps) {
     if (rev.status === 'draft') throw new AppError('drawing_revision.not_found');
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'rfis', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -786,6 +800,14 @@ export function createRfiService(deps: RfisDeps) {
         set: { shapes, updatedAt: now() },
       })
       .returning();
+    // Marked-up site photos belong to this RFI: link them so the Photos tool shows where they came from.
+    await deps.files.filePhoto(
+      scope,
+      projectId,
+      fileId,
+      { category: 'rfis', refKind: 'rfi', refId: rfiId },
+      'annotation',
+    );
     return row!;
   }
 

@@ -7155,6 +7155,60 @@ export const PermitTransitionRequestSchema = z.object({
 }).strict();
 export type PermitTransitionRequest = z.infer<typeof PermitTransitionRequestSchema>;
 
+export const PhotoAlbumSchema = z.object({
+  "id": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "count": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type PhotoAlbum = z.infer<typeof PhotoAlbumSchema>;
+
+export const PhotoCategorySchema = z.enum(["safety_risk", "daily_log", "punch_list", "drawings", "inspections", "rfis", "unclassified"]);
+export type PhotoCategory = z.infer<typeof PhotoCategorySchema>;
+
+export const PhotoAlbumsSchema = z.object({
+  "auto": z.array(z.object({
+  "category": PhotoCategorySchema,
+  "count": z.number().int(),
+  "needsReview": z.number().int(),
+  "cover": z.union([z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+}), z.null()]),
+})),
+  "own": z.array(PhotoAlbumSchema),
+});
+export type PhotoAlbums = z.infer<typeof PhotoAlbumsSchema>;
+
+export const PhotoRefKindSchema = z.enum(["rfi", "defect", "observation", "inspection", "diary_entry", "drawing_revision"]);
+export type PhotoRefKind = z.infer<typeof PhotoRefKindSchema>;
+
+export const PhotoFilingSchema = z.object({
+  "fileId": FileRefSchema,
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]),
+  "refId": z.string().nullable(),
+  "source": z.enum(["attach", "annotation", "manual", "nova"]),
+});
+export type PhotoFiling = z.infer<typeof PhotoFilingSchema>;
+
+export const PhotoFilingRequestSchema = z.object({
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]).optional(),
+  "refId": z.string().nullable().optional(),
+  "fromSuggestion": z.boolean().optional(),
+});
+export type PhotoFilingRequest = z.infer<typeof PhotoFilingRequestSchema>;
+
+export const PhotoFilingSuggestionSchema = z.object({
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]),
+  "refId": z.string().nullable(),
+  "basedOnFileId": FileRefSchema,
+  "reason": z.enum(["same_place", "same_session"]),
+});
+export type PhotoFilingSuggestion = z.infer<typeof PhotoFilingSuggestionSchema>;
+
 export const PlantAllocationSchema = z.object({
   "id": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
@@ -8749,6 +8803,17 @@ export const SiteCaptureListSchema = z.object({
   "data": z.array(SiteCaptureSchema),
 });
 export type SiteCaptureList = z.infer<typeof SiteCaptureListSchema>;
+
+export const SitePhotoSchema = z.object({
+  "file": FileObjectSchema,
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "category": PhotoCategorySchema,
+  "filing": z.union([PhotoFilingSchema, z.null()]),
+  "needsReview": z.boolean(),
+  "suggestion": z.union([PhotoFilingSuggestionSchema, z.null()]),
+});
+export type SitePhoto = z.infer<typeof SitePhotoSchema>;
 
 export const SpecBookSchema = z.object({
   "id": z.string(),

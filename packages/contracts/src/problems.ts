@@ -136,6 +136,8 @@ export const PROBLEM_CODES = {
   'file.not_ready': 409,
   'file.blocked': 422,
   'file.not_in_project': 422,
+  'photo_album.not_found': 404,
+  'photo_album.name_taken': 409,
   // documents
   'folder.not_found': 404,
   'folder.name_taken': 409,

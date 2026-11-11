@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -72,3 +73,54 @@ export const fileObjects = files.table('file_objects', {
   ...audit,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const PHOTO_CATEGORIES = [
+  'safety_risk',
+  'daily_log',
+  'punch_list',
+  'drawings',
+  'inspections',
+  'rfis',
+  'unclassified',
+] as const;
+export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
+export type PhotoRefKind =
+  'rfi' | 'defect' | 'observation' | 'inspection' | 'diary_entry' | 'drawing_revision';
+export type PhotoFilingSource = 'attach' | 'annotation' | 'manual' | 'nova';
+
+export const photoFilings = files.table(
+  'photo_filings',
+  {
+    orgId: uuid('org_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    category: text('category').$type<PhotoCategory>().notNull(),
+    refKind: text('ref_kind').$type<PhotoRefKind>(),
+    refId: uuid('ref_id'),
+    source: text('source').$type<PhotoFilingSource>().notNull(),
+    filedBy: uuid('filed_by'),
+    filedAt: timestamp('filed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.fileId] })],
+);
+
+export const photoAlbums = files.table('photo_albums', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const photoAlbumItems = files.table(
+  'photo_album_items',
+  {
+    orgId: uuid('org_id').notNull(),
+    albumId: uuid('album_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+    addedBy: uuid('added_by'),
+  },
+  (t) => [primaryKey({ columns: [t.albumId, t.fileId] })],
+);
