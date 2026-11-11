@@ -5,6 +5,9 @@ import { startOfLocalDay } from '../lib/types';
 import type {
   AuditFilters,
   AuditLogPage,
+  DashboardSnapshot,
+  DashboardSnapshotDetail,
+  DashboardSnapshotInput,
   DbpInsights,
   Portfolio,
   ReadinessPack,
@@ -55,6 +58,32 @@ export function createReportingApi(orgId: string) {
               ...(cursor ? { cursor } : {}),
             },
           },
+        }),
+      );
+    },
+    async snapshots(): Promise<DashboardSnapshot[]> {
+      return unwrap(await api.GET('/v1/orgs/{orgId}/dashboard-snapshots', { params: { path } }))
+        .data;
+    },
+    async snapshot(snapshotId: string): Promise<DashboardSnapshotDetail> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}', {
+          params: { path: { orgId, snapshotId } },
+        }),
+      );
+    },
+    async createSnapshot(body: DashboardSnapshotInput): Promise<DashboardSnapshotDetail> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/dashboard-snapshots', {
+          params: { path, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async removeSnapshot(snapshotId: string): Promise<void> {
+      unwrap(
+        await api.DELETE('/v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}', {
+          params: { path: { orgId, snapshotId } },
         }),
       );
     },

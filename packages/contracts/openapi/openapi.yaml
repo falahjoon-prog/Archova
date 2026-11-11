@@ -5080,6 +5080,74 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/dashboard-snapshots:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listDashboardSnapshots
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.snapshots.read
+      summary: Saved dashboard snapshots, newest "current as of" first.
+      description: The caller's own snapshots; org owners and admins see everyone's. The stored dashboard is left out of the list.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSnapshotList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDashboardSnapshot
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.snapshots.manage
+      summary: Capture the portfolio dashboard now and keep it under a title.
+      description: |
+        Stores the whole portfolio dashboard as data (totals and every project row), exactly as the caller sees it now,
+        so it can be reopened as it was. `currentAsOf` is the day the figures describe (default today; not in the
+        future). The numbers are narrowed to what the caller can open, so only the caller and org owners and admins can
+        open the snapshot later.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DashboardSnapshotInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSnapshotDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DashboardSnapshotId'
+    get:
+      operationId: getDashboardSnapshot
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.snapshots.read
+      summary: One snapshot with the dashboard as it was.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSnapshotDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDashboardSnapshot
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.snapshots.manage
+      summary: Delete a snapshot. Its maker, or an org owner or admin.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/audit-log:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17481,6 +17549,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^oci_[0-9A-Za-z]{26}$' }
+    DashboardSnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dsn_[0-9A-Za-z]{26}$' }
     ReportId:
       name: reportId
       in: path
@@ -18778,6 +18851,48 @@ components:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
         filename: { type: string }
+    DashboardSnapshotInput:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        currentAsOf:
+          {
+            type: string,
+            pattern: '^\d{4}-\d{2}-\d{2}$',
+            description: 'The day the figures describe. Default today.',
+          }
+        program: { type: [string, 'null'], maxLength: 80, description: 'Optional programme tag.' }
+    DashboardSnapshot:
+      type: object
+      required: [id, title, currentAsOf, program, createdAt, createdBy]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        currentAsOf: { type: string }
+        program: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: [string, 'null'] }
+    DashboardSnapshotList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DashboardSnapshot' }
+    DashboardSnapshotDetail:
+      allOf:
+        - $ref: '#/components/schemas/DashboardSnapshot'
+        - type: object
+          required: [dashboard]
+          properties:
+            dashboard: { $ref: '#/components/schemas/Portfolio' }
     AuditLogPage:
       type: object
       required: [data, nextCursor]

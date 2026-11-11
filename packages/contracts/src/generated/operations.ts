@@ -1152,6 +1152,21 @@ export const GetReadinessPackParams = z.object({
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListDashboardSnapshotsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDashboardSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDashboardSnapshotBody = s.DashboardSnapshotInputSchema;
+export const GetDashboardSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "snapshotId": z.string().regex(new RegExp("^dsn_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDashboardSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "snapshotId": z.string().regex(new RegExp("^dsn_[0-9A-Za-z]{26}$")),
+});
 export const ListAuditLogParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -6637,6 +6652,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetReadinessPackPdfParams,
+    query: null,
+    body: null,
+  },
+  listDashboardSnapshots: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/dashboard-snapshots',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.snapshots.read",
+    internal: false,
+    contentType: null,
+    params: ListDashboardSnapshotsParams,
+    query: null,
+    body: null,
+  },
+  createDashboardSnapshot: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/dashboard-snapshots',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.snapshots.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDashboardSnapshotParams,
+    query: null,
+    body: CreateDashboardSnapshotBody,
+  },
+  getDashboardSnapshot: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.snapshots.read",
+    internal: false,
+    contentType: null,
+    params: GetDashboardSnapshotParams,
+    query: null,
+    body: null,
+  },
+  deleteDashboardSnapshot: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.snapshots.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteDashboardSnapshotParams,
     query: null,
     body: null,
   },

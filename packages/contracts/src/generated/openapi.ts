@@ -3887,6 +3887,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/dashboard-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Saved dashboard snapshots, newest "current as of" first.
+         * @description The caller's own snapshots; org owners and admins see everyone's. The stored dashboard is left out of the list.
+         */
+        get: operations["listDashboardSnapshots"];
+        put?: never;
+        /**
+         * Capture the portfolio dashboard now and keep it under a title.
+         * @description Stores the whole portfolio dashboard as data (totals and every project row), exactly as the caller sees it now,
+         *     so it can be reopened as it was. `currentAsOf` is the day the figures describe (default today; not in the
+         *     future). The numbers are narrowed to what the caller can open, so only the caller and org owners and admins can
+         *     open the snapshot later.
+         */
+        post: operations["createDashboardSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/dashboard-snapshots/{snapshotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                snapshotId: components["parameters"]["DashboardSnapshotId"];
+            };
+            cookie?: never;
+        };
+        /** One snapshot with the dashboard as it was. */
+        get: operations["getDashboardSnapshot"];
+        put?: never;
+        post?: never;
+        /** Delete a snapshot. Its maker, or an org owner or admin. */
+        delete: operations["deleteDashboardSnapshot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/audit-log": {
         parameters: {
             query?: never;
@@ -13293,6 +13343,31 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             filename: string;
+        };
+        DashboardSnapshotInput: {
+            title: string;
+            /** @description The day the figures describe. Default today. */
+            currentAsOf?: string;
+            /** @description Optional programme tag. */
+            program?: string | null;
+        };
+        DashboardSnapshot: {
+            id: string;
+            title: string;
+            currentAsOf: string;
+            program: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: {
+                id: string;
+                name: string | null;
+            };
+        };
+        DashboardSnapshotList: {
+            data: components["schemas"]["DashboardSnapshot"][];
+        };
+        DashboardSnapshotDetail: components["schemas"]["DashboardSnapshot"] & {
+            dashboard: components["schemas"]["Portfolio"];
         };
         AuditLogPage: {
             data: components["schemas"]["AuditEvent"][];
@@ -23370,6 +23445,7 @@ export interface components {
         OwnerProgressUpdateId: string;
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
+        DashboardSnapshotId: string;
         ReportId: string;
         DataExportId: string;
         MeetingSeriesId: string;
@@ -29101,6 +29177,104 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReadinessPackPdf"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDashboardSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSnapshotList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDashboardSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardSnapshotInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSnapshotDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDashboardSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                snapshotId: components["parameters"]["DashboardSnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSnapshotDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDashboardSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                snapshotId: components["parameters"]["DashboardSnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

@@ -12,6 +12,9 @@ export type SustainabilityProject = S['SustainabilityProject'];
 export type SustainabilityFlag = S['SustainabilityFlag'];
 export type AuditLogPage = S['AuditLogPage'];
 export type AuditEvent = S['AuditEvent'];
+export type DashboardSnapshot = S['DashboardSnapshot'];
+export type DashboardSnapshotDetail = S['DashboardSnapshotDetail'];
+export type DashboardSnapshotInput = S['DashboardSnapshotInput'];
 export type Report = S['Report'];
 export type ReportConfig = S['ReportConfig'];
 export type ReportInput = S['ReportInput'];
@@ -139,4 +142,35 @@ export function startOfLocalDay(date: string, addDays = 0): string | undefined {
   if (Number.isNaN(d.getTime())) return undefined;
   d.setDate(d.getDate() + addDays);
   return d.toISOString();
+}
+
+/** The totals worth comparing between two dashboards: label, value, and whether a rise is bad. */
+export const SNAPSHOT_COMPARE_ROWS: ReadonlyArray<{
+  label: string;
+  key: keyof Portfolio['totals'];
+  risingIsBad: boolean;
+}> = [
+  { label: 'Projects', key: 'projects', risingIsBad: false },
+  { label: 'RFIs open', key: 'rfisOpen', risingIsBad: false },
+  { label: 'RFIs overdue', key: 'rfisOverdue', risingIsBad: true },
+  { label: 'Defects open', key: 'defectsOpen', risingIsBad: false },
+  { label: 'Defects overdue', key: 'defectsOverdue', risingIsBad: true },
+  { label: 'Submittals open', key: 'submittalsOpen', risingIsBad: false },
+  { label: 'Submittals overdue', key: 'submittalsOverdue', risingIsBad: true },
+  { label: 'Claims unpaid', key: 'claimsOpen', risingIsBad: false },
+  { label: 'Claims overdue', key: 'claimsOverdue', risingIsBad: true },
+  { label: 'Variations to decide', key: 'variationsOpen', risingIsBad: false },
+  { label: 'Incidents open', key: 'incidentsOpen', risingIsBad: false },
+  { label: 'Programme activities late', key: 'programmeOverdue', risingIsBad: true },
+];
+
+/** Then, now and the change for one total. Totals are counts, so the change is a whole number. */
+export function compareTotal(then: number, now: number) {
+  const change = now - then;
+  return {
+    then,
+    now,
+    change,
+    label: change === 0 ? 'No change' : `${change > 0 ? '+' : ''}${change}`,
+  };
 }

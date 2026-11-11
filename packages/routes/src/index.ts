@@ -21,6 +21,9 @@ export const webRoutes = {
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   dbpInsights: (orgSlug: string) => `/${enc(orgSlug)}/dbp-insights`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
+  snapshots: (orgSlug: string) => `/${enc(orgSlug)}/snapshots`,
+  snapshot: (orgSlug: string, snapshotId: string) =>
+    `/${enc(orgSlug)}/snapshots/${enc(snapshotId)}`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   plant: (orgSlug: string) => `/${enc(orgSlug)}/plant`,
