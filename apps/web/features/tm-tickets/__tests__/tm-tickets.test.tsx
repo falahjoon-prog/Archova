@@ -8,6 +8,18 @@ import type { TmTicketDetail } from '../data/api';
 
 const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).createFakeApi());
 vi.mock('@/shared/lib/api', () => fake.module);
+// jsdom has no canvas, and uploads need the storage service: the signature image and its upload are stubbed.
+vi.mock('@/shared/lib/signature-image', () => ({
+  signatureToPng: async () => new Blob(['png'], { type: 'image/png' }),
+}));
+HTMLCanvasElement.prototype.getContext = () => null;
+const uploaded = vi.hoisted(() => ({ files: [] as string[] }));
+vi.mock('@/shared/lib/uploads', () => ({
+  uploadFile: async (_org: string, input: { file: File }) => {
+    uploaded.files.push(input.file.name);
+    return { id: 'fil_01HZZZZZZZZZZZZZZZZZZZZZZZ' };
+  },
+}));
 
 const { TmTicketForm } = await import('../components/TmTicketForm');
 const { TmTicketDetailCard } = await import('../components/TmTicketDetail');
@@ -117,13 +129,26 @@ describe('TmTicketDetailCard', () => {
     expect(await screen.findByText('Type the signer’s full name.')).toBeTruthy();
     await enterText(user, screen.getByLabelText(/Full name/), 'Pat Manager');
     await user.click(screen.getByRole('button', { name: 'Record signature' }));
+    expect(
+      await screen.findByText('Capture the signature, or confirm the typed one.'),
+    ).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /can.t draw a signature/ }));
+    await user.click(screen.getByLabelText(/I confirm this typed name is my signature/));
+    await user.click(screen.getByRole('button', { name: 'Record signature' }));
+    expect(await screen.findByText('The signer must accept the acknowledgement.')).toBeTruthy();
+    await user.click(screen.getByLabelText(/true record of the work done/));
+    await user.click(screen.getByRole('button', { name: 'Record signature' }));
     await waitFor(() =>
       expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)).toHaveLength(1),
     );
     expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)[0]!.init.body).toEqual({
       role: 'contractor',
       signerName: 'Pat Manager',
+      acknowledgementVersion: 'tm-sign-v1',
+      signatureFileId: 'fil_01HZZZZZZZZZZZZZZZZZZZZZZZ',
+      signatureMethod: 'typed',
     });
+    expect(uploaded.files).toEqual(['signature.png']);
   });
 
   it('moves a draft ticket through ready for review and field verified before signing', async () => {
@@ -161,6 +186,9 @@ describe('TmTicketDetailCard', () => {
             signerPosition: null,
             hasEvidence: false,
             evidenceFileId: null,
+            signatureFileId: null,
+            signatureMethod: null,
+            acknowledgementVersion: null,
             geofenceStatus: 'outside',
             hasPosition: true,
             contentHash: 'a'.repeat(64),

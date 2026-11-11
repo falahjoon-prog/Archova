@@ -8,7 +8,7 @@ import {
   createTmApi,
   type ConvertTmTicket,
   type ReviewTmTicket,
-  type SignTmTicket,
+  type SignInput,
   type TmTicketRequest,
 } from '../data/api';
 
@@ -69,10 +69,7 @@ export function useTmMutations(projectId: string) {
       onSuccess: refresh,
     }),
     sign: useMutation({
-      mutationFn: (v: {
-        id: string;
-        body: Omit<SignTmTicket, 'evidenceFileId'> & { evidence?: File };
-      }) => source.sign(projectId, v.id, v.body),
+      mutationFn: (v: { id: string; body: SignInput }) => source.sign(projectId, v.id, v.body),
       onSuccess: refresh,
     }),
     review: useMutation({

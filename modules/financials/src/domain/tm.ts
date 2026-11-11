@@ -77,3 +77,6 @@ export function contentHash(c: TicketContent): string {
   ]);
   return createHash('sha256').update(canon).digest('hex');
 }
+
+/** The acknowledgement wordings a sign-off may record. Add a version here when the wording changes; never reuse one. */
+export const ACK_VERSIONS: readonly string[] = ['tm-sign-v1'];

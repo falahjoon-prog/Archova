@@ -19379,6 +19379,10 @@ export interface components {
         };
         /** @description Recorded by a builder staff member from the on-site signature of the named signer; it is not a client-side e-signature. */
         TmTicketSignoff: {
+            signatureFileId: string | null;
+            /** @enum {string|null} */
+            signatureMethod: "drawn" | "typed" | null;
+            acknowledgementVersion: string | null;
             /**
              * @description Whether the device position at signing fell inside the project's site fence. Unknown means no position or no fence.
              * @enum {string}
@@ -19479,6 +19483,12 @@ export interface components {
             /** @enum {string} */
             role: "contractor" | "principal_rep";
             signerName: string;
+            /** @description The drawn or typed signature as an image, uploaded to this project first. Send with signatureMethod. */
+            signatureFileId?: string;
+            /** @enum {string} */
+            signatureMethod?: "drawn" | "typed";
+            /** @description The version of the legal acknowledgement wording the signer accepted. */
+            acknowledgementVersion: string;
             signerPosition?: string;
             /** @description A ready file on this project, such as a photo of the docket signed on site. Required for the principal's representative. */
             evidenceFileId?: string;

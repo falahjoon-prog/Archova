@@ -32,8 +32,9 @@ export function lintMigrationFiles(): string[] {
         );
       }
     }
+    // `is not null` inside a check constraint is a predicate, not a column constraint.
     for (const x of sql.matchAll(
-      /alter\s+table\s+([a-z_]+\.[a-z_0-9]+)\s+add\s+column\s+[^;]*?not\s+null(?![^;]*default)/gi,
+      /alter\s+table\s+([a-z_]+\.[a-z_0-9]+)\s+add\s+column\s+[^;]*?(?<!is\s+)not\s+null(?![^;]*default)/gi,
     )) {
       problems.push(
         `${where}: ADD COLUMN ... NOT NULL without DEFAULT on ${x[1]} (expand/contract instead)`,
