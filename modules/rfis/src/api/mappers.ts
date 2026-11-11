@@ -50,6 +50,8 @@ export const toRfiDto = (r: RfiView): Rfi => {
     delayDays: r.delayDays,
     specSection: r.specSection,
     location: r.location,
+    locationId: r.locationId ? encodeId('location', r.locationId) : null,
+    locationPath: r.locationPath,
     pin: r.drawingRevisionId
       ? {
           drawingRevisionId: encodeId('drawingRevision', r.drawingRevisionId),

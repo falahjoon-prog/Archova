@@ -35,7 +35,7 @@ import {
   type HistoryKind,
 } from '../infra/tables';
 import { uniqueViolation } from './errors';
-import { checkFiles, requireInternal, type QualityDeps } from './shared';
+import { checkFiles, locationLabel, requireInternal, type QualityDeps } from './shared';
 
 export type TemplateRow = typeof templates.$inferSelect;
 export type ItemRow = typeof templateItems.$inferSelect;
@@ -67,6 +67,8 @@ export interface ResponseInput {
 export interface HeaderInput {
   title?: string;
   location?: string | null;
+  /** A row of the project's location tree; sets `location` to its path. */
+  locationId?: string | null;
   /** The inspection date. */
   scheduledFor?: string | null;
   dueDate?: string | null;
@@ -492,6 +494,8 @@ export function createInspectionService(deps: QualityDeps) {
           { path: 'responsibleCompanyId', message: 'Not a company on the project' },
         ]);
     }
+    if (input.locationId)
+      input.location = await locationLabel(deps, scope, projectId, input.locationId);
     if (input.fileIds?.length) await checkFiles(deps, scope, projectId, input.fileIds);
     for (const [i, revisionId] of (input.drawingRevisionIds ?? []).entries()) {
       const rev = await deps.documents.getDrawingRevision(scope, projectId, revisionId);
@@ -506,6 +510,7 @@ export function createInspectionService(deps: QualityDeps) {
   function headerValues(input: HeaderInput) {
     const v: Record<string, unknown> = {};
     if (input.location !== undefined) v.location = input.location;
+    if (input.locationId !== undefined) v.locationId = input.locationId;
     if (input.scheduledFor !== undefined) v.scheduledFor = input.scheduledFor;
     if (input.dueDate !== undefined) v.dueDate = input.dueDate;
     if (input.assigneeIds !== undefined) v.assigneeIds = input.assigneeIds;

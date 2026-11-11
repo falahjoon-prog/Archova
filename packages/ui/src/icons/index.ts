@@ -78,6 +78,7 @@ export {
   Building2 as OwnerPortalIcon,
   Boxes as CoordinationIcon,
   FileUp as ImportsIcon,
+  MapPin as LocationsIcon,
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
   BadgeCheck as WarrantyIcon,

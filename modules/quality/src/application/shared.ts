@@ -8,7 +8,10 @@ import { observations } from '../infra/tables';
 
 export interface QualityDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
+  platform: Pick<
+    PlatformApi,
+    'getProject' | 'getProjectMembership' | 'projectCompanies' | 'resolveLocations'
+  >;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   /** The safety module's "stop work: SWMS not followed" (compliance 03 §4, r300). */
@@ -70,3 +73,17 @@ export const liveObservation = (id: string, projectId: string) =>
     eq(observations.projectId, projectId),
     isNull(observations.deletedAt),
   );
+
+/**
+ * A location picked from the project's tree: checks it is on the project and returns the path stored as the
+ * record's readable `location` label.
+ */
+export async function locationLabel(
+  deps: Pick<QualityDeps, 'platform'>,
+  scope: TenantScope,
+  projectId: string,
+  locationId: string,
+): Promise<string> {
+  const found = await deps.platform.resolveLocations(scope, projectId, [locationId]);
+  return found.get(locationId)!.path.slice(0, 200);
+}

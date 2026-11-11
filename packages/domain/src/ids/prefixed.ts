@@ -176,6 +176,7 @@ export const ID_PREFIXES = {
   forecastAdjustment: 'fca',
   trustMovement: 'tmv',
   dataExport: 'dxp',
+  location: 'loc',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

@@ -18,6 +18,7 @@ import {
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
 import type { LocationService } from '../application/locations';
+import type { LocationTreeService } from '../application/location-tree';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
@@ -26,6 +27,7 @@ import {
   toKeyDateChangeDto,
   toKeyDatesDto,
   toProjectLocationDto,
+  toLocationTreeNodeDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
@@ -57,6 +59,7 @@ export interface PlatformRouteDeps {
   projects: ProjectService;
   keyDates: KeyDateService;
   locations: LocationService;
+  locationTree: LocationTreeService;
   companies: CompanyService;
   members: MemberService;
   accountDeletion: AccountDeletionService;
@@ -80,6 +83,13 @@ const projectUuid = (id: string) => {
 const locationUuid = (id: string) => {
   const uuid = decodeId('projectLocation', id);
   if (!uuid) throw new AppError('project_location.not_found');
+  return uuid;
+};
+
+const locationTreeUuid = (id: string | null | undefined) => {
+  if (id === null || id === undefined) return null;
+  const uuid = decodeId('location', id);
+  if (!uuid) throw new AppError('location.not_found');
   return uuid;
 };
 
@@ -276,6 +286,64 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.keyDates.update(s, id, expected, { ...rest, ...(sections ? { sections } : {}) }),
       );
       return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    listLocationTree: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) =>
+          d.locationTree.list(s, id, { includeArchived: input.query?.includeArchived === 'true' }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toLocationTreeNodeDto) } };
+    },
+    createLocationTreeNode: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const { parentId, ...rest } = input.body;
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locationTree.create(s, id, { ...rest, parentId: locationTreeUuid(parentId) }),
+      );
+      return {
+        status: 201,
+        body: toLocationTreeNodeDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    suggestLocationTreeNodes: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.locationTree.suggest(s, id, input.query.text),
+        ro,
+      );
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({
+            locationId: encodeId('location', r.locationId),
+            path: r.path,
+            reason: r.reason,
+          })),
+        },
+      };
+    },
+    updateLocationTreeNode: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locId = locationTreeUuid(input.params.locationId)!;
+      const expected = parseIfMatch(input.headers['if-match']);
+      const { parentId, archived, ...rest } = input.body;
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locationTree.update(s, id, locId, expected, {
+          ...rest,
+          ...(parentId !== undefined ? { parentId: locationTreeUuid(parentId) } : {}),
+          ...(archived !== undefined ? { archived } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: toLocationTreeNodeDto(row),
+        headers: { etag: etag(row.version) },
+      };
     },
     listKeyDateChanges: async (input) => {
       const id = projectUuid(input.params.projectId);

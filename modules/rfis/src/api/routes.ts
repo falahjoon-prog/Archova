@@ -49,6 +49,7 @@ type FieldsBody = {
   delayDays?: number | null;
   specSection?: string | null;
   location?: string | null;
+  locationId?: string | null;
   pin?: { drawingRevisionId: string; x?: number; y?: number } | null;
   fileIds?: string[];
 };
@@ -79,6 +80,8 @@ function fields(b: FieldsBody): RfiFields {
   if (b.delayDays !== undefined) out.delayDays = b.delayDays;
   if (b.specSection !== undefined) out.specSection = b.specSection;
   if (b.location !== undefined) out.location = b.location;
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.fileIds) out.fileIds = refs('file', b.fileIds, 'fileIds')!;
   if (b.pin !== undefined)
     out.pin =

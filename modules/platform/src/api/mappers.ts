@@ -7,8 +7,10 @@ import type {
   MembershipSummary,
   Org,
   Project,
+  LocationTreeNode,
   ProjectMember,
 } from '@archova/contracts';
+import type { TreeNodeView } from '../application/location-tree';
 import type { KeyDateChangeRow, KeyDatesView } from '../application/key-dates';
 import type { LocationRow } from '../application/locations';
 import type { companies, orgs, projectMembers, projects } from '../infra/tables';
@@ -136,3 +138,17 @@ export const toProjectLocationDto = (l: LocationRow): ProjectLocation => {
     version: l.version,
   };
 };
+
+export const toLocationTreeNodeDto = (l: TreeNodeView): LocationTreeNode => ({
+  id: encodeId('location', l.id),
+  projectId: encodeId('project', l.projectId),
+  parentId: l.parentId ? encodeId('location', l.parentId) : null,
+  kind: l.kind,
+  name: l.name,
+  code: l.code,
+  path: l.path,
+  depth: l.depth,
+  sort: l.sort,
+  archived: l.archivedAt !== null,
+  version: l.version,
+});

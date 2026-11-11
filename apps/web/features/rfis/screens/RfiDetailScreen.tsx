@@ -72,6 +72,7 @@ function toInput(r: Rfi): RfiInput {
     drawing: r.drawing,
     specSection: r.specSection,
     location: r.location,
+    locationId: r.locationId ?? null,
     isPrivate: r.isPrivate,
   };
 }
@@ -425,7 +426,7 @@ function DetailsBody({ rfi }: { rfi: Rfi }) {
               ),
             },
             { label: 'Spec section', value: rfi.specSection ?? '—' },
-            { label: 'Location', value: rfi.location ?? '—' },
+            { label: 'Location', value: rfi.locationPath ?? rfi.location ?? '—' },
             {
               label: 'Cost impact',
               value:

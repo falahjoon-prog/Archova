@@ -45,17 +45,16 @@ export function defectCan(
 /** Required to raise: title, a responsible company, and a location or a drawing pin (DEF-AC3, DEF-AC4). */
 export function defectInputErrors(
   input: DefectInput,
-  /** The server stores a drawing pin and no location, so a pin is required against it. */
-  pinRequired = false,
+  /** Against the server a location from the project's tree or a drawing pin will do, as in preview. */
+  live = false,
 ): Record<string, string> {
   const e: Record<string, string> = {};
   if (!input.title.trim()) e.title = 'Add a short title.';
   if (!input.assigneeCompanyId) e.assigneeCompanyId = 'Choose the responsible company.';
-  if (pinRequired) {
-    if (!input.drawing) e.location = 'Choose the drawing and mark where the defect is.';
-  } else if (!input.locationId && !input.drawing) {
-    e.location = 'Choose a location or a drawing.';
-  }
+  if (!input.locationId && !input.drawing)
+    e.location = live
+      ? 'Choose a location, or choose the drawing and mark where the defect is.'
+      : 'Choose a location or a drawing.';
   return e;
 }
 

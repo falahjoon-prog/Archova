@@ -1,7 +1,7 @@
 // Defects against the defects module's endpoints (backend 04 §3, Ben's PR #51) and Nova's defect tags (Ari, PR #63),
 // with the same interface as the preview source so the screens and hooks don't change. The API differs from the
 // preview store in four ways the screens handle:
-//   - a defect sits on a drawing pin, not a project location, so there is no location or level;
+//   - a defect sits on a drawing pin, a location from the project's tree, or both; there is no level;
 //   - every status change is one `transition` call, and `availableActions` says which buttons to show;
 //   - photos are uploaded files attached to a transition (the "before" photos go with `issue`);
 //   - people and companies come back as ids, named from the project's members.
@@ -79,7 +79,8 @@ export function toDefect(
     trade: d.trade ?? '',
     category: d.category,
     stage: d.stage,
-    locationId: null,
+    locationId: d.locationId,
+    locationPath: d.locationPath,
     // The sheet and its label are looked up from the register on screen; the API stores the revision only.
     drawing: d.pin
       ? {
@@ -245,7 +246,8 @@ export function createDefectsApi(orgId: string): DefectsSource {
 
     /** Drafts the defect on its pin, then issues it to the company with the photos, so it is numbered and sent. */
     async create(projectId, input, _actor, aiSuggestionId) {
-      if (!input.drawing) throw unavailable('Mark where the defect is on a drawing.');
+      if (!input.drawing && !input.locationId)
+        throw unavailable('Choose a location or mark where the defect is on a drawing.');
       const fileIds = await upload(projectId, input.photos);
       await ensureCsrfToken();
       const created = unwrap(
@@ -256,7 +258,8 @@ export function createDefectsApi(orgId: string): DefectsSource {
             ...(input.description.trim() ? { description: input.description.trim() } : {}),
             priority: input.priority,
             stage: input.stage,
-            pin: toPin(input.drawing),
+            ...(input.locationId ? { locationId: input.locationId } : {}),
+            ...(input.drawing ? { pin: toPin(input.drawing) } : {}),
             ...(input.trade ? { trade: input.trade } : {}),
             ...(input.category ? { category: input.category } : {}),
             ...(input.assigneeCompanyId ? { assigneeCompanyId: input.assigneeCompanyId } : {}),

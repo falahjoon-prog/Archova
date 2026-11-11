@@ -30,7 +30,14 @@ import {
 } from '../infra/tables';
 import { createObservationTypeService, loadTypes } from './observation-types';
 import { typeProblem } from '../domain/observation-types';
-import { checkFiles, liveObservation, requireInternal, viewerOf, type QualityDeps } from './shared';
+import {
+  checkFiles,
+  liveObservation,
+  locationLabel,
+  requireInternal,
+  viewerOf,
+  type QualityDeps,
+} from './shared';
 
 export type ObservationRow = typeof observations.$inferSelect;
 export type ObservationView = ObservationRow & { isOverdue: boolean };
@@ -42,6 +49,8 @@ export interface ObservationFields {
   hazard?: string | null;
   description?: string;
   location?: string | null;
+  /** A row of the project's location tree; sets `location` to its path. */
+  locationId?: string | null;
   priority?: Priority;
   tradeCategory?: TradeCategory | null;
   classification?: Classification | null;
@@ -235,7 +244,10 @@ export function createObservationService(deps: QualityDeps) {
         typeKey: filed.typeKey,
         hazard: input.hazard ?? null,
         description: input.description.trim(),
-        location: input.location ?? null,
+        location: input.locationId
+          ? await locationLabel(deps, scope, projectId, input.locationId)
+          : (input.location ?? null),
+        locationId: input.locationId ?? null,
         priority: input.priority ?? 'medium',
         tradeCategory: input.tradeCategory ?? null,
         classification: input.classification ?? null,
@@ -406,6 +418,14 @@ export function createObservationService(deps: QualityDeps) {
         ...(patch.hazard !== undefined ? { hazard: patch.hazard } : {}),
         ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
         ...(patch.location !== undefined ? { location: patch.location } : {}),
+        ...(patch.locationId !== undefined
+          ? {
+              locationId: patch.locationId,
+              ...(patch.locationId
+                ? { location: await locationLabel(deps, scope, projectId, patch.locationId) }
+                : {}),
+            }
+          : {}),
         ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
         ...(patch.tradeCategory !== undefined ? { tradeCategory: patch.tradeCategory } : {}),
         ...(patch.classification !== undefined ? { classification: patch.classification } : {}),

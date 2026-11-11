@@ -2226,6 +2226,9 @@ export type CreateCoverRequest = z.infer<typeof CreateCoverRequestSchema>;
 export const DefectPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
 
+export const LocationRefSchema = z.string().regex(new RegExp("^loc_[0-9A-Za-z]{26}$"));
+export type LocationRef = z.infer<typeof LocationRefSchema>;
+
 export const DefectStageSchema = z.enum(["pre_pc", "pc", "dlp"]);
 export type DefectStage = z.infer<typeof DefectStageSchema>;
 
@@ -2243,6 +2246,7 @@ export const CreateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300),
   "description": z.string().max(20000).optional(),
   "priority": DefectPrioritySchema.optional(),
+  "locationId": LocationRefSchema.optional(),
   "category": z.string().min(1).max(100).optional(),
   "trade": z.string().min(1).max(100).optional(),
   "stage": DefectStageSchema.optional(),
@@ -2257,7 +2261,7 @@ export const CreateDefectRequestSchema = z.object({
   "approverDelegateUntil": z.string().date().optional(),
   "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().optional(),
-  "pin": DrawingPinSchema,
+  "pin": DrawingPinSchema.optional(),
   "warrantyItemId": WarrantyItemRefSchema.optional(),
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
@@ -2539,6 +2543,7 @@ export type CreateInductionRequest = z.infer<typeof CreateInductionRequestSchema
 export const CreateInspectionRequestSchema = z.object({
   "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
   "title": z.string().min(1).max(300).optional(),
+  "locationId": LocationRefSchema.optional(),
   "location": z.string().min(1).max(300).optional(),
   "scheduledFor": z.string().date().optional(),
   "inspectorId": UserRefSchema.optional(),
@@ -2588,6 +2593,17 @@ export const CreateLinkUploadRequestSchema = z.object({
   "sha256": z.string().regex(new RegExp("^[0-9a-f]{64}$")),
 }).strict();
 export type CreateLinkUploadRequest = z.infer<typeof CreateLinkUploadRequestSchema>;
+
+export const LocationTreeKindSchema = z.enum(["site", "building", "wing", "level", "zone", "room", "area", "external"]);
+export type LocationTreeKind = z.infer<typeof LocationTreeKindSchema>;
+
+export const CreateLocationTreeNodeRequestSchema = z.object({
+  "parentId": z.union([LocationRefSchema, z.null()]).optional(),
+  "kind": LocationTreeKindSchema.optional(),
+  "name": z.string().min(1).max(120),
+  "code": z.string().min(1).max(30).nullable().optional(),
+}).strict();
+export type CreateLocationTreeNodeRequest = z.infer<typeof CreateLocationTreeNodeRequestSchema>;
 
 export const LogisticsResourceKindSchema = z.enum(["dock", "laydown", "crane", "hoist", "lift", "forklift"]);
 export type LogisticsResourceKind = z.infer<typeof LogisticsResourceKindSchema>;
@@ -2743,6 +2759,7 @@ export const CreateObservationRequestSchema = z.object({
   "typeKey": z.string().max(80).optional(),
   "hazard": z.string().min(1).max(200).optional(),
   "description": z.string().min(1).max(20000),
+  "locationId": LocationRefSchema.optional(),
   "location": z.string().min(1).max(300).optional(),
   "priority": DefectPrioritySchema.optional(),
   "tradeCategory": TradeCategorySchema.optional(),
@@ -2996,6 +3013,7 @@ export type RfiPinInput = z.infer<typeof RfiPinInputSchema>;
 export const CreateRfiRequestSchema = z.object({
   "subject": z.string().min(1).max(300),
   "question": z.string().max(20000).optional(),
+  "locationId": LocationRefSchema.optional(),
   "isPrivate": z.boolean().optional(),
   "managerId": UserRefSchema.optional(),
   "receivedFromCompanyId": CompanyRefSchema.optional(),
@@ -3439,6 +3457,8 @@ export const DefectSchema = z.object({
   "category": z.string().nullable(),
   "trade": z.string().nullable(),
   "stage": DefectStageSchema,
+  "locationId": z.union([LocationRefSchema, z.null()]),
+  "locationPath": z.string().nullable(),
   "pin": z.union([DrawingPinSchema, z.null()]),
   "assigneeCompanyId": z.string().nullable(),
   "assigneeUserId": z.string().nullable(),
@@ -5348,6 +5368,7 @@ export const InspectionSchema = z.object({
   "templateId": z.string(),
   "templateVersion": z.number().int(),
   "title": z.string(),
+  "locationId": z.union([LocationRefSchema, z.null()]),
   "location": z.string().nullable(),
   "status": InspectionStatusSchema,
   "inspectorId": z.string().nullable(),
@@ -5762,6 +5783,38 @@ export const LateSubmissionListSchema = z.object({
   "pendingCount": z.number().int().min(0),
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
+
+export const LocationSuggestionSchema = z.object({
+  "locationId": LocationRefSchema,
+  "path": z.string(),
+  "reason": z.string(),
+});
+export type LocationSuggestion = z.infer<typeof LocationSuggestionSchema>;
+
+export const LocationSuggestionListSchema = z.object({
+  "data": z.array(LocationSuggestionSchema).max(3),
+});
+export type LocationSuggestionList = z.infer<typeof LocationSuggestionListSchema>;
+
+export const LocationTreeNodeSchema = z.object({
+  "id": LocationRefSchema,
+  "projectId": z.string(),
+  "parentId": z.union([LocationRefSchema, z.null()]),
+  "kind": LocationTreeKindSchema,
+  "name": z.string(),
+  "code": z.string().nullable(),
+  "path": z.string(),
+  "depth": z.number().int().min(1).max(8),
+  "sort": z.number().int(),
+  "archived": z.boolean(),
+  "version": z.number().int(),
+});
+export type LocationTreeNode = z.infer<typeof LocationTreeNodeSchema>;
+
+export const LocationTreeListSchema = z.object({
+  "data": z.array(LocationTreeNodeSchema),
+});
+export type LocationTreeList = z.infer<typeof LocationTreeListSchema>;
 
 export const LogEquipmentHoursRequestSchema = z.object({
   "date": z.string().date(),
@@ -6685,6 +6738,7 @@ export const ObservationSchema = z.object({
   "type": ObservationTypeSchema,
   "hazard": z.string().nullable(),
   "description": z.string(),
+  "locationId": z.union([LocationRefSchema, z.null()]),
   "location": z.string().nullable(),
   "priority": DefectPrioritySchema,
   "tradeCategory": z.union([TradeCategorySchema, z.null()]),
@@ -8298,6 +8352,8 @@ export const RfiSchema = z.object({
   "scheduleImpactDays": z.number().int().nullable(),
   "delayDays": z.number().int().nullable(),
   "specSection": z.string().nullable(),
+  "locationId": z.union([LocationRefSchema, z.null()]),
+  "locationPath": z.string().nullable(),
   "location": z.string().nullable(),
   "pin": z.union([RfiPinSchema, z.null()]),
   "fileIds": z.array(z.string()),
@@ -9749,6 +9805,7 @@ export const UpdateDefectRequestSchema = z.object({
   "approverDelegateUntil": z.string().date().nullable().optional(),
   "requireCloseEvidence": z.boolean().optional(),
   "dueDate": z.string().date().nullable().optional(),
+  "locationId": z.union([LocationRefSchema, z.null()]).optional(),
   "pin": DrawingPinSchema.optional(),
   "warrantyItemId": z.union([WarrantyItemRefSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
@@ -9965,6 +10022,7 @@ export type UpdateInductionRequest = z.infer<typeof UpdateInductionRequestSchema
 
 export const UpdateInspectionRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),
+  "locationId": z.union([LocationRefSchema, z.null()]).optional(),
   "location": z.string().min(1).max(300).nullable().optional(),
   "scheduledFor": z.string().date().nullable().optional(),
   "dueDate": z.string().date().nullable().optional(),
@@ -10006,6 +10064,16 @@ export const UpdateKeyDatesRequestSchema = z.object({
   "note": z.string().max(1000).nullable().optional(),
 }).strict();
 export type UpdateKeyDatesRequest = z.infer<typeof UpdateKeyDatesRequestSchema>;
+
+export const UpdateLocationTreeNodeRequestSchema = z.object({
+  "parentId": z.union([LocationRefSchema, z.null()]).optional(),
+  "kind": LocationTreeKindSchema.optional(),
+  "name": z.string().min(1).max(120).optional(),
+  "code": z.string().min(1).max(30).nullable().optional(),
+  "sort": z.number().int().min(0).max(1000000).optional(),
+  "archived": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateLocationTreeNodeRequest = z.infer<typeof UpdateLocationTreeNodeRequestSchema>;
 
 export const UpdateLogisticsResourceRequestSchema = z.object({
   "name": z.string().min(1).max(120).optional(),
@@ -10070,6 +10138,7 @@ export const UpdateObservationRequestSchema = z.object({
   "typeKey": z.string().max(80).optional(),
   "hazard": z.string().min(1).max(200).nullable().optional(),
   "description": z.string().min(1).max(20000).optional(),
+  "locationId": z.union([LocationRefSchema, z.null()]).optional(),
   "location": z.string().min(1).max(300).nullable().optional(),
   "priority": DefectPrioritySchema.optional(),
   "tradeCategory": z.union([TradeCategorySchema, z.null()]).optional(),
@@ -10224,6 +10293,7 @@ export const UpdateRfiRequestSchema = z.object({
   "scheduleImpactDays": z.number().int().min(0).max(3650).nullable().optional(),
   "delayDays": z.number().int().min(0).max(3650).nullable().optional(),
   "specSection": z.string().max(200).nullable().optional(),
+  "locationId": z.union([LocationRefSchema, z.null()]).optional(),
   "location": z.string().max(200).nullable().optional(),
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
   "fileIds": z.array(FileRefSchema).max(20).optional(),

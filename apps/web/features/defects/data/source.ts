@@ -569,7 +569,7 @@ export const defectsSource: DefectsSource = {
 
 /** What the screens and hooks use: the preview store above, or `createDefectsApi` once the module is reachable. */
 export interface DefectsSource {
-  /** The API stores drawing pins, not project locations: live forms ask for a pin and hide the location tree. */
+  /** Live forms pick a location from the project's tree (or a drawing pin); preview uses its own mock tree. */
   live: boolean;
   list(projectId: string, f?: DefectFilters): Promise<Defect[]>;
   get(projectId: string, id: string): Promise<Defect>;

@@ -40,8 +40,10 @@ type FieldsBody = Omit<
   | 'distributionUserIds'
   | 'approverDelegateUserId'
   | 'pin'
+  | 'locationId'
   | 'warrantyItemId'
 > & {
+  locationId?: string | null;
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
   assigneeUserIds?: string[];
@@ -71,6 +73,8 @@ function fields(b: FieldsBody): DefectFields {
   if (b.assigneeUserId !== undefined)
     out.assigneeUserId =
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.warrantyItemId !== undefined)
     out.warrantyItemId =
       b.warrantyItemId === null ? null : ref('warrantyItem', b.warrantyItemId, 'warrantyItemId');

@@ -61,7 +61,35 @@ describe('defects', () => {
       },
       true,
     );
-    expect(live.location).toBe('Choose the drawing and mark where the defect is.');
+    // Against the server a location from the project's tree is enough; with neither it asks for one.
+    expect(live.location).toBeUndefined();
+    expect(
+      defectInputErrors(
+        {
+          title: 'Cracked tile',
+          description: '',
+          priority: 'medium',
+          trade: '',
+          stage: 'pre_pc',
+          locationId: null,
+          drawing: null,
+          assigneeCompanyId: 'cmp_tile',
+          assigneeUserId: null,
+          assigneeUserIds: [],
+          managerUserId: null,
+          finalApproverUserId: null,
+          distributionUserIds: [],
+          approverDelegateUserId: null,
+          approverDelegateFrom: null,
+          approverDelegateUntil: null,
+          requireCloseEvidence: false,
+          dueDate: null,
+          category: null,
+          photos: [],
+        },
+        true,
+      ).location,
+    ).toBe('Choose a location, or choose the drawing and mark where the defect is.');
     expect(formatDefectNumber(12)).toBe('DEF-0012');
     expect(formatDefectNumber(null)).toBe('D-local');
   });

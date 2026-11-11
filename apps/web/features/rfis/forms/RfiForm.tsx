@@ -15,7 +15,9 @@ import {
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { useMarkupPicker, useSheetPicker } from '@/features/drawings';
+import { LocationPicker } from '@/features/locations';
 import { SpecSectionField } from '@/features/specifications';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { businessDaysBetween, dueInBusinessDays, todayIn } from '@/shared/lib/format';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -55,6 +57,7 @@ export function emptyRfiInput(today: string): RfiInput {
     drawing: null,
     specSection: null,
     location: null,
+    locationId: null,
     isPrivate: false,
   };
 }
@@ -480,12 +483,21 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
               value={v.specSection ?? ''}
               onChange={(x) => set('specSection', x || null)}
             />
-            <TextField
-              label="Location"
-              placeholder="Level 2, grid C"
-              value={v.location ?? ''}
-              onChange={(e) => set('location', e.target.value || null)}
-            />
+            {previewDataOnly ? (
+              <TextField
+                label="Location"
+                placeholder="Level 2, grid C"
+                value={v.location ?? ''}
+                onChange={(e) => set('location', e.target.value || null)}
+              />
+            ) : (
+              <LocationPicker
+                projectId={project.projectId}
+                value={v.locationId ?? null}
+                suggestFrom={`${v.subject} ${v.question}`}
+                onChange={(id) => set('locationId', id)}
+              />
+            )}
             <Select
               label="Cost impact"
               value={v.costImpact ?? ''}

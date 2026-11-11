@@ -245,6 +245,31 @@ export const DeleteProjectLocationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "locationId": z.string().regex(new RegExp("^plc_[0-9A-Za-z]{26}$")),
 });
+export const ListLocationTreeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListLocationTreeQuery = z.object({
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateLocationTreeNodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateLocationTreeNodeBody = s.CreateLocationTreeNodeRequestSchema;
+export const SuggestLocationTreeNodesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestLocationTreeNodesQuery = z.object({
+  "text": z.string().min(1).max(2000),
+});
+export const UpdateLocationTreeNodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "locationId": z.string().regex(new RegExp("^loc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateLocationTreeNodeBody = s.UpdateLocationTreeNodeRequestSchema;
 export const GetDelayRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4922,6 +4947,54 @@ export const operations = {
     params: DeleteProjectLocationParams,
     query: null,
     body: null,
+  },
+  listLocationTree: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/location-tree',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListLocationTreeParams,
+    query: ListLocationTreeQuery,
+    body: null,
+  },
+  createLocationTreeNode: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/location-tree',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: CreateLocationTreeNodeParams,
+    query: null,
+    body: CreateLocationTreeNodeBody,
+  },
+  suggestLocationTreeNodes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/location-tree/suggest',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: SuggestLocationTreeNodesParams,
+    query: SuggestLocationTreeNodesQuery,
+    body: null,
+  },
+  updateLocationTreeNode: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/location-tree/{locationId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateLocationTreeNodeParams,
+    query: null,
+    body: UpdateLocationTreeNodeBody,
   },
   getDelayRegister: {
     method: 'GET',

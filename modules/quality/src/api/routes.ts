@@ -36,7 +36,11 @@ const notFound = (kind: IdKind, value: string, code: string) => {
 
 const project = (p: { projectId: string }) => notFound('project', p.projectId, 'project.not_found');
 
-type ObservationBody = Omit<ObservationFields, 'assigneeCompanyId' | 'swmsId' | 'fileIds'> & {
+type ObservationBody = Omit<
+  ObservationFields,
+  'assigneeCompanyId' | 'swmsId' | 'fileIds' | 'locationId'
+> & {
+  locationId?: string | null;
   assigneeCompanyId?: string | null;
   swmsId?: string | null;
   fileIds?: string[];
@@ -49,6 +53,8 @@ function observationFields(b: ObservationBody): ObservationFields {
   if (b.hazard !== undefined) out.hazard = b.hazard;
   if (b.description !== undefined) out.description = b.description;
   if (b.location !== undefined) out.location = b.location;
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.priority !== undefined) out.priority = b.priority;
   if (b.tradeCategory !== undefined) out.tradeCategory = b.tradeCategory;
   if (b.classification !== undefined) out.classification = b.classification;
@@ -69,6 +75,7 @@ function observationFields(b: ObservationBody): ObservationFields {
 type HeaderBody = {
   title?: string;
   location?: string | null;
+  locationId?: string | null;
   scheduledFor?: string | null;
   dueDate?: string | null;
   inspectorId?: string;
@@ -88,6 +95,8 @@ function headerFields(b: HeaderBody): HeaderInput {
   const out: HeaderInput = {};
   if (b.title !== undefined) out.title = b.title;
   if (b.location !== undefined) out.location = b.location;
+  if (b.locationId !== undefined)
+    out.locationId = b.locationId === null ? null : ref('location', b.locationId, 'locationId');
   if (b.scheduledFor !== undefined) out.scheduledFor = b.scheduledFor;
   if (b.dueDate !== undefined) out.dueDate = b.dueDate;
   if (b.inspectorId !== undefined) out.inspectorId = ref('user', b.inspectorId, 'inspectorId');

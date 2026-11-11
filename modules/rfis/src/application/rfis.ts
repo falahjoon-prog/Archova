@@ -32,14 +32,21 @@ export type RfiRow = typeof rfis.$inferSelect;
 export type AssigneeRow = typeof assignees.$inferSelect;
 export type ResponseRow = typeof responses.$inferSelect;
 export type PhotoAnnotationRow = typeof photoAnnotations.$inferSelect;
-export type RfiView = RfiRow & { assignees: AssigneeRow[]; isOverdue: boolean };
+export type RfiView = RfiRow & {
+  assignees: AssigneeRow[];
+  isOverdue: boolean;
+  locationPath: string | null;
+};
 
 /** Default RFI response time when the project has no setting (RFI-AC3). */
 export const DEFAULT_RESPONSE_BUSINESS_DAYS = 5;
 
 export interface RfisDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership'>;
+  platform: Pick<
+    PlatformApi,
+    'getProject' | 'getProjectMembership' | 'resolveLocations' | 'locationPaths'
+  >;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   now?: () => Date;
@@ -68,6 +75,8 @@ export interface RfiFields {
   delayDays?: number | null;
   specSection?: string | null;
   location?: string | null;
+  /** A row of the project's location tree; `location` stays for text that came in with an import. */
+  locationId?: string | null;
   pin?: PinInput | null;
   /** Photos and files on the question; replaces the list. */
   fileIds?: string[];
@@ -125,10 +134,19 @@ export function createRfiService(deps: RfisDeps) {
           .where(inArray(assignees.rfiId, ids))
           .orderBy(asc(assignees.createdAt), asc(assignees.id))
       : [];
+    const paths = new Map<string, string>();
+    for (const projectId of new Set(rows.map((r) => r.projectId)))
+      for (const [id, path] of await deps.platform.locationPaths(
+        scope,
+        projectId,
+        rows.filter((r) => r.projectId === projectId).map((r) => r.locationId),
+      ))
+        paths.set(id, path);
     return rows.map((r) => ({
       ...r,
       assignees: list.filter((a) => a.rfiId === r.id),
       isOverdue: r.status === 'open' && r.dueDate !== null && r.dueDate < localToday,
+      locationPath: (r.locationId && paths.get(r.locationId)) || null,
     }));
   }
 
@@ -470,6 +488,7 @@ export function createRfiService(deps: RfisDeps) {
     if (f.delayDays !== undefined) v.delayDays = f.delayDays;
     if (f.specSection !== undefined) v.specSection = f.specSection?.trim() || null;
     if (f.location !== undefined) v.location = f.location?.trim() || null;
+    if (f.locationId !== undefined) v.locationId = f.locationId;
     if (f.fileIds !== undefined) v.fileIds = [...new Set(f.fileIds)];
     if (f.pin !== undefined) {
       v.drawingRevisionId = f.pin?.drawingRevisionId ?? null;
@@ -489,6 +508,8 @@ export function createRfiService(deps: RfisDeps) {
     if (input.pin) await checkPin(scope, projectId, input.pin);
     await checkFiles(scope, projectId, input.fileIds ?? []);
     const list = await resolveAssignees(scope, projectId, input.assigneeIds ?? []);
+    if (input.locationId)
+      await deps.platform.resolveLocations(scope, projectId, [input.locationId]);
     const id = uuidv7();
     const [row] = await scope.tx
       .insert(rfis)
@@ -545,6 +566,8 @@ export function createRfiService(deps: RfisDeps) {
       throw new AppError('access.denied', "You can't change this RFI.");
     if (rfi.version !== expectedVersion) throw versionConflict();
     if (patch.pin) await checkPin(scope, projectId, patch.pin);
+    if (patch.locationId && patch.locationId !== rfi.locationId)
+      await deps.platform.resolveLocations(scope, projectId, [patch.locationId]);
     if (patch.fileIds) await checkFiles(scope, projectId, patch.fileIds);
     const values = fieldValues(patch);
     values.version = rfi.version + 1;

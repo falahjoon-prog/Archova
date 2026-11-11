@@ -270,9 +270,10 @@ function DefectView({ d }: { d: Defect }) {
               {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
               <DescriptionList
                 items={[
-                  ...(live
-                    ? []
-                    : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
+                  {
+                    label: 'Location',
+                    value: d.locationPath ?? locationPath(d.locationId) ?? '—',
+                  },
                   {
                     label: 'Drawing',
                     value: drawing ? (

@@ -34,11 +34,22 @@ import { defects, events, warrantyItems } from '../infra/tables';
 
 export type DefectRow = typeof defects.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
-export type DefectView = DefectRow & { isOverdue: boolean; localToday: string };
+export type DefectView = DefectRow & {
+  isOverdue: boolean;
+  localToday: string;
+  locationPath: string | null;
+};
 
 export interface DefectsDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
+  platform: Pick<
+    PlatformApi,
+    | 'getProject'
+    | 'getProjectMembership'
+    | 'projectCompanies'
+    | 'resolveLocations'
+    | 'locationPaths'
+  >;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   now?: () => Date;
@@ -68,6 +79,8 @@ export interface DefectFields {
   /** Closing needs a note or photo as evidence. */
   requireCloseEvidence?: boolean;
   dueDate?: string | null;
+  /** A row of the project's location tree (platform.project_locations). */
+  locationId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
   /** The warranty item a liability-period claim is against; null clears it. */
   warrantyItemId?: string | null;
@@ -103,11 +116,25 @@ export function createDefectService(deps: DefectsDeps) {
   const view = (r: DefectRow, localToday: string): DefectView => ({
     ...r,
     localToday,
+    locationPath: null,
     isOverdue:
       (r.status === 'open' || r.status === 'disputed') &&
       r.dueDate !== null &&
       r.dueDate < localToday,
   });
+
+  /** Fills in the readable place ("Building A › Level 2 › Unit 201") for rows that name a location. */
+  async function withLocations(scope: TenantScope, projectId: string, rows: DefectView[]) {
+    const paths = await deps.platform.locationPaths(
+      scope,
+      projectId,
+      rows.map((r) => r.locationId),
+    );
+    return rows.map((r) => ({
+      ...r,
+      locationPath: (r.locationId && paths.get(r.locationId)) || null,
+    }));
+  }
 
   /** SQL form of `canSeeDefect` for registers. */
   function visibleTo(v: DefectViewer): SQL | null {
@@ -169,7 +196,11 @@ export function createDefectService(deps: DefectsDeps) {
       .limit(opts.limit + 1);
     const page = toPage(rows, opts.limit, (r) => ({ id: r.id }));
     return {
-      data: page.data.map((r) => view(r, date)),
+      data: await withLocations(
+        scope,
+        projectId,
+        page.data.map((r) => view(r, date)),
+      ),
       nextCursor: page.nextCursor,
       viewer: v,
     };
@@ -190,7 +221,14 @@ export function createDefectService(deps: DefectsDeps) {
       .select()
       .from(defects)
       .where(and(...conditions));
-    return { rows: rows.map((r) => view(r, date)), viewer: v };
+    return {
+      rows: await withLocations(
+        scope,
+        projectId,
+        rows.map((r) => view(r, date)),
+      ),
+      viewer: v,
+    };
   }
 
   async function getVisible(scope: TenantScope, projectId: string, defectId: string) {
@@ -204,7 +242,10 @@ export function createDefectService(deps: DefectsDeps) {
     if (!row) throw new AppError('defect.not_found');
     const v = await viewer(scope, projectId);
     if (!canSeeDefect(row, v)) throw new AppError('defect.not_found');
-    return { defect: view(row, await today(scope, projectId)), viewer: v };
+    const [shown] = await withLocations(scope, projectId, [
+      view(row, await today(scope, projectId)),
+    ]);
+    return { defect: shown!, viewer: v };
   }
 
   /** The project a defect is in, for sync commands that name only the defect. */
@@ -338,6 +379,7 @@ export function createDefectService(deps: DefectsDeps) {
     scope: TenantScope,
     projectId: string,
     f: DefectFields,
+    current?: { locationId: string | null },
   ): Promise<Partial<typeof defects.$inferInsert>> {
     const v: Partial<typeof defects.$inferInsert> = {};
     if (f.title !== undefined) v.title = f.title.trim();
@@ -394,6 +436,12 @@ export function createDefectService(deps: DefectsDeps) {
         await checkMember(scope, projectId, id, `distributionUserIds/${i}`);
       v.distributionUserIds = ids;
     }
+    if (f.locationId !== undefined) {
+      // Keeping the place a defect already has is fine even once that place is archived.
+      if (f.locationId && f.locationId !== current?.locationId)
+        await deps.platform.resolveLocations(scope, projectId, [f.locationId]);
+      v.locationId = f.locationId;
+    }
     if (f.pin) Object.assign(v, await resolvePin(scope, projectId, f.pin));
     if (f.warrantyItemId !== undefined) {
       if (f.warrantyItemId) {
@@ -437,10 +485,19 @@ export function createDefectService(deps: DefectsDeps) {
     await deps.platform.getProject(scope, projectId);
     const values = await fieldValues(scope, projectId, input);
     checkDelegateDates(values.approverDelegateFrom, values.approverDelegateUntil);
-    if (!hasDefectLocation({ sheetId: values.sheetId, pinX: values.pinX, pinY: values.pinY }))
-      throw new AppError('defect.location_required', 'Pin the defect on a drawing.', [
-        { path: 'pin', message: 'A drawing pin is required' },
-      ]);
+    if (
+      !hasDefectLocation({
+        locationId: values.locationId,
+        sheetId: values.sheetId,
+        pinX: values.pinX,
+        pinY: values.pinY,
+      })
+    )
+      throw new AppError(
+        'defect.location_required',
+        'Pick a location or pin the defect on a drawing.',
+        [{ path: 'locationId', message: 'A location or a drawing pin is required' }],
+      );
     for (const u of values.assigneeUserIds ?? [])
       await checkAssigneeUser(scope, projectId, u, values.assigneeCompanyId ?? null);
     // A phone raising a defect offline picked its id already; the same id is what it pulls back.
@@ -502,13 +559,28 @@ export function createDefectService(deps: DefectsDeps) {
     if (!v.isInternal && !(defect.status === 'draft' && defect.createdBy === v.userId))
       throw new AppError('access.denied', "You can't change this defect.");
     if (defect.version !== expectedVersion) throw versionConflict();
-    const values = await fieldValues(scope, projectId, patch);
+    const values = await fieldValues(scope, projectId, patch, defect);
     checkDelegateDates(
       'approverDelegateFrom' in values ? values.approverDelegateFrom : defect.approverDelegateFrom,
       'approverDelegateUntil' in values
         ? values.approverDelegateUntil
         : defect.approverDelegateUntil,
     );
+    // Clearing the location is fine only while a drawing pin still says where it is.
+    if (
+      'locationId' in values &&
+      !hasDefectLocation({
+        locationId: values.locationId,
+        sheetId: 'sheetId' in values ? values.sheetId : defect.sheetId,
+        pinX: 'pinX' in values ? values.pinX : defect.pinX,
+        pinY: 'pinY' in values ? values.pinY : defect.pinY,
+      })
+    )
+      throw new AppError(
+        'defect.location_required',
+        'Pick a location or pin the defect on a drawing.',
+        [{ path: 'locationId', message: 'A location or a drawing pin is required' }],
+      );
     const company =
       'assigneeCompanyId' in values ? (values.assigneeCompanyId ?? null) : defect.assigneeCompanyId;
     for (const u of values.assigneeUserIds ?? [])
