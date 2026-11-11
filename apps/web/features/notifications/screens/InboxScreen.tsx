@@ -25,6 +25,7 @@ function target(orgSlug: string, n: Notification): string | null {
     return webRoutes.warrantyItem(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'conversation')
     return `${webRoutes.conversations(orgSlug, n.projectId)}?thread=${encodeURIComponent(n.entityId)}`;
+  if (n.entityType === 'form_submission') return webRoutes.forms(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'announcement')
     return `${webRoutes.announcements(orgSlug, n.projectId)}?item=${encodeURIComponent(n.entityId)}`;
   return null;

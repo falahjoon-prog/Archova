@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: conversations
+  - name: forms
   - name: announcements
   - name: bim
   - name: defects
@@ -7617,6 +7618,305 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFormTemplates
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.read
+      summary: The project's form templates, by name then newest version. Project team only.
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [draft, published, archived] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Draft a form template with sections and typed fields. A draft can be edited until it is published.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FormTemplateInput' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormTemplateId'
+    get:
+      operationId: getFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.read
+      summary: One form template with its fields.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Replace a draft template's name, details and fields. A published template is frozen (409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FormTemplateInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormTemplateId'
+    post:
+      operationId: publishFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Publish a draft so it can be assigned. Earlier versions of the same name are archived.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormTemplateId'
+    post:
+      operationId: archiveFormTemplate
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Stop a template being assigned. Forms already started keep their version.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormTemplateId'
+    post:
+      operationId: newFormTemplateVersion
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.templates.manage
+      summary: Copy a published or archived template into a new draft version.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFormSubmissions
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.read
+      summary: Forms on the project, newest number first. Outside users see only forms assigned to them.
+      description: Each row carries Nova's flags (`overdue`, `due_soon`, `stale`) and how many required fields are still empty. `flagged=true` returns only rows with a flag.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/FormSubmissionStatus' } }
+        - {
+            name: templateId,
+            in: query,
+            schema: { type: string, pattern: '^frt_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: assigneeId,
+            in: query,
+            schema: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' },
+          }
+        - { name: mine, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: flagged, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFormSubmission
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.assign
+      summary: Start a form from a published template and assign it to a project member.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFormSubmissionRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormSubmissionId'
+    get:
+      operationId: getFormSubmission
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.read
+      summary: One form with its template fields, answers and attachments.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/answers:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormSubmissionId'
+    put:
+      operationId: saveFormSubmissionAnswers
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.fill
+      summary: Save progress. Answers are merged by field id (`null` clears one); `fileIds`, when sent, replaces the attachments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveFormAnswersRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormSubmissionId'
+    post:
+      operationId: submitFormSubmission
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.fill
+      summary: Submit the form. Every required field must be answered (400 lists the ones missing).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormSubmissionId'
+    post:
+      operationId: reviewFormSubmission
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.close
+      summary: Close a submitted form, or return it to the assignee to be changed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [close, return] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSubmissionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FormSubmissionId'
+    post:
+      operationId: suggestFormSubmissionAnswers
+      tags: [forms]
+      x-module: forms
+      x-permission: forms.submissions.fill
+      summary: Nova's offer of answers for empty fields, from the project and any related incident. Nothing is saved.
+      description: Rule-based, not a model call. Only fields whose template sets a pre-fill key and that are still empty get a suggestion; the person applies the ones they want with the save call.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FormSuggestionList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/announcements:
     parameters:
@@ -17262,6 +17562,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
+    FormTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^frt_[0-9A-Za-z]{26}$' }
+    FormSubmissionId:
+      name: submissionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^frs_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -20798,6 +21108,7 @@ components:
                 permit,
                 cover,
                 warranty_item,
+                form_submission,
               ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
@@ -24738,6 +25049,228 @@ components:
           type: array
           description: What code removed or changed because the notes didn't support it.
           items: { type: string }
+    FormFieldType:
+      type: string
+      enum: [text, long_text, number, date, yes_no, single_select, multi_select]
+    FormPrefillKey:
+      type: string
+      description: Where Nova may take an answer from when the field is empty.
+      enum:
+        - project.name
+        - project.number
+        - project.address
+        - today
+        - incident.title
+        - incident.type
+        - incident.severity
+        - incident.date
+        - incident.location
+        - incident.description
+        - incident.immediateActions
+    FormField:
+      type: object
+      required: [id, section, label, type, required, helpText, options, prefillKey]
+      properties:
+        id: { type: string, description: Stable id within the template (a-z, 0-9, underscore). }
+        section: { type: string }
+        label: { type: string }
+        type: { $ref: '#/components/schemas/FormFieldType' }
+        required: { type: boolean }
+        helpText: { type: [string, 'null'] }
+        options:
+          type: array
+          items: { type: string }
+        prefillKey: { oneOf: [{ $ref: '#/components/schemas/FormPrefillKey' }, { type: 'null' }] }
+    FormFieldInput:
+      type: object
+      additionalProperties: false
+      required: [id, label, type]
+      properties:
+        id: { type: string, pattern: '^[a-z0-9_]{1,40}$' }
+        section: { type: string, maxLength: 100 }
+        label: { type: string, minLength: 1, maxLength: 300 }
+        type: { $ref: '#/components/schemas/FormFieldType' }
+        required: { type: boolean }
+        helpText: { type: [string, 'null'], maxLength: 500 }
+        options:
+          type: array
+          maxItems: 50
+          items: { type: string, minLength: 1, maxLength: 200 }
+        prefillKey: { oneOf: [{ $ref: '#/components/schemas/FormPrefillKey' }, { type: 'null' }] }
+    FormTemplateInput:
+      type: object
+      additionalProperties: false
+      required: [name, fields]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, 'null'], maxLength: 2000 }
+        category: { type: [string, 'null'], maxLength: 60 }
+        fields:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/FormFieldInput' }
+    FormTemplateStatus:
+      type: string
+      enum: [draft, published, archived]
+    FormTemplate:
+      type: object
+      required:
+        [id, projectId, name, description, category, version, status, fields, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        category: { type: [string, 'null'] }
+        version: { type: integer }
+        status: { $ref: '#/components/schemas/FormTemplateStatus' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FormTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormTemplate' }
+    FormSubmissionStatus:
+      type: string
+      enum: [assigned, in_progress, submitted, closed]
+    FormSubmissionFlag:
+      type: string
+      description: What Nova raises on an open form. `overdue` is past its due date, `due_soon` is due within two days, `stale` has been started and left for seven days.
+      enum: [overdue, due_soon, stale]
+    FormAnswers:
+      type: object
+      description: Answers by field id. Text and dates are strings, numbers are numbers, yes/no is a boolean, multi-select is a list of options.
+      additionalProperties:
+        oneOf:
+          - { type: string, maxLength: 5000 }
+          - { type: number }
+          - { type: boolean }
+          - { type: array, maxItems: 50, items: { type: string, maxLength: 200 } }
+    FormSubmission:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          templateId,
+          templateName,
+          templateVersion,
+          title,
+          status,
+          assigneeId,
+          dueDate,
+          flags,
+          daysLate,
+          missingRequiredCount,
+          relatedType,
+          relatedId,
+          createdAt,
+          updatedAt,
+          submittedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        templateId: { type: string }
+        templateName: { type: string }
+        templateVersion: { type: integer }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/FormSubmissionStatus' }
+        assigneeId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/FormSubmissionFlag' }
+        daysLate: { type: integer }
+        missingRequiredCount: { type: integer }
+        relatedType: { type: [string, 'null'], enum: [incident, null] }
+        relatedId: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        submittedAt: { type: [string, 'null'], format: date-time }
+    FormSubmissionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormSubmission' }
+        nextCursor: { type: [string, 'null'] }
+    FormSubmissionDetail:
+      type: object
+      required: [submission, fields, answers, fileIds, missingRequired, canFill, canClose]
+      properties:
+        submission: { $ref: '#/components/schemas/FormSubmission' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/FormField' }
+        answers: { $ref: '#/components/schemas/FormAnswers' }
+        fileIds:
+          type: array
+          items: { type: string }
+        missingRequired:
+          type: array
+          items: { type: string }
+        canFill: { type: boolean }
+        canClose: { type: boolean }
+    CreateFormSubmissionRequest:
+      type: object
+      additionalProperties: false
+      required: [templateId]
+      properties:
+        templateId: { type: string, pattern: '^frt_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        assigneeId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: [string, 'null'], format: date }
+        relatedType: { type: [string, 'null'], enum: [incident, null] }
+        relatedId: { type: [string, 'null'], pattern: '^inx_[0-9A-Za-z]{26}$' }
+    SaveFormAnswersRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        answers:
+          type: object
+          description: Answers by field id; `null` clears an answer.
+          additionalProperties:
+            oneOf:
+              - { type: string, maxLength: 5000 }
+              - { type: number }
+              - { type: boolean }
+              - { type: array, maxItems: 50, items: { type: string, maxLength: 200 } }
+              - { type: 'null' }
+        fileIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    FormSuggestion:
+      type: object
+      required: [fieldId, value, source]
+      properties:
+        fieldId: { type: string }
+        value:
+          oneOf:
+            - { type: string }
+            - { type: number }
+            - { type: boolean }
+            - { type: array, items: { type: string } }
+        source: { type: string, description: 'Where it came from, e.g. "Incident" or "Project".' }
+    FormSuggestionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FormSuggestion' }
     CorrespondencePage:
       type: object
       required: [data, nextCursor]

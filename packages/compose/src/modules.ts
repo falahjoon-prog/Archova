@@ -76,6 +76,7 @@ import {
   CORRESPONDENCE_PERMISSIONS,
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
+import { FORMS_PERMISSIONS, createFormsModule } from '@archova/mod-forms';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
 import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
@@ -88,6 +89,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  FORMS_PERMISSIONS,
   ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
@@ -361,6 +363,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  const forms = createFormsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    incidents: { facts: safety.api.incidentFacts },
+  });
+
   const quality = createQualityModule(services, {
     access: access.api,
     platform: platform.api,
@@ -605,6 +614,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     announcements,
     defects,
     meetings,
@@ -653,6 +663,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     announcements,
     defects,
     meetings,

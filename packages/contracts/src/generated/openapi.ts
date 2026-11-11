@@ -5697,6 +5697,244 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's form templates, by name then newest version. Project team only. */
+        get: operations["listFormTemplates"];
+        put?: never;
+        /** Draft a form template with sections and typed fields. A draft can be edited until it is published. */
+        post: operations["createFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        /** One form template with its fields. */
+        get: operations["getFormTemplate"];
+        /** Replace a draft template's name, details and fields. A published template is frozen (409). */
+        put: operations["updateFormTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish a draft so it can be assigned. Earlier versions of the same name are archived. */
+        post: operations["publishFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a template being assigned. Forms already started keep their version. */
+        post: operations["archiveFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-templates/{templateId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a published or archived template into a new draft version. */
+        post: operations["newFormTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Forms on the project, newest number first. Outside users see only forms assigned to them.
+         * @description Each row carries Nova's flags (`overdue`, `due_soon`, `stale`) and how many required fields are still empty. `flagged=true` returns only rows with a flag.
+         */
+        get: operations["listFormSubmissions"];
+        put?: never;
+        /** Start a form from a published template and assign it to a project member. */
+        post: operations["createFormSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        /** One form with its template fields, answers and attachments. */
+        get: operations["getFormSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save progress. Answers are merged by field id (`null` clears one); `fileIds`, when sent, replaces the attachments. */
+        put: operations["saveFormSubmissionAnswers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit the form. Every required field must be answered (400 lists the ones missing). */
+        post: operations["submitFormSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a submitted form, or return it to the assignee to be changed. */
+        post: operations["reviewFormSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/form-submissions/{submissionId}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova's offer of answers for empty fields, from the project and any related incident. Nothing is saved.
+         * @description Rule-based, not a model call. Only fields whose template sets a pre-fill key and that are still empty get a suggestion; the person applies the ones they want with the save call.
+         */
+        post: operations["suggestFormSubmissionAnswers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/announcements": {
         parameters: {
             query?: never;
@@ -14629,7 +14867,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item" | "form_submission";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -17129,6 +17367,135 @@ export interface components {
             priority: "normal" | "important";
             /** @description What code removed or changed because the notes didn't support it. */
             notes: string[];
+        };
+        /** @enum {string} */
+        FormFieldType: "text" | "long_text" | "number" | "date" | "yes_no" | "single_select" | "multi_select";
+        /**
+         * @description Where Nova may take an answer from when the field is empty.
+         * @enum {string}
+         */
+        FormPrefillKey: "project.name" | "project.number" | "project.address" | "today" | "incident.title" | "incident.type" | "incident.severity" | "incident.date" | "incident.location" | "incident.description" | "incident.immediateActions";
+        FormField: {
+            /** @description Stable id within the template (a-z */
+            id: string;
+            section: string;
+            label: string;
+            type: components["schemas"]["FormFieldType"];
+            required: boolean;
+            helpText: string | null;
+            options: string[];
+            prefillKey: components["schemas"]["FormPrefillKey"] | null;
+        };
+        FormFieldInput: {
+            id: string;
+            section?: string;
+            label: string;
+            type: components["schemas"]["FormFieldType"];
+            required?: boolean;
+            helpText?: string | null;
+            options?: string[];
+            prefillKey?: components["schemas"]["FormPrefillKey"] | null;
+        };
+        FormTemplateInput: {
+            name: string;
+            description?: string | null;
+            category?: string | null;
+            fields: components["schemas"]["FormFieldInput"][];
+        };
+        /** @enum {string} */
+        FormTemplateStatus: "draft" | "published" | "archived";
+        FormTemplate: {
+            id: string;
+            projectId: string;
+            name: string;
+            description: string | null;
+            category: string | null;
+            version: number;
+            status: components["schemas"]["FormTemplateStatus"];
+            fields: components["schemas"]["FormField"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        FormTemplateList: {
+            data: components["schemas"]["FormTemplate"][];
+        };
+        /** @enum {string} */
+        FormSubmissionStatus: "assigned" | "in_progress" | "submitted" | "closed";
+        /**
+         * @description What Nova raises on an open form. `overdue` is past its due date, `due_soon` is due within two days, `stale` has been started and left for seven days.
+         * @enum {string}
+         */
+        FormSubmissionFlag: "overdue" | "due_soon" | "stale";
+        /** @description Answers by field id. Text and dates are strings, numbers are numbers, yes/no is a boolean, multi-select is a list of options. */
+        FormAnswers: {
+            [key: string]: string | number | boolean | string[];
+        };
+        FormSubmission: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            templateId: string;
+            templateName: string;
+            templateVersion: number;
+            title: string;
+            status: components["schemas"]["FormSubmissionStatus"];
+            assigneeId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            flags: components["schemas"]["FormSubmissionFlag"][];
+            daysLate: number;
+            missingRequiredCount: number;
+            /** @enum {string|null} */
+            relatedType: "incident" | null;
+            relatedId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            submittedAt: string | null;
+        };
+        FormSubmissionPage: {
+            data: components["schemas"]["FormSubmission"][];
+            nextCursor: string | null;
+        };
+        FormSubmissionDetail: {
+            submission: components["schemas"]["FormSubmission"];
+            fields: components["schemas"]["FormField"][];
+            answers: components["schemas"]["FormAnswers"];
+            fileIds: string[];
+            missingRequired: string[];
+            canFill: boolean;
+            canClose: boolean;
+        };
+        CreateFormSubmissionRequest: {
+            templateId: string;
+            title?: string;
+            assigneeId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            /** @enum {string|null} */
+            relatedType?: "incident" | null;
+            relatedId?: string | null;
+        };
+        SaveFormAnswersRequest: {
+            /** @description Answers by field id; `null` clears an answer. */
+            answers?: {
+                [key: string]: string | number | boolean | string[] | null;
+            };
+            fileIds?: string[];
+        };
+        FormSuggestion: {
+            fieldId: string;
+            value: string | number | boolean | string[];
+            /** @description Where it came from, e.g. "Incident" or "Project". */
+            source: string;
+        };
+        FormSuggestionList: {
+            data: components["schemas"]["FormSuggestion"][];
         };
         CorrespondencePage: {
             data: components["schemas"]["CorrespondenceItem"][];
@@ -23325,6 +23692,8 @@ export interface components {
         CoordinationIssueId: string;
         AnnouncementId: string;
         ConversationId: string;
+        FormTemplateId: string;
+        FormSubmissionId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -32323,6 +32692,399 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFormTemplates: {
+        parameters: {
+            query?: {
+                status?: "draft" | "published" | "archived";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    archiveFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    newFormTemplateVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["FormTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFormSubmissions: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["FormSubmissionStatus"];
+                templateId?: string;
+                assigneeId?: string;
+                mine?: "true" | "false";
+                flagged?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFormSubmission: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFormSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getFormSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveFormSubmissionAnswers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveFormAnswersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitFormSubmission: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewFormSubmission: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "close" | "return";
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSubmissionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestFormSubmissionAnswers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submissionId: components["parameters"]["FormSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormSuggestionList"];
                 };
             };
             default: components["responses"]["Problem"];

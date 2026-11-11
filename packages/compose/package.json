@@ -26,6 +26,7 @@
     "@archova/mod-conversations": "workspace:*",
     "@archova/mod-correspondence": "workspace:*",
     "@archova/mod-defects": "workspace:*",
+    "@archova/mod-forms": "workspace:*",
     "@archova/mod-meetings": "workspace:*",
     "@archova/mod-ownerportal": "workspace:*",
     "@archova/mod-notifications": "workspace:*",

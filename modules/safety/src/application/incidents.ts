@@ -196,6 +196,25 @@ export function createIncidentService(deps: SafetyDeps) {
     return { row, viewer };
   }
 
+  /**
+   * What a form may be pre-filled with from an incident: plain text only, never health details or people. Visible
+   * to the same people who can open the incident.
+   */
+  async function facts(scope: TenantScope, projectId: string, id: string) {
+    const { row } = await getVisible(scope, projectId, id);
+    const project = await deps.platform.getProject(scope, projectId);
+    const out: Record<string, string> = {
+      'incident.title': row.title,
+      'incident.type': row.type,
+      'incident.severity': row.severity,
+      'incident.date': localDateOf(row.occurredAt, project.timezone),
+      'incident.description': row.description,
+    };
+    if (row.location) out['incident.location'] = row.location;
+    if (row.immediateActions) out['incident.immediateActions'] = row.immediateActions;
+    return out;
+  }
+
   const derive = (r: IncidentRow) => ({
     ...r,
     writtenNoticeDueAt: writtenNoticeDueAt(r.writtenNoticeRequestedAt),
@@ -853,6 +872,7 @@ export function createIncidentService(deps: SafetyDeps) {
 
   return {
     list,
+    facts,
     create,
     detail,
     update,

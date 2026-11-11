@@ -67,6 +67,8 @@ export const ID_PREFIXES = {
   correspondenceHistory: 'cch',
   correspondenceEmail: 'cem',
   conversation: 'cnv',
+  formTemplate: 'frt',
+  formSubmission: 'frs',
   conversationMessage: 'cnm',
   announcement: 'ann',
   bimModel: 'bmd',
