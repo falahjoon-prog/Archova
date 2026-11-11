@@ -38,7 +38,9 @@ type FieldsBody = Omit<
   | 'managerUserId'
   | 'finalApproverUserId'
   | 'distributionUserIds'
+  | 'approverDelegateUserId'
   | 'pin'
+  | 'warrantyItemId'
 > & {
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
@@ -46,7 +48,9 @@ type FieldsBody = Omit<
   managerUserId?: string | null;
   finalApproverUserId?: string | null;
   distributionUserIds?: string[];
+  approverDelegateUserId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
+  warrantyItemId?: string | null;
 };
 
 /** Request body → service fields, decoding prefixed ids and keeping "absent" distinct from "null". */
@@ -67,6 +71,9 @@ function fields(b: FieldsBody): DefectFields {
   if (b.assigneeUserId !== undefined)
     out.assigneeUserId =
       b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.warrantyItemId !== undefined)
+    out.warrantyItemId =
+      b.warrantyItemId === null ? null : ref('warrantyItem', b.warrantyItemId, 'warrantyItemId');
   if (b.assigneeUserIds !== undefined)
     out.assigneeUserIds = b.assigneeUserIds.map((u, i) => ref('user', u, `assigneeUserIds/${i}`));
   if (b.managerUserId !== undefined)
@@ -81,6 +88,14 @@ function fields(b: FieldsBody): DefectFields {
     out.distributionUserIds = b.distributionUserIds.map((u, i) =>
       ref('user', u, `distributionUserIds/${i}`),
     );
+  if (b.approverDelegateUserId !== undefined)
+    out.approverDelegateUserId =
+      b.approverDelegateUserId === null
+        ? null
+        : ref('user', b.approverDelegateUserId, 'approverDelegateUserId');
+  if (b.approverDelegateFrom !== undefined) out.approverDelegateFrom = b.approverDelegateFrom;
+  if (b.approverDelegateUntil !== undefined) out.approverDelegateUntil = b.approverDelegateUntil;
+  if (b.requireCloseEvidence !== undefined) out.requireCloseEvidence = b.requireCloseEvidence;
   if (b.pin)
     out.pin = {
       ...b.pin,
@@ -117,6 +132,9 @@ export function defectsRoutes(database: Database, defects: DefectService) {
             ? {
                 drawingRevisionId: ref('drawingRevision', q.drawingRevisionId, 'drawingRevisionId'),
               }
+            : {}),
+          ...(q.warrantyItemId
+            ? { warrantyItemId: ref('warrantyItem', q.warrantyItemId, 'warrantyItemId') }
             : {}),
           ...(q.q ? { q: q.q } : {}),
           limit: q.limit,

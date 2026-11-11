@@ -50,6 +50,8 @@ function seedRfi(
     assigneeCompanyId: 'cmp_struct',
     ballInCourtId: 'usr_eng',
     ballInCourtCompanyId: 'cmp_struct',
+    ballInCourtSince: null,
+    receivedFromCompanyId: null,
     distributionCompanyIds: [],
     dueDate: null,
     costImpact: 'tbc',
@@ -126,6 +128,7 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_arch',
         ballInCourtId: 'usr_pm',
         ballInCourtCompanyId: 'cmp_builder',
+        ballInCourtSince: at('2026-09-24'),
         dueDate: '2026-09-26',
         costImpact: 'yes',
         scheduleImpactDays: 2,
@@ -162,6 +165,7 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_arch',
         ballInCourtId: 'usr_arch',
         ballInCourtCompanyId: 'cmp_arch',
+        ballInCourtSince: at('2026-09-23'),
         dueDate: '2026-09-29',
         drawing: { sheetId: 'sht_a101', revisionId: 'rev_a101_c', label: 'A-101 Rev C' },
         location: 'Ground, bin store',
@@ -181,6 +185,7 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_elec',
         ballInCourtId: 'usr_elec',
         ballInCourtCompanyId: 'cmp_elec',
+        ballInCourtSince: at('2026-10-01'),
         dueDate: '2026-10-09',
         costImpact: 'tbc',
         drawing: { sheetId: 'sht_e301', revisionId: 'rev_e301_a', label: 'E-301 Rev A' },
@@ -280,6 +285,8 @@ export const rfisSource = {
       assigneeCompanyId: personCompanyId(input.assigneeId),
       ballInCourtId: actor.id,
       ballInCourtCompanyId: actor.companyId,
+      ballInCourtSince: null,
+      receivedFromCompanyId: null,
       fileIds: [],
       responses: [],
       officialResponseId: null,
@@ -312,6 +319,7 @@ export const rfisSource = {
       if (rfi.status === 'open') {
         rfi.ballInCourtId = input.assigneeId;
         rfi.ballInCourtCompanyId = personCompanyId(input.assigneeId);
+        rfi.ballInCourtSince = nowIso();
       }
     }
     Object.assign(rfi, input, { assigneeCompanyId: personCompanyId(input.assigneeId) });
@@ -331,6 +339,7 @@ export const rfisSource = {
     rfi.status = 'open';
     rfi.ballInCourtId = rfi.assigneeId;
     rfi.ballInCourtCompanyId = rfi.assigneeCompanyId;
+    rfi.ballInCourtSince = nowIso();
     log(rfi, actor, 'submitted the RFI', {
       detail: `Waiting on ${companyName(rfi.assigneeCompanyId)}`,
     });
@@ -419,6 +428,7 @@ export const rfisSource = {
       rfi.answeredAt = nowIso();
       rfi.ballInCourtId = rfi.managerId;
       rfi.ballInCourtCompanyId = personCompanyId(rfi.managerId) ?? 'cmp_builder';
+      rfi.ballInCourtSince = nowIso();
     }
     log(rfi, actor, input.aiSuggestionId ? 'responded (started from a Nova draft)' : 'responded');
     return delay(rfi);
@@ -441,6 +451,7 @@ export const rfisSource = {
     rfi.closedAt = nowIso();
     rfi.ballInCourtId = null;
     rfi.ballInCourtCompanyId = null;
+    rfi.ballInCourtSince = null;
     log(rfi, actor, 'closed the RFI with the official response');
     return delay(rfi);
   },
@@ -455,6 +466,7 @@ export const rfisSource = {
     for (const r of rfi.responses) r.isOfficial = false;
     rfi.ballInCourtId = rfi.assigneeId;
     rfi.ballInCourtCompanyId = rfi.assigneeCompanyId;
+    rfi.ballInCourtSince = nowIso();
     log(rfi, actor, 'reopened the RFI', { detail: reason.trim() });
     return delay(rfi);
   },
@@ -466,6 +478,7 @@ export const rfisSource = {
     rfi.status = 'void';
     rfi.ballInCourtId = null;
     rfi.ballInCourtCompanyId = null;
+    rfi.ballInCourtSince = null;
     log(rfi, actor, 'voided the RFI', { detail: reason.trim() });
     return delay(rfi);
   },

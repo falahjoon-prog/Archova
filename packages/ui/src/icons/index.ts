@@ -66,6 +66,7 @@ export {
 export {
   BookOpen as DiaryIcon,
   HardHat as AttendanceIcon,
+  Truck as DeliveriesIcon,
   Eye as ObservationsIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
@@ -79,6 +80,7 @@ export {
   FileUp as ImportsIcon,
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
+  BadgeCheck as WarrantyIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,

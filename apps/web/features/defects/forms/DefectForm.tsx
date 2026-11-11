@@ -41,6 +41,10 @@ export const emptyDefectInput = (): DefectInput => ({
   managerUserId: null,
   finalApproverUserId: null,
   distributionUserIds: [],
+  approverDelegateUserId: null,
+  approverDelegateFrom: null,
+  approverDelegateUntil: null,
+  requireCloseEvidence: false,
   dueDate: null,
   category: null,
   photos: [],
@@ -65,6 +69,8 @@ export interface DefectFormProps {
   busy: boolean;
   error: unknown;
   /** `another` keeps location, trade and company for the next one in a walk (DEF-US2). */
+  /** Starting values, e.g. a warranty claim opened from the warranty register. */
+  initial?: Partial<DefectInput>;
   onSave: (
     input: DefectInput,
     meta: { aiSuggestionId: string | null; another: boolean },
@@ -76,13 +82,13 @@ export interface DefectFormProps {
  * data uses the location tree. Nova suggests title, trade and priority (from the photo on live data) and checks for
  * duplicates beside the same spot; nothing applies until accepted, and the person picks the company.
  */
-export function DefectForm({ busy, error, onSave }: DefectFormProps) {
+export function DefectForm({ busy, error, initial, onSave }: DefectFormProps) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const nova = useDefectNova();
   const { live } = useDefectsSource();
   const dir = useProjectDirectory();
-  const [v, setV] = useState<DefectInput>(emptyDefectInput);
+  const [v, setV] = useState<DefectInput>(() => ({ ...emptyDefectInput(), ...initial }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [aiFields, setAiFields] = useState<Set<keyof DefectInput>>(new Set());
   const [fileKey, setFileKey] = useState(0);
@@ -132,6 +138,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         trade: prev.trade,
         assigneeCompanyId: prev.assigneeCompanyId,
         stage: prev.stage,
+        warrantyItemId: prev.warrantyItemId ?? null,
         dueDate: prev.dueDate,
       }));
       setAiFields(new Set());
@@ -314,6 +321,32 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           options={dir.people.map((p) => ({ value: p.id, label: p.name }))}
           onChange={(e) => set('finalApproverUserId', e.target.value || null)}
         />
+        <Select
+          label="Stand-in while away (optional)"
+          value={v.approverDelegateUserId ?? ''}
+          placeholder="No stand-in"
+          disabled={!v.finalApproverUserId}
+          options={dir.people
+            .filter((p) => p.id !== v.finalApproverUserId)
+            .map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(e) => set('approverDelegateUserId', e.target.value || null)}
+        />
+        {v.approverDelegateUserId ? (
+          <>
+            <TextField
+              label="Stand-in from"
+              type="date"
+              value={v.approverDelegateFrom ?? ''}
+              onChange={(e) => set('approverDelegateFrom', e.target.value || null)}
+            />
+            <TextField
+              label="Stand-in until"
+              type="date"
+              value={v.approverDelegateUntil ?? ''}
+              onChange={(e) => set('approverDelegateUntil', e.target.value || null)}
+            />
+          </>
+        ) : null}
         <TextField
           label="Due date"
           type="date"
@@ -340,6 +373,11 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           onChange={(e) => set('priority', e.target.value as DefectPriority)}
         />
       </div>
+      <Checkbox
+        label="Require a note or photo to close"
+        checked={v.requireCloseEvidence}
+        onChange={(e) => set('requireCloseEvidence', e.target.checked)}
+      />
       <fieldset className="fieldset">
         <legend>Assignees</legend>
         {people.length ? (

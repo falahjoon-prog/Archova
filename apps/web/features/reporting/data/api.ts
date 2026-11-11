@@ -8,6 +8,7 @@ import type {
   DashboardSnapshot,
   DashboardSnapshotDetail,
   DashboardSnapshotInput,
+  DbpInsights,
   Portfolio,
   ReadinessPack,
   Report,
@@ -25,6 +26,13 @@ export function createReportingApi(orgId: string) {
     async portfolio(includeClosed: boolean): Promise<Portfolio> {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/portfolio', {
+          params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
+        }),
+      );
+    },
+    async dbpInsights(includeClosed: boolean): Promise<DbpInsights> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/dbp-insights', {
           params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
         }),
       );

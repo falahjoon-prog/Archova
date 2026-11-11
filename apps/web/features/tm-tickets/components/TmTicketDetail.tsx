@@ -23,6 +23,15 @@ import { aud, currentFix, GEO_LABEL, KIND_LABEL } from '../lib/tm';
 
 type Line = TmTicketDetail['lines'][number];
 
+export const STAGE: Record<
+  TmTicketDetail['reviewStage'],
+  { label: string; tone: 'neutral' | 'warning' | 'success' | 'info' }
+> = {
+  in_progress: { label: 'In progress', tone: 'neutral' },
+  ready_for_review: { label: 'Ready for review', tone: 'warning' },
+  field_verified: { label: 'Field verified', tone: 'success' },
+};
+
 export const STATUS: Record<
   string,
   { label: string; tone: 'neutral' | 'warning' | 'success' | 'info' }
@@ -81,7 +90,7 @@ export function TmTicketDetailCard({
 }) {
   const project = useCurrentProject();
   const q = useTmTicket(project.projectId, id);
-  const { sign, convert, voidTicket } = useTmMutations(project.projectId);
+  const { sign, convert, voidTicket, review } = useTmMutations(project.projectId);
   const checks = useTmChecks(
     project.projectId,
     id,
@@ -92,6 +101,7 @@ export function TmTicketDetailCard({
   const [signerName, setSignerName] = useState('');
   const [position, setPosition] = useState('');
   const [evidence, setEvidence] = useState<File | null>(null);
+  const [verifyNote, setVerifyNote] = useState('');
   const [role, setRole] = useState<'contractor' | 'principal_rep'>('contractor');
   const [target, setTarget] = useState<'direct_cost' | 'variation'>('direct_cost');
   const [budgetLineId, setBudgetLineId] = useState('');
@@ -171,6 +181,13 @@ export function TmTicketDetailCard({
       <div className="stack-lg">
         <p className="u-m-0">
           <StatusPill tone={st.tone}>{st.label}</StatusPill>{' '}
+          {t.status === 'draft' ? (
+            <>
+              <StatusPill tone={STAGE[t.reviewStage].tone}>
+                {STAGE[t.reviewStage].label}
+              </StatusPill>{' '}
+            </>
+          ) : null}
           {t.origin === 'nova' ? <StatusPill tone="ai">Drafted by Nova</StatusPill> : null}
         </p>
         <p className="u-m-0 u-caption">
@@ -178,12 +195,14 @@ export function TmTicketDetailCard({
             formatLocalDate(t.workDate),
             t.location,
             t.contractor,
-            t.instructedBy && `Instructed by ${t.instructedBy}`,
+            t.instructedBy && `Ordered by ${t.instructedBy}`,
+            t.reference && `Ref ${t.reference}`,
           ]
             .filter(Boolean)
             .join(' · ')}
         </p>
         {t.description ? <p className="u-m-0">{t.description}</p> : null}
+        {t.notes ? <p className="u-m-0 u-caption">Notes: {t.notes}</p> : null}
         <DataTable
           caption="Ticket lines"
           columns={columns}
@@ -212,6 +231,64 @@ export function TmTicketDetailCard({
           </section>
         ) : null}
 
+        {t.status === 'draft' && canManage ? (
+          <section aria-label="Review" className="stack-md">
+            <h3 className="u-m-0">Review</h3>
+            {t.reviewStage === 'ready_for_review' ? (
+              <>
+                <p className="u-caption u-m-0">
+                  A different person from whoever marked it ready must field verify it. If Nova
+                  flags hours that differ from the timesheet or equipment log, say why they are
+                  right.
+                </p>
+                <Textarea
+                  label="Verification note"
+                  value={verifyNote}
+                  onChange={(e) => setVerifyNote(e.target.value)}
+                />
+              </>
+            ) : null}
+            {t.verifyNote && t.reviewStage === 'field_verified' ? (
+              <p className="u-caption u-m-0">Verification note: {t.verifyNote}</p>
+            ) : null}
+            <div className="row-actions">
+              {t.reviewStage === 'in_progress' ? (
+                <Button
+                  disabled={review.isPending}
+                  onClick={() => review.mutate({ id, body: { stage: 'ready_for_review' } })}
+                >
+                  Mark ready for review
+                </Button>
+              ) : null}
+              {t.reviewStage === 'ready_for_review' ? (
+                <Button
+                  disabled={review.isPending}
+                  onClick={() =>
+                    review.mutate({
+                      id,
+                      body: {
+                        stage: 'field_verified',
+                        ...(verifyNote.trim() ? { note: verifyNote.trim() } : {}),
+                      },
+                    })
+                  }
+                >
+                  Field verify
+                </Button>
+              ) : null}
+              {t.reviewStage !== 'in_progress' ? (
+                <Button
+                  variant="secondary"
+                  disabled={review.isPending}
+                  onClick={() => review.mutate({ id, body: { stage: 'in_progress' } })}
+                >
+                  Back to in progress
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         <section aria-label="Signatures" className="stack-md">
           <h3 className="u-m-0">Signatures</h3>
           {t.signoffs.length === 0 ? <p className="u-m-0">Not signed yet.</p> : null}
@@ -227,7 +304,13 @@ export function TmTicketDetailCard({
               </span>
             </p>
           ))}
-          {open && canSign ? (
+          {open && canSign && t.status === 'draft' && t.reviewStage !== 'field_verified' ? (
+            <p className="u-caption u-m-0">
+              Mark the ticket ready for review and have a second person field verify it before it is
+              signed.
+            </p>
+          ) : null}
+          {open && canSign && (t.status !== 'draft' || t.reviewStage === 'field_verified') ? (
             <form className="stack-md" onSubmit={doSign} noValidate>
               <p className="u-caption u-m-0">
                 Record a signature given on site. Once recorded the lines are locked, and it is
@@ -334,6 +417,7 @@ export function TmTicketDetailCard({
         ) : null}
 
         {error ? <Alert tone="danger">{error}</Alert> : null}
+        <ErrorAlert error={review.error} title="We couldn't update the review" />
         <ErrorAlert error={sign.error} title="We couldn't sign this ticket" />
         <ErrorAlert error={convert.error} title="We couldn't convert this ticket" />
         <ErrorAlert error={voidTicket.error} title="We couldn't void this ticket" />

@@ -27,6 +27,8 @@ export interface DefectEvent {
   note: string | null;
   photoIds: string[];
   by: string;
+  /** Set when a stand-in acted for the final approver. */
+  onBehalfOf: string | null;
   at: string;
 }
 
@@ -55,6 +57,12 @@ export interface Defect {
   finalApproverUserId: string | null;
   /** Told about changes but not assigned. */
   distributionUserIds: string[];
+  /** Stand-in who may close, reject and reopen in the approver's place between these dates. */
+  approverDelegateUserId: string | null;
+  approverDelegateFrom: string | null;
+  approverDelegateUntil: string | null;
+  /** Closing needs a note or a photo. */
+  requireCloseEvidence: boolean;
   dueDate: string | null;
   raisedBy: string;
   raisedByCompanyId: string | null;
@@ -89,8 +97,14 @@ export interface DefectInput {
   managerUserId: string | null;
   finalApproverUserId: string | null;
   distributionUserIds: string[];
+  approverDelegateUserId: string | null;
+  approverDelegateFrom: string | null;
+  approverDelegateUntil: string | null;
+  requireCloseEvidence: boolean;
   dueDate: string | null;
   category: string | null;
+  /** The warranty item a liability-period claim is against (live data only). */
+  warrantyItemId?: string | null;
   /** Photos picked on the form; uploaded when the defect is saved. */
   photos: File[];
 }
