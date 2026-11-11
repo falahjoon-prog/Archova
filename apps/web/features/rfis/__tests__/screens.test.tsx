@@ -35,6 +35,27 @@ describe('RfiListScreen', () => {
     expect(within(rfi4).getByText('(5 business days)')).toBeTruthy();
   });
 
+  it('shows the register columns and lets Nova flag a ball held too long', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiListScreen />);
+    await screen.findByRole('link', { name: 'RFI-003' });
+    for (const name of [
+      'Responsible contractor',
+      'Received from',
+      'Date initiated',
+      'RFI manager',
+      'Assignee',
+      'Ball in court',
+    ])
+      expect(screen.getByRole('columnheader', { name: new RegExp(name) })).toBeTruthy();
+    const row3 = screen.getByRole('link', { name: 'RFI-003' }).closest('tr')!;
+    expect(within(row3).getByText(/Waiting \d+ business days/)).toBeTruthy();
+    const row4 = screen.getByRole('link', { name: 'RFI-004' }).closest('tr')!;
+    expect(within(row4).queryByText(/Waiting \d+ business days/)).toBeNull();
+    await user.click(screen.getByLabelText('Ball held 5+ days'));
+    expect(nav.search).toBe('stale=1');
+  });
+
   it('keeps filters in the URL', async () => {
     const user = userEvent.setup();
     renderInProject(<RfiListScreen />);

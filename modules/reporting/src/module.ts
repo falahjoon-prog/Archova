@@ -1,7 +1,9 @@
 import { defineModule, type Database } from '@archova/kernel';
 import { reportingRoutes } from './api/routes';
+import { createAuditService, type AuditDeps } from './application/audit';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
+import { createSustainabilityService } from './application/sustainability';
 import { createReadinessService } from './application/readiness';
 import { createTimeService } from './application/time';
 import { createReportsService } from './application/reports';
@@ -14,15 +16,28 @@ import { REPORTING_PERMISSIONS } from './permissions';
  * retention-trust standing in one page or PDF). Both read the tool modules through their public interfaces, so every number
  * and row is limited to what the person asking may open on that project.
  */
-export function createReportingModule(deps: ReportingDeps & RiskDeps & { database: Database }) {
+export function createReportingModule(
+  deps: ReportingDeps & RiskDeps & AuditDeps & { database: Database },
+) {
   const portfolio = createPortfolioService(deps);
   const reports = createReportsService(deps);
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
+  const audit = createAuditService(deps);
+  const sustainability = createSustainabilityService(deps);
   const time = createTimeService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
-    routes: reportingRoutes(deps.database, portfolio, reports, risk, readiness, time),
+    routes: reportingRoutes(
+      deps.database,
+      portfolio,
+      reports,
+      risk,
+      readiness,
+      time,
+      audit,
+      sustainability,
+    ),
     api: {},
   };
 }
