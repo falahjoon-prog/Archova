@@ -6,6 +6,7 @@ import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/p
 import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
+  DeliveriesIcon,
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
@@ -18,6 +19,7 @@ import {
   FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
+  WarrantyIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
@@ -175,6 +177,11 @@ export function projectToolGroups(
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('defects') && {
+      href: webRoutes.warranty(orgSlug, projectId),
+      label: 'Warranty',
+      icon: WarrantyIcon,
+    },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
       label: 'Meetings',
@@ -219,6 +226,11 @@ export function projectToolGroups(
       href: webRoutes.photos(orgSlug, projectId),
       label: 'Photos',
       icon: PhotosIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.deliveries(orgSlug, projectId),
+      label: 'Deliveries',
+      icon: DeliveriesIcon,
     },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
@@ -359,7 +371,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
   },
   {
     id: 'quality-safety',
@@ -367,6 +379,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     icon: InductionsIcon,
     tools: [
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
       'SWMS',

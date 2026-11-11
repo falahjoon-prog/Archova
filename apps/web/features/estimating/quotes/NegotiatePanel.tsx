@@ -18,7 +18,7 @@ import {
   speechSupported,
   startRecording,
   stopSpeaking,
-} from '../lib/speech';
+} from '@/shared/lib/speech';
 import { money, parseDollars } from './money';
 
 const TOPICS: ReadonlyArray<{ id: NegotiateTopic; label: string }> = [
