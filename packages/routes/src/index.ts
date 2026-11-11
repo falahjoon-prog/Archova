@@ -21,6 +21,7 @@ export const webRoutes = {
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
+  dbpInsights: (orgSlug: string) => `/${enc(orgSlug)}/dbp-insights`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
@@ -106,6 +107,9 @@ export const webRoutes = {
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
+  warranty: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/warranty`,
+  warrantyItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/warranty/${enc(itemId)}`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
   inductions: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/inductions`,
@@ -142,6 +146,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
   attendanceRoster: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/roster`,
+  deliveries: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/deliveries`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>

@@ -1,5 +1,14 @@
 'use client';
 
+import {
+  CLASSIFICATION_LABELS,
+  CONDITION_LABELS,
+  TRADE_CATEGORY_LABELS,
+  optionsOf,
+  type ClassificationKey,
+  type ConditionKey,
+  type TradeCategoryKey,
+} from '@/shared/lib/dbp';
 import { useState } from 'react';
 import {
   Button,
@@ -296,6 +305,9 @@ function NewDialog({
     hazard?: string;
     location?: string;
     priority: ObservationPriority;
+    tradeCategory?: TradeCategoryKey;
+    classification?: ClassificationKey;
+    contributingCondition?: ConditionKey;
     assigneeCompanyId?: string;
     dueDate?: string;
   }) => void;
@@ -305,6 +317,9 @@ function NewDialog({
   const [hazard, setHazard] = useState('');
   const [location, setLocation] = useState('');
   const [priority, setPriority] = useState<ObservationPriority>('medium');
+  const [tradeCategory, setTradeCategory] = useState('');
+  const [classification, setClassification] = useState('');
+  const [condition, setCondition] = useState('');
   const [company, setCompany] = useState('');
   const [dueDate, setDueDate] = useState('');
   return (
@@ -326,6 +341,9 @@ function NewDialog({
                 hazard: hazard.trim() || undefined,
                 location: location.trim() || undefined,
                 priority,
+                tradeCategory: (tradeCategory || undefined) as TradeCategoryKey | undefined,
+                classification: (classification || undefined) as ClassificationKey | undefined,
+                contributingCondition: (condition || undefined) as ConditionKey | undefined,
                 assigneeCompanyId: company || undefined,
                 dueDate: dueDate || undefined,
               })
@@ -362,8 +380,36 @@ function NewDialog({
           options={PRIORITIES.map((v) => ({ value: v, label: PRIORITY_LABELS[v] }))}
           onChange={(e) => setPriority(e.target.value as ObservationPriority)}
         />
+        {type === 'quality' ? (
+          <>
+            <Select
+              label="Building element"
+              value={tradeCategory}
+              placeholder="Not set"
+              hint="For DBP Act reporting."
+              options={optionsOf(TRADE_CATEGORY_LABELS)}
+              onChange={(e) => setTradeCategory(e.target.value)}
+            />
+            <Select
+              label="Risk classification"
+              value={classification}
+              placeholder="Not yet classified"
+              hint="Your call as the responsible person; Archova does not classify for you."
+              options={optionsOf(CLASSIFICATION_LABELS)}
+              onChange={(e) => setClassification(e.target.value)}
+            />
+            <Select
+              label="Contributing condition"
+              value={condition}
+              placeholder="Not recorded"
+              options={optionsOf(CONDITION_LABELS)}
+              onChange={(e) => setCondition(e.target.value)}
+            />
+          </>
+        ) : null}
         <Select
           label="Assign to"
+
           value={company}
           placeholder="Not assigned"
           options={dir.companies
