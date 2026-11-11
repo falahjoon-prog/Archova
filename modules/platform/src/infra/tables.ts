@@ -81,6 +81,20 @@ export const companies = platform.table('companies', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
+/** People at a company who have no login (a supplier's office line, an accounts contact). */
+export const companyContacts = platform.table('company_contacts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  companyId: uuid('company_id').notNull(),
+  name: text('name').notNull(),
+  email: citext('email'),
+  phone: text('phone'),
+  jobTitle: text('job_title'),
+  notes: text('notes'),
+  ...audit,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
 export const projects = platform.table('projects', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -120,6 +134,10 @@ export const projectMembers = platform.table('project_members', {
   /** How access ended (X38): only an ordinary removal lets the person's phone send its queued work. */
   removalKind: text('removal_kind').$type<'ordinary' | 'for_cause' | 'wipe_now'>(),
   removalReason: text('removal_reason'),
+  /** Directory details a project admin keeps for the person (not their sign-in profile). */
+  phone: text('phone'),
+  jobTitle: text('job_title'),
+  trade: text('trade'),
   /** Counts how many times this person has been given access to the project; a re-add starts a new one. */
   accessEpisode: integer('access_episode').notNull().default(1),
   ...audit,

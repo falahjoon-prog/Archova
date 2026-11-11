@@ -1159,6 +1159,26 @@ export const CompanySchema = z.object({
 });
 export type Company = z.infer<typeof CompanySchema>;
 
+export const CompanyContactSchema = z.object({
+  "id": z.string(),
+  "companyId": z.string(),
+  "name": z.string(),
+  "email": z.string().nullable(),
+  "phone": z.string().nullable(),
+  "jobTitle": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type CompanyContact = z.infer<typeof CompanyContactSchema>;
+
+export const CompanyContactPageSchema = z.object({
+  "data": z.array(CompanyContactSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type CompanyContactPage = z.infer<typeof CompanyContactPageSchema>;
+
 export const CoverIssueKindSchema = z.enum(["expired", "expired_while_renewing", "expiring", "missing", "below_minimum"]);
 export type CoverIssueKind = z.infer<typeof CoverIssueKindSchema>;
 
@@ -2076,6 +2096,16 @@ export const CreateCommitmentRequestSchema = z.object({
 }).strict()).min(1).max(200),
 }).strict();
 export type CreateCommitmentRequest = z.infer<typeof CreateCommitmentRequestSchema>;
+
+export const CreateCompanyContactRequestSchema = z.object({
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")),
+  "name": z.string().min(1).max(200),
+  "email": EmailSchema.optional(),
+  "phone": z.string().max(50).optional(),
+  "jobTitle": z.string().max(100).optional(),
+  "notes": z.string().max(1000).optional(),
+}).strict();
+export type CreateCompanyContactRequest = z.infer<typeof CreateCompanyContactRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -7636,6 +7666,9 @@ export const ProjectLocationListSchema = z.object({
 export type ProjectLocationList = z.infer<typeof ProjectLocationListSchema>;
 
 export const ProjectMemberSchema = z.object({
+  "phone": z.string().nullable(),
+  "jobTitle": z.string().nullable(),
+  "trade": z.string().nullable(),
   "id": z.string(),
   "projectId": z.string(),
   "userId": z.string(),
@@ -9642,6 +9675,15 @@ export const UpdateBudgetLineRequestSchema = z.object({
 }).strict();
 export type UpdateBudgetLineRequest = z.infer<typeof UpdateBudgetLineRequestSchema>;
 
+export const UpdateCompanyContactRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "email": z.string().email().max(320).nullable().optional(),
+  "phone": z.string().max(50).nullable().optional(),
+  "jobTitle": z.string().max(100).nullable().optional(),
+  "notes": z.string().max(1000).nullable().optional(),
+}).strict();
+export type UpdateCompanyContactRequest = z.infer<typeof UpdateCompanyContactRequestSchema>;
+
 export const UpdateComplianceDocumentRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),
   "number": z.string().min(1).max(50).nullable().optional(),
@@ -10183,6 +10225,13 @@ export const UpdateProjectLocationRequestSchema = z.object({
   "isDefault": z.boolean().optional(),
 }).strict();
 export type UpdateProjectLocationRequest = z.infer<typeof UpdateProjectLocationRequestSchema>;
+
+export const UpdateProjectMemberRequestSchema = z.object({
+  "phone": z.string().max(50).nullable().optional(),
+  "jobTitle": z.string().max(100).nullable().optional(),
+  "trade": z.string().max(100).nullable().optional(),
+}).strict();
+export type UpdateProjectMemberRequest = z.infer<typeof UpdateProjectMemberRequestSchema>;
 
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

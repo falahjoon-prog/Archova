@@ -20,6 +20,7 @@ import { PhotosCard } from '../components/PhotosCard';
 import { ProjectHero } from '../components/ProjectHero';
 import { ProjectStatusCard } from '../components/ProjectStatusCard';
 import { useUpdateProject } from '../hooks/useProjectMutations';
+import { CompanyContactsCard } from '../components/CompanyContactsCard';
 import { MemberList } from '../components/MemberList';
 import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
 import { AddMemberForm } from '../forms/AddMemberForm';
@@ -178,9 +179,20 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
               members={members.data.data}
               companyNames={companyNames}
               templateNames={templateNames}
+              {...(canManageMembers ? { edit: { orgId: org.orgId, projectId } } : {})}
             />
           ) : null}
         </Card>
+
+        {companies.data ? (
+          <Card title="Company contacts">
+            <CompanyContactsCard
+              orgId={org.orgId}
+              companies={companyNames}
+              canManage={canManageMembers}
+            />
+          </Card>
+        ) : null}
 
         <ErrorAlert
           error={permissions.error}
