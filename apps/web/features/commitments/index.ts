@@ -2,3 +2,4 @@
 export { CommitmentsScreen } from './screens/CommitmentsScreen';
 export { CommitmentDetailScreen } from './screens/CommitmentDetailScreen';
 export { InvoiceDetailScreen } from './screens/InvoiceDetailScreen';
+export { useCommitments } from './hooks/useCommitments';

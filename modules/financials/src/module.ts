@@ -104,6 +104,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
+      /** Material delivery scheduling (`logistics`): look up a purchase order to link a delivery to. */
+      purchaseOrderRef: commitments.purchaseOrderRef,
       /** For `ai` (Nova on labor productivity): a cost code's figures and recent quantity entries. */
       laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
