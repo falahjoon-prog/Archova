@@ -82,7 +82,8 @@ export function createWarrantyService(deps: WarrantyDeps) {
    * claims assigned to them. Builder staff, owners and clients see the whole project. Returns the company to scope to.
    */
   async function audience(scope: TenantScope, projectId: string) {
-    const perms = await deps.access.effectivePermissions(scope, projectId);
+    // The API gate (x-permission) is the first check; this keeps the rule inside the service for any other caller.
+    const perms = await deps.access.assert(scope, 'defects.warranty.read', { projectId });
     const scoped = perms.companyScopedTools.includes('defects');
     return {
       scoped,
@@ -97,6 +98,9 @@ export function createWarrantyService(deps: WarrantyDeps) {
     column: SQL | AnyColumn,
   ): SQL | undefined =>
     !aud.scoped ? undefined : aud.companyId ? eq(column as AnyColumn, aud.companyId) : sql`false`;
+
+  const assertManage = (scope: TenantScope, projectId: string) =>
+    deps.access.assert(scope, 'defects.warranty.manage', { projectId });
 
   /** The project's calendar: its time zone and today's date there (X34). */
   async function calendar(scope: TenantScope, projectId: string) {
@@ -248,6 +252,7 @@ export function createWarrantyService(deps: WarrantyDeps) {
         Pick<WarrantyFields, 'name' | 'system' | 'responsibleType' | 'startDate' | 'durationMonths'>
       >,
   ) {
+    await assertManage(scope, projectId);
     await deps.platform.getProject(scope, projectId);
     const companyId = input.responsibleCompanyId ?? null;
     const name = input.responsibleName?.trim() || null;
@@ -291,6 +296,7 @@ export function createWarrantyService(deps: WarrantyDeps) {
     expectedVersion: number,
     patch: WarrantyFields,
   ) {
+    await assertManage(scope, projectId);
     const row = await getRow(scope, projectId, itemId);
     if (row.version !== expectedVersion) throw versionConflict();
     const type = patch.responsibleType ?? row.responsibleType;
@@ -346,6 +352,7 @@ export function createWarrantyService(deps: WarrantyDeps) {
     itemId: string,
     expectedVersion: number,
   ) {
+    await assertManage(scope, projectId);
     const row = await getRow(scope, projectId, itemId);
     if (row.version !== expectedVersion) throw versionConflict();
     const linked = await scope.tx
