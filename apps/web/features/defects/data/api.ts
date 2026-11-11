@@ -65,6 +65,7 @@ export function toDefect(
       note: e.note,
       photoIds: e.fileIds,
       by: personName(members, e.actorId),
+      onBehalfOf: e.onBehalfOf ? personName(members, e.onBehalfOf) : null,
       at: e.at,
     };
   });
@@ -96,6 +97,10 @@ export function toDefect(
     managerUserId: d.managerUserId,
     finalApproverUserId: d.finalApproverUserId,
     distributionUserIds: d.distributionUserIds,
+    approverDelegateUserId: d.approverDelegateUserId,
+    approverDelegateFrom: d.approverDelegateFrom,
+    approverDelegateUntil: d.approverDelegateUntil,
+    requireCloseEvidence: d.requireCloseEvidence,
     dueDate: d.dueDate,
     raisedBy: personName(members, d.createdBy),
     raisedByCompanyId: d.raisedByCompanyId,
@@ -270,6 +275,18 @@ export function createDefectsApi(orgId: string): DefectsSource {
             ...(input.distributionUserIds.length
               ? { distributionUserIds: input.distributionUserIds }
               : {}),
+            ...(input.approverDelegateUserId
+              ? {
+                  approverDelegateUserId: input.approverDelegateUserId,
+                  ...(input.approverDelegateFrom
+                    ? { approverDelegateFrom: input.approverDelegateFrom }
+                    : {}),
+                  ...(input.approverDelegateUntil
+                    ? { approverDelegateUntil: input.approverDelegateUntil }
+                    : {}),
+                }
+              : {}),
+            ...(input.requireCloseEvidence ? { requireCloseEvidence: true } : {}),
             ...(input.dueDate ? { dueDate: input.dueDate } : {}),
             ...(aiSuggestionId ? { aiSuggestionId } : {}),
           },

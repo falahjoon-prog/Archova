@@ -3,8 +3,10 @@ import { AppError, defineModule, type Entitlements, type KernelServices } from '
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { createAccountDeletionService } from './application/account-deletion';
+import { createBrandingService, type BrandingFilesPort } from './application/branding';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
+import { createLocationService } from './application/locations';
 import { createLocationTreeService } from './application/location-tree';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
@@ -23,6 +25,8 @@ export function createPlatformModule(
     access: () => AccessService;
     defaultEntitlements: Entitlements;
     onOrgCreated?: OrgDeps['onOrgCreated'];
+    /** Resolved lazily: files is built after platform. Used to check an org logo. */
+    files?: () => BrandingFilesPort;
     supportAccess?: SupportAccessPort;
     /** True when this staff member holds an open support session inside an unrevoked grant for the org. */
     hasOpenSupportSession?: (orgId: string, staffId: string) => Promise<boolean>;
@@ -37,9 +41,11 @@ export function createPlatformModule(
     defaultEntitlements: deps.defaultEntitlements,
     ...(deps.onOrgCreated ? { onOrgCreated: deps.onOrgCreated } : {}),
   });
+  const branding = createBrandingService(() => deps.files?.());
   const projects = createProjectService(access);
   const keyDates = createKeyDateService({ projects });
-  const locations = createLocationTreeService({ projects });
+  const locations = createLocationService({ projects });
+  const locationTree = createLocationTreeService({ projects });
   const companies = createCompanyService();
   const accountDeletion = createAccountDeletionService({
     database: services.database,
@@ -54,9 +60,11 @@ export function createPlatformModule(
       database: services.database,
       identity: deps.identity,
       orgs,
+      branding,
       projects,
       keyDates,
       locations,
+      locationTree,
       companies,
       members,
       accountDeletion,
@@ -68,11 +76,13 @@ export function createPlatformModule(
       getProjectMembership: members.getProjectMembership,
       getProjectAccessState: members.getProjectAccessState,
       contactsOfCompany: members.contactsOfCompany,
+      /** Active members of a project with company and external flag; used to resolve broadcast audiences. */
+      listActiveMembers: members.listActiveMembers,
       getProject: projects.get,
       /** Checks that location ids are on the project (and live) and returns their full paths; throws 422 otherwise. */
-      resolveLocations: locations.resolve,
+      resolveLocations: locationTree.resolve,
       /** Display paths for location ids; unknown ids are skipped. */
-      locationPaths: locations.paths,
+      locationPaths: locationTree.paths,
       /** A page of the projects the caller can see (org admins: all). Used by `reporting` for the portfolio. */
       listProjects: projects.list,
       getOrg: orgs.getOrg,

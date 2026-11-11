@@ -10,8 +10,14 @@ import {
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-identity';
 import type { AccountDeletionService } from '../application/account-deletion';
+import {
+  DASHBOARD_WIDGETS,
+  type BrandingService,
+  type BrandingView,
+} from '../application/branding';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
+import type { LocationService } from '../application/locations';
 import type { LocationTreeService } from '../application/location-tree';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
@@ -20,7 +26,8 @@ import {
   toCompanyDto,
   toKeyDateChangeDto,
   toKeyDatesDto,
-  toLocationDto,
+  toProjectLocationDto,
+  toLocationTreeNodeDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
@@ -48,9 +55,11 @@ export interface PlatformRouteDeps {
   database: Database;
   identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
+  branding: BrandingService;
   projects: ProjectService;
   keyDates: KeyDateService;
-  locations: LocationTreeService;
+  locations: LocationService;
+  locationTree: LocationTreeService;
   companies: CompanyService;
   members: MemberService;
   accountDeletion: AccountDeletionService;
@@ -71,7 +80,13 @@ const projectUuid = (id: string) => {
   return uuid;
 };
 
-const locationUuid = (id: string | null | undefined) => {
+const locationUuid = (id: string) => {
+  const uuid = decodeId('projectLocation', id);
+  if (!uuid) throw new AppError('project_location.not_found');
+  return uuid;
+};
+
+const locationTreeUuid = (id: string | null | undefined) => {
   if (id === null || id === undefined) return null;
   const uuid = decodeId('location', id);
   if (!uuid) throw new AppError('location.not_found');
@@ -84,6 +99,15 @@ const decodeRef = (kind: 'company' | 'permissionTemplate', id: string) => {
     throw new AppError(kind === 'company' ? 'company.not_found' : 'permission_template.not_found');
   return uuid;
 };
+
+const toBrandingDto = (b: BrandingView) => ({
+  logoFileId: b.logoFileId ? encodeId('file', b.logoFileId) : null,
+  accentColor: b.accentColor,
+  dashboardWidgets: b.dashboardWidgets,
+  dashboardLayout: b.dashboardLayout,
+  availableWidgets: DASHBOARD_WIDGETS.map((w) => ({ ...w })),
+  version: b.version,
+});
 
 export function platformRoutes(d: PlatformRouteDeps) {
   const ro = { readOnly: true } as const;
@@ -136,6 +160,33 @@ export function platformRoutes(d: PlatformRouteDeps) {
     getOrg: async (input) => {
       const org = await d.database.withTenantTx(requireTenant(input), (s) => d.orgs.getOrg(s), ro);
       return { status: 200, body: toOrgDto(org), headers: { etag: etag(org.version) } };
+    },
+    getOrgBranding: async (input) => {
+      const t = requireTenant(input);
+      if (t.principalType !== 'member') throw new AppError('access.denied');
+      const b = await d.database.withTenantTx(t, (s) => d.branding.get(s), ro);
+      return { status: 200, body: toBrandingDto(b) };
+    },
+    updateOrgBranding: async (input) => {
+      const t = requireOrgAdmin(input);
+      const body = input.body;
+      const logo = body.logoFileId === undefined ? undefined : body.logoFileId;
+      const logoUuid = logo ? decodeId('file', logo) : logo;
+      if (logo && !logoUuid)
+        throw new AppError('validation_failed', 'Upload a logo first.', [
+          { path: 'logoFileId', message: 'Not a file' },
+        ]);
+      const b = await d.database.withTenantTx(t, (s) =>
+        d.branding.update(s, {
+          ...(logoUuid !== undefined ? { logoFileId: logoUuid } : {}),
+          ...(body.accentColor !== undefined ? { accentColor: body.accentColor } : {}),
+          ...(body.dashboardWidgets !== undefined
+            ? { dashboardWidgets: body.dashboardWidgets }
+            : {}),
+          ...(body.dashboardLayout !== undefined ? { dashboardLayout: body.dashboardLayout } : {}),
+        }),
+      );
+      return { status: 200, body: toBrandingDto(b) };
     },
     getSupportAccess: async (input) => {
       const t = requireOrgAdmin(input);
@@ -241,24 +292,28 @@ export function platformRoutes(d: PlatformRouteDeps) {
       const rows = await d.database.withTenantTx(
         requireTenant(input),
         (s) =>
-          d.locations.list(s, id, { includeArchived: input.query?.includeArchived === 'true' }),
+          d.locationTree.list(s, id, { includeArchived: input.query?.includeArchived === 'true' }),
         ro,
       );
-      return { status: 200, body: { data: rows.map(toLocationDto) } };
+      return { status: 200, body: { data: rows.map(toLocationTreeNodeDto) } };
     },
     createLocationTreeNode: async (input) => {
       const id = projectUuid(input.params.projectId);
       const { parentId, ...rest } = input.body;
       const row = await d.database.withTenantTx(requireTenant(input), (s) =>
-        d.locations.create(s, id, { ...rest, parentId: locationUuid(parentId) }),
+        d.locationTree.create(s, id, { ...rest, parentId: locationTreeUuid(parentId) }),
       );
-      return { status: 201, body: toLocationDto(row), headers: { etag: etag(row.version) } };
+      return {
+        status: 201,
+        body: toLocationTreeNodeDto(row),
+        headers: { etag: etag(row.version) },
+      };
     },
     suggestLocationTreeNodes: async (input) => {
       const id = projectUuid(input.params.projectId);
       const rows = await d.database.withTenantTx(
         requireTenant(input),
-        (s) => d.locations.suggest(s, id, input.query.text),
+        (s) => d.locationTree.suggest(s, id, input.query.text),
         ro,
       );
       return {
@@ -274,17 +329,21 @@ export function platformRoutes(d: PlatformRouteDeps) {
     },
     updateLocationTreeNode: async (input) => {
       const id = projectUuid(input.params.projectId);
-      const locId = locationUuid(input.params.locationId)!;
+      const locId = locationTreeUuid(input.params.locationId)!;
       const expected = parseIfMatch(input.headers['if-match']);
       const { parentId, archived, ...rest } = input.body;
       const row = await d.database.withTenantTx(requireTenant(input), (s) =>
-        d.locations.update(s, id, locId, expected, {
+        d.locationTree.update(s, id, locId, expected, {
           ...rest,
-          ...(parentId !== undefined ? { parentId: locationUuid(parentId) } : {}),
+          ...(parentId !== undefined ? { parentId: locationTreeUuid(parentId) } : {}),
           ...(archived !== undefined ? { archived } : {}),
         }),
       );
-      return { status: 200, body: toLocationDto(row), headers: { etag: etag(row.version) } };
+      return {
+        status: 200,
+        body: toLocationTreeNodeDto(row),
+        headers: { etag: etag(row.version) },
+      };
     },
     listKeyDateChanges: async (input) => {
       const id = projectUuid(input.params.projectId);
@@ -298,6 +357,47 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       const names = new Map([...users].map(([uid, u]) => [uid, u.name]));
       return { status: 200, body: { data: rows.map((r) => toKeyDateChangeDto(r, names)) } };
+    },
+    listProjectLocations: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.locations.list(s, id),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toProjectLocationDto) } };
+    },
+    createProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.create(s, id, input.body),
+      );
+      return {
+        status: 201,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    updateProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.update(s, id, locationId, expected, input.body),
+      );
+      return {
+        status: 200,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    deleteProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.remove(s, id, locationId),
+      );
+      return { status: 204 };
     },
     listProjectMembers: async (input) => {
       const id = projectUuid(input.params.projectId);

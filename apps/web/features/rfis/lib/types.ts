@@ -45,6 +45,10 @@ export interface Rfi {
   /** Who holds the ball now; moves on submit, answer and reopen (RFI-AC4). */
   ballInCourtId: string | null;
   ballInCourtCompanyId: string | null;
+  /** When the ball last changed hands; null when nobody holds it. */
+  ballInCourtSince: string | null;
+  /** Company the question came from (a subcontractor's RFI the builder passes on); null when the builder raised it. */
+  receivedFromCompanyId: string | null;
   distributionCompanyIds: string[];
   dueDate: string | null;
   costImpact: CostImpact | null;
@@ -71,6 +75,9 @@ export interface Rfi {
   /** Server version for If-Match; absent on preview records. */
   version?: number;
 }
+
+/** Nova flags an RFI whose ball has sat on the same side this many business days. */
+export const STALE_BALL_BUSINESS_DAYS = 5;
 
 export interface RfiInput {
   subject: string;

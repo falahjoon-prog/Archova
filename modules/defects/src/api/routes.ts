@@ -38,6 +38,7 @@ type FieldsBody = Omit<
   | 'managerUserId'
   | 'finalApproverUserId'
   | 'distributionUserIds'
+  | 'approverDelegateUserId'
   | 'pin'
   | 'locationId'
 > & {
@@ -48,6 +49,7 @@ type FieldsBody = Omit<
   managerUserId?: string | null;
   finalApproverUserId?: string | null;
   distributionUserIds?: string[];
+  approverDelegateUserId?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
 };
 
@@ -85,6 +87,14 @@ function fields(b: FieldsBody): DefectFields {
     out.distributionUserIds = b.distributionUserIds.map((u, i) =>
       ref('user', u, `distributionUserIds/${i}`),
     );
+  if (b.approverDelegateUserId !== undefined)
+    out.approverDelegateUserId =
+      b.approverDelegateUserId === null
+        ? null
+        : ref('user', b.approverDelegateUserId, 'approverDelegateUserId');
+  if (b.approverDelegateFrom !== undefined) out.approverDelegateFrom = b.approverDelegateFrom;
+  if (b.approverDelegateUntil !== undefined) out.approverDelegateUntil = b.approverDelegateUntil;
+  if (b.requireCloseEvidence !== undefined) out.requireCloseEvidence = b.requireCloseEvidence;
   if (b.pin)
     out.pin = {
       ...b.pin,

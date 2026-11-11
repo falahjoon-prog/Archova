@@ -4,6 +4,7 @@ import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { computeForecast, type HeadInput } from '../domain/forecast';
 import { toCents } from '../domain/money';
+import { monthlySpend as bucketMonths, type SpendSlice } from '../domain/monthly-spend';
 import {
   budgetLines,
   contracts,
@@ -210,6 +211,56 @@ export function createForecastService(deps: { access: AccessService }) {
     };
   }
 
+  /**
+   * Spend by calendar month for the portfolio cash-flow chart: subcontract claim lines by the month their claim period
+   * ends, plus recorded direct costs by the month they were incurred. The same sources and filters as the
+   * "spent so far" figure, and hidden (margin) cost codes are left out the same way.
+   */
+  async function monthlySpend(scope: TenantScope, projectId: string, hidden: ReadonlySet<string>) {
+    const claimMonth = sql<string>`to_char(${paymentClaims.periodEnd}, 'YYYY-MM')`;
+    const claimCode = sql<
+      string | null
+    >`coalesce(${sovItems.costCodeId}, ${variations.costCodeId})`;
+    const claims = await scope.tx
+      .select({
+        month: claimMonth,
+        costCodeId: claimCode,
+        total: sql<string>`coalesce(sum(${paymentClaimLines.thisClaim}), 0)`,
+      })
+      .from(paymentClaimLines)
+      .innerJoin(paymentClaims, eq(paymentClaims.id, paymentClaimLines.claimId))
+      .innerJoin(contracts, eq(contracts.id, paymentClaims.contractId))
+      .leftJoin(sovItems, eq(sovItems.id, paymentClaimLines.sovItemId))
+      .leftJoin(variations, eq(variations.id, paymentClaimLines.variationId))
+      .where(
+        and(
+          eq(paymentClaims.projectId, projectId),
+          eq(contracts.kind, 'subcontract'),
+          ne(contracts.status, 'terminated'),
+          eq(paymentClaims.isValid, true),
+          ne(paymentClaims.status, 'withdrawn'),
+        ),
+      )
+      .groupBy(claimMonth, claimCode);
+    const directMonth = sql<string>`to_char(${directCosts.incurredOn}, 'YYYY-MM')`;
+    const direct = await scope.tx
+      .select({
+        month: directMonth,
+        costCodeId: budgetLines.costCodeId,
+        total: sql<string>`coalesce(sum(${directCosts.amount}), 0)`,
+      })
+      .from(directCosts)
+      .innerJoin(budgetLines, eq(budgetLines.id, directCosts.budgetLineId))
+      .where(and(eq(directCosts.projectId, projectId), eq(directCosts.status, 'recorded')))
+      .groupBy(directMonth, budgetLines.costCodeId);
+    const slices: SpendSlice[] = [...claims, ...direct].map((r) => ({
+      month: r.month,
+      costCodeId: r.costCodeId,
+      cents: toCents(r.total),
+    }));
+    return bucketMonths(slices, hidden);
+  }
+
   async function createAdjustment(
     scope: TenantScope,
     projectId: string,
@@ -268,7 +319,7 @@ export function createForecastService(deps: { access: AccessService }) {
     if (gone.length === 0) throw new AppError('financials.forecast_adjustment.not_found');
   }
 
-  return { costForecast, inputsByCode, createAdjustment, deleteAdjustment };
+  return { costForecast, inputsByCode, monthlySpend, createAdjustment, deleteAdjustment };
 }
 
 export type ForecastService = ReturnType<typeof createForecastService>;
