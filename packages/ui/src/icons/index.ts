@@ -94,6 +94,7 @@ export {
   ShieldCheck as InductionsIcon,
   Scale as EstimatingIcon,
   Users as MeetingsIcon,
+  ListChecks as ProjectPlanIcon,
   Send as TransmittalsIcon,
   Settings as AdminIcon,
 } from 'lucide-react';

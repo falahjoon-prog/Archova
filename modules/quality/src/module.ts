@@ -252,6 +252,8 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
       dbp: createDbpSources(deps),
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
+      /** Inspections matching the words, for linking from a project action plan item (`projectplan`). */
+      inspectionHits: inspections.searchHits,
       /** Portfolio dashboard (`reporting`): open and overdue counts of observations and inspections per project. */
       reporting: {
         observations: { portfolioCounts: observations.portfolioCounts },

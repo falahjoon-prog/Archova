@@ -101,6 +101,7 @@ export const webRoutes = {
   commitments: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/commitments`,
   tmTickets: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/tm-tickets`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  projectPlan: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/project-plan`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,

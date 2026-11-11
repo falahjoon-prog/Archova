@@ -26,6 +26,7 @@ export const PLAN_MODULE_KEYS = [
   'insurance',
   'photos',
   'meetings',
+  'projectplan',
   'correspondence',
   'workforce',
   'inductions',

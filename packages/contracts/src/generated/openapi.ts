@@ -11712,6 +11712,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's action plan, with its phases and items in order. Each linked record carries its current status. */
+        get: operations["getProjectPlan"];
+        put?: never;
+        /** Start the plan from the standard building lifecycle (feasibility to close-out). Only a project with no plan yet can start one. */
+        post: operations["startProjectPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What Nova flags on the plan, without a model call. Overdue and at-risk items, hold points holding up later work, and records that probably match an item that has no link yet. */
+        get: operations["getProjectPlanInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a phase to the end of the plan. */
+        post: operations["createPlanPhase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an empty phase. */
+        delete: operations["deletePlanPhase"];
+        options?: never;
+        head?: never;
+        /** Rename a phase or move it. Phase and item numbers follow the new order. */
+        patch: operations["updatePlanPhase"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A short progress paragraph for the owner's report, drafted from the phase's items. It states facts only and changes nothing. */
+        post: operations["draftPlanPhaseSummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/phases/{phaseId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an item to the end of the phase. */
+        post: operations["createPlanItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an item. */
+        delete: operations["deletePlanItem"];
+        options?: never;
+        head?: never;
+        /** Edit an item, set its status, assign its parties or link records. An item cannot be completed while an earlier hold point is uncleared, and a hold point is completed only by clearing it. */
+        patch: operations["updatePlanItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/clear-hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear a hold point. The item is completed with who cleared it and when. It cannot be cleared while an earlier hold point is uncleared. */
+        post: operations["clearPlanHold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/link-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        /** Records of one kind the caller can open, to link to the item. Best matches to the item's title come first. */
+        get: operations["listPlanLinkOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/items/{itemId}/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the assignee for an attachment or photos. They are notified in the app. */
+        post: operations["createPlanRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/project-plan/requests/{requestId}/fulfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                requestId: components["parameters"]["PlanRequestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a request with uploaded files. The person it was assigned to, or someone who manages the plan, can answer it. */
+        post: operations["fulfilPlanRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -14629,7 +14860,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "project_plan_item" | "announcement" | "permit" | "cover" | "warranty_item";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -15849,6 +16080,197 @@ export interface components {
             title: string;
             docNumber: string | null;
             rev: string;
+        };
+        /** @enum {string} */
+        PlanItemType: "document" | "checklist" | "inspection" | "meeting" | "signed_document" | "application" | "notification" | "hold_point";
+        /** @enum {string} */
+        PlanItemStatus: "not_started" | "in_progress" | "complete";
+        /** @enum {string} */
+        PlanLinkType: "rfi" | "submittal" | "inspection" | "meeting" | "drawing" | "document" | "correspondence" | "defect" | "esign_envelope";
+        /** @enum {string} */
+        PlanPartyKind: "internal" | "third_party";
+        PlanParty: {
+            kind: components["schemas"]["PlanPartyKind"];
+            companyId: string | null;
+            userIds: string[];
+            label: string;
+            /** @description The party has signed off its part. */
+            confirmed: boolean;
+        };
+        PlanPartyInput: {
+            kind: components["schemas"]["PlanPartyKind"];
+            companyId?: components["schemas"]["CompanyRef"];
+            userIds?: components["schemas"]["UserRef"][];
+            label?: string;
+            confirmed?: boolean;
+        };
+        PlanReference: {
+            label: string;
+            /** Format: uri */
+            url?: string | null;
+            fileId?: components["schemas"]["FileRef"] | null;
+        };
+        PlanLink: {
+            type: components["schemas"]["PlanLinkType"];
+            id: string;
+            /** @description Reference such as RFI-012. */
+            ref: string;
+            label: string;
+            /** @description The record's status now */
+            status: string | null;
+        };
+        PlanLinkInput: {
+            type: components["schemas"]["PlanLinkType"];
+            id: string;
+            label?: string;
+        };
+        PlanBlocker: {
+            itemId: string;
+            number: string;
+            title: string;
+        };
+        PlanRequest: {
+            id: string;
+            /** @enum {string} */
+            kind: "attachment" | "photo";
+            message: string;
+            assigneeUserId: string | null;
+            /** @enum {string} */
+            status: "open" | "fulfilled" | "cancelled";
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PlanItem: {
+            id: string;
+            phaseId: string;
+            /** @description 2.1 */
+            number: string;
+            position: number;
+            title: string;
+            outcome: string;
+            types: components["schemas"]["PlanItemType"][];
+            /** Format: date */
+            dueDate: string | null;
+            status: components["schemas"]["PlanItemStatus"];
+            isOverdue: boolean;
+            /** @description Uncleared hold points that stop this item being completed. */
+            blockedBy: components["schemas"]["PlanBlocker"][];
+            parties: components["schemas"]["PlanParty"][];
+            references: components["schemas"]["PlanReference"][];
+            links: components["schemas"]["PlanLink"][];
+            requests: components["schemas"]["PlanRequest"][];
+            note: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            holdCleared: boolean;
+            /** Format: date-time */
+            holdClearedAt: string | null;
+            holdNote: string | null;
+            /** @description A hold point the caller may clear now. */
+            canClearHold: boolean;
+        };
+        PlanPhase: {
+            id: string;
+            number: number;
+            title: string;
+            doneCount: number;
+            items: components["schemas"]["PlanItem"][];
+        };
+        ProjectPlan: {
+            started: boolean;
+            phases: components["schemas"]["PlanPhase"][];
+            canManage: boolean;
+            canClearHolds: boolean;
+        };
+        CreatePlanPhaseRequest: {
+            title: string;
+        };
+        UpdatePlanPhaseRequest: {
+            title?: string;
+            position?: number;
+        };
+        CreatePlanItemRequest: {
+            title: string;
+            outcome?: string;
+            types?: components["schemas"]["PlanItemType"][];
+            /** Format: date */
+            dueDate?: string;
+            parties?: components["schemas"]["PlanPartyInput"][];
+            references?: components["schemas"]["PlanReference"][];
+            links?: components["schemas"]["PlanLinkInput"][];
+        };
+        UpdatePlanItemRequest: {
+            title?: string;
+            outcome?: string;
+            types?: components["schemas"]["PlanItemType"][];
+            /** Format: date */
+            dueDate?: string | null;
+            status?: components["schemas"]["PlanItemStatus"];
+            note?: string | null;
+            parties?: components["schemas"]["PlanPartyInput"][];
+            references?: components["schemas"]["PlanReference"][];
+            links?: components["schemas"]["PlanLinkInput"][];
+            /** @description Move the item to the end of another phase. */
+            phaseId?: string;
+        };
+        ClearPlanHoldRequest: {
+            note?: string;
+        };
+        CreatePlanRequestRequest: {
+            /** @enum {string} */
+            kind: "attachment" | "photo";
+            message?: string;
+            assigneeUserId?: components["schemas"]["UserRef"];
+        };
+        FulfilPlanRequestRequest: {
+            fileIds: components["schemas"]["FileRef"][];
+        };
+        PlanLinkOption: {
+            type: components["schemas"]["PlanLinkType"];
+            id: string;
+            ref: string;
+            title: string;
+            status: string;
+            /** @description 0 to 1, how closely the title matches the item. */
+            score: number;
+        };
+        PlanLinkOptionList: {
+            data: components["schemas"]["PlanLinkOption"][];
+            /** @description The caller can't read that kind of record. */
+            restricted: boolean;
+        };
+        PlanSuggestedLink: {
+            itemId: string;
+            number: string;
+            itemTitle: string;
+            link: components["schemas"]["PlanLinkOption"];
+            score: number;
+        };
+        ProjectPlanInsights: {
+            overdue: {
+                itemId: string;
+                number: string;
+                title: string;
+                daysLate: number;
+            }[];
+            atRisk: {
+                itemId: string;
+                number: string;
+                title: string;
+                daysLeft: number;
+            }[];
+            blockedByHold: {
+                holdItemId: string;
+                number: string;
+                title: string;
+                blockedCount: number;
+            }[];
+            suggestedLinks: components["schemas"]["PlanSuggestedLink"][];
+        };
+        PlanPhaseSummary: {
+            phaseId: string;
+            text: string;
         };
         FileRef: string;
         UserRef: string;
@@ -23372,6 +23794,9 @@ export interface components {
         OwnerCapitalItemId: string;
         ReportId: string;
         DataExportId: string;
+        PlanPhaseId: string;
+        PlanItemId: string;
+        PlanRequestId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -42701,6 +43126,383 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startProjectPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectPlanInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlanInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlanPhase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlanPhaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePlanPhase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePlanPhase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanPhaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftPlanPhaseSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanPhaseSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                phaseId: components["parameters"]["PlanPhaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlanItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearPlanHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClearPlanHoldRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlanLinkOptions: {
+        parameters: {
+            query: {
+                type: components["schemas"]["PlanLinkType"];
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanLinkOptionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlanRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["PlanItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlanRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    fulfilPlanRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                requestId: components["parameters"]["PlanRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FulfilPlanRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPlan"];
                 };
             };
             default: components["responses"]["Problem"];

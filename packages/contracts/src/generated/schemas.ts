@@ -1076,6 +1076,11 @@ export const ClaimStatementSchema = z.object({
 });
 export type ClaimStatement = z.infer<typeof ClaimStatementSchema>;
 
+export const ClearPlanHoldRequestSchema = z.object({
+  "note": z.string().max(2000).optional(),
+}).strict();
+export type ClearPlanHoldRequest = z.infer<typeof ClearPlanHoldRequestSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
@@ -2826,6 +2831,61 @@ export const CreatePermitRequestSchema = z.object({
   "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
 }).strict();
 export type CreatePermitRequest = z.infer<typeof CreatePermitRequestSchema>;
+
+export const PlanItemTypeSchema = z.enum(["document", "checklist", "inspection", "meeting", "signed_document", "application", "notification", "hold_point"]);
+export type PlanItemType = z.infer<typeof PlanItemTypeSchema>;
+
+export const PlanPartyKindSchema = z.enum(["internal", "third_party"]);
+export type PlanPartyKind = z.infer<typeof PlanPartyKindSchema>;
+
+export const PlanPartyInputSchema = z.object({
+  "kind": PlanPartyKindSchema,
+  "companyId": CompanyRefSchema.optional(),
+  "userIds": z.array(UserRefSchema).max(20).optional(),
+  "label": z.string().max(200).optional(),
+  "confirmed": z.boolean().optional(),
+}).strict();
+export type PlanPartyInput = z.infer<typeof PlanPartyInputSchema>;
+
+export const PlanReferenceSchema = z.object({
+  "label": z.string().min(1).max(200),
+  "url": z.string().max(2000).nullable().optional(),
+  "fileId": z.union([FileRefSchema, z.null()]).optional(),
+}).strict();
+export type PlanReference = z.infer<typeof PlanReferenceSchema>;
+
+export const PlanLinkTypeSchema = z.enum(["rfi", "submittal", "inspection", "meeting", "drawing", "document", "correspondence", "defect", "esign_envelope"]);
+export type PlanLinkType = z.infer<typeof PlanLinkTypeSchema>;
+
+export const PlanLinkInputSchema = z.object({
+  "type": PlanLinkTypeSchema,
+  "id": z.string().regex(new RegExp("^[a-z]{3}_[0-9A-Za-z]{26}$")),
+  "label": z.string().max(300).optional(),
+}).strict();
+export type PlanLinkInput = z.infer<typeof PlanLinkInputSchema>;
+
+export const CreatePlanItemRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "outcome": z.string().max(1000).optional(),
+  "types": z.array(PlanItemTypeSchema).max(8).optional(),
+  "dueDate": z.string().date().optional(),
+  "parties": z.array(PlanPartyInputSchema).max(6).optional(),
+  "references": z.array(PlanReferenceSchema).max(20).optional(),
+  "links": z.array(PlanLinkInputSchema).max(20).optional(),
+}).strict();
+export type CreatePlanItemRequest = z.infer<typeof CreatePlanItemRequestSchema>;
+
+export const CreatePlanPhaseRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+}).strict();
+export type CreatePlanPhaseRequest = z.infer<typeof CreatePlanPhaseRequestSchema>;
+
+export const CreatePlanRequestRequestSchema = z.object({
+  "kind": z.enum(["attachment", "photo"]),
+  "message": z.string().max(2000).optional(),
+  "assigneeUserId": UserRefSchema.optional(),
+}).strict();
+export type CreatePlanRequestRequest = z.infer<typeof CreatePlanRequestRequestSchema>;
 
 export const CreatePlantAllocationRequestSchema = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4582,6 +4642,11 @@ export const FolderListSchema = z.object({
 });
 export type FolderList = z.infer<typeof FolderListSchema>;
 
+export const FulfilPlanRequestRequestSchema = z.object({
+  "fileIds": z.array(FileRefSchema).min(1).max(20),
+}).strict();
+export type FulfilPlanRequestRequest = z.infer<typeof FulfilPlanRequestRequestSchema>;
+
 export const GateWithCodeSchema = z.object({
   "gate": GateSchema,
   "code": z.string(),
@@ -6162,7 +6227,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "announcement", "permit", "cover", "warranty_item"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "project_plan_item", "announcement", "permit", "cover", "warranty_item"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -7155,6 +7220,110 @@ export const PermitTransitionRequestSchema = z.object({
 }).strict();
 export type PermitTransitionRequest = z.infer<typeof PermitTransitionRequestSchema>;
 
+export const PlanBlockerSchema = z.object({
+  "itemId": z.string(),
+  "number": z.string(),
+  "title": z.string(),
+});
+export type PlanBlocker = z.infer<typeof PlanBlockerSchema>;
+
+export const PlanItemStatusSchema = z.enum(["not_started", "in_progress", "complete"]);
+export type PlanItemStatus = z.infer<typeof PlanItemStatusSchema>;
+
+export const PlanPartySchema = z.object({
+  "kind": PlanPartyKindSchema,
+  "companyId": z.string().nullable(),
+  "userIds": z.array(z.string()),
+  "label": z.string(),
+  "confirmed": z.boolean(),
+});
+export type PlanParty = z.infer<typeof PlanPartySchema>;
+
+export const PlanLinkSchema = z.object({
+  "type": PlanLinkTypeSchema,
+  "id": z.string(),
+  "ref": z.string(),
+  "label": z.string(),
+  "status": z.string().nullable(),
+});
+export type PlanLink = z.infer<typeof PlanLinkSchema>;
+
+export const PlanRequestSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["attachment", "photo"]),
+  "message": z.string(),
+  "assigneeUserId": z.string().nullable(),
+  "status": z.enum(["open", "fulfilled", "cancelled"]),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type PlanRequest = z.infer<typeof PlanRequestSchema>;
+
+export const PlanItemSchema = z.object({
+  "id": z.string(),
+  "phaseId": z.string(),
+  "number": z.string(),
+  "position": z.number().int(),
+  "title": z.string(),
+  "outcome": z.string(),
+  "types": z.array(PlanItemTypeSchema),
+  "dueDate": z.string().date().nullable(),
+  "status": PlanItemStatusSchema,
+  "isOverdue": z.boolean(),
+  "blockedBy": z.array(PlanBlockerSchema),
+  "parties": z.array(PlanPartySchema),
+  "references": z.array(PlanReferenceSchema),
+  "links": z.array(PlanLinkSchema),
+  "requests": z.array(PlanRequestSchema),
+  "note": z.string().nullable(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "holdCleared": z.boolean(),
+  "holdClearedAt": z.string().datetime({ offset: true }).nullable(),
+  "holdNote": z.string().nullable(),
+  "canClearHold": z.boolean(),
+});
+export type PlanItem = z.infer<typeof PlanItemSchema>;
+
+export const PlanLinkOptionSchema = z.object({
+  "type": PlanLinkTypeSchema,
+  "id": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "score": z.number(),
+});
+export type PlanLinkOption = z.infer<typeof PlanLinkOptionSchema>;
+
+export const PlanLinkOptionListSchema = z.object({
+  "data": z.array(PlanLinkOptionSchema),
+  "restricted": z.boolean(),
+});
+export type PlanLinkOptionList = z.infer<typeof PlanLinkOptionListSchema>;
+
+export const PlanPhaseSchema = z.object({
+  "id": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "doneCount": z.number().int(),
+  "items": z.array(PlanItemSchema),
+});
+export type PlanPhase = z.infer<typeof PlanPhaseSchema>;
+
+export const PlanPhaseSummarySchema = z.object({
+  "phaseId": z.string(),
+  "text": z.string(),
+});
+export type PlanPhaseSummary = z.infer<typeof PlanPhaseSummarySchema>;
+
+export const PlanSuggestedLinkSchema = z.object({
+  "itemId": z.string(),
+  "number": z.string(),
+  "itemTitle": z.string(),
+  "link": PlanLinkOptionSchema,
+  "score": z.number(),
+});
+export type PlanSuggestedLink = z.infer<typeof PlanSuggestedLinkSchema>;
+
 export const PlantAllocationSchema = z.object({
   "id": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
@@ -7666,6 +7835,37 @@ export const ProjectPhotoSchema = z.object({
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type ProjectPhoto = z.infer<typeof ProjectPhotoSchema>;
+
+export const ProjectPlanSchema = z.object({
+  "started": z.boolean(),
+  "phases": z.array(PlanPhaseSchema),
+  "canManage": z.boolean(),
+  "canClearHolds": z.boolean(),
+});
+export type ProjectPlan = z.infer<typeof ProjectPlanSchema>;
+
+export const ProjectPlanInsightsSchema = z.object({
+  "overdue": z.array(z.object({
+  "itemId": z.string(),
+  "number": z.string(),
+  "title": z.string(),
+  "daysLate": z.number().int(),
+})),
+  "atRisk": z.array(z.object({
+  "itemId": z.string(),
+  "number": z.string(),
+  "title": z.string(),
+  "daysLeft": z.number().int(),
+})),
+  "blockedByHold": z.array(z.object({
+  "holdItemId": z.string(),
+  "number": z.string(),
+  "title": z.string(),
+  "blockedCount": z.number().int(),
+})),
+  "suggestedLinks": z.array(PlanSuggestedLinkSchema),
+});
+export type ProjectPlanInsights = z.infer<typeof ProjectPlanInsightsSchema>;
 
 export const ProjectSustainabilitySchema = z.object({
   "restricted": z.boolean(),
@@ -10131,6 +10331,26 @@ export const UpdatePermitRequestSchema = z.object({
   "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdatePermitRequest = z.infer<typeof UpdatePermitRequestSchema>;
+
+export const UpdatePlanItemRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "outcome": z.string().max(1000).optional(),
+  "types": z.array(PlanItemTypeSchema).max(8).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "status": PlanItemStatusSchema.optional(),
+  "note": z.string().max(2000).nullable().optional(),
+  "parties": z.array(PlanPartyInputSchema).max(6).optional(),
+  "references": z.array(PlanReferenceSchema).max(20).optional(),
+  "links": z.array(PlanLinkInputSchema).max(20).optional(),
+  "phaseId": z.string().regex(new RegExp("^ppx_[0-9A-Za-z]{26}$")).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdatePlanItemRequest = z.infer<typeof UpdatePlanItemRequestSchema>;
+
+export const UpdatePlanPhaseRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "position": z.number().int().min(1).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdatePlanPhaseRequest = z.infer<typeof UpdatePlanPhaseRequestSchema>;
 
 export const UpdatePlantAssetRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

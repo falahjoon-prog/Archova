@@ -13,7 +13,8 @@ export type NotificationEntity =
   | 'announcement'
   | 'permit'
   | 'cover'
-  | 'warranty_item';
+  | 'warranty_item'
+  | 'project_plan_item';
 
 export const notifications = notificationsSchema.table('notifications', {
   id: uuid('id').primaryKey(),

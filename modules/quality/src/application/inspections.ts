@@ -7,10 +7,12 @@ import {
   nextNumber,
   toPage,
   versionConflict,
+  type SearchHit,
   type TenantScope,
 } from '@archova/kernel';
 import {
   failedItems,
+  inspectionLabel,
   isEditable,
   missingRequiredIn,
   responseProblem,
@@ -456,6 +458,32 @@ export function createInspectionService(deps: QualityDeps) {
       .orderBy(desc(inspections.id))
       .limit(opts.limit + 1);
     return toPage(rows, opts.limit, (r) => ({ id: r.id }));
+  }
+
+  /** Records an action plan item can link to (`projectplan`): the builder's inspections matching the words. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    try {
+      await internal(scope, projectId, 'inspection.not_found');
+    } catch {
+      return { restricted: true, hits: [] as SearchHit[] };
+    }
+    const rows = await scope.tx
+      .select()
+      .from(inspections)
+      .where(and(eq(inspections.projectId, projectId), isNull(inspections.deletedAt)))
+      .orderBy(desc(inspections.id))
+      .limit(200);
+    const needle = q.toLowerCase();
+    const hits = rows
+      .filter((r) => !needle || r.title.toLowerCase().includes(needle))
+      .slice(0, limit)
+      .map<SearchHit>((r) => ({
+        id: r.id,
+        ref: inspectionLabel(r.number),
+        title: r.title,
+        status: r.status,
+      }));
+    return { restricted: false, hits };
   }
 
   const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -1197,6 +1225,7 @@ export function createInspectionService(deps: QualityDeps) {
     publishTemplate,
     newTemplateVersion,
     list,
+    searchHits,
     create,
     update,
     setSectionNa,

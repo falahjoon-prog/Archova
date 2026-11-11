@@ -21,6 +21,7 @@ import {
   DefectsIcon,
   WarrantyIcon,
   MeetingsIcon,
+  ProjectPlanIcon,
   ProgrammeIcon,
   ContractsIcon,
   BudgetIcon,
@@ -175,6 +176,11 @@ export function projectToolGroups(
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
       icon: DefectsIcon,
+    },
+    canRead('project_plan') && {
+      href: webRoutes.projectPlan(orgSlug, projectId),
+      label: 'Action plan',
+      icon: ProjectPlanIcon,
     },
     canRead('defects') && {
       href: webRoutes.warranty(orgSlug, projectId),
@@ -365,7 +371,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
+    tools: ['Action plan', 'Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
   },
   {
     id: 'quality-safety',

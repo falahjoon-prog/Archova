@@ -294,6 +294,16 @@ export const PROBLEM_CODES = {
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
   'meeting.live_unavailable': 422,
+  // project plan (lifecycle action plan)
+  'project_plan.phase_not_found': 404,
+  'project_plan.item_not_found': 404,
+  'project_plan.request_not_found': 404,
+  'project_plan.already_started': 409,
+  'project_plan.blocked_by_hold': 409,
+  'project_plan.hold_point_needs_clearing': 409,
+  'project_plan.not_a_hold_point': 422,
+  'project_plan.hold_already_cleared': 409,
+  'project_plan.phase_not_empty': 409,
   // ownerportal
   'ownerportal.update_not_found': 404,
   'ownerportal.update_published': 409,

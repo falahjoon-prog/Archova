@@ -53,6 +53,7 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { PROJECTPLAN_PERMISSIONS, createProjectPlanModule } from '@archova/mod-projectplan';
 import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
@@ -91,6 +92,7 @@ export const MODULE_PERMISSIONS = [
   ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
+  PROJECTPLAN_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
@@ -557,6 +559,21 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     scheduling: scheduling.api,
   });
 
+  const projectplan = createProjectPlanModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    records: {
+      rfi: rfis.api,
+      submittal: submittals.api,
+      document: documents.api,
+      correspondence: correspondence.api,
+      defect: defects.api,
+      inspection: { searchHits: quality.api.inspectionHits },
+      meeting: meetings.api,
+    },
+  });
+
   const search = createSearchModule({
     database: services.database as Database,
     platform: platform.api,
@@ -608,6 +625,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     announcements,
     defects,
     meetings,
+    projectplan,
     ownerportal,
     bim,
     notifications,
@@ -656,6 +674,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     announcements,
     defects,
     meetings,
+    projectplan,
     ownerportal,
     bim,
     notifications,
