@@ -53,6 +53,21 @@ const nextConfig: NextConfig = {
     const imgSrc = isDev
       ? "'self' data: blob: https: http://localhost:*"
       : "'self' data: blob: https:";
+    // 360 tours are embedded from these providers only (`parseCaptureLink` accepts the same hosts; a test keeps them
+    // in step). The app itself still cannot be framed.
+    const frameSrc = [
+      "'self'",
+      'https://my.matterport.com',
+      'https://*.my.matterport.com',
+      'https://matterport.com',
+      'https://*.matterport.com',
+      'https://kuula.co',
+      'https://*.kuula.co',
+      'https://theta360.com',
+      'https://*.theta360.com',
+      'https://ricoh360.com',
+      'https://*.ricoh360.com',
+    ].join(' ');
     const csp = [
       "default-src 'self'",
       `script-src ${scriptSrc}`,
@@ -64,6 +79,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      `frame-src ${frameSrc}`,
       "frame-ancestors 'none'",
     ].join('; ');
     const appWide = [

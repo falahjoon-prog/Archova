@@ -87,3 +87,101 @@ export async function sendAnswerFeedback(
     }),
   );
 }
+
+type ApiAssistAnswer = components['schemas']['NovaAssistAnswer'];
+
+/** What a lookup's citation opens: the record itself when it is one, otherwise the module's screen. */
+function assistHref(type: string, id: string): string {
+  if (type === 'rfi') return id.startsWith('rfi_') ? `rfi:${id}` : 'module:rfis';
+  if (type === 'defect') return id.startsWith('defect_') ? `defect:${id}` : 'module:defects';
+  if (type === 'budget') return 'module:budget';
+  if (type === 'programme') return 'module:programme';
+  if (type === 'drawing') return `drawing:${id}`;
+  if (type === 'diary') return `diary:${id}`;
+  return `documents:${id}`;
+}
+
+export function toAssistAnswer(res: ApiAssistAnswer): NovaAnswer {
+  const citations: Citation[] = res.citations.map((c, i) => ({
+    id: `${c.sourceId}:${i}`,
+    label: c.title,
+    href: assistHref(c.sourceType, c.sourceId),
+  }));
+  return {
+    kind: res.found ? 'answer' : 'not_found',
+    text: res.answer,
+    citations,
+    runId: res.runId,
+  };
+}
+
+export interface AssistTurn {
+  role: 'user' | 'nova';
+  text: string;
+}
+
+/**
+ * The Nova panel's question with the screen and record the person has open (`POST {p}/ai/assist`). Nova may look
+ * things up with read-only tools under the asker's own permissions; the answer cites what it found.
+ */
+export async function assistNova(
+  orgId: string,
+  projectId: string,
+  question: string,
+  context: { screen?: string; record?: { type: string; id: string; label?: string } },
+  history: AssistTurn[],
+  signal: AbortSignal,
+): Promise<NovaAnswer> {
+  await ensureCsrfToken();
+  const res = unwrap(
+    await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/assist', {
+      params: { path: { orgId, projectId } },
+      body: { question, context, history: history.slice(-6) },
+      signal,
+    }),
+  );
+  return toAssistAnswer(res);
+}
+
+/**
+ * Model-written help (`POST {o}/ai/help`): where to find something, or what an error means and what to do. Only the
+ * question, the error's status, code and message and the screen name are sent; no project records. Callers fall back
+ * to the built-in rule-based answers when this fails.
+ */
+export async function askNovaHelp(
+  orgId: string,
+  input: {
+    question?: string;
+    area?: string;
+    error?: { status: number | null; code: string | null; message: string };
+  },
+  signal: AbortSignal,
+): Promise<NovaAnswer> {
+  await ensureCsrfToken();
+  const res = unwrap(
+    await api.POST('/v1/orgs/{orgId}/ai/help', {
+      params: { path: { orgId } },
+      body: {
+        ...(input.question ? { question: input.question.slice(0, 500) } : {}),
+        ...(input.area ? { area: input.area.slice(0, 60) } : {}),
+        ...(input.error
+          ? {
+              error: {
+                status: input.error.status,
+                code: input.error.code,
+                message: input.error.message.slice(0, 400),
+              },
+            }
+          : {}),
+      },
+      signal,
+    }),
+  );
+  const steps = res.steps.map((s, i) => `${i + 1}. ${s}`).join(' ');
+  return {
+    kind: 'answer',
+    text: steps ? `${res.answer} ${steps}` : res.answer,
+    citations: [],
+    runId: res.runId,
+  };
+}

@@ -65,6 +65,20 @@ export function createMemberService(deps: {
     });
   }
 
+  /** Everyone active on the project (up to 2,000), with company and whether they are outside the builder's org. */
+  async function listActiveMembers(scope: TenantScope, projectId: string) {
+    return scope.tx
+      .select({
+        userId: projectMembers.userId,
+        companyId: projectMembers.companyId,
+        isExternal: projectMembers.isExternal,
+      })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.status, 'active')))
+      .orderBy(asc(projectMembers.id))
+      .limit(2000);
+  }
+
   /** Adds an existing user. Invitations for people without an account come with the invite flow. */
   async function add(
     scope: TenantScope,
@@ -316,7 +330,15 @@ export function createMemberService(deps: {
     return { ...row, held: Boolean(hold) };
   }
 
-  return { list, add, remove, getProjectMembership, getProjectAccessState, contactsOfCompany };
+  return {
+    list,
+    add,
+    remove,
+    getProjectMembership,
+    getProjectAccessState,
+    contactsOfCompany,
+    listActiveMembers,
+  };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;

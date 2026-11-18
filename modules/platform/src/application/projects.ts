@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, isNull, type SQL } from 'drizzle-orm';
-import { STATE_TIME_ZONES, encodeId, uuidv7 } from '@archova/domain';
+import { STATE_TIME_ZONES, decodeId, encodeId, uuidv7 } from '@archova/domain';
 import type { CreateProjectRequest, UpdateProjectRequest } from '@archova/contracts';
 import {
   AppError,
@@ -12,6 +12,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import { companies, orgs, projectMembers, projects } from '../infra/tables';
 import { uniqueViolation } from './errors';
+import { checkStatusTile } from './rich-doc';
 
 type ProjectRow = typeof projects.$inferSelect;
 
@@ -196,6 +197,24 @@ export function createProjectService(access: AccessService) {
     if (patch.number !== undefined) values.number = patch.number;
     if (patch.status !== undefined) values.status = patch.status;
     if (patch.phase !== undefined) values.phase = patch.phase;
+    if (patch.heroFileId !== undefined) {
+      const fileId = patch.heroFileId === null ? null : decodeId('file', patch.heroFileId);
+      if (patch.heroFileId !== null && !fileId)
+        throw new AppError('validation_failed', 'That is not a file id.', [
+          { path: 'heroFileId', message: 'Not a file id' },
+        ]);
+      values.heroFileId = fileId;
+    }
+    if (patch.statusTile !== undefined) {
+      if (patch.statusTile === null) {
+        values.statusTitle = null;
+        values.statusDoc = null;
+      } else {
+        checkStatusTile(patch.statusTile);
+        values.statusTitle = patch.statusTile.title;
+        values.statusDoc = patch.statusTile.doc;
+      }
+    }
     if (patch.state !== undefined) values.state = patch.state;
     if (patch.timezone !== undefined)
       values.timezone = await projectTimeZone(

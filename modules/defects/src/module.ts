@@ -8,11 +8,14 @@ import {
 } from '@archova/kernel';
 import { createDefectService, type DefectsDeps } from './application/defects';
 import { defectsRoutes } from './api/routes';
+import { warrantyRoutes } from './api/warranty-routes';
+import { createWarrantyService } from './application/warranty';
 import { toDefectDto } from './api/mappers';
 import { DEFECTS_PERMISSIONS } from './permissions';
 
 export function createDefectsModule(services: KernelServices, deps: DefectsDeps) {
   const service = createDefectService(deps);
+  const warranty = createWarrantyService({ access: deps.access, platform: deps.platform });
   const syncSource: SyncSource = {
     module: 'defects',
     permission: 'defects.defects.read',
@@ -183,7 +186,10 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   };
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
-    routes: defectsRoutes(services.database, service),
+    routes: {
+      ...defectsRoutes(services.database, service),
+      ...warrantyRoutes(services.database, warranty),
+    },
     api: {
       /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
       openNear: service.openNear,

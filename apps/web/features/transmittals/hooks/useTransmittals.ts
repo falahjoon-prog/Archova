@@ -21,6 +21,17 @@ export function useTransmittals(projectId: string) {
   });
 }
 
+export function useDocumentRegister(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useTransmittalsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'transmittals', { register: true }),
+    queryFn: () => source.register(projectId),
+    // Acknowledgements arrive while the page is open.
+    refetchInterval: 60_000,
+  });
+}
+
 export function useSendable(projectId: string) {
   const { orgId } = useCurrentOrg();
   const source = useTransmittalsApi();

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@archova/query';
-import { Card, Dialog, SkeletonRows } from '@archova/ui';
+import { Button, Card, Dialog, SkeletonRows } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -23,7 +23,18 @@ const SOURCE_LABELS: Record<string, string> = {
 export const photoSource = (module: string) => SOURCE_LABELS[module] ?? 'Photo';
 
 /** Project home: the latest site photos from the diary, defects, inspections and RFIs. Tap one to see it larger. */
-export function PhotosCard({ projectId, timeZone }: { projectId: string; timeZone: string }) {
+export function PhotosCard({
+  projectId,
+  timeZone,
+  onUseAsHero,
+  heroFileId,
+}: {
+  projectId: string;
+  timeZone: string;
+  /** Given for people who may edit the project: lets them pick the photo shown at the top of the project home. */
+  onUseAsHero?: (fileId: string) => void;
+  heroFileId?: string | null;
+}) {
   const { orgId } = useCurrentOrg();
   const [open, setOpen] = useState<ProjectPhoto | null>(null);
   const photos = useQuery({
@@ -74,6 +85,18 @@ export function PhotosCard({ projectId, timeZone }: { projectId: string; timeZon
               {photoSource(open.file.module)} ·{' '}
               {formatInstant(open.file.capture?.takenAt ?? open.file.createdAt, timeZone)}
             </p>
+            {onUseAsHero ? (
+              <Button
+                variant="secondary"
+                disabled={heroFileId === open.file.id}
+                onClick={() => {
+                  onUseAsHero(open.file.id);
+                  setOpen(null);
+                }}
+              >
+                {heroFileId === open.file.id ? 'Project photo' : 'Use as project photo'}
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </Dialog>

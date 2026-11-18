@@ -1,4 +1,4 @@
--- Composed from modules/links/db/migrations/20261107100000_links.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/links/db/migrations/20261118070000_links.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- links: related items. One row joins any two records on the same project (RFI, defect, submittal, ...), shown from
 -- both ends. The record types are not constrained here so a tool module can join the registry without a migration;
 -- the application only accepts types whose owning module can say what the caller may open.

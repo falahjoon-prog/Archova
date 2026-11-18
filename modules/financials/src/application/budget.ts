@@ -13,6 +13,7 @@ import { budgetFindings } from '../domain/budget-review';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
 import {
   budgetAdjustments,
+  budgetForecastEntries,
   budgetLines,
   budgetSnapshots,
   budgets,
@@ -53,12 +54,19 @@ const NO_BUDGET = {
   spentCents: 0,
   varianceCents: 0,
   overBudgetCodes: 0,
+  monthly: [] as { month: string; spentCents: number }[],
 };
 
 export function createBudgetService(
   deps: BudgetDeps & {
     /** Forecast inputs for the budget comparison; the forecast service owns how they're read. */
     forecastInputs?: (scope: TenantScope, projectId: string) => Promise<ForecastInputs>;
+    /** Spend by month for the portfolio cash-flow chart; the forecast service owns the queries. */
+    monthlySpend?: (
+      scope: TenantScope,
+      projectId: string,
+      hidden: ReadonlySet<string>,
+    ) => Promise<{ month: string; spentCents: number }[]>;
   },
 ) {
   const now = deps.now ?? (() => new Date());
@@ -605,7 +613,7 @@ export function createBudgetService(
       hidden,
       inputs.direct,
     );
-    return { budget, ...r, byId };
+    return { budget, ...r, byId, hidden };
   }
 
   /**
@@ -630,6 +638,7 @@ export function createBudgetService(
       spentCents: r.totals.claimedCents + r.totals.directCents,
       varianceCents: r.totals.varianceCents,
       overBudgetCodes: r.rows.filter((x) => x.varianceCents < 0).length,
+      monthly: deps.monthlySpend ? await deps.monthlySpend(scope, projectId, r.hidden) : [],
     };
   }
 
@@ -764,7 +773,103 @@ export function createBudgetService(
     };
   }
 
+  const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+  const MAX_FORECAST_ENTRIES = 1200;
+
+  /** Monthly spend forecast per budget line, beside what each line is projected to cost. */
+  async function forecast(scope: TenantScope, projectId: string) {
+    const report = await costReport(scope, projectId);
+    if (!report.hasBudget) return { hasBudget: false, months: [] as string[], lines: [] };
+    const rows = await scope.tx
+      .select()
+      .from(budgetForecastEntries)
+      .where(eq(budgetForecastEntries.projectId, projectId));
+    const byLine = new Map<string, Record<string, string>>();
+    for (const r of rows) {
+      const m = r.month.slice(0, 7);
+      byLine.set(r.budgetLineId, { ...(byLine.get(r.budgetLineId) ?? {}), [m]: r.amount });
+    }
+    const visible = new Set(report.lines.map((l) => l.line.id));
+    const months = [
+      ...new Set(rows.filter((r) => visible.has(r.budgetLineId)).map((r) => r.month.slice(0, 7))),
+    ].sort();
+    return {
+      hasBudget: true,
+      months,
+      lines: report.lines.map((l) => {
+        const entries = byLine.get(l.line.id) ?? {};
+        const scheduled = Object.values(entries).reduce((n, v) => n + signedCents(v), 0);
+        return {
+          ...l,
+          entries,
+          scheduled: fromCents(scheduled),
+          unscheduled: fromCents(signedCents(l.projected) - scheduled),
+        };
+      }),
+    };
+  }
+
+  /** Replaces the monthly forecast of each named line. Months are `YYYY-MM`, amounts are not negative. */
+  async function saveForecast(
+    scope: TenantScope,
+    projectId: string,
+    input: { lines: { lineId: string; entries: Record<string, string> }[] },
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    const { lines } = await getBudget(scope, projectId);
+    const visible = new Set(lines.map((l) => l.line.id));
+    let count = 0;
+    const seen = new Set<string>();
+    for (const [i, l] of input.lines.entries()) {
+      if (!visible.has(l.lineId)) throw new AppError('financials.budget.line_not_found');
+      if (seen.has(l.lineId))
+        throw new AppError('validation_failed', 'A line appears twice.', [
+          { path: `lines.${i}.lineId`, message: 'Duplicate line' },
+        ]);
+      seen.add(l.lineId);
+      for (const [m, v] of Object.entries(l.entries)) {
+        count++;
+        if (!MONTH.test(m) || !isMoney(v))
+          throw new AppError(
+            'validation_failed',
+            'Use a month like 2026-11 and an amount of zero or more.',
+            [{ path: `lines.${i}.entries.${m}`, message: 'Invalid month or amount' }],
+          );
+      }
+    }
+    if (count > MAX_FORECAST_ENTRIES)
+      throw new AppError('validation_failed', 'Too many months in one save.', [
+        { path: 'lines', message: `At most ${MAX_FORECAST_ENTRIES} entries` },
+      ]);
+    for (const l of input.lines) {
+      await scope.tx
+        .delete(budgetForecastEntries)
+        .where(
+          and(
+            eq(budgetForecastEntries.projectId, projectId),
+            eq(budgetForecastEntries.budgetLineId, l.lineId),
+          ),
+        );
+      const values = Object.entries(l.entries)
+        .filter(([, v]) => toCents(v) > 0)
+        .map(([m, v]) => ({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          projectId,
+          budgetLineId: l.lineId,
+          month: `${m}-01`,
+          amount: v,
+          updatedBy: scope.ctx.userId,
+        }));
+      if (values.length) await scope.tx.insert(budgetForecastEntries).values(values);
+    }
+    return forecast(scope, projectId);
+  }
+
   return {
+    forecast,
+    saveForecast,
     costReport,
     costReportItems,
     budgetVsForecastFor,
