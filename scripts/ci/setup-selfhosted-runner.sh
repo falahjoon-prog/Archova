@@ -19,8 +19,6 @@ VERSION="${RUNNER_VERSION:-2.329.0}"
 
 sudo apt-get update -y
 sudo apt-get install -y curl git build-essential python3 unzip jq ca-certificates docker.io docker-compose-v2
-# Browser libraries for the Playwright accessibility job (it skips --with-deps on self-hosted runners, which needs sudo).
-npx --yes playwright@1.56.0 install-deps chromium || echo "Could not install Playwright system deps; run it once by hand"
 sudo usermod -aG docker "$USER"
 command -v systemctl >/dev/null && sudo systemctl enable --now docker || sudo service docker start
 

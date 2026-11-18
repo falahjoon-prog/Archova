@@ -123,6 +123,9 @@ jobs:
     # (Playwright 1.56 has no browser for the 26.04 that ubuntu-latest now points to).
     runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-24.04' }}
     timeout-minutes: 20
+    # On the self-hosted PC (Ubuntu 26.04, unsupported by Playwright) the job runs in Playwright's own image, which has the
+    # browsers and libraries, and a private network so port 3000 cannot clash with anything on the PC.
+    container: ${{ vars.CI_RUNNER_INTEGRATION && 'mcr.microsoft.com/playwright:v1.56.1-noble' || null }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -138,7 +141,7 @@ jobs:
           cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
           PORT=3000 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js &
           npx --yes wait-on@8 --timeout 60000 http://127.0.0.1:3000/login
-      - run: pnpm --filter @archova/web exec playwright install ${{ vars.CI_RUNNER_INTEGRATION && '' || '--with-deps' }} chromium
+      - run: pnpm --filter @archova/web exec playwright install ${{ vars.CI_RUNNER_INTEGRATION && 'chromium' || '--with-deps chromium' }}
       - name: axe on journey pages
         run: pnpm --filter @archova/web test:a11y
         env:
