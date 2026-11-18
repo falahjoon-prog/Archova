@@ -8578,6 +8578,48 @@ export const ProjectBudgetAdjustmentListSchema = z.object({
 });
 export type ProjectBudgetAdjustmentList = z.infer<typeof ProjectBudgetAdjustmentListSchema>;
 
+export const ProjectCashflowSchema = z.object({
+  "asOf": z.string().date(),
+  "months": z.array(z.object({
+  "month": z.string().regex(new RegExp("^\\d{4}-(0[1-9]|1[0-2])$")),
+  "kind": z.enum(["actual", "current", "forecast"]),
+  "cashIn": FinancialsMoneySchema,
+  "cashOut": FinancialsMoneySchema,
+  "net": FinancialsSignedMoneySchema,
+  "cumulative": FinancialsSignedMoneySchema,
+})),
+  "totals": z.object({
+  "cashInToDate": FinancialsMoneySchema,
+  "cashOutToDate": FinancialsMoneySchema,
+  "forecastCashIn": FinancialsMoneySchema,
+  "forecastCashOut": FinancialsMoneySchema,
+  "lowestCumulative": FinancialsSignedMoneySchema,
+  "lowestMonth": z.string().regex(new RegExp("^\\d{4}-(0[1-9]|1[0-2])$")).nullable(),
+}),
+  "wip": z.object({
+  "contractValue": FinancialsMoneySchema,
+  "estimatedFinalCost": FinancialsMoneySchema,
+  "costToDate": FinancialsMoneySchema,
+  "percentComplete": z.string().regex(new RegExp("^\\d{1,3}\\.\\d{2}$")),
+  "earnedRevenue": FinancialsMoneySchema,
+  "billed": FinancialsMoneySchema,
+  "overUnderBilled": FinancialsSignedMoneySchema,
+  "earnedGrossProfit": FinancialsSignedMoneySchema,
+  "projectedGrossProfit": FinancialsSignedMoneySchema,
+  "receivableOpen": FinancialsMoneySchema,
+  "retentionHeld": FinancialsMoneySchema,
+}).nullable(),
+  "flags": z.array(z.object({
+  "code": z.enum(["cash_gap", "negative_cash_now", "underbilled", "overbilled", "overdue_receivable", "disputed_claims", "loss_making", "no_cost_plan", "unscheduled_cost", "retention_no_date", "no_head_contract"]),
+  "severity": z.enum(["info", "warn", "risk"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "month": z.string().regex(new RegExp("^\\d{4}-(0[1-9]|1[0-2])$")).nullable(),
+  "amount": z.string().nullable(),
+})),
+});
+export type ProjectCashflow = z.infer<typeof ProjectCashflowSchema>;
+
 export const ProjectLocationSchema = z.object({
   "id": z.string(),
   "name": z.string(),

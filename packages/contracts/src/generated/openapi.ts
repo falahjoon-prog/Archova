@@ -10947,6 +10947,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/cashflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Monthly cashflow forecast and work-in-progress (WIP) position, with the risks code found.
+         * @description Rolls claims, retention, the budget's monthly cost forecast and direct costs into cash in and cash out by month
+         *     (ex GST), plus cost-to-cost percent complete, earned revenue and over or under billing. `flags` are found by
+         *     code, never by a model, and carry the amounts they quote. Builder staff only, like the cost forecast.
+         */
+        get: operations["getProjectCashflow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments": {
         parameters: {
             query?: never;
@@ -20769,6 +20794,50 @@ export interface components {
             figures: {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
+        };
+        ProjectCashflow: {
+            /** Format: date */
+            asOf: string;
+            months: {
+                month: string;
+                /** @enum {string} */
+                kind: "actual" | "current" | "forecast";
+                cashIn: components["schemas"]["FinancialsMoney"];
+                cashOut: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+                cumulative: components["schemas"]["FinancialsSignedMoney"];
+            }[];
+            totals: {
+                cashInToDate: components["schemas"]["FinancialsMoney"];
+                cashOutToDate: components["schemas"]["FinancialsMoney"];
+                forecastCashIn: components["schemas"]["FinancialsMoney"];
+                forecastCashOut: components["schemas"]["FinancialsMoney"];
+                lowestCumulative: components["schemas"]["FinancialsSignedMoney"];
+                lowestMonth: string | null;
+            };
+            wip: {
+                contractValue: components["schemas"]["FinancialsMoney"];
+                estimatedFinalCost: components["schemas"]["FinancialsMoney"];
+                costToDate: components["schemas"]["FinancialsMoney"];
+                percentComplete: string;
+                earnedRevenue: components["schemas"]["FinancialsMoney"];
+                billed: components["schemas"]["FinancialsMoney"];
+                overUnderBilled: components["schemas"]["FinancialsSignedMoney"];
+                earnedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                projectedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                receivableOpen: components["schemas"]["FinancialsMoney"];
+                retentionHeld: components["schemas"]["FinancialsMoney"];
+            } | null;
+            flags: {
+                /** @enum {string} */
+                code: "cash_gap" | "negative_cash_now" | "underbilled" | "overbilled" | "overdue_receivable" | "disputed_claims" | "loss_making" | "no_cost_plan" | "unscheduled_cost" | "retention_no_date" | "no_head_contract";
+                /** @enum {string} */
+                severity: "info" | "warn" | "risk";
+                title: string;
+                detail: string;
+                month: string | null;
+                amount: string | null;
+            }[];
         };
         BudgetForecast: {
             hasBudget: boolean;
@@ -44106,6 +44175,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CostForecast"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectCashflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCashflow"];
                 };
             };
             default: components["responses"]["Problem"];
