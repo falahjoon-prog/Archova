@@ -7,13 +7,14 @@ import { uuidv7 } from '@archova/domain';
 import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
 import { openOrgFile } from '../../../lib/files/open-file';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { PendingActions, StateMessage, useAttempt, useCurrentOrg } from '../../../shared';
 import { useMe } from '../../platform';
 import { acknowledgeSwms, getSwms, transitionSwms, type SwmsAction } from '../commands';
 import { ACTION_TEXT, LEVEL_TEXT, categoryLabel, needsReason, statusLabel } from '../format';
 
 export function SwmsScreen({ projectId, swmsId }: { projectId: string; swmsId: string }) {
   const t = useTheme();
+  const attempt = useAttempt();
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const me = useMe().data?.user;
@@ -31,23 +32,52 @@ export function SwmsScreen({ projectId, swmsId }: { projectId: string; swmsId: s
     void qc.invalidateQueries({ queryKey: ['swms', orgId, projectId, 'list'] });
   };
   const acknowledge = useMutation({
-    mutationFn: () =>
-      acknowledgeSwms(api, target, {
-        swmsId,
-        workerName: me?.name ?? '',
-        idempotencyKey: ackKey.current,
-      }),
-    onSuccess: (d) => {
+    mutationFn: async () => {
+      let detail: Awaited<ReturnType<typeof getSwms>> | null = null;
+      const workerName = me?.name ?? '';
+      const outcome = await attempt(
+        {
+          id: ackKey.current,
+          projectId,
+          kind: 'swms.acknowledge',
+          targetId: swmsId,
+          payload: { workerName },
+        },
+        async () => {
+          detail = await acknowledgeSwms(api, target, {
+            swmsId,
+            workerName,
+            idempotencyKey: ackKey.current,
+          });
+        },
+      );
+      return { outcome, detail };
+    },
+    onSuccess: ({ detail }) => {
       ackKey.current = uuidv7();
-      done(d);
+      if (detail) done(detail);
     },
   });
   const act = useMutation({
-    mutationFn: (action: SwmsAction) =>
-      transitionSwms(api, target, detail.data!.swms, { action, reason }),
-    onSuccess: (d) => {
+    mutationFn: async (action: SwmsAction) => {
+      let updated: Awaited<ReturnType<typeof getSwms>> | null = null;
+      const swms = detail.data!.swms;
+      const outcome = await attempt(
+        {
+          projectId,
+          kind: 'swms.transition',
+          targetId: swmsId,
+          payload: { action, reason, version: swms.version },
+        },
+        async () => {
+          updated = await transitionSwms(api, target, swms, { action, reason });
+        },
+      );
+      return { outcome, updated };
+    },
+    onSuccess: ({ updated }) => {
       setReason('');
-      done(d);
+      if (updated) done(updated);
     },
   });
 
@@ -167,6 +197,10 @@ export function SwmsScreen({ projectId, swmsId }: { projectId: string; swmsId: s
             onPress={() => acknowledge.mutate()}
           />
         )
+      ) : null}
+      <PendingActions targetId={swmsId} />
+      {acknowledge.data?.outcome === 'queued' || act.data?.outcome === 'queued' ? (
+        <StateMessage message="No signal. This is saved on this phone and will be sent when you are online." />
       ) : null}
       {acknowledge.isError ? (
         <StateMessage tone="danger" message={failed(acknowledge.error)} />
