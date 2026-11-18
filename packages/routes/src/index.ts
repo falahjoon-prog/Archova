@@ -214,6 +214,13 @@ export const mobileRoutes = {
   submittals: (projectId: string) => `/project/${enc(projectId)}/submittals`,
   submittal: (projectId: string, submittalId: string) =>
     `/project/${enc(projectId)}/submittals/${enc(submittalId)}`,
+  rfis: (projectId: string) => `/project/${enc(projectId)}/rfis`,
+  rfi: (projectId: string, rfiId: string) => `/project/${enc(projectId)}/rfis/${enc(rfiId)}`,
+  toolboxTalks: (projectId: string) => `/project/${enc(projectId)}/toolbox`,
+  toolboxTalk: (projectId: string, talkId: string) =>
+    `/project/${enc(projectId)}/toolbox/${enc(talkId)}`,
+  swmsRegister: (projectId: string) => `/project/${enc(projectId)}/swms`,
+  swms: (projectId: string, swmsId: string) => `/project/${enc(projectId)}/swms/${enc(swmsId)}`,
   timesheets: (projectId: string) => `/project/${enc(projectId)}/timesheets`,
   timesheet: (projectId: string, timesheetId: string) =>
     `/project/${enc(projectId)}/timesheets/${enc(timesheetId)}`,
