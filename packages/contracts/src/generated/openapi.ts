@@ -13012,6 +13012,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a draft delivery for the unit on the day it is due on site and link it. Needs an install or ship date, and the caller must also be able to manage deliveries. */
+        post: operations["draftPrefabDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks": {
         parameters: {
             query?: never;
@@ -47364,6 +47385,31 @@ export interface operations {
                 "application/json": components["schemas"]["PrefabTransitionRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftPrefabDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
