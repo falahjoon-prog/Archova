@@ -22,6 +22,10 @@ const ticket = (over: Partial<TmTicketDetail> = {}): TmTicketDetail => ({
   location: 'Level 2',
   contractor: 'Acme',
   instructedBy: null,
+  reference: null,
+  notes: null,
+  reviewStage: 'field_verified',
+  verifyNote: null,
   origin: 'nova',
   status: 'draft',
   total: '680.00',
@@ -119,6 +123,30 @@ describe('TmTicketDetailCard', () => {
     expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/sign`)[0]!.init.body).toEqual({
       role: 'contractor',
       signerName: 'Pat Manager',
+    });
+  });
+
+  it('moves a draft ticket through ready for review and field verified before signing', async () => {
+    fake.on('GET', `${P}/tm-tickets/{tmTicketId}`, () =>
+      ticket({ reviewStage: 'ready_for_review' }),
+    );
+    fake.on('POST', `${P}/tm-tickets/{tmTicketId}/review`, () =>
+      ticket({ reviewStage: 'field_verified' }),
+    );
+    const user = userEvent.setup();
+    renderInProject(
+      <TmTicketDetailCard id="tmt_1" canManage canSign canConvert onClose={() => {}} />,
+    );
+    await screen.findByText('T&M-1: Extra excavation');
+    expect(screen.getByText('Ready for review')).toBeTruthy();
+    expect(screen.getByText(/have a second person field verify it/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Record signature' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Field verify' }));
+    await waitFor(() =>
+      expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/review`)).toHaveLength(1),
+    );
+    expect(fake.callsTo('POST', `${P}/tm-tickets/{tmTicketId}/review`)[0]!.init.body).toEqual({
+      stage: 'field_verified',
     });
   });
 

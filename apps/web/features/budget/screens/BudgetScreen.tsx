@@ -12,6 +12,7 @@ import { ForecastPanel } from '../components/ForecastPanel';
 import { CostReportPanel } from '../components/CostReportPanel';
 import { CostCodesPanel } from '../components/CostCodesPanel';
 import { LaborProductivityPanel } from '../components/LaborProductivityPanel';
+import { ProductionPanel } from '../components/ProductionPanel';
 import { DirectCostsPanel } from '../components/DirectCostsPanel';
 import { RootCausePanel } from '../components/RootCausePanel';
 import { ReportsPanel } from '../components/ReportsPanel';
@@ -47,6 +48,7 @@ export function BudgetScreen() {
           { id: 'snapshots', label: 'Snapshots' },
           { id: 'direct', label: 'Direct costs' },
           { id: 'labor', label: 'Labor productivity' },
+          { id: 'production', label: 'Production' },
           { id: 'rootcause', label: 'Root cause' },
           { id: 'reports', label: 'Reports' },
           { id: 'codes', label: 'Cost codes' },
@@ -66,6 +68,8 @@ export function BudgetScreen() {
           <DirectCostsPanel canManage={canManage} />
         ) : tab === 'labor' ? (
           <LaborProductivityPanel canManage={canManage} />
+        ) : tab === 'production' ? (
+          <ProductionPanel canManage={canManage} />
         ) : tab === 'rootcause' ? (
           <RootCausePanel />
         ) : tab === 'reports' ? (

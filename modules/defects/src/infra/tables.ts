@@ -1,5 +1,11 @@
 import { boolean, date, integer, pgSchema, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import type { DefectPriority, DefectStage, DefectStatus } from '@archova/domain';
+import type {
+  DefectPriority,
+  DefectStage,
+  DefectStatus,
+  WarrantyResponsibleType,
+  WarrantySystem,
+} from '@archova/domain';
 
 export const defectsSchema = pgSchema('defects');
 
@@ -41,6 +47,7 @@ export const defects = defectsSchema.table('defects', {
   source: text('source').$type<DefectSource>().notNull().default('manual'),
   inspectionItemId: uuid('inspection_item_id'),
   aiSuggestionId: uuid('ai_suggestion_id'),
+  warrantyItemId: uuid('warranty_item_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
@@ -62,4 +69,26 @@ export const events = defectsSchema.table('events', {
   actorId: uuid('actor_id'),
   onBehalfOf: uuid('on_behalf_of'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const warrantyItems = defectsSchema.table('warranty_items', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  name: text('name').notNull(),
+  system: text('system').$type<WarrantySystem>().notNull(),
+  description: text('description').notNull().default(''),
+  responsibleType: text('responsible_type').$type<WarrantyResponsibleType>().notNull(),
+  responsibleCompanyId: uuid('responsible_company_id'),
+  responsibleName: text('responsible_name'),
+  startDate: date('start_date').notNull(),
+  durationMonths: integer('duration_months').notNull(),
+  expiryDate: date('expiry_date').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });

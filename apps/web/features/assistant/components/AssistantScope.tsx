@@ -22,6 +22,8 @@ export interface AssistantScope {
   timezone?: string;
   /** The record on screen, e.g. `{ type: 'rfi', id: 'rfi_…', label: 'RFI-003' }`. */
   record?: { type: string; id: string; label?: string };
+  /** Totals the register shows (unfiltered), so the panel can offer starters about what is open or overdue. */
+  counts?: { open?: number; overdue?: number; review?: number };
 }
 
 interface AssistantContextValue {

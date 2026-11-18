@@ -1,5 +1,6 @@
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
+import type { DbpInspection, DbpObservation } from '../domain/dbp';
 import type { ProjectSustainability } from '../domain/sustainability';
 import {
   PROJECT_LIMIT,
@@ -19,7 +20,7 @@ interface SourceRows {
 
 /** What `reporting` needs from the tool modules; each narrows to what the caller may read on that project. */
 export interface ReportingDeps {
-  platform: Pick<PlatformApi, 'listProjects'>;
+  platform: Pick<PlatformApi, 'listProjects' | 'getProject'>;
   /** Waste, carbon, monitoring and permit-condition counts per project (`environment`); restricted unless readable. */
   environment: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<ProjectSustainability>;
@@ -34,6 +35,18 @@ export interface ReportingDeps {
   observations: CountsOnly;
   inspections: CountsOnly;
   programme: Tool<ProgrammeCounts>;
+  /** Inspection and observation rows for the DBP Act insights view (`quality`); restricted unless the caller may read them. */
+  quality: {
+    dbpRows(
+      scope: TenantScope,
+      projectId: string,
+    ): Promise<{
+      restricted: boolean;
+      truncated: boolean;
+      inspections: readonly DbpInspection[];
+      observations: readonly DbpObservation[];
+    }>;
+  };
   /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
   budget: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;

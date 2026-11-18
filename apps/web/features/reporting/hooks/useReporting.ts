@@ -27,6 +27,15 @@ export function usePortfolio(includeClosed: boolean) {
   });
 }
 
+export function useDbpInsights(includeClosed: boolean) {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({
+    queryKey: ['orgs', orgId, 'dbp-insights', { includeClosed }],
+    queryFn: () => api.dbpInsights(includeClosed),
+  });
+}
+
 const myWorkKey = (orgId: string) => ['orgs', orgId, 'my-work'] as const;
 
 export function useMyWork() {

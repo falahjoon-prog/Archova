@@ -15,6 +15,7 @@ export type TmSuggestion = S['TmTicketSuggestion'];
 export type SignTmTicket = S['SignTmTicketRequest'];
 export type TmChecks = S['TmTicketChecks'];
 export type ConvertTmTicket = S['ConvertTmTicketRequest'];
+export type ReviewTmTicket = S['ReviewTmTicketRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -70,6 +71,18 @@ export function createTmApi(orgId: string) {
         : rest;
       return unwrap(
         await api.POST(`${P}/tm-tickets/{tmTicketId}/sign`, {
+          params: { path: { orgId, projectId, tmTicketId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async review(
+      projectId: string,
+      tmTicketId: string,
+      body: ReviewTmTicket,
+    ): Promise<TmTicketDetail> {
+      return unwrap(
+        await api.POST(`${P}/tm-tickets/{tmTicketId}/review`, {
           params: { path: { orgId, projectId, tmTicketId }, header: idempotencyKey() },
           body,
         }),

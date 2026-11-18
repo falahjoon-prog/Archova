@@ -14,12 +14,14 @@ import type { DiarySummaryPayload, DiarySummaryService } from '../application/di
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { AssistService } from '../application/assist';
 import type { ContractPlaybookService } from '../application/contract-playbook';
 import type {
   ContractReviewPayload,
   ContractReviewRow,
   ContractReviewService,
 } from '../application/contract-review';
+import type { ContractSovService } from '../application/contract-sov';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { BudgetReviewService } from '../application/budget-review';
@@ -314,11 +316,13 @@ export function aiRoutes(
   budgetReviews: BudgetReviewService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
+  contractSov: ContractSovService,
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
+  assist: AssistService,
   captureScans: CaptureScanService,
   help: HelpService,
 ) {
@@ -413,6 +417,30 @@ export function aiRoutes(
           closestMatches: a.closestMatches.map(toSourceDto),
           nccReferences: a.nccReferences,
           ...(a.nccReferences.length ? { nccNote: NCC_NOTE } : {}),
+        },
+      };
+    },
+    assistNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const b = input.body;
+      const a = await assist.ask(requireTenant(input), projectId, {
+        question: b.question,
+        context: b.context ?? {},
+        history: b.history ?? [],
+      });
+      return {
+        status: 200,
+        body: {
+          runId: a.runId ? encodeId('aiRun', a.runId) : null,
+          found: a.found,
+          answer: a.answer,
+          citations: a.citations.map((c) => ({
+            sourceType: c.type,
+            sourceId: c.id,
+            title: c.title,
+            quote: c.quote,
+          })),
+          lookups: a.lookups,
         },
       };
     },
@@ -660,6 +688,15 @@ export function aiRoutes(
           other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
         },
       };
+    },
+    draftContractSov: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const d = await contractSov.draft(requireTenant(input), projectUuid(input.params.projectId), {
+        fileId,
+        contractValue: input.body.contractValue ?? null,
+      });
+      return { status: 200, body: { ...d, runId: encodeId('aiRun', d.runId) } };
     },
     transcribeSpeech: async (input) => {
       const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {

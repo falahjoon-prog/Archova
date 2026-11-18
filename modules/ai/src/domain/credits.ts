@@ -66,9 +66,14 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'contract.ask': 2,
   // F34 Compare contracts: two contracts' pages and a list of cited differences out, standard tier. Priya to confirm.
   'contract.compare': 5,
+  // Nova fills a contract's schedule of values: the pages and a list of priced lines out, standard tier. Priya to confirm.
+  'contract.sov': 3,
   // Nova listening: one short spoken question turned into text. Priya to confirm.
   'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
+  // The Nova panel with tools: a cheap planning step, then one cited answer (ai/07 §3). Priya to confirm.
+  'assist.plan': 0.1,
+  'assist.answer': 1,
 };
 
 export function creditsFor(

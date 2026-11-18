@@ -16,6 +16,7 @@ import {
   type RasterizePage,
 } from '@archova/mod-ai';
 import { createAccessModule } from '@archova/mod-access';
+import { buildNovaTools, type NovaToolSources } from './nova-tools';
 import {
   TRIAL_ENTITLEMENTS,
   createBillingModule,
@@ -34,6 +35,7 @@ import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-e
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
+import { GEOTECH_PERMISSIONS, createGeotechModule } from '@archova/mod-geotech';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -57,6 +59,8 @@ import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-o
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
+import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
+import { PREFAB_PERMISSIONS, createPrefabModule } from '@archova/mod-prefab';
 import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
@@ -66,6 +70,7 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
@@ -75,6 +80,8 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { LINKS_PERMISSIONS, createLinksModule } from '@archova/mod-links';
+import { ESIGN_PERMISSIONS, createEsignModule } from '@archova/mod-esign';
 import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
@@ -86,6 +93,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  LINKS_PERMISSIONS,
   ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
@@ -95,17 +103,22 @@ export const MODULE_PERMISSIONS = [
   REPORTING_PERMISSIONS,
   SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
+  WORKFLOWS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
+  GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  ESIGN_PERMISSIONS,
+  LOGISTICS_PERMISSIONS,
+  PREFAB_PERMISSIONS,
   PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
@@ -153,6 +166,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   );
   // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
+  let schedulingForNova: (() => ReturnType<NovaToolSources['scheduling']>) | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
@@ -318,6 +332,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    documents: documents.api,
     rfis: rfis.api,
   });
 
@@ -330,9 +345,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
+  const workflows = createWorkflowsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    workflows: workflows.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
@@ -380,6 +398,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
   });
+  const geotech = createGeotechModule(services, { platform: platform.api, files: files.api });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -401,6 +420,19 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
         const u = await identity.api.getUser(userId);
         return u ? `${u.name} (${u.email})` : 'a member of the team';
       },
+    },
+  });
+
+  const esign = createEsignModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    messages: opts.messages,
+    entitlements: billing.api.entitlements.forOrg,
+    baseUrl: opts.linkBaseUrl,
+    senderName: async (userId) => {
+      const u = await identity.api.getUser(userId);
+      return u ? `${u.name} (${u.email})` : 'a member of the team';
     },
   });
 
@@ -449,6 +481,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
       meetings.api.forMinutesDraft(scope, projectId, meetingId),
+    novaTools: buildNovaTools({
+      rfis: rfis.api,
+      defects: defects.api,
+      financials: financials.api,
+      scheduling: () => schedulingForNova!(),
+    }),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
@@ -473,6 +511,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     access: access.api,
   });
+
+  schedulingForNova = () => scheduling.api;
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
@@ -514,6 +554,20 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   lapsedLicences = workforce.api.lapsedLicences;
 
+  const logistics = createLogisticsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    purchaseOrder: (scope, projectId, id) => financials.api.purchaseOrderRef(scope, projectId, id),
+  });
+
+  const prefab = createPrefabModule(services, {
+    access: access.api,
+    platform: platform.api,
+    delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+    createDelivery: (scope, projectId, input) =>
+      logistics.api.createDelivery(scope, projectId, input),
+  });
+
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
@@ -526,6 +580,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
+    quality: quality.api.dbp,
     incidents: safety.api.reporting,
     observations: quality.api.reporting.observations,
     inspections: quality.api.reporting.inspections,
@@ -547,6 +602,22 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       defect: defects.api,
       submittal: submittals.api,
       correspondence: correspondence.api,
+    },
+  });
+
+  const links = createLinksModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    // One source per record type a link can join; a new tool joins by adding its type here (see `LINK_ENTITY_TYPES`).
+    sources: {
+      rfi: { summaries: rfis.api.summariesByIds, searchHits: rfis.api.searchHits },
+      defect: { summaries: defects.api.linkSummaries, searchHits: defects.api.searchHits },
+      submittal: { summaries: submittals.api.linkSummaries, searchHits: submittals.api.searchHits },
+      correspondence: {
+        summaries: correspondence.api.linkSummaries,
+        searchHits: correspondence.api.searchHits,
+      },
+      document: { summaries: documents.api.linkSummaries, searchHits: documents.api.searchHits },
     },
   });
 
@@ -586,6 +657,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    links,
     announcements,
     defects,
     meetings,
@@ -601,15 +673,20 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
+    esign,
     integrations,
     diary,
     scheduling,
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
+    logistics,
+    prefab,
     sync,
   ];
   const routes: RouteTable = {};
@@ -633,6 +710,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    links,
     announcements,
     defects,
     meetings,
@@ -648,8 +726,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
+    esign,
     integrations,
     sync,
     diary,
@@ -657,7 +737,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
+    logistics,
+    prefab,
     routes,
   };
 }
