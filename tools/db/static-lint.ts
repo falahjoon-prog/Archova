@@ -10,6 +10,8 @@ import { ROOT, sourceMigrations } from './sources';
 const NON_CONCURRENT_INDEX_OK = new Set([
   // Index on a column added in the same file, on a table with no rows referencing it yet (#308).
   'modules/financials/db/migrations/20261105090000_financials_contract_source.sql',
+  // Partial index on defects.warranty_item_id, a column added in the same file; no row has a value yet (#511).
+  'modules/defects/db/migrations/20261108200000_defects_warranty.sql',
 ]);
 
 export function lintMigrationFiles(): string[] {
