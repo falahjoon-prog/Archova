@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Text } from 'react-native';
 import { Button, ListItem, Screen, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { PendingActions, StateMessage, useAttempt, useCurrentOrg } from '../../../shared';
 import { getPermit, startRenewal } from '../commands';
 import { EVENT_TEXT, KIND_TEXT, STATUS_TEXT, dayText, expiryText } from '../format';
 
 export function PermitScreen({ projectId, permitId }: { projectId: string; permitId: string }) {
   const t = useTheme();
+  const attempt = useAttempt();
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const target = orgId ? { orgId, projectId } : null;
@@ -18,7 +19,16 @@ export function PermitScreen({ projectId, permitId }: { projectId: string; permi
     enabled: target !== null,
   });
   const renew = useMutation({
-    mutationFn: (p: { id: string; version: number }) => startRenewal(api, target!, p),
+    mutationFn: (p: { id: string; version: number }) =>
+      attempt(
+        {
+          projectId,
+          kind: 'permit.startRenewal',
+          targetId: p.id,
+          payload: { version: p.version },
+        },
+        () => startRenewal(api, target!, p),
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['permits', orgId, projectId] }),
   });
 
@@ -67,6 +77,10 @@ export function PermitScreen({ projectId, permitId }: { projectId: string; permi
           onPress={() => renew.mutate({ id: p.id, version: p.version })}
         />
       ) : null}
+      {renew.data === 'queued' ? (
+        <StateMessage message="No signal. This is saved on this phone and will be sent when you are online." />
+      ) : null}
+      <PendingActions targetId={p.id} />
       {renew.isError ? (
         <StateMessage
           tone="danger"
