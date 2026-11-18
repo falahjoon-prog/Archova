@@ -211,6 +211,10 @@ export const PROBLEM_CODES = {
   'announcement.audience_empty': 422,
   // conversations
   'conversation.not_found': 404,
+  // links (related items)
+  'link.not_found': 404,
+  'link.entity_not_found': 404,
+  'link.limit_reached': 422,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -296,6 +300,17 @@ export const PROBLEM_CODES = {
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
   'meeting.live_unavailable': 422,
+  // e-signature envelopes
+  'esign.not_found': 404,
+  'esign.document_not_found': 404,
+  'esign.recipient_not_found': 404,
+  'esign.invalid_state': 409,
+  'esign.incomplete': 422,
+  'esign.not_your_turn': 409,
+  'esign.not_a_pdf': 422,
+  'esign.paper_not_allowed': 403,
+  'esign.delegate_not_allowed': 403,
+  'esign.rate_limited': 429,
   // ownerportal
   'ownerportal.update_not_found': 404,
   'ownerportal.update_published': 409,
@@ -316,6 +331,13 @@ export const PROBLEM_CODES = {
   'logistics_delivery.not_found': 404,
   'logistics_delivery.bad_state': 409,
   'logistics_delivery.commitment_not_found': 422,
+  // prefab (prefabricated and modular units)
+  'prefab_unit.not_found': 404,
+  'prefab_unit.code_taken': 409,
+  'prefab_unit.bad_state': 409,
+  'prefab_unit.qa_open': 409,
+  'prefab_unit.delivery_not_found': 422,
+  'prefab_check.not_found': 404,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -398,6 +420,13 @@ export const PROBLEM_CODES = {
   'observation.not_allowed': 403,
   'observation.reason_required': 422,
   'observation.assignee_not_on_project': 422,
+  // quality: action plans
+  'action_plan.not_found': 404,
+  'action_plan.item_not_found': 404,
+  'action_plan_template.not_found': 404,
+  'action_plan.not_allowed': 403,
+  'action_plan.cancelled': 409,
+  'action_plan.assignee_not_on_project': 422,
   // environment: EMP, compliance conditions and documents
   'environment.plan_not_found': 404,
   'environment.plan_exists': 409,
@@ -422,6 +451,10 @@ export const PROBLEM_CODES = {
   // permits: project permits and approvals register
   'permit.not_found': 404,
   'permit.invalid_transition': 409,
+  // geotech: civil and geotechnical records
+  'geotech.investigation_not_found': 404,
+  'geotech.test_not_found': 404,
+  'geotech.earthworks_not_found': 404,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,

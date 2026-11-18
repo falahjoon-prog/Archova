@@ -1,4 +1,4 @@
--- Composed from modules/files/db/migrations/20261107110000_files_photo_albums.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/files/db/migrations/20261108210000_files_photo_albums.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- files: site photo albums. A photo's album is derived from where it was taken (file_objects.module); a filing row
 -- overrides that when the photo is filed somewhere more specific (marked up on an RFI, attached to a punch item,
 -- accepted from a Nova suggestion). Manual albums are free-form collections.

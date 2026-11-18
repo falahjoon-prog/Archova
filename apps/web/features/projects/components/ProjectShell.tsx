@@ -7,12 +7,15 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
+  ActionPlansIcon,
   InspectionsIcon,
   SwmsIcon,
   ToolboxIcon,
   IncidentsIcon,
   PermitsIcon,
+  GeotechIcon,
   InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
@@ -232,6 +235,11 @@ export function projectToolGroups(
       label: 'Deliveries',
       icon: DeliveriesIcon,
     },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
       label: 'Inspections',
@@ -241,6 +249,11 @@ export function projectToolGroups(
       href: webRoutes.observations(orgSlug, projectId),
       label: 'Observations',
       icon: ObservationsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.actionPlans(orgSlug, projectId),
+      label: 'Action plans',
+      icon: ActionPlansIcon,
     },
     canRead('inspections') && {
       href: webRoutes.swms(orgSlug, projectId),
@@ -266,6 +279,11 @@ export function projectToolGroups(
       href: webRoutes.permits(orgSlug, projectId),
       label: 'Permits',
       icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
     },
     canRead('inspections') && {
       href: webRoutes.insurance(orgSlug, projectId),
@@ -371,7 +389,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',
@@ -382,6 +400,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Warranty',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
       'Toolbox talks',
       'Incidents',

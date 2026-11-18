@@ -36,6 +36,15 @@ export interface DataTableProps<Row> {
   density?: 'compact' | 'comfortable';
   rowClassName?: (row: Row) => string | undefined;
   footer?: ReactNode;
+  /**
+   * Groups rows under a full-width heading row each, in one table so every group shares the same column widths.
+   * Sorting applies inside each group; groups follow `order`, then first appearance.
+   */
+  groupBy?: {
+    key: (row: Row) => string;
+    label: (key: string, rows: readonly Row[]) => ReactNode;
+    order?: readonly string[];
+  };
 }
 
 /**
@@ -54,6 +63,7 @@ export function DataTable<Row>({
   density = 'comfortable',
   rowClassName,
   footer,
+  groupBy,
 }: DataTableProps<Row>) {
   const [sort, setSort] = useState<SortState | undefined>(defaultSort);
 
@@ -73,6 +83,37 @@ export function DataTable<Row>({
       return String(va).localeCompare(String(vb), 'en-AU', { numeric: true }) * dir;
     });
   }, [rows, columns, sort]);
+
+  const groups = useMemo(() => {
+    if (!groupBy) return null;
+    const byKey = new Map<string, Row[]>();
+    for (const row of sorted) {
+      const key = groupBy.key(row);
+      const list = byKey.get(key);
+      if (list) list.push(row);
+      else byKey.set(key, [row]);
+    }
+    const ordered = [...(groupBy.order ?? [])].filter((k) => byKey.has(k));
+    for (const k of byKey.keys()) if (!ordered.includes(k)) ordered.push(k);
+    return ordered.map((key) => ({ key, rows: byKey.get(key)! }));
+  }, [sorted, groupBy]);
+
+  const renderRow = (row: Row) => (
+    <tr key={getRowId(row)} className={rowClassName?.(row)}>
+      {columns.map((c) => {
+        const Cell = c.rowHeader ? 'th' : 'td';
+        return (
+          <Cell
+            key={c.id}
+            scope={c.rowHeader ? 'row' : undefined}
+            className={cx(c.align === 'end' && 'ac-table__num', c.className)}
+          >
+            {c.cell(row)}
+          </Cell>
+        );
+      })}
+    </tr>
+  );
 
   const toggleSort = (columnId: string) =>
     setSort((s) =>
@@ -132,22 +173,18 @@ export function DataTable<Row>({
               </td>
             </tr>
           ) : (
-            sorted.map((row) => (
-              <tr key={getRowId(row)} className={rowClassName?.(row)}>
-                {columns.map((c) => {
-                  const Cell = c.rowHeader ? 'th' : 'td';
-                  return (
-                    <Cell
-                      key={c.id}
-                      scope={c.rowHeader ? 'row' : undefined}
-                      className={cx(c.align === 'end' && 'ac-table__num', c.className)}
-                    >
-                      {c.cell(row)}
-                    </Cell>
-                  );
-                })}
-              </tr>
-            ))
+            (groups ?? [{ key: '', rows: sorted }]).flatMap((g) => [
+              ...(groupBy
+                ? [
+                    <tr key={`group:${g.key}`} className="ac-table__group">
+                      <th scope="colgroup" colSpan={columns.length}>
+                        {groupBy.label(g.key, g.rows)}
+                      </th>
+                    </tr>,
+                  ]
+                : []),
+              ...g.rows.map(renderRow),
+            ])
           )}
         </tbody>
         {footer ? <tfoot>{footer}</tfoot> : null}

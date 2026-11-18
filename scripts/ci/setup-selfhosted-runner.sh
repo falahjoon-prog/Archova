@@ -18,7 +18,7 @@ VERSION="${RUNNER_VERSION:-2.329.0}"
 [ "$(id -u)" -ne 0 ] || { echo "Run as a normal user, not root"; exit 1; }
 
 sudo apt-get update -y
-sudo apt-get install -y curl git build-essential python3 unzip jq ca-certificates docker.io
+sudo apt-get install -y curl git build-essential python3 unzip jq ca-certificates docker.io docker-compose-v2
 sudo usermod -aG docker "$USER"
 command -v systemctl >/dev/null && sudo systemctl enable --now docker || sudo service docker start
 

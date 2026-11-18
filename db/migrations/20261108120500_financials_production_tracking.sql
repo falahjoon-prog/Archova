@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261108110000_financials_production_tracking.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261108120500_financials_production_tracking.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- financials: production tracking. A project defines its own production items (a custom unit such as "panels
 -- installed", "LF of conduit", "CY of concrete", optionally by trade and location) with a planned quantity over a
 -- planned window, then logs the quantity actually installed each day. This is the quantity-over-time side; the
