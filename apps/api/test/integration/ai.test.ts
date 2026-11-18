@@ -54,6 +54,9 @@ beforeAll(async () => {
       budgetReviewFacts: async () => {
         throw new Error('not used');
       },
+      bidsForLevelling: async () => {
+        throw new Error('not used');
+      },
       openRfisOnDrawing: async () => [],
       provider: t.ai,
     },
