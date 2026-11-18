@@ -6,3 +6,5 @@ export { StateMessage } from './StateMessage';
 export { Placeholder } from './Placeholder';
 export { PendingActions } from './PendingActions';
 export { useDeviceData, useLocalQuery, useMyProjectCompany, type DeviceData } from './device-data';
+export { PendingSyncBadge } from './PendingSyncBadge';
+export { useAttempt } from './use-attempt';

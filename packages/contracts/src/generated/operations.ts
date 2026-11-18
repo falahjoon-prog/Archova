@@ -363,12 +363,43 @@ export const ListProjectMembersParams = z.object({
 export const ListProjectMembersQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
+  "q": z.string().max(100).optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "trade": z.string().max(100).optional(),
 });
 export const AddProjectMemberParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddProjectMemberBody = s.AddProjectMemberRequestSchema;
+export const UpdateProjectMemberParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "memberId": z.string(),
+});
+export const UpdateProjectMemberBody = s.UpdateProjectMemberRequestSchema;
+export const ListCompanyContactsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContactsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+  "q": z.string().max(100).optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+});
+export const CreateCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCompanyContactBody = s.CreateCompanyContactRequestSchema;
+export const UpdateCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contactId": z.string(),
+});
+export const UpdateCompanyContactBody = s.UpdateCompanyContactRequestSchema;
+export const DeleteCompanyContactParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contactId": z.string(),
+});
 export const RemoveProjectMemberParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -415,6 +446,52 @@ export const ListProjectPhotosParams = z.object({
 });
 export const ListProjectPhotosQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(30).default(12),
+});
+export const BrowseProjectPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const BrowseProjectPhotosQuery = z.object({
+  "album": z.string().optional(),
+  "q": z.string().max(100).optional(),
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "cursor": z.string().optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(48),
+});
+export const FilePhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const FilePhotoBody = s.PhotoFilingRequestSchema;
+export const ListPhotoAlbumsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePhotoAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePhotoAlbumBody = z.object({
+  "name": z.string().min(1).max(80),
+});
+export const DeletePhotoAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+});
+export const AddPhotoToAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const RemovePhotoFromAlbumParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "albumId": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 });
 export const ListFoldersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -495,6 +572,7 @@ export const ListCoordinationIssuesParams = z.object({
 export const ListCoordinationIssuesQuery = z.object({
   "status": s.CoordinationIssueStatusSchema.optional(),
   "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
   "q": z.string().min(1).max(200).optional(),
 });
 export const CreateCoordinationIssueParams = z.object({
@@ -526,6 +604,8 @@ export const ListDocumentsParams = z.object({
 export const ListDocumentsQuery = z.object({
   "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
   "q": z.string().min(1).max(200).optional(),
+  "createdSince": z.string().datetime({ offset: true }).optional(),
+  "tracked": z.enum(["true"]).optional(),
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
 });
@@ -545,6 +625,34 @@ export const UpdateDocumentParams = z.object({
   "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
 });
 export const UpdateDocumentBody = s.UpdateDocumentRequestSchema;
+export const DeleteDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const ListDeletedDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeletedDocumentsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RestoreDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const TrackDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const UntrackDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
 export const AddDocumentRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -953,6 +1061,14 @@ export const AskContractParams = z.object({
 export const AskContractBody = z.object({
   "question": z.string().min(3).max(500),
 }).strict();
+export const DraftContractSovParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftContractSovBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractValue": z.union([s.FinancialsMoneySchema, z.null()]).optional(),
+}).strict();
 export const CompareContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -983,6 +1099,15 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const LevelBidsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const LevelBidsWithNovaBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
+}).strict();
 export const ReviewBudgetWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1009,6 +1134,12 @@ export const SummariseDiaryWeekWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "weekStart": z.string().date(),
 });
+export const ParseVoiceLogWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const ParseVoiceLogWithNovaBody = s.VoiceLogRequestSchema;
 export const DraftMinutesWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1205,6 +1336,27 @@ export const GetDataExportParams = z.object({
 export const CreateDataExportDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const ListWorkflowsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowBody = s.CreateWorkflowRequestSchema;
+export const UpdateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWorkflowBody = s.UpdateWorkflowRequestSchema;
+export const DeleteWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const GetVariationWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1825,6 +1977,33 @@ export const DraftAnnouncementWithNovaBody = z.object({
   "notes": z.string().min(1).max(4000),
   "audience": z.string().max(200).optional(),
 }).strict();
+export const ListRelatedItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListRelatedItemsQuery = z.object({
+  "type": s.LinkEntityTypeSchema,
+  "id": z.string().max(64),
+});
+export const CreateRelatedItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateRelatedItemBody = s.CreateRelatedItemRequestSchema;
+export const SearchRelatedItemCandidatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SearchRelatedItemCandidatesQuery = z.object({
+  "type": s.LinkEntityTypeSchema,
+  "q": z.string().max(100).optional(),
+  "limit": z.coerce.number().int().min(1).max(20).default(8),
+});
+export const DeleteRelatedItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^rli_[0-9A-Za-z]{26}$")),
+});
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3093,6 +3272,59 @@ export const RespondToReadingParams = z.object({
   "readingId": z.string().regex(new RegExp("^erd_[0-9A-Za-z]{26}$")),
 });
 export const RespondToReadingBody = s.RespondToReadingRequestSchema;
+export const ListActionPlansParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListActionPlansQuery = z.object({
+  "status": s.ActionPlanStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanBody = s.CreateActionPlanRequestSchema;
+export const GetActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanBody = s.UpdateActionPlanRequestSchema;
+export const AddActionPlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const AddActionPlanItemBody = s.CreateActionPlanItemRequestSchema;
+export const UpdateActionPlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^ali_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanItemBody = s.UpdateActionPlanItemRequestSchema;
+export const SaveActionPlanAsTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const SaveActionPlanAsTemplateBody = s.SaveActionPlanTemplateRequestSchema;
+export const ListActionPlanTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanTemplateBody = s.CreateActionPlanTemplateRequestSchema;
 export const ListIncidentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3276,6 +3508,80 @@ export const AcknowledgeSwmsParams = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListGeotechInvestigationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechInvestigationsQuery = z.object({
+  "kind": s.GeotechInvestigationKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechInvestigationBody = s.CreateGeotechInvestigationRequestSchema;
+export const GetGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationBody = s.UpdateGeotechInvestigationRequestSchema;
+export const ListGeotechTestsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechTestsQuery = z.object({
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")).optional(),
+  "kind": s.GeotechTestKindSchema.optional(),
+  "result": s.GeotechTestOutcomeSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechTestBody = s.CreateGeotechTestRequestSchema;
+export const DeleteGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "testId": z.string().regex(new RegExp("^gts_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksQuery = z.object({
+  "zone": z.string().max(100).optional(),
+  "kind": s.GeotechEarthworksKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechEarthworksBody = s.CreateGeotechEarthworksRequestSchema;
+export const GetGeotechEarthworksSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DeleteGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "entryId": z.string().regex(new RegExp("^gew_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ListPermitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3324,6 +3630,49 @@ export const TransitionPermitParams = z.object({
   "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
 });
 export const TransitionPermitBody = s.PermitTransitionRequestSchema;
+export const GetHandoverPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateHandoverItemBody = s.CreateHandoverItemRequestSchema;
+export const ApplyHandoverTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHandoverFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHandoverExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const IssueHandoverPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const IssueHandoverPackBody = s.IssueHandoverPackRequestSchema;
+export const GetHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateHandoverItemBody = s.UpdateHandoverItemRequestSchema;
+export const TransitionHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const TransitionHandoverItemBody = s.HandoverTransitionRequestSchema;
 export const ListContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3345,6 +3694,10 @@ export const SubmitPaymentClaimParams = z.object({
 });
 export const SubmitPaymentClaimBody = s.SubmitPaymentClaimRequestSchema;
 export const GetCostForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetProjectCashflowParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
@@ -3705,6 +4058,30 @@ export const GetCommitmentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
+export const LinkCommitmentContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const LinkCommitmentContractBody = s.LinkCommitmentContractRequestSchema;
+export const GetCommitmentInvoicesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const GetCommitmentInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetCommitmentInvoicePdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetCommitmentInvoicePdfBody = s.CommitmentInvoicePdfRequestSchema;
 export const SubmitCommitmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3840,6 +4217,33 @@ export const VoidClaimEvidenceServiceParams = z.object({
 export const VoidClaimEvidenceServiceBody = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
+export const ListProjectRisksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectRisksQuery = z.object({
+  "status": z.enum(["open", "mitigating", "occurred", "closed"]).optional(),
+});
+export const CreateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectRiskBody = s.CreateProjectRiskRequestSchema;
+export const GetProjectRiskSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskBody = s.UpdateProjectRiskRequestSchema;
+export const DeleteProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3995,6 +4399,62 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListPrefabUnitsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPrefabUnitsQuery = z.object({
+  "status": s.PrefabUnitStatusSchema.optional(),
+});
+export const CreatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrefabUnitBody = s.CreatePrefabUnitRequestSchema;
+export const GetPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitBody = s.UpdatePrefabUnitRequestSchema;
+export const TransitionPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPrefabUnitBody = s.PrefabTransitionRequestSchema;
+export const DraftPrefabDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const AddPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const AddPrefabCheckBody = s.AddPrefabCheckRequestSchema;
+export const RecordPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "checkId": z.string().regex(new RegExp("^pfc_[0-9A-Za-z]{26}$")),
+});
+export const RecordPrefabCheckBody = s.RecordPrefabCheckRequestSchema;
+export const GetPrefabInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesBody = s.PrefabPlanDatesRequestSchema;
 export const ListLogisticsResourcesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4136,6 +4596,73 @@ export const TransitionCoverParams = z.object({
   "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
 });
 export const TransitionCoverBody = s.CoverTransitionRequestSchema;
+export const ListEsignEnvelopesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEsignEnvelopesQuery = z.object({
+  "sourceType": s.EsignSourceTypeSchema.optional(),
+  "sourceId": z.string().min(1).max(40).optional(),
+  "status": s.EsignEnvelopeStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEsignEnvelopeBody = s.CreateEsignEnvelopeRequestSchema;
+export const GetEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEsignEnvelopeBody = s.UpdateEsignEnvelopeRequestSchema;
+export const DeleteEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const SendEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const VoidEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const VoidEsignEnvelopeBody = s.VoidEsignEnvelopeRequestSchema;
+export const RemindEsignEnvelopeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmEsignPaperSignedParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+  "recipientId": z.string().regex(new RegExp("^erc_[0-9A-Za-z]{26}$")),
+});
+export const GetEsignDocumentPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "envelopeId": z.string().regex(new RegExp("^env_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
+});
+export const OpenEsignAccessBody = s.OpenInductionAccessRequestSchema;
+export const SignEsignAccessBody = s.SignEsignRequestSchema;
+export const DeclineEsignAccessBody = s.DeclineEsignRequestSchema;
+export const DelegateEsignAccessBody = s.DelegateEsignRequestSchema;
+export const GetEsignAccessDocumentPdfParams = z.object({
+  "documentId": z.string().regex(new RegExp("^edc_[0-9A-Za-z]{26}$")),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -5163,6 +5690,66 @@ export const operations = {
     query: null,
     body: AddProjectMemberBody,
   },
+  updateProjectMember: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.project_members.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectMemberParams,
+    query: null,
+    body: UpdateProjectMemberBody,
+  },
+  listCompanyContacts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/company-contacts',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.read",
+    internal: false,
+    contentType: null,
+    params: ListCompanyContactsParams,
+    query: ListCompanyContactsQuery,
+    body: null,
+  },
+  createCompanyContact: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/company-contacts',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCompanyContactParams,
+    query: null,
+    body: CreateCompanyContactBody,
+  },
+  updateCompanyContact: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/company-contacts/{contactId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCompanyContactParams,
+    query: null,
+    body: UpdateCompanyContactBody,
+  },
+  deleteCompanyContact: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/company-contacts/{contactId}',
+    module: "platform",
+    auth: "required",
+    permission: "platform.companies.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteCompanyContactParams,
+    query: null,
+    body: null,
+  },
   removeProjectMember: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove',
@@ -5281,6 +5868,90 @@ export const operations = {
     contentType: null,
     params: ListProjectPhotosParams,
     query: ListProjectPhotosQuery,
+    body: null,
+  },
+  browseProjectPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos/browse',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: BrowseProjectPhotosParams,
+    query: BrowseProjectPhotosQuery,
+    body: null,
+  },
+  filePhoto: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: FilePhotoParams,
+    query: null,
+    body: FilePhotoBody,
+  },
+  listPhotoAlbums: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListPhotoAlbumsParams,
+    query: null,
+    body: null,
+  },
+  createPhotoAlbum: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: CreatePhotoAlbumParams,
+    query: null,
+    body: CreatePhotoAlbumBody,
+  },
+  deletePhotoAlbum: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: DeletePhotoAlbumParams,
+    query: null,
+    body: null,
+  },
+  addPhotoToAlbum: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: AddPhotoToAlbumParams,
+    query: null,
+    body: null,
+  },
+  removePhotoFromAlbum: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}',
+    module: "files",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RemovePhotoFromAlbumParams,
+    query: null,
     body: null,
   },
   listFolders: {
@@ -5558,6 +6229,66 @@ export const operations = {
     params: UpdateDocumentParams,
     query: null,
     body: UpdateDocumentBody,
+  },
+  deleteDocument: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteDocumentParams,
+    query: null,
+    body: null,
+  },
+  listDeletedDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/bin',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: ListDeletedDocumentsParams,
+    query: ListDeletedDocumentsQuery,
+    body: null,
+  },
+  restoreDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: null,
+    params: RestoreDocumentParams,
+    query: null,
+    body: null,
+  },
+  trackDocument: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: TrackDocumentParams,
+    query: null,
+    body: null,
+  },
+  untrackDocument: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: UntrackDocumentParams,
+    query: null,
+    body: null,
   },
   addDocumentRevision: {
     method: 'POST',
@@ -6256,6 +6987,18 @@ export const operations = {
     query: null,
     body: AskContractBody,
   },
+  draftContractSov: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "financials.contracts.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftContractSovParams,
+    query: null,
+    body: DraftContractSovBody,
+  },
   compareContracts: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares',
@@ -6304,6 +7047,18 @@ export const operations = {
     query: null,
     body: NegotiateQuoteBody,
   },
+  levelBidsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: LevelBidsWithNovaParams,
+    query: null,
+    body: LevelBidsWithNovaBody,
+  },
   reviewBudgetWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews',
@@ -6351,6 +7106,18 @@ export const operations = {
     params: SummariseDiaryWeekWithNovaParams,
     query: null,
     body: null,
+  },
+  parseVoiceLogWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log',
+    module: "ai",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: ParseVoiceLogWithNovaParams,
+    query: null,
+    body: ParseVoiceLogWithNovaBody,
   },
   draftMinutesWithNova: {
     method: 'POST',
@@ -6783,6 +7550,66 @@ export const operations = {
     rateLimit: 30,
     contentType: null,
     params: CreateDataExportDownloadParams,
+    query: null,
+    body: null,
+  },
+  listWorkflows: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: ListWorkflowsParams,
+    query: null,
+    body: null,
+  },
+  createWorkflow: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWorkflowParams,
+    query: null,
+    body: CreateWorkflowBody,
+  },
+  updateWorkflow: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWorkflowParams,
+    query: null,
+    body: UpdateWorkflowBody,
+  },
+  deleteWorkflow: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteWorkflowParams,
+    query: null,
+    body: null,
+  },
+  getVariationWorkflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetVariationWorkflowParams,
     query: null,
     body: null,
   },
@@ -8106,6 +8933,54 @@ export const operations = {
     params: DraftAnnouncementWithNovaParams,
     query: null,
     body: DraftAnnouncementWithNovaBody,
+  },
+  listRelatedItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items',
+    module: "links",
+    auth: "required",
+    permission: "links.links.read",
+    internal: false,
+    contentType: null,
+    params: ListRelatedItemsParams,
+    query: ListRelatedItemsQuery,
+    body: null,
+  },
+  createRelatedItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items',
+    module: "links",
+    auth: "required",
+    permission: "links.links.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateRelatedItemParams,
+    query: null,
+    body: CreateRelatedItemBody,
+  },
+  searchRelatedItemCandidates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items/candidates',
+    module: "links",
+    auth: "required",
+    permission: "links.links.create",
+    internal: false,
+    contentType: null,
+    params: SearchRelatedItemCandidatesParams,
+    query: SearchRelatedItemCandidatesQuery,
+    body: null,
+  },
+  deleteRelatedItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/related-items/{linkId}',
+    module: "links",
+    auth: "required",
+    permission: "links.links.delete",
+    internal: false,
+    contentType: null,
+    params: DeleteRelatedItemParams,
+    query: null,
+    body: null,
   },
   listCorrespondence: {
     method: 'GET',
@@ -10883,6 +11758,114 @@ export const operations = {
     query: null,
     body: RespondToReadingBody,
   },
+  listActionPlans: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: null,
+    params: ListActionPlansParams,
+    query: ListActionPlansQuery,
+    body: null,
+  },
+  createActionPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateActionPlanParams,
+    query: null,
+    body: CreateActionPlanBody,
+  },
+  getActionPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: null,
+    params: GetActionPlanParams,
+    query: null,
+    body: null,
+  },
+  updateActionPlan: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateActionPlanParams,
+    query: null,
+    body: UpdateActionPlanBody,
+  },
+  addActionPlanItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddActionPlanItemParams,
+    query: null,
+    body: AddActionPlanItemBody,
+  },
+  updateActionPlanItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items/{itemId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateActionPlanItemParams,
+    query: null,
+    body: UpdateActionPlanItemBody,
+  },
+  saveActionPlanAsTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/save-as-template',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveActionPlanAsTemplateParams,
+    query: null,
+    body: SaveActionPlanAsTemplateBody,
+  },
+  listActionPlanTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plan-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: null,
+    params: ListActionPlanTemplatesParams,
+    query: null,
+    body: null,
+  },
+  createActionPlanTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plan-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateActionPlanTemplateParams,
+    query: null,
+    body: CreateActionPlanTemplateBody,
+  },
   listIncidents: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
@@ -11231,6 +12214,150 @@ export const operations = {
     query: null,
     body: AcknowledgeSwmsBody,
   },
+  listGeotechInvestigations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechInvestigationsParams,
+    query: ListGeotechInvestigationsQuery,
+    body: null,
+  },
+  createGeotechInvestigation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechInvestigationParams,
+    query: null,
+    body: CreateGeotechInvestigationBody,
+  },
+  getGeotechInvestigation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechInvestigationParams,
+    query: null,
+    body: null,
+  },
+  updateGeotechInvestigation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateGeotechInvestigationParams,
+    query: null,
+    body: UpdateGeotechInvestigationBody,
+  },
+  listGeotechTests: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechTestsParams,
+    query: ListGeotechTestsQuery,
+    body: null,
+  },
+  createGeotechTest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechTestParams,
+    query: null,
+    body: CreateGeotechTestBody,
+  },
+  deleteGeotechTest: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechTestParams,
+    query: null,
+    body: null,
+  },
+  listGeotechEarthworks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechEarthworksParams,
+    query: ListGeotechEarthworksQuery,
+    body: null,
+  },
+  createGeotechEarthworks: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechEarthworksParams,
+    query: null,
+    body: CreateGeotechEarthworksBody,
+  },
+  getGeotechEarthworksSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechEarthworksSummaryParams,
+    query: null,
+    body: null,
+  },
+  deleteGeotechEarthworks: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechEarthworksParams,
+    query: null,
+    body: null,
+  },
+  listGeotechFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/flags',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechFlagsParams,
+    query: null,
+    body: null,
+  },
   listPermits: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
@@ -11327,6 +12454,114 @@ export const operations = {
     query: null,
     body: TransitionPermitBody,
   },
+  getHandoverPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverPackParams,
+    query: null,
+    body: null,
+  },
+  createHandoverItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateHandoverItemParams,
+    query: null,
+    body: CreateHandoverItemBody,
+  },
+  applyHandoverTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/template',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: null,
+    params: ApplyHandoverTemplateParams,
+    query: null,
+    body: null,
+  },
+  listHandoverFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/flags',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: ListHandoverFlagsParams,
+    query: null,
+    body: null,
+  },
+  getHandoverExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/export',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverExportParams,
+    query: null,
+    body: null,
+  },
+  issueHandoverPack: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/issues',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: IssueHandoverPackParams,
+    query: null,
+    body: IssueHandoverPackBody,
+  },
+  getHandoverItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverItemParams,
+    query: null,
+    body: null,
+  },
+  updateHandoverItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateHandoverItemParams,
+    query: null,
+    body: UpdateHandoverItemBody,
+  },
+  transitionHandoverItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionHandoverItemParams,
+    query: null,
+    body: TransitionHandoverItemBody,
+  },
   listContracts: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/contracts',
@@ -11384,6 +12619,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetCostForecastParams,
+    query: null,
+    body: null,
+  },
+  getProjectCashflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cashflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectCashflowParams,
     query: null,
     body: null,
   },
@@ -12179,6 +13426,54 @@ export const operations = {
     query: null,
     body: null,
   },
+  linkCommitmentContract: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: LinkCommitmentContractParams,
+    query: null,
+    body: LinkCommitmentContractBody,
+  },
+  getCommitmentInvoices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentInvoicesParams,
+    query: null,
+    body: null,
+  },
+  getCommitmentInvoice: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentInvoiceParams,
+    query: null,
+    body: null,
+  },
+  getCommitmentInvoicePdf: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: "application/json",
+    params: GetCommitmentInvoicePdfParams,
+    query: null,
+    body: GetCommitmentInvoicePdfBody,
+  },
   submitCommitment: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit',
@@ -12442,6 +13737,66 @@ export const operations = {
     params: VoidClaimEvidenceServiceParams,
     query: null,
     body: VoidClaimEvidenceServiceBody,
+  },
+  listProjectRisks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectRisksParams,
+    query: ListProjectRisksQuery,
+    body: null,
+  },
+  createProjectRisk: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectRiskParams,
+    query: null,
+    body: CreateProjectRiskBody,
+  },
+  getProjectRiskSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/summary',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectRiskSummaryParams,
+    query: null,
+    body: null,
+  },
+  updateProjectRisk: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectRiskParams,
+    query: null,
+    body: UpdateProjectRiskBody,
+  },
+  deleteProjectRisk: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteProjectRiskParams,
+    query: null,
+    body: null,
   },
   listMeetingSeries: {
     method: 'GET',
@@ -12779,6 +14134,126 @@ export const operations = {
     query: null,
     body: null,
   },
+  listPrefabUnits: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: ListPrefabUnitsParams,
+    query: ListPrefabUnitsQuery,
+    body: null,
+  },
+  createPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePrefabUnitParams,
+    query: null,
+    body: CreatePrefabUnitBody,
+  },
+  getPrefabUnit: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabUnitParams,
+    query: null,
+    body: null,
+  },
+  updatePrefabUnit: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePrefabUnitParams,
+    query: null,
+    body: UpdatePrefabUnitBody,
+  },
+  transitionPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPrefabUnitParams,
+    query: null,
+    body: TransitionPrefabUnitBody,
+  },
+  draftPrefabDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: null,
+    params: DraftPrefabDeliveryParams,
+    query: null,
+    body: null,
+  },
+  addPrefabCheck: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddPrefabCheckParams,
+    query: null,
+    body: AddPrefabCheckBody,
+  },
+  recordPrefabCheck: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: RecordPrefabCheckParams,
+    query: null,
+    body: RecordPrefabCheckBody,
+  },
+  getPrefabInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/insights',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabInsightsParams,
+    query: null,
+    body: null,
+  },
+  planPrefabDates: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: "application/json",
+    params: PlanPrefabDatesParams,
+    query: null,
+    body: PlanPrefabDatesBody,
+  },
   listLogisticsResources: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/logistics/resources',
@@ -13066,6 +14541,200 @@ export const operations = {
     params: TransitionCoverParams,
     query: null,
     body: TransitionCoverBody,
+  },
+  listEsignEnvelopes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.read",
+    internal: false,
+    contentType: null,
+    params: ListEsignEnvelopesParams,
+    query: ListEsignEnvelopesQuery,
+    body: null,
+  },
+  createEsignEnvelope: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEsignEnvelopeParams,
+    query: null,
+    body: CreateEsignEnvelopeBody,
+  },
+  getEsignEnvelope: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.read",
+    internal: false,
+    contentType: null,
+    params: GetEsignEnvelopeParams,
+    query: null,
+    body: null,
+  },
+  updateEsignEnvelope: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEsignEnvelopeParams,
+    query: null,
+    body: UpdateEsignEnvelopeBody,
+  },
+  deleteEsignEnvelope: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.write",
+    internal: false,
+    contentType: null,
+    params: DeleteEsignEnvelopeParams,
+    query: null,
+    body: null,
+  },
+  sendEsignEnvelope: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/send',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.send",
+    internal: false,
+    rateLimit: 30,
+    contentType: null,
+    params: SendEsignEnvelopeParams,
+    query: null,
+    body: null,
+  },
+  voidEsignEnvelope: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/void',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.void",
+    internal: false,
+    contentType: "application/json",
+    params: VoidEsignEnvelopeParams,
+    query: null,
+    body: VoidEsignEnvelopeBody,
+  },
+  remindEsignEnvelope: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/remind',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.send",
+    internal: false,
+    rateLimit: 10,
+    contentType: null,
+    params: RemindEsignEnvelopeParams,
+    query: null,
+    body: null,
+  },
+  confirmEsignPaperSigned: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/recipients/{recipientId}/paper-signed',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.send",
+    internal: false,
+    contentType: null,
+    params: ConfirmEsignPaperSignedParams,
+    query: null,
+    body: null,
+  },
+  getEsignDocumentPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/documents/{documentId}/pdf',
+    module: "esign",
+    auth: "required",
+    permission: "esign.envelopes.read",
+    internal: false,
+    contentType: null,
+    params: GetEsignDocumentPdfParams,
+    query: null,
+    body: null,
+  },
+  getEsignAccess: {
+    method: 'GET',
+    path: '/v1/esign-access',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openEsignAccess: {
+    method: 'POST',
+    path: '/v1/esign-access',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenEsignAccessBody,
+  },
+  signEsignAccess: {
+    method: 'POST',
+    path: '/v1/esign-access/sign',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: SignEsignAccessBody,
+  },
+  declineEsignAccess: {
+    method: 'POST',
+    path: '/v1/esign-access/decline',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DeclineEsignAccessBody,
+  },
+  delegateEsignAccess: {
+    method: 'POST',
+    path: '/v1/esign-access/delegate',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DelegateEsignAccessBody,
+  },
+  getEsignAccessDocumentPdf: {
+    method: 'GET',
+    path: '/v1/esign-access/documents/{documentId}/pdf',
+    module: "esign",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetEsignAccessDocumentPdfParams,
+    query: null,
+    body: null,
   },
 } as const satisfies Record<string, OperationDef>;
 

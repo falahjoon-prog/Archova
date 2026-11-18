@@ -1072,9 +1072,59 @@ export function createTenderService(deps: EstimatingDeps) {
     };
   }
 
+  /**
+   * For Nova's bid levelling (ai/10): every confirmed quote of the package on the package's scope schedule, one anonymous
+   * label per bid ("Bid A", ...), with the lines that name no scope line listed so Nova can suggest where they belong.
+   * Builder staff with `quotes.review` only. No company, contact, note or allowance leaves here.
+   */
+  async function bidsForLevelling(scope: TenantScope, projectId: string, packageId: string) {
+    const { row } = await load(scope, projectId, packageId);
+    const cmp = await comparison(scope, projectId, packageId);
+    const confirmed = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.packageId, packageId), eq(quotes.status, 'confirmed')));
+    const full = new Map((await withLines(scope, confirmed)).map((q) => [q.id, q]));
+    const keys = new Set(row.scope.map((s) => s.key));
+    return {
+      trade: row.trade,
+      scope: row.scope.map((s) => ({ key: s.key, description: s.description, unit: s.unit })),
+      medianTotalExGst: cmp.medianTotalExGst,
+      bids: cmp.columns.map((c, i) => {
+        const q = full.get(c.quoteId)!;
+        return {
+          label: `Bid ${String.fromCharCode(65 + i)}`,
+          quoteId: c.quoteId,
+          totalExGst: c.totalExGst,
+          validUntil: c.validUntil,
+          validityExpired: c.validityExpired,
+          cells: cmp.rows.map((r) => {
+            const cell = r.cells[i]!;
+            return {
+              scopeKey: r.key,
+              amountExGst: cell.amountExGst,
+              provisional: cell.state === 'provisional',
+              excluded: cell.excluded,
+            };
+          }),
+          unmapped: q.lines
+            .filter((l) => l.scopeKey === null || !keys.has(l.scopeKey))
+            .map((l, n) => ({
+              ref: `u${n + 1}`,
+              description: l.description,
+              amountExGst: l.amount,
+            })),
+          exclusions: c.exclusions.map((e) => ({ text: e.text, scopeKey: e.scopeKey })),
+          qualifications: c.qualifications.map((e) => ({ text: e.text, scopeKey: e.scopeKey })),
+        };
+      }),
+    };
+  }
+
   return {
     scopeForQuoteReading,
     quoteForNegotiation,
+    bidsForLevelling,
     comparison,
     list,
     get,

@@ -24,6 +24,9 @@ export const PLAN_MODULE_KEYS = [
   'quality',
   'safety',
   'insurance',
+  'handover',
+  'permits',
+  'geotech',
   'photos',
   'meetings',
   'correspondence',
@@ -34,6 +37,7 @@ export const PLAN_MODULE_KEYS = [
   'estimating',
   'ownerportal',
   'bim',
+  'esign',
   'ai',
 ] as const;
 export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];

@@ -7,6 +7,8 @@ export type AttemptOutcome = 'sent' | 'queued';
 export async function attemptOrQueue(
   queue: Pick<ActionQueue, 'enqueue'> | null,
   action: {
+    /** Reuse as the idempotency key when the action is replayed, so a lost reply cannot answer twice. */
+    id?: string;
     projectId: string;
     kind: ActionKind;
     targetId: string;
@@ -29,7 +31,15 @@ export async function attemptOrQueue(
 
 export const ACTION_TEXT: Record<ActionKind, string> = {
   'submittal.respond': 'Submittal response',
+  'rfi.respond': 'RFI response',
   'timesheet.submit': 'Submit timesheet',
   'timesheet.approve': 'Approve timesheet',
   'timesheet.reject': 'Reject timesheet',
+  'delivery.checkIn': 'Delivery check-in',
+  'swms.acknowledge': 'SWMS acknowledgement',
+  'swms.transition': 'SWMS review',
+  'permit.startRenewal': 'Permit renewal',
+  'environment.startCondition': 'Start condition',
+  'toolbox.addAttendee': 'Toolbox talk attendee',
+  'toolbox.transition': 'Toolbox talk',
 };

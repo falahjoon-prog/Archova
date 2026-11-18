@@ -28,3 +28,7 @@ auditConfig:
     # zod 3.25.76 inside Expo's CLI (mobile build tooling, same as above). Our own packages are on zod 4.6.7; Expo
     # needs the zod 3 API, so an override would break its CLI. Revisit when Expo ships on zod 4.
     - GHSA-mrhx-c7xc-m3w5
+    # picomatch ReDoS (no patched release yet) in chokidar (apps/admin sass watcher) and Expo's CLI (apps/mobile);
+    # build and dev tooling only, never shipped in an image or app, and it only matches our own file globs.
+    # Revisit when picomatch publishes a patched version.
+    - GHSA-fc5q-39xc-vjpf

@@ -11,6 +11,7 @@ export type BudgetAdjustment = S['BudgetAdjustment'];
 export type ProjectBudgetAdjustment = S['ProjectBudgetAdjustment'];
 export type BudgetReviewChecks = S['BudgetReviewChecks'];
 export type BudgetForecast = S['BudgetForecast'];
+export type ProjectCashflow = S['ProjectCashflow'];
 export type BudgetCostReport = S['BudgetCostReport'];
 export type BudgetCostReportItems = S['BudgetCostReportItems'];
 export type CostReportColumn = 'approved' | 'pending' | 'direct';
@@ -92,6 +93,9 @@ export function createBudgetApi(orgId: string) {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
         }),
       );
+    },
+    async cashflow(projectId: string): Promise<ProjectCashflow> {
+      return unwrap(await api.GET(`${P}/cashflow`, { params: { path: { orgId, projectId } } }));
     },
     async forecast(projectId: string): Promise<BudgetForecast> {
       return unwrap(

@@ -10,6 +10,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { BudgetPanel } from '../components/BudgetPanel';
 import { ForecastPanel } from '../components/ForecastPanel';
 import { CostReportPanel } from '../components/CostReportPanel';
+import { CashflowPanel } from '../components/CashflowPanel';
 import { CostCodesPanel } from '../components/CostCodesPanel';
 import { LaborProductivityPanel } from '../components/LaborProductivityPanel';
 import { ProductionPanel } from '../components/ProductionPanel';
@@ -45,6 +46,7 @@ export function BudgetScreen() {
           { id: 'budget', label: 'Budget' },
           { id: 'costreport', label: 'Cost report' },
           { id: 'forecast', label: 'Forecasting' },
+          { id: 'cashflow', label: 'Cashflow & WIP' },
           { id: 'snapshots', label: 'Snapshots' },
           { id: 'direct', label: 'Direct costs' },
           { id: 'labor', label: 'Labor productivity' },
@@ -62,6 +64,8 @@ export function BudgetScreen() {
           <CostReportPanel />
         ) : tab === 'forecast' ? (
           <ForecastPanel canManage={canManage} />
+        ) : tab === 'cashflow' ? (
+          <CashflowPanel />
         ) : tab === 'snapshots' ? (
           <SnapshotsPanel canManage={canManage} />
         ) : tab === 'direct' ? (

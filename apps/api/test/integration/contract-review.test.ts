@@ -543,4 +543,58 @@ describe('Nova contract review (F34)', () => {
     ).toBe(422);
     expect(t.ai.calls.length).toBe(calls);
   });
+
+  it('proposes schedule of values lines with their page quotes and saves nothing', async () => {
+    const s = await setup();
+    const schedule = await uploadBytes(
+      t,
+      s.owner.browser,
+      s.org.id,
+      s.project.id,
+      await contractPdf([
+        [
+          'Pricing Schedule (amounts exclude GST)',
+          '1.01 Preliminaries $40,000.00',
+          'Painting $30,000.00',
+          'Subtotal $70,000.00',
+        ],
+      ]),
+      'schedule.pdf',
+    );
+    const url = `${s.base}/ai/contract-sov-drafts`;
+    const before = t.ai.calls.length;
+    const res = await s.owner.browser.post(url, { fileId: schedule, contractValue: '80000.00' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      runId: expect.stringMatching(/^air_/),
+      lines: [
+        { code: '1.01', description: 'Preliminaries', amount: '40000.00', source: { page: 1 } },
+        { code: '', description: 'Painting', amount: '30000.00', source: { page: 1 } },
+      ],
+      linesTotalExGst: '70000.00',
+      contractValueExGst: '80000.00',
+      totalCheck: 'differs',
+      difference: '-10000.00',
+      warnings: expect.arrayContaining(['total_differs']),
+    });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.sov')!;
+    expect(call.text).toContain('<contract_value>80000.00</contract_value>');
+    expect(call.text).toContain('1.01 Preliminaries $40,000.00');
+    expect(call.text).not.toContain(schedule);
+    // A proposal only: no contract exists afterwards.
+    const contracts = (await s.owner.browser.get(`${s.base}/contracts`)).json();
+    expect(contracts.data).toEqual([]);
+
+    // Not for site staff, not for a file of another project, not for a value that is not an amount:
+    // none of them reaches the model.
+    const calls = t.ai.calls.length;
+    expect((await s.site.browser.post(url, { fileId: schedule })).statusCode).toBe(403);
+    expect(
+      (await s.owner.browser.post(url, { fileId: s.elsewhere })).statusCode,
+    ).toBeGreaterThanOrEqual(400);
+    expect(
+      (await s.owner.browser.post(url, { fileId: schedule, contractValue: 'lots' })).statusCode,
+    ).toBe(422);
+    expect(t.ai.calls.length).toBe(calls);
+  });
 });
