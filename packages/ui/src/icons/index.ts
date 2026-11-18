@@ -30,6 +30,7 @@ export {
   Info,
   Lock,
   Layers,
+  Link2,
   MapPin,
   Maximize,
   Minus,

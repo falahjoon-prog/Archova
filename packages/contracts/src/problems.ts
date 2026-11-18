@@ -209,6 +209,10 @@ export const PROBLEM_CODES = {
   'announcement.audience_empty': 422,
   // conversations
   'conversation.not_found': 404,
+  // links (related items)
+  'link.not_found': 404,
+  'link.entity_not_found': 404,
+  'link.limit_reached': 422,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
