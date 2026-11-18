@@ -541,6 +541,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+    createDelivery: (scope, projectId, input) =>
+      logistics.api.createDelivery(scope, projectId, input),
   });
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.

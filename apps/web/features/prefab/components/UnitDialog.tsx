@@ -108,7 +108,13 @@ export function UnitDialog({
       {detail.isPending ? <SkeletonRows label="Loading unit…" /> : null}
       <ErrorAlert error={detail.error} title="We couldn't load this unit" />
       <ErrorAlert
-        error={m.transition.error ?? m.recordCheck.error ?? m.progress.error ?? m.addCheck.error}
+        error={
+          m.transition.error ??
+          m.draftDelivery.error ??
+          m.recordCheck.error ??
+          m.progress.error ??
+          m.addCheck.error
+        }
         title="We couldn't save that"
       />
       {u && step ? (
@@ -130,7 +136,22 @@ export function UnitDialog({
               {u.installSequence ? ` · number ${u.installSequence} in the sequence` : ''}
             </dd>
             <dt>Site delivery</dt>
-            <dd>{u.deliveryLabel ?? 'Not booked'}</dd>
+            <dd>
+              {u.deliveryLabel ?? 'Not booked'}
+              {!u.deliveryId && canWrite && (u.installDate || u.shipDate) ? (
+                <>
+                  {' '}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={m.draftDelivery.isPending}
+                    onClick={() => m.draftDelivery.mutate(u.id)}
+                  >
+                    Draft a delivery
+                  </Button>
+                </>
+              ) : null}
+            </dd>
             {u.weightKg || u.dimensions ? (
               <>
                 <dt>Size</dt>

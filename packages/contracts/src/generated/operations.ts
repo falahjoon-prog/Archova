@@ -4098,6 +4098,11 @@ export const TransitionPrefabUnitParams = z.object({
   "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
 });
 export const TransitionPrefabUnitBody = s.PrefabTransitionRequestSchema;
+export const DraftPrefabDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
 export const AddPrefabCheckParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -13107,6 +13112,18 @@ export const operations = {
     params: TransitionPrefabUnitParams,
     query: null,
     body: TransitionPrefabUnitBody,
+  },
+  draftPrefabDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: null,
+    params: DraftPrefabDeliveryParams,
+    query: null,
+    body: null,
   },
   addPrefabCheck: {
     method: 'POST',

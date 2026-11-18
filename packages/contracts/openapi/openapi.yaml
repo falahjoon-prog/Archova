@@ -16860,6 +16860,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PrefabUnit' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: draftPrefabDelivery
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Book a draft delivery for the unit on the day it is due on site and link it. Needs an install or ship date, and the caller must also be able to manage deliveries.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks:
     parameters:
       - $ref: '#/components/parameters/OrgId'
