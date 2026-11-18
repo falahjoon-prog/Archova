@@ -66,3 +66,12 @@ export const capitalItems = ownerportalSchema.table('capital_items', {
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const sharedPhotos = ownerportalSchema.table('shared_photos', {
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  caption: text('caption').notNull().default(''),
+  addedBy: uuid('added_by'),
+  addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+});

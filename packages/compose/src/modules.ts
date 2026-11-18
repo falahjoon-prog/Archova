@@ -28,6 +28,7 @@ import {
   FINANCIALS_PERMISSIONS,
   createFinancialsModule,
   type EvidenceSigner,
+  type FinancialsModule,
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
@@ -338,9 +339,22 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
   });
 
+  // financials is built later; the share link only asks for approved changes at request time.
+  let financialsApi: FinancialsModule['api'] | null = null;
   const ownerportal = createOwnerPortalModule(services, {
     access: access.api,
     platform: platform.api,
+    share: {
+      files: files.api,
+      approvedChanges: (scope, projectId) => financialsApi!.approvedClientChanges(scope, projectId),
+      entitlements: billing.api.entitlements.forOrg,
+      messages: opts.messages,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const notifications = createNotificationsModule(services);
@@ -363,6 +377,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diaryEntryExists: async (scope, projectId, date) =>
       (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
+  financialsApi = financials.api;
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
   // inspection or observation), so safety asks for it lazily.

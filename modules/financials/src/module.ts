@@ -18,6 +18,7 @@ import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
+import { approvedClientChanges } from './application/clientChanges';
 import { createReportingSources } from './application/reportingSources';
 import { createRetentionService } from './application/retention';
 import { createTrustService } from './application/trust';
@@ -128,6 +129,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       budgetReviewFacts: budget.reviewFacts,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
       reporting: reportingSources,
+      /** Client share link (`ownerportal`): approved head-contract variations, no amounts. Link-authorised only. */
+      approvedClientChanges,
     },
   };
 }
