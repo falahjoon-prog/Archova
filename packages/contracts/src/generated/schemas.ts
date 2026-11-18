@@ -1247,6 +1247,24 @@ export const CommitmentInvoiceSchema = z.object({
 });
 export type CommitmentInvoice = z.infer<typeof CommitmentInvoiceSchema>;
 
+export const CommitmentInvoicePdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type CommitmentInvoicePdf = z.infer<typeof CommitmentInvoicePdfSchema>;
+
+export const CommitmentInvoicePdfRequestSchema = z.object({
+  "sections": z.array(z.enum(["g702", "summary", "breakdown", "payment", "proofread"])).max(5).optional(),
+  "columns": z.array(z.enum(["code", "description", "scheduledValue", "previous", "thisPeriod", "completedToDate", "percentComplete", "balanceToFinish"])).max(8).optional(),
+  "paper": z.enum(["a4", "letter"]).optional(),
+  "orientation": z.enum(["portrait", "landscape"]).optional(),
+  "notes": z.string().max(500).optional(),
+  "signatureBlock": z.boolean().optional(),
+  "amountCertified": z.string().regex(new RegExp("^\\d{1,12}(\\.\\d{1,2})?$")).optional(),
+}).strict();
+export type CommitmentInvoicePdfRequest = z.infer<typeof CommitmentInvoicePdfRequestSchema>;
+
 export const CommitmentInvoiceSummarySchema = z.object({
   "originalSum": FinancialsMoneySchema,
   "netChange": FinancialsMoneySchema,
@@ -3684,6 +3702,21 @@ export const CreateWorkerRequestSchema = z.object({
   "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
+
+export const WorkflowStepSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "approverUserIds": z.array(z.string()).min(1).max(10),
+});
+export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
+
+export const CreateWorkflowRequestSchema = z.object({
+  "subjectType": z.enum(["financials.variation"]),
+  "name": z.string().min(1).max(100),
+  "minAmount": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
+  "steps": z.array(WorkflowStepSchema).min(1).max(8),
+  "active": z.boolean().optional(),
+});
+export type CreateWorkflowRequest = z.infer<typeof CreateWorkflowRequestSchema>;
 
 export const DashboardTileSchema = z.object({
   "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
@@ -6996,6 +7029,32 @@ export const NovaContractReviewSchema = z.object({
 });
 export type NovaContractReview = z.infer<typeof NovaContractReviewSchema>;
 
+export const NovaContractSovDraftSchema = z.object({
+  "runId": z.string(),
+  "fileName": z.string(),
+  "pageCount": z.number().int().min(1),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+  "lines": z.array(z.object({
+  "code": z.string(),
+  "description": z.string(),
+  "amount": FinancialsMoneySchema,
+  "source": z.object({
+  "page": z.number().int().min(1),
+  "quote": z.string(),
+}),
+})),
+  "prices": z.enum(["exclude_gst", "include_gst", "unclear"]),
+  "statedTotalExGst": z.union([FinancialsMoneySchema, z.null()]),
+  "linesTotalExGst": FinancialsMoneySchema,
+  "contractValueExGst": z.union([FinancialsMoneySchema, z.null()]),
+  "totalCheck": z.enum(["matches", "differs", "no_value"]),
+  "difference": z.string().nullable(),
+  "dropped": z.number().int().min(0),
+  "warnings": z.array(z.enum(["prices_include_gst", "items_dropped", "total_differs", "no_lines"])),
+});
+export type NovaContractSovDraft = z.infer<typeof NovaContractSovDraftSchema>;
+
 export const NovaDefectTagSchema = z.object({
   "runId": z.string(),
   "suggestionId": z.string(),
@@ -7638,6 +7697,79 @@ export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
 
+export const PaymentApplicationSummarySchema = z.object({
+  "originalSum": FinancialsMoneySchema,
+  "netChange": FinancialsSignedMoneySchema,
+  "revisedSum": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "retainage": FinancialsMoneySchema,
+  "earnedLessRetainage": FinancialsMoneySchema,
+  "lessPrevious": FinancialsMoneySchema,
+  "thisPeriod": FinancialsSignedMoneySchema,
+  "gst": FinancialsMoneySchema,
+  "currentPaymentDue": FinancialsMoneySchema,
+  "scheduledAmount": z.string().nullable(),
+  "paid": FinancialsMoneySchema,
+  "balanceToFinish": FinancialsSignedMoneySchema,
+  "percentComplete": z.string(),
+});
+export type PaymentApplicationSummary = z.infer<typeof PaymentApplicationSummarySchema>;
+
+export const PaymentApplicationRowSchema = z.object({
+  "key": z.string(),
+  "code": z.string(),
+  "description": z.string(),
+  "kind": z.enum(["sov", "variation"]),
+  "costCode": z.string().nullable(),
+  "scheduledValue": FinancialsMoneySchema,
+  "previous": FinancialsMoneySchema,
+  "thisPeriod": FinancialsMoneySchema,
+  "completedToDate": FinancialsMoneySchema,
+  "percentComplete": z.string(),
+  "balanceToFinish": FinancialsSignedMoneySchema,
+});
+export type PaymentApplicationRow = z.infer<typeof PaymentApplicationRowSchema>;
+
+export const PaymentApplicationFindingSchema = z.object({
+  "code": z.string(),
+  "severity": z.enum(["error", "warning", "info"]),
+  "message": z.string(),
+  "itemCode": z.string().nullable(),
+});
+export type PaymentApplicationFinding = z.infer<typeof PaymentApplicationFindingSchema>;
+
+export const PaymentApplicationSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "commitmentTitle": z.string(),
+  "contractNumber": z.number().int(),
+  "contractTitle": z.string(),
+  "claimNumber": z.number().int(),
+  "status": z.string(),
+  "periodStart": z.string().date().nullable(),
+  "periodEnd": z.string().date(),
+  "receivedAt": z.string().datetime({ offset: true }),
+  "paymentDueOn": z.string().date().nullable(),
+  "scheduleDueOn": z.string().date().nullable(),
+  "summary": PaymentApplicationSummarySchema,
+  "changeOrders": z.object({
+  "previousAdditions": FinancialsMoneySchema,
+  "previousDeductions": FinancialsMoneySchema,
+  "thisAdditions": FinancialsMoneySchema,
+  "thisDeductions": FinancialsMoneySchema,
+  "net": FinancialsSignedMoneySchema,
+}),
+  "retentionPct": z.string(),
+  "rows": z.array(PaymentApplicationRowSchema),
+  "prior": z.union([z.object({
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "thisPeriod": FinancialsSignedMoneySchema,
+  "percentComplete": z.string(),
+}), z.null()]),
+  "findings": z.array(PaymentApplicationFindingSchema),
+});
+export type PaymentApplication = z.infer<typeof PaymentApplicationSchema>;
+
 export const PaymentClaimSchema = z.object({
   "id": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
@@ -7801,6 +7933,60 @@ export const PermitTransitionRequestSchema = z.object({
   "note": z.string().max(1000).nullable().optional(),
 }).strict();
 export type PermitTransitionRequest = z.infer<typeof PermitTransitionRequestSchema>;
+
+export const PhotoAlbumSchema = z.object({
+  "id": z.string().regex(new RegExp("^alb_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "count": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type PhotoAlbum = z.infer<typeof PhotoAlbumSchema>;
+
+export const PhotoCategorySchema = z.enum(["safety_risk", "daily_log", "punch_list", "drawings", "inspections", "rfis", "unclassified"]);
+export type PhotoCategory = z.infer<typeof PhotoCategorySchema>;
+
+export const PhotoAlbumsSchema = z.object({
+  "auto": z.array(z.object({
+  "category": PhotoCategorySchema,
+  "count": z.number().int(),
+  "needsReview": z.number().int(),
+  "cover": z.union([z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+}), z.null()]),
+})),
+  "own": z.array(PhotoAlbumSchema),
+});
+export type PhotoAlbums = z.infer<typeof PhotoAlbumsSchema>;
+
+export const PhotoRefKindSchema = z.enum(["rfi", "defect", "observation", "inspection", "diary_entry", "drawing_revision"]);
+export type PhotoRefKind = z.infer<typeof PhotoRefKindSchema>;
+
+export const PhotoFilingSchema = z.object({
+  "fileId": FileRefSchema,
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]),
+  "refId": z.string().nullable(),
+  "source": z.enum(["attach", "annotation", "manual", "nova"]),
+});
+export type PhotoFiling = z.infer<typeof PhotoFilingSchema>;
+
+export const PhotoFilingRequestSchema = z.object({
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]).optional(),
+  "refId": z.string().nullable().optional(),
+  "fromSuggestion": z.boolean().optional(),
+});
+export type PhotoFilingRequest = z.infer<typeof PhotoFilingRequestSchema>;
+
+export const PhotoFilingSuggestionSchema = z.object({
+  "category": PhotoCategorySchema,
+  "refKind": z.union([PhotoRefKindSchema, z.null()]),
+  "refId": z.string().nullable(),
+  "basedOnFileId": FileRefSchema,
+  "reason": z.enum(["same_place", "same_session"]),
+});
+export type PhotoFilingSuggestion = z.infer<typeof PhotoFilingSuggestionSchema>;
 
 export const PlantAllocationSchema = z.object({
   "id": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")),
@@ -9633,6 +9819,17 @@ export const SiteCaptureListSchema = z.object({
 });
 export type SiteCaptureList = z.infer<typeof SiteCaptureListSchema>;
 
+export const SitePhotoSchema = z.object({
+  "file": FileObjectSchema,
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "category": PhotoCategorySchema,
+  "filing": z.union([PhotoFilingSchema, z.null()]),
+  "needsReview": z.boolean(),
+  "suggestion": z.union([PhotoFilingSuggestionSchema, z.null()]),
+});
+export type SitePhoto = z.infer<typeof SitePhotoSchema>;
+
 export const SpecBookSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -11315,6 +11512,14 @@ export const UpdateWorkerRequestSchema = z.object({
 }).strict();
 export type UpdateWorkerRequest = z.infer<typeof UpdateWorkerRequestSchema>;
 
+export const UpdateWorkflowRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "minAmount": z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
+  "steps": z.array(WorkflowStepSchema).min(1).max(8).optional(),
+  "active": z.boolean().optional(),
+});
+export type UpdateWorkflowRequest = z.infer<typeof UpdateWorkflowRequestSchema>;
+
 export const UploadSchema = z.object({
   "id": z.string(),
   "status": z.enum(["pending", "uploaded", "expired"]),
@@ -11355,6 +11560,40 @@ export const VariationListSchema = z.object({
   "approvedTotal": FinancialsMoneySchema,
 });
 export type VariationList = z.infer<typeof VariationListSchema>;
+
+export const WorkflowRunDecisionSchema = z.object({
+  "userId": z.string(),
+  "decision": z.enum(["approved", "rejected"]),
+  "note": z.string().nullable(),
+  "decidedAt": z.string().datetime({ offset: true }),
+});
+export type WorkflowRunDecision = z.infer<typeof WorkflowRunDecisionSchema>;
+
+export const WorkflowRunStepSchema = z.object({
+  "name": z.string(),
+  "approverUserIds": z.array(z.string()),
+  "state": z.enum(["waiting", "current", "approved", "rejected"]),
+  "decision": z.union([WorkflowRunDecisionSchema, z.null()]),
+});
+export type WorkflowRunStep = z.infer<typeof WorkflowRunStepSchema>;
+
+export const WorkflowRunSchema = z.object({
+  "id": z.string(),
+  "subjectType": z.enum(["financials.variation"]),
+  "subjectId": z.string(),
+  "status": z.enum(["pending", "approved", "rejected", "cancelled"]),
+  "currentStep": z.number().int().nullable(),
+  "steps": z.array(WorkflowRunStepSchema),
+  "startedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type WorkflowRun = z.infer<typeof WorkflowRunSchema>;
+
+export const VariationWorkflowSchema = z.object({
+  "run": z.union([WorkflowRunSchema, z.null()]),
+});
+export type VariationWorkflow = z.infer<typeof VariationWorkflowSchema>;
 
 export const VerifyInductionAccessRequestSchema = z.object({
   "code": z.string().regex(new RegExp("^[0-9]{6}$")),
@@ -11595,3 +11834,20 @@ export const WorkerListSchema = z.object({
   "data": z.array(WorkerSchema),
 });
 export type WorkerList = z.infer<typeof WorkerListSchema>;
+
+export const WorkflowSchema = z.object({
+  "id": z.string(),
+  "subjectType": z.enum(["financials.variation"]),
+  "name": z.string(),
+  "minAmount": z.string().nullable(),
+  "steps": z.array(WorkflowStepSchema),
+  "active": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Workflow = z.infer<typeof WorkflowSchema>;
+
+export const WorkflowListSchema = z.object({
+  "data": z.array(WorkflowSchema),
+});
+export type WorkflowList = z.infer<typeof WorkflowListSchema>;

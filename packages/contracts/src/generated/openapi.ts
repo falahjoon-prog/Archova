@@ -1615,6 +1615,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Page through the project's site photos, newest first, for the Photos tool (feed, timeline and album views).
+         * @description Filter by `album` (an auto album key such as `punch_list`, or a project album id), by filename (`q`) and by a
+         *     capture-date range. Photos nobody has filed carry `needsReview` once they have sat unfiled for 24 hours, and a
+         *     rule-based `suggestion` taken from already-filed photos taken nearby or by the same person at the same time.
+         *     Incident and induction photos are never listed. Links work for 5 minutes.
+         */
+        get: operations["browseProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** File a photo under an album, optionally on the record it belongs to. Accepts a Nova suggestion. */
+        put: operations["filePhoto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The auto albums (by where each photo was taken or filed) with counts, and the project's own albums. */
+        get: operations["listPhotoAlbums"];
+        put?: never;
+        /** Create an album of your own. */
+        post: operations["createPhotoAlbum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an album. The photos stay on the project. */
+        delete: operations["deletePhotoAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Add a photo to an album. Adding it twice is fine. */
+        put: operations["addPhotoToAlbum"];
+        post?: never;
+        /** Take a photo out of an album. */
+        delete: operations["removePhotoFromAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/folders": {
         parameters: {
             query?: never;
@@ -3208,6 +3320,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova to propose a contract's schedule of values from its PDF.
+         * @description For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+         *     contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+         *     and the printed row it came from, and is shown only when code found that row on the page and the amount is
+         *     printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+         *     blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+         *     against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+         *     saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+         *     by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+         */
+        post: operations["draftContractSov"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
         parameters: {
             query?: never;
@@ -4194,6 +4336,79 @@ export interface paths {
          *     still being built or if it failed; 410 once it has expired.
          */
         post: operations["createDataExportDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The approval workflows this organisation has set up. */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Set up an approval chain for a kind of record.
+         * @description Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+         *     minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+         *     workflow per kind of record: activating a second one is refused with 409.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows/{workflowId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a workflow. Variations already going through it carry on. */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a workflow, or switch it on or off.
+         * @description Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+         */
+        patch: operations["updateWorkflow"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a variation is in its approval chain.
+         * @description `run` is null when no workflow applied to the variation.
+         */
+        get: operations["getVariationWorkflow"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11846,6 +12061,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One invoice as a payment application, with its schedule-of-values breakdown and Nova's proofread.
+         * @description Read-only, over the same claim data as the Invoices tab. `findings` is Nova's proofread: every figure is re-added from the claim lines and the dates and the step up on the last period are checked by code, not a model. Nothing is sent or changed from here; the person reads the findings and decides. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        get: operations["getCommitmentInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The payment application as a PDF, laid out the way the person chooses.
+         * @description A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column). The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        post: operations["getCommitmentInvoicePdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
         parameters: {
             query?: never;
@@ -14460,6 +14725,77 @@ export interface components {
             /** @description Why a failed export failed */
             error: string | null;
         };
+        WorkflowStep: {
+            name: string;
+            /** @description Any one of these people can approve the step. */
+            approverUserIds: string[];
+        };
+        Workflow: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            /** @description Decimal dollars. The chain applies from this amount up; null means every variation. */
+            minAmount: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowList: {
+            data: components["schemas"]["Workflow"][];
+        };
+        CreateWorkflowRequest: {
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            minAmount?: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @default true */
+            active: boolean;
+        };
+        UpdateWorkflowRequest: {
+            name?: string;
+            minAmount?: string | null;
+            steps?: components["schemas"]["WorkflowStep"][];
+            active?: boolean;
+        };
+        WorkflowRunDecision: {
+            userId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        WorkflowRunStep: {
+            name: string;
+            approverUserIds: string[];
+            /** @enum {string} */
+            state: "waiting" | "current" | "approved" | "rejected";
+            decision: components["schemas"]["WorkflowRunDecision"] | null;
+        };
+        WorkflowRun: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            subjectId: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "cancelled";
+            /** @description Zero-based index of the step waiting on a decision. */
+            currentStep: number | null;
+            steps: components["schemas"]["WorkflowRunStep"][];
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        VariationWorkflow: {
+            run: components["schemas"]["WorkflowRun"] | null;
+        };
         DataExportList: {
             data: components["schemas"]["DataExport"][];
         };
@@ -16650,6 +16986,39 @@ export interface components {
             /** @description Part of the contract was left out (too long to read in one go). */
             truncated: boolean;
         };
+        NovaContractSovDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read, so the list may miss lines on them. */
+            unreadPages: number[];
+            /** @description Part of the document was left out (too long to read in one go). */
+            truncated: boolean;
+            lines: {
+                /** @description Blank when the document prints no code for the line. */
+                code: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                source: {
+                    page: number;
+                    quote: string;
+                };
+            }[];
+            /** @enum {string} */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            /** @description The total the document prints, when code found it on a page. */
+            statedTotalExGst: components["schemas"]["FinancialsMoney"] | null;
+            linesTotalExGst: components["schemas"]["FinancialsMoney"];
+            contractValueExGst: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string} */
+            totalCheck: "matches" | "differs" | "no_value";
+            /** @description Lines total less the contract value, signed; null when no value was entered. */
+            difference: string | null;
+            /** @description Lines left out because their words or amount were not on the page. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "items_dropped" | "total_differs" | "no_lines")[];
+        };
         NovaContractReview: {
             /** Format: date-time */
             createdAt: string;
@@ -17124,6 +17493,66 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        /** @enum {string} */
+        PhotoCategory: "safety_risk" | "daily_log" | "punch_list" | "drawings" | "inspections" | "rfis" | "unclassified";
+        /** @enum {string} */
+        PhotoRefKind: "rfi" | "defect" | "observation" | "inspection" | "diary_entry" | "drawing_revision";
+        PhotoFilingRequest: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind?: components["schemas"]["PhotoRefKind"] | null;
+            /** @description The record's id; sent with `refKind`. */
+            refId?: string | null;
+            /** @description True when the person accepted Nova's suggestion. */
+            fromSuggestion?: boolean;
+        };
+        PhotoFiling: {
+            fileId: components["schemas"]["FileRef"];
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            /** @enum {string} */
+            source: "attach" | "annotation" | "manual" | "nova";
+        };
+        PhotoFilingSuggestion: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            basedOnFileId: components["schemas"]["FileRef"];
+            /** @enum {string} */
+            reason: "same_place" | "same_session";
+        };
+        SitePhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            category: components["schemas"]["PhotoCategory"];
+            filing: components["schemas"]["PhotoFiling"] | null;
+            /** @description Unfiled for 24 hours or more. */
+            needsReview: boolean;
+            suggestion: components["schemas"]["PhotoFilingSuggestion"] | null;
+        };
+        PhotoAlbum: {
+            id: string;
+            name: string;
+            count: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PhotoAlbums: {
+            auto: {
+                category: components["schemas"]["PhotoCategory"];
+                count: number;
+                /** @description Photos unfiled for 24 hours or more (Unclassified only). */
+                needsReview: number;
+                cover: {
+                    url: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                } | null;
+            }[];
+            own: components["schemas"]["PhotoAlbum"][];
         };
         DownloadLink: {
             url: string;
@@ -20636,6 +21065,97 @@ export interface components {
             paymentDueOn: string | null;
             balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
             percentComplete: string;
+        };
+        PaymentApplicationRow: {
+            key: string;
+            code: string;
+            description: string;
+            /** @enum {string} */
+            kind: "sov" | "variation";
+            costCode: string | null;
+            scheduledValue: components["schemas"]["FinancialsMoney"];
+            previous: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            percentComplete: string;
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+        };
+        PaymentApplicationFinding: {
+            code: string;
+            /** @enum {string} */
+            severity: "error" | "warning" | "info";
+            message: string;
+            itemCode: string | null;
+        };
+        PaymentApplicationSummary: {
+            originalSum: components["schemas"]["FinancialsMoney"];
+            netChange: components["schemas"]["FinancialsSignedMoney"];
+            revisedSum: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsMoney"];
+            earnedLessRetainage: components["schemas"]["FinancialsMoney"];
+            lessPrevious: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            currentPaymentDue: components["schemas"]["FinancialsMoney"];
+            scheduledAmount: string | null;
+            paid: components["schemas"]["FinancialsMoney"];
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+            percentComplete: string;
+        };
+        PaymentApplication: {
+            claimId: string;
+            commitmentTitle: string;
+            contractNumber: number;
+            contractTitle: string;
+            claimNumber: number;
+            status: string;
+            /** Format: date */
+            periodStart: string | null;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** Format: date */
+            scheduleDueOn: string | null;
+            summary: components["schemas"]["PaymentApplicationSummary"];
+            changeOrders: {
+                previousAdditions: components["schemas"]["FinancialsMoney"];
+                previousDeductions: components["schemas"]["FinancialsMoney"];
+                thisAdditions: components["schemas"]["FinancialsMoney"];
+                thisDeductions: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+            };
+            retentionPct: string;
+            rows: components["schemas"]["PaymentApplicationRow"][];
+            prior: {
+                number: number;
+                /** Format: date */
+                periodEnd: string;
+                thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+                percentComplete: string;
+            } | null;
+            findings: components["schemas"]["PaymentApplicationFinding"][];
+        };
+        CommitmentInvoicePdfRequest: {
+            sections?: ("g702" | "summary" | "breakdown" | "payment" | "proofread")[];
+            columns?: ("code" | "description" | "scheduledValue" | "previous" | "thisPeriod" | "completedToDate" | "percentComplete" | "balanceToFinish")[];
+            /** @enum {string} */
+            paper?: "a4" | "letter";
+            /** @enum {string} */
+            orientation?: "portrait" | "landscape";
+            notes?: string;
+            signatureBlock?: boolean;
+            /** @description The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for. */
+            amountCertified?: string;
+        };
+        CommitmentInvoicePdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
         };
         CommitmentInvoiceSummary: {
             originalSum: components["schemas"]["FinancialsMoney"];
@@ -25240,6 +25760,7 @@ export interface components {
         OrgId: string;
         ProjectId: string;
         RiskId: string;
+        PhotoAlbumId: string;
         FileId: string;
         SpecBookId: string;
         FolderId: string;
@@ -25303,6 +25824,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        WorkflowId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -27877,6 +28399,195 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    browseProjectPhotos: {
+        parameters: {
+            query?: {
+                album?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SitePhoto"][];
+                        /** @description Pass as `cursor` for the next page. */
+                        next: string | null;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    filePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoFilingRequest"];
+            };
+        };
+        responses: {
+            /** @description Filed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoFiling"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPhotoAlbums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Albums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbums"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The album */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbum"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPhotoToAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Added */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removePhotoFromAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listFolders: {
         parameters: {
             query?: never;
@@ -30419,6 +31130,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftContractSov: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    /** @description The contract value ex GST the person has entered, to check the lines against. */
+                    contractValue?: components["schemas"]["FinancialsMoney"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The proposed lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractSovDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     compareContracts: {
         parameters: {
             query?: never;
@@ -31608,6 +32351,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataExportDownload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getVariationWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationWorkflow"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -45044,6 +45912,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentInvoices"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentApplication"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentInvoicePdfRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentInvoicePdf"];
                 };
             };
             default: components["responses"]["Problem"];

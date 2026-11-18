@@ -102,6 +102,8 @@ export const webRoutes = {
   commitment: (orgSlug: string, projectId: string, commitmentId: string) =>
     `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}`,
   tmTickets: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/tm-tickets`,
+  commitmentInvoice: (orgSlug: string, projectId: string, commitmentId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}/invoices/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   risks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/risks`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
@@ -119,6 +121,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  photos: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/photos`,
   safetySignals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/safety-signals`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,

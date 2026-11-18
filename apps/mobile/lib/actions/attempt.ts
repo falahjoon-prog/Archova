@@ -35,4 +35,11 @@ export const ACTION_TEXT: Record<ActionKind, string> = {
   'timesheet.submit': 'Submit timesheet',
   'timesheet.approve': 'Approve timesheet',
   'timesheet.reject': 'Reject timesheet',
+  'delivery.checkIn': 'Delivery check-in',
+  'swms.acknowledge': 'SWMS acknowledgement',
+  'swms.transition': 'SWMS review',
+  'permit.startRenewal': 'Permit renewal',
+  'environment.startCondition': 'Start condition',
+  'toolbox.addAttendee': 'Toolbox talk attendee',
+  'toolbox.transition': 'Toolbox talk',
 };
