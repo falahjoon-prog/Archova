@@ -102,7 +102,10 @@ export const webRoutes = {
   commitment: (orgSlug: string, projectId: string, commitmentId: string) =>
     `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}`,
   tmTickets: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/tm-tickets`,
+  commitmentInvoice: (orgSlug: string, projectId: string, commitmentId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}/invoices/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  risks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/risks`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
@@ -193,6 +196,8 @@ export const mobileRoutes = {
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
   voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
+  /** Dictate the whole day; Nova splits it into diary notes, delays, safety observations and tasks to review. */
+  voiceLog: (projectId: string) => `/project/${enc(projectId)}/voice-log`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,

@@ -58,6 +58,7 @@ export function createEstimatingModule(
     api: {
       scopeForQuoteReading: tenders.scopeForQuoteReading,
       quoteForNegotiation: tenders.quoteForNegotiation,
+      bidsForLevelling: tenders.bidsForLevelling,
     },
   };
 }

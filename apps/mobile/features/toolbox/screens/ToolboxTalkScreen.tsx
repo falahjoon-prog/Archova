@@ -8,7 +8,7 @@ import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-nativ
 import { api } from '../../../lib/api';
 import { createUploadApi } from '../../../lib/files/api';
 import { backgroundFileTransfer } from '../../../lib/platform/file-transfer';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { PendingActions, StateMessage, useAttempt, useCurrentOrg } from '../../../shared';
 import { useMe } from '../../platform';
 import {
   addAttendees,
@@ -25,6 +25,7 @@ import { StrokePad } from './StrokePad';
 
 export function ToolboxTalkScreen({ projectId, talkId }: { projectId: string; talkId: string }) {
   const t = useTheme();
+  const attempt = useAttempt();
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const me = useMe().data?.user;
@@ -44,11 +45,19 @@ export function ToolboxTalkScreen({ projectId, talkId }: { projectId: string; ta
     void qc.invalidateQueries({ queryKey: ['toolbox', orgId, projectId, 'list'] });
   };
   const add = useMutation({
-    mutationFn: (p: { personName: string; userId?: string }) =>
-      addAttendees(api, target, detail.data!.talk, [p]),
-    onSuccess: (d) => {
+    mutationFn: async (p: { personName: string; userId?: string }) => {
+      let updated: Awaited<ReturnType<typeof getTalk>> | null = null;
+      const outcome = await attempt(
+        { projectId, kind: 'toolbox.addAttendee', targetId: talkId, payload: { ...p } },
+        async () => {
+          updated = await addAttendees(api, target, detail.data!.talk, [p]);
+        },
+      );
+      return { outcome, updated };
+    },
+    onSuccess: ({ updated }) => {
       setName('');
-      refresh(d);
+      if (updated) refresh(updated);
     },
   });
   const remove = useMutation({
@@ -56,9 +65,19 @@ export function ToolboxTalkScreen({ projectId, talkId }: { projectId: string; ta
     onSuccess: refresh,
   });
   const finish = useMutation({
-    mutationFn: (action: 'close' | 'reopen') =>
-      transitionTalk(api, target, detail.data!.talk, action),
-    onSuccess: refresh,
+    mutationFn: async (action: 'close' | 'reopen') => {
+      let updated: Awaited<ReturnType<typeof getTalk>> | null = null;
+      const outcome = await attempt(
+        { projectId, kind: 'toolbox.transition', targetId: talkId, payload: { action } },
+        async () => {
+          updated = await transitionTalk(api, target, detail.data!.talk, action);
+        },
+      );
+      return { outcome, updated };
+    },
+    onSuccess: ({ updated }) => {
+      if (updated) refresh(updated);
+    },
   });
   const sign = useMutation({
     mutationFn: async (attendeeId: string) => {
@@ -203,6 +222,10 @@ export function ToolboxTalkScreen({ projectId, talkId }: { projectId: string; ta
             onPress={() => add.mutate({ personName: name.trim() })}
           />
         </View>
+      ) : null}
+      <PendingActions targetId={talkId} />
+      {add.data?.outcome === 'queued' || finish.data?.outcome === 'queued' ? (
+        <StateMessage message="No signal. This is saved on this phone and will be sent when you are online." />
       ) : null}
       {add.isError || remove.isError || finish.isError ? (
         <StateMessage tone="danger" message={failed(add.error ?? remove.error ?? finish.error)} />

@@ -71,6 +71,7 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
@@ -103,6 +104,7 @@ export const MODULE_PERMISSIONS = [
   REPORTING_PERMISSIONS,
   SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
+  WORKFLOWS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   ENVIRONMENT_PERMISSIONS,
@@ -345,9 +347,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
+  const workflows = createWorkflowsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    workflows: workflows.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
@@ -499,6 +504,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    bidsForLevelling: (scope, projectId, packageId) =>
+      estimating.api.bidsForLevelling(scope, projectId, packageId),
     budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
@@ -586,6 +593,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+    createDelivery: (scope, projectId, input) =>
+      logistics.api.createDelivery(scope, projectId, input),
   });
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
@@ -704,6 +713,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,
@@ -758,6 +768,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,

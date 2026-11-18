@@ -289,6 +289,9 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  // risk register
+  'risk.not_found': 404,
+
   'warranty.not_found': 404,
   'warranty.responsible_required': 422,
   'warranty.item_not_on_project': 422,
@@ -351,6 +354,12 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // configurable approval workflows
+  'workflow.not_found': 404,
+  'workflow.active_exists': 409,
+  'workflow.not_approver': 403,
+  'workflow.own_submission': 403,
+  'workflow.no_eligible_approver': 422,
   // data export (one-click full export)
   'data_export.not_found': 404,
   'data_export.in_progress': 409,
@@ -495,6 +504,7 @@ export const PROBLEM_CODES = {
   'ai.translation.language_unavailable': 422,
   'ai.diary.nothing_to_summarise': 422,
   'ai.minutes.nothing_to_extract': 422,
+  'ai.voice_log.nothing_to_file': 422,
   'ai.drawing_compare.no_previous_revision': 422,
   'ai.drawing_compare.no_text': 422,
   'ai.takeoff.renderer_unavailable': 503,

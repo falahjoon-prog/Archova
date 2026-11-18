@@ -148,5 +148,17 @@ describe('Prefabricated and modular units', () => {
       clear: ['installSequence'],
     });
     expect(patched.json()).toMatchObject({ shipDate: '2030-03-01', installSequence: null });
+
+    // A draft delivery is booked for the day the unit is due on site, and only once.
+    const drafted = await s.pm.browser.post(`${s.base}/units/${late.id}/draft-delivery`);
+    expect(drafted.statusCode).toBe(422);
+    await s.pm.browser.patch(`${s.base}/units/${late.id}`, { installDate: '2030-04-02' });
+    const booked = await s.pm.browser.post(`${s.base}/units/${late.id}/draft-delivery`);
+    expect(booked.statusCode, booked.body).toBe(200);
+    expect(booked.json().deliveryLabel).toContain('WP-1');
+    expect(booked.json().deliveryId).toBeTruthy();
+    expect((await s.pm.browser.post(`${s.base}/units/${late.id}/draft-delivery`)).statusCode).toBe(
+      409,
+    );
   });
 });

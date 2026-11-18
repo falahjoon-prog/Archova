@@ -3320,6 +3320,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova to propose a contract's schedule of values from its PDF.
+         * @description For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+         *     contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+         *     and the printed row it came from, and is shown only when code found that row on the page and the amount is
+         *     printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+         *     blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+         *     against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+         *     saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+         *     by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+         */
+        post: operations["draftContractSov"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
         parameters: {
             query?: never;
@@ -3401,6 +3431,38 @@ export interface paths {
          *     and only for a confirmed quote of the package.
          */
         post: operations["negotiateQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova levels the confirmed bids of a tender package and suggests who to take forward (EST-AC6).
+         * @description Code puts every confirmed bid on the package's scope schedule, works out what each gap would cost (the median
+         *     of what at least two other bids charge for that line), each bid's normalised total and its rank. Nova then
+         *     explains the gaps, exclusions and risks, suggests where a bid's unmatched lines belong on the schedule and says
+         *     which bid she would take forward, or none when the bids can't be separated. Code removes any bid, scope line or
+         *     unmatched line that doesn't exist and any figure the bids don't hold (`notes` says what it removed), and adds
+         *     renewing the validity as a condition when the recommended bid's has passed. Bids are anonymous ("Bid A"):
+         *     she is never shown a company, contact, internal note or the estimator's allowances. The server keeps no
+         *     conversation; pass `history` from the last answer with the next question. Nothing is saved, sent, matched or
+         *     awarded. She is an AI assistant, not a licensed agent (`disclaimer`). Costs one Nova credit. Builder staff with
+         *     `estimating.quotes.review` only.
+         */
+        post: operations["levelBidsWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3524,6 +3586,39 @@ export interface paths {
          *     week whose entries are empty is 422 `ai.diary.nothing_to_summarise`.
          */
         post: operations["summariseDiaryWeekWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova splits a dictated end-of-day transcript into proposed diary records (mobile F14).
+         * @description The phone turns the person's speech into text on the device; only that text comes here. Nova proposes a diary
+         *     `note`, `delay`s (with a type, and hours only when the words say how long), safety `observation`s (minor or
+         *     serious) and `task`s (with a due date only when the words give one). Each item carries `quote`, the words of
+         *     the transcript it comes from. Code drops an item whose quote is not in the transcript, a number the quote
+         *     does not contain, hours the quote does not state, and a due date the quote does not give. Nova writes nothing:
+         *     the result is a pending suggestion (`task` `voice.log`) that only the person who asked can list or decide,
+         *     and the phone saves the records the person keeps through its own offline commands. The same transcript for
+         *     the same day returns the same suggestion at no cost. Costs 1 Nova credit. A transcript shorter than 15
+         *     characters is 422 `ai.voice_log.nothing_to_file`.
+         */
+        post: operations["parseVoiceLogWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4306,6 +4401,79 @@ export interface paths {
          *     still being built or if it failed; 410 once it has expired.
          */
         post: operations["createDataExportDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The approval workflows this organisation has set up. */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Set up an approval chain for a kind of record.
+         * @description Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+         *     minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+         *     workflow per kind of record: activating a second one is refused with 409.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows/{workflowId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a workflow. Variations already going through it carry on. */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a workflow, or switch it on or off.
+         * @description Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+         */
+        patch: operations["updateWorkflow"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a variation is in its approval chain.
+         * @description `run` is null when no workflow applied to the variation.
+         */
+        get: operations["getVariationWorkflow"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10974,6 +11142,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/cashflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Monthly cashflow forecast and work-in-progress (WIP) position, with the risks code found.
+         * @description Rolls claims, retention, the budget's monthly cost forecast and direct costs into cash in and cash out by month
+         *     (ex GST), plus cost-to-cost percent complete, earned revenue and over or under billing. `flags` are found by
+         *     code, never by a model, and carry the amounts they quote. Builder staff only, like the cost forecast.
+         */
+        get: operations["getProjectCashflow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments": {
         parameters: {
             query?: never;
@@ -12121,6 +12314,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One invoice as a payment application, with its schedule-of-values breakdown and Nova's proofread.
+         * @description Read-only, over the same claim data as the Invoices tab. `findings` is Nova's proofread: every figure is re-added from the claim lines and the dates and the step up on the last period are checked by code, not a model. Nothing is sent or changed from here; the person reads the findings and decides. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        get: operations["getCommitmentInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The payment application as a PDF, laid out the way the person chooses.
+         * @description A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column). The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        post: operations["getCommitmentInvoicePdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
         parameters: {
             query?: never;
@@ -12514,6 +12757,69 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project risk register, highest score first. */
+        get: operations["listProjectRisks"];
+        put?: never;
+        /** Add a risk. It is numbered per project (R-1, R-2 ...). */
+        post: operations["createProjectRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Open risks by level, the risk RAG for the project health model, and the top risks. */
+        get: operations["getProjectRiskSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a risk from the register. */
+        delete: operations["deleteProjectRisk"];
+        options?: never;
+        head?: never;
+        /** Change a risk. Closing it stamps the closed time; reopening clears it. */
+        patch: operations["updateProjectRisk"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
@@ -13016,6 +13322,27 @@ export interface paths {
         put?: never;
         /** Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed. */
         post: operations["transitionPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a draft delivery for the unit on the day it is due on site and link it. Needs an install or ship date, and the caller must also be able to manage deliveries. */
+        post: operations["draftPrefabDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14672,6 +14999,77 @@ export interface components {
             /** @description Why a failed export failed */
             error: string | null;
         };
+        WorkflowStep: {
+            name: string;
+            /** @description Any one of these people can approve the step. */
+            approverUserIds: string[];
+        };
+        Workflow: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            /** @description Decimal dollars. The chain applies from this amount up; null means every variation. */
+            minAmount: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowList: {
+            data: components["schemas"]["Workflow"][];
+        };
+        CreateWorkflowRequest: {
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            minAmount?: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @default true */
+            active: boolean;
+        };
+        UpdateWorkflowRequest: {
+            name?: string;
+            minAmount?: string | null;
+            steps?: components["schemas"]["WorkflowStep"][];
+            active?: boolean;
+        };
+        WorkflowRunDecision: {
+            userId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        WorkflowRunStep: {
+            name: string;
+            approverUserIds: string[];
+            /** @enum {string} */
+            state: "waiting" | "current" | "approved" | "rejected";
+            decision: components["schemas"]["WorkflowRunDecision"] | null;
+        };
+        WorkflowRun: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            subjectId: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "cancelled";
+            /** @description Zero-based index of the step waiting on a decision. */
+            currentStep: number | null;
+            steps: components["schemas"]["WorkflowRunStep"][];
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        VariationWorkflow: {
+            run: components["schemas"]["WorkflowRun"] | null;
+        };
         DataExportList: {
             data: components["schemas"]["DataExport"][];
         };
@@ -15027,6 +15425,77 @@ export interface components {
             items: components["schemas"]["OwnerCapitalItem"][];
             /** @description One row per fiscal year, then the all-years total last. */
             totals: components["schemas"]["OwnerCapitalTotals"][];
+        };
+        /** @enum {string} */
+        RiskCategory: "scope" | "time" | "cost" | "quality" | "safety" | "commercial" | "other";
+        /** @enum {string} */
+        RiskStatus: "open" | "mitigating" | "occurred" | "closed";
+        ProjectRisk: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            /** @description likelihood x impact, 1 to 25 */
+            score: number;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            status: components["schemas"]["RiskStatus"];
+            ownerName: string | null;
+            mitigation: string;
+            /** Format: date */
+            reviewDate: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProjectRiskList: {
+            data: components["schemas"]["ProjectRisk"][];
+        };
+        CreateProjectRiskRequest: {
+            title: string;
+            description?: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        UpdateProjectRiskRequest: {
+            title?: string;
+            description?: string;
+            category?: components["schemas"]["RiskCategory"];
+            likelihood?: number;
+            impact?: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        ProjectRiskSummary: {
+            /**
+             * @description Null when no risk has ever been recorded: unknown, never green.
+             * @enum {string|null}
+             */
+            rag: "red" | "amber" | "green" | null;
+            /** @description Risks not yet closed */
+            open: number;
+            high: number;
+            medium: number;
+            low: number;
+            overdueReviews: number;
+            top: components["schemas"]["ProjectRisk"][];
         };
         MeetingSeries: {
             id: string;
@@ -16338,6 +16807,9 @@ export interface components {
         };
         /** @enum {string} */
         AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        VoiceLogRequest: {
+            transcript: string;
+        };
         DraftMinutesRequest: {
             notes: string;
         };
@@ -16682,6 +17154,59 @@ export interface components {
             history: components["schemas"]["NegotiationTurn"][];
             disclaimer: string;
         };
+        BidLevelling: {
+            runId: string;
+            summary: string;
+            /** @description Median of the normalised totals; null under three bids. */
+            medianNormalisedExGst: string | null;
+            /** @description Worked out by code, best normalised price first by `rank`. */
+            bids: {
+                /** @description Bid A, Bid B, ... in the order the quotes were received. */
+                label: string;
+                quoteId: string;
+                totalExGst: string;
+                /** @description The total plus an allowance for each scope line the bid leaves out. */
+                normalisedExGst: string;
+                rank: number;
+                validityExpired: boolean;
+                provisionalExGst: string;
+                gaps: {
+                    scopeKey: string;
+                    /** @enum {string} */
+                    reason: "excluded" | "unpriced";
+                    allowanceExGst: string | null;
+                }[];
+            }[];
+            /** @description Suggested homes on the scope schedule for lines a bid priced outside it; for the estimator to confirm. */
+            mappings: {
+                bid: string;
+                quoteId: string;
+                ref: string;
+                description: string;
+                amountExGst: string;
+                scopeKey: string;
+                reason: string;
+            }[];
+            gaps: {
+                bid: string;
+                scopeKey: string | null;
+                text: string;
+            }[];
+            risks: {
+                bid: string;
+                text: string;
+            }[];
+            recommendation: {
+                bid: string | null;
+                quoteId: string | null;
+                reasoning: string;
+                conditions: string[];
+                isLowestNormalised: boolean | null;
+            };
+            notes: string[];
+            history: components["schemas"]["NegotiationTurn"][];
+            disclaimer: string;
+        };
         NovaTakeoffDetection: {
             runId: string;
             revisionId: string;
@@ -16790,6 +17315,39 @@ export interface components {
             unreadPages: number[];
             /** @description Part of the contract was left out (too long to read in one go). */
             truncated: boolean;
+        };
+        NovaContractSovDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read, so the list may miss lines on them. */
+            unreadPages: number[];
+            /** @description Part of the document was left out (too long to read in one go). */
+            truncated: boolean;
+            lines: {
+                /** @description Blank when the document prints no code for the line. */
+                code: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                source: {
+                    page: number;
+                    quote: string;
+                };
+            }[];
+            /** @enum {string} */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            /** @description The total the document prints, when code found it on a page. */
+            statedTotalExGst: components["schemas"]["FinancialsMoney"] | null;
+            linesTotalExGst: components["schemas"]["FinancialsMoney"];
+            contractValueExGst: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string} */
+            totalCheck: "matches" | "differs" | "no_value";
+            /** @description Lines total less the contract value, signed; null when no value was entered. */
+            difference: string | null;
+            /** @description Lines left out because their words or amount were not on the page. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "items_dropped" | "total_differs" | "no_lines")[];
         };
         NovaContractReview: {
             /** Format: date-time */
@@ -20485,6 +21043,50 @@ export interface components {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
         };
+        ProjectCashflow: {
+            /** Format: date */
+            asOf: string;
+            months: {
+                month: string;
+                /** @enum {string} */
+                kind: "actual" | "current" | "forecast";
+                cashIn: components["schemas"]["FinancialsMoney"];
+                cashOut: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+                cumulative: components["schemas"]["FinancialsSignedMoney"];
+            }[];
+            totals: {
+                cashInToDate: components["schemas"]["FinancialsMoney"];
+                cashOutToDate: components["schemas"]["FinancialsMoney"];
+                forecastCashIn: components["schemas"]["FinancialsMoney"];
+                forecastCashOut: components["schemas"]["FinancialsMoney"];
+                lowestCumulative: components["schemas"]["FinancialsSignedMoney"];
+                lowestMonth: string | null;
+            };
+            wip: {
+                contractValue: components["schemas"]["FinancialsMoney"];
+                estimatedFinalCost: components["schemas"]["FinancialsMoney"];
+                costToDate: components["schemas"]["FinancialsMoney"];
+                percentComplete: string;
+                earnedRevenue: components["schemas"]["FinancialsMoney"];
+                billed: components["schemas"]["FinancialsMoney"];
+                overUnderBilled: components["schemas"]["FinancialsSignedMoney"];
+                earnedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                projectedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                receivableOpen: components["schemas"]["FinancialsMoney"];
+                retentionHeld: components["schemas"]["FinancialsMoney"];
+            } | null;
+            flags: {
+                /** @enum {string} */
+                code: "cash_gap" | "negative_cash_now" | "underbilled" | "overbilled" | "overdue_receivable" | "disputed_claims" | "loss_making" | "no_cost_plan" | "unscheduled_cost" | "retention_no_date" | "no_head_contract";
+                /** @enum {string} */
+                severity: "info" | "warn" | "risk";
+                title: string;
+                detail: string;
+                month: string | null;
+                amount: string | null;
+            }[];
+        };
         BudgetForecast: {
             hasBudget: boolean;
             months: string[];
@@ -20837,6 +21439,97 @@ export interface components {
             paymentDueOn: string | null;
             balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
             percentComplete: string;
+        };
+        PaymentApplicationRow: {
+            key: string;
+            code: string;
+            description: string;
+            /** @enum {string} */
+            kind: "sov" | "variation";
+            costCode: string | null;
+            scheduledValue: components["schemas"]["FinancialsMoney"];
+            previous: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            percentComplete: string;
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+        };
+        PaymentApplicationFinding: {
+            code: string;
+            /** @enum {string} */
+            severity: "error" | "warning" | "info";
+            message: string;
+            itemCode: string | null;
+        };
+        PaymentApplicationSummary: {
+            originalSum: components["schemas"]["FinancialsMoney"];
+            netChange: components["schemas"]["FinancialsSignedMoney"];
+            revisedSum: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsMoney"];
+            earnedLessRetainage: components["schemas"]["FinancialsMoney"];
+            lessPrevious: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            currentPaymentDue: components["schemas"]["FinancialsMoney"];
+            scheduledAmount: string | null;
+            paid: components["schemas"]["FinancialsMoney"];
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+            percentComplete: string;
+        };
+        PaymentApplication: {
+            claimId: string;
+            commitmentTitle: string;
+            contractNumber: number;
+            contractTitle: string;
+            claimNumber: number;
+            status: string;
+            /** Format: date */
+            periodStart: string | null;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** Format: date */
+            scheduleDueOn: string | null;
+            summary: components["schemas"]["PaymentApplicationSummary"];
+            changeOrders: {
+                previousAdditions: components["schemas"]["FinancialsMoney"];
+                previousDeductions: components["schemas"]["FinancialsMoney"];
+                thisAdditions: components["schemas"]["FinancialsMoney"];
+                thisDeductions: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+            };
+            retentionPct: string;
+            rows: components["schemas"]["PaymentApplicationRow"][];
+            prior: {
+                number: number;
+                /** Format: date */
+                periodEnd: string;
+                thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+                percentComplete: string;
+            } | null;
+            findings: components["schemas"]["PaymentApplicationFinding"][];
+        };
+        CommitmentInvoicePdfRequest: {
+            sections?: ("g702" | "summary" | "breakdown" | "payment" | "proofread")[];
+            columns?: ("code" | "description" | "scheduledValue" | "previous" | "thisPeriod" | "completedToDate" | "percentComplete" | "balanceToFinish")[];
+            /** @enum {string} */
+            paper?: "a4" | "letter";
+            /** @enum {string} */
+            orientation?: "portrait" | "landscape";
+            notes?: string;
+            signatureBlock?: boolean;
+            /** @description The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for. */
+            amountCertified?: string;
+        };
+        CommitmentInvoicePdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
         };
         CommitmentInvoiceSummary: {
             originalSum: components["schemas"]["FinancialsMoney"];
@@ -25595,6 +26288,7 @@ export interface components {
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
+        RiskId: string;
         PhotoAlbumId: string;
         FileId: string;
         SpecBookId: string;
@@ -25659,6 +26353,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        WorkflowId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -30964,6 +31659,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftContractSov: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    /** @description The contract value ex GST the person has entered, to check the lines against. */
+                    contractValue?: components["schemas"]["FinancialsMoney"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The proposed lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractSovDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     compareContracts: {
         parameters: {
             query?: never;
@@ -31086,6 +31813,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    levelBidsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    question?: string;
+                    history?: components["schemas"]["NegotiationTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's levelling */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidLevelling"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     reviewBudgetWithNova: {
         parameters: {
             query?: never;
@@ -31194,6 +31953,36 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    parseVoiceLogWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceLogRequest"];
+            };
+        };
+        responses: {
+            /** @description The suggestion; `payload` is `{ date, items, dropped, transcriptHash }`. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -32153,6 +32942,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataExportDownload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getVariationWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationWorkflow"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -43950,6 +44864,30 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getProjectCashflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCashflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     createForecastAdjustment: {
         parameters: {
             query?: never;
@@ -45843,6 +46781,62 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getCommitmentInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentApplication"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentInvoicePdfRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentInvoicePdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     submitCommitment: {
         parameters: {
             query?: never;
@@ -46453,6 +47447,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectRisks: {
+        parameters: {
+            query?: {
+                status?: "open" | "mitigating" | "occurred" | "closed";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectRiskSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectRisk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -47369,6 +48499,31 @@ export interface operations {
                 "application/json": components["schemas"]["PrefabTransitionRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftPrefabDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

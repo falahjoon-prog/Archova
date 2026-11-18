@@ -136,6 +136,7 @@ export const ID_PREFIXES = {
   scheduleDependency: 'sdp',
   scheduleLink: 'slk',
   report: 'rpt',
+  projectRisk: 'rsk',
   notification: 'ntf',
   bookmark: 'bmk',
   inspectionTemplate: 'itp',
@@ -195,6 +196,8 @@ export const ID_PREFIXES = {
   forecastAdjustment: 'fca',
   trustMovement: 'tmv',
   dataExport: 'dxp',
+  workflow: 'wfl',
+  workflowRun: 'wfr',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

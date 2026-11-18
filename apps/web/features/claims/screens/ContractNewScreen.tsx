@@ -12,6 +12,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import type { CreateContract } from '../data/api';
+import { NovaSovDialog } from '../components/NovaSovDialog';
 import { useClaimsMutations } from '../hooks/useClaims';
 import { aud, cents } from '../lib/money';
 
@@ -43,10 +44,21 @@ export function ContractNewScreen() {
     { code: '', description: '', value: '', costCodeId: '' },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [novaOpen, setNovaOpen] = useState(false);
 
   const total = rows.reduce((n, r) => n + (cents(r.value) ?? 0), 0);
   const setRow = (i: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  /** Lines the person accepted from Nova replace the empty starter row; anything they typed already stays. */
+  function addNovaLines(lines: Array<{ code: string; description: string; value: string }>) {
+    setRows((rs) => {
+      const kept = rs.filter(
+        (r) => r.code.trim() || r.description.trim() || r.value.trim() || r.costCodeId,
+      );
+      return [...kept, ...lines.map((l) => ({ ...l, costCodeId: '' }))];
+    });
+  }
 
   function save(e: FormEvent) {
     e.preventDefault();
@@ -163,6 +175,14 @@ export function ContractNewScreen() {
         </div>
         <fieldset className="stack">
           <legend>Schedule of values</legend>
+          <div className="row-actions">
+            <Button type="button" variant="secondary" onClick={() => setNovaOpen(true)}>
+              Fill with Nova
+            </Button>
+            <span className="u-caption">
+              Nova proposes lines from the contract PDF. You choose what to add.
+            </span>
+          </div>
           {rows.map((r, i) => (
             <div className="form-row" key={i}>
               <TextField
@@ -229,6 +249,13 @@ export function ContractNewScreen() {
           </Link>
         </div>
       </form>
+      <NovaSovDialog
+        open={novaOpen}
+        onClose={() => setNovaOpen(false)}
+        projectId={project.projectId}
+        contractValue={value}
+        onAdd={addNovaLines}
+      />
     </div>
   );
 }

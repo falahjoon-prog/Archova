@@ -1061,6 +1061,14 @@ export const AskContractParams = z.object({
 export const AskContractBody = z.object({
   "question": z.string().min(3).max(500),
 }).strict();
+export const DraftContractSovParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftContractSovBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractValue": z.union([s.FinancialsMoneySchema, z.null()]).optional(),
+}).strict();
 export const CompareContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1091,6 +1099,15 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const LevelBidsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const LevelBidsWithNovaBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
+}).strict();
 export const ReviewBudgetWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1117,6 +1134,12 @@ export const SummariseDiaryWeekWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "weekStart": z.string().date(),
 });
+export const ParseVoiceLogWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const ParseVoiceLogWithNovaBody = s.VoiceLogRequestSchema;
 export const DraftMinutesWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1313,6 +1336,27 @@ export const GetDataExportParams = z.object({
 export const CreateDataExportDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const ListWorkflowsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowBody = s.CreateWorkflowRequestSchema;
+export const UpdateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWorkflowBody = s.UpdateWorkflowRequestSchema;
+export const DeleteWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const GetVariationWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3653,6 +3697,10 @@ export const GetCostForecastParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetProjectCashflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const CreateForecastAdjustmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4021,6 +4069,19 @@ export const GetCommitmentInvoicesParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
+export const GetCommitmentInvoiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetCommitmentInvoicePdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetCommitmentInvoicePdfBody = s.CommitmentInvoicePdfRequestSchema;
 export const SubmitCommitmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4156,6 +4217,33 @@ export const VoidClaimEvidenceServiceParams = z.object({
 export const VoidClaimEvidenceServiceBody = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
+export const ListProjectRisksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListProjectRisksQuery = z.object({
+  "status": z.enum(["open", "mitigating", "occurred", "closed"]).optional(),
+});
+export const CreateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateProjectRiskBody = s.CreateProjectRiskRequestSchema;
+export const GetProjectRiskSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateProjectRiskBody = s.UpdateProjectRiskRequestSchema;
+export const DeleteProjectRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "riskId": z.string().regex(new RegExp("^rsk_[0-9A-Za-z]{26}$")),
+});
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4340,6 +4428,11 @@ export const TransitionPrefabUnitParams = z.object({
   "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
 });
 export const TransitionPrefabUnitBody = s.PrefabTransitionRequestSchema;
+export const DraftPrefabDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
 export const AddPrefabCheckParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6894,6 +6987,18 @@ export const operations = {
     query: null,
     body: AskContractBody,
   },
+  draftContractSov: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "financials.contracts.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftContractSovParams,
+    query: null,
+    body: DraftContractSovBody,
+  },
   compareContracts: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares',
@@ -6942,6 +7047,18 @@ export const operations = {
     query: null,
     body: NegotiateQuoteBody,
   },
+  levelBidsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: LevelBidsWithNovaParams,
+    query: null,
+    body: LevelBidsWithNovaBody,
+  },
   reviewBudgetWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews',
@@ -6989,6 +7106,18 @@ export const operations = {
     params: SummariseDiaryWeekWithNovaParams,
     query: null,
     body: null,
+  },
+  parseVoiceLogWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log',
+    module: "ai",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: ParseVoiceLogWithNovaParams,
+    query: null,
+    body: ParseVoiceLogWithNovaBody,
   },
   draftMinutesWithNova: {
     method: 'POST',
@@ -7421,6 +7550,66 @@ export const operations = {
     rateLimit: 30,
     contentType: null,
     params: CreateDataExportDownloadParams,
+    query: null,
+    body: null,
+  },
+  listWorkflows: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: ListWorkflowsParams,
+    query: null,
+    body: null,
+  },
+  createWorkflow: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWorkflowParams,
+    query: null,
+    body: CreateWorkflowBody,
+  },
+  updateWorkflow: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWorkflowParams,
+    query: null,
+    body: UpdateWorkflowBody,
+  },
+  deleteWorkflow: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteWorkflowParams,
+    query: null,
+    body: null,
+  },
+  getVariationWorkflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetVariationWorkflowParams,
     query: null,
     body: null,
   },
@@ -12433,6 +12622,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  getProjectCashflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cashflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectCashflowParams,
+    query: null,
+    body: null,
+  },
   createForecastAdjustment: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments',
@@ -13249,6 +13450,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  getCommitmentInvoice: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentInvoiceParams,
+    query: null,
+    body: null,
+  },
+  getCommitmentInvoicePdf: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: "application/json",
+    params: GetCommitmentInvoicePdfParams,
+    query: null,
+    body: GetCommitmentInvoicePdfBody,
+  },
   submitCommitment: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit',
@@ -13512,6 +13737,66 @@ export const operations = {
     params: VoidClaimEvidenceServiceParams,
     query: null,
     body: VoidClaimEvidenceServiceBody,
+  },
+  listProjectRisks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: ListProjectRisksParams,
+    query: ListProjectRisksQuery,
+    body: null,
+  },
+  createProjectRisk: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateProjectRiskParams,
+    query: null,
+    body: CreateProjectRiskBody,
+  },
+  getProjectRiskSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/summary',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectRiskSummaryParams,
+    query: null,
+    body: null,
+  },
+  updateProjectRisk: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateProjectRiskParams,
+    query: null,
+    body: UpdateProjectRiskBody,
+  },
+  deleteProjectRisk: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.risks.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteProjectRiskParams,
+    query: null,
+    body: null,
   },
   listMeetingSeries: {
     method: 'GET',
@@ -13908,6 +14193,18 @@ export const operations = {
     params: TransitionPrefabUnitParams,
     query: null,
     body: TransitionPrefabUnitBody,
+  },
+  draftPrefabDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: null,
+    params: DraftPrefabDeliveryParams,
+    query: null,
+    body: null,
   },
   addPrefabCheck: {
     method: 'POST',

@@ -22,6 +22,7 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'safety',
     'insurance',
     'handover',
+    'permits',
     'geotech',
     'photos',
     'meetings',
