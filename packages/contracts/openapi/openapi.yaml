@@ -14762,6 +14762,27 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CostForecast' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cashflow:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectCashflow
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.forecast.read
+      summary: Monthly cashflow forecast and work-in-progress (WIP) position, with the risks code found.
+      description: |
+        Rolls claims, retention, the budget's monthly cost forecast and direct costs into cash in and cash out by month
+        (ex GST), plus cost-to-cost percent complete, earned revenue and over or under billing. `flags` are found by
+        code, never by a model, and carry the amounts they quote. Builder staff only, like the cost forecast.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectCashflow' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -29349,6 +29370,94 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    ProjectCashflow:
+      type: object
+      required: [asOf, months, totals, wip, flags]
+      properties:
+        asOf: { type: string, format: date }
+        months:
+          type: array
+          items:
+            type: object
+            required: [month, kind, cashIn, cashOut, net, cumulative]
+            properties:
+              month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+              kind: { type: string, enum: [actual, current, forecast] }
+              cashIn: { $ref: '#/components/schemas/FinancialsMoney' }
+              cashOut: { $ref: '#/components/schemas/FinancialsMoney' }
+              net: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              cumulative: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        totals:
+          type: object
+          required:
+            [
+              cashInToDate,
+              cashOutToDate,
+              forecastCashIn,
+              forecastCashOut,
+              lowestCumulative,
+              lowestMonth,
+            ]
+          properties:
+            cashInToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            cashOutToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            forecastCashIn: { $ref: '#/components/schemas/FinancialsMoney' }
+            forecastCashOut: { $ref: '#/components/schemas/FinancialsMoney' }
+            lowestCumulative: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            lowestMonth: { type: [string, 'null'], pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        wip:
+          type: [object, 'null']
+          required:
+            [
+              contractValue,
+              estimatedFinalCost,
+              costToDate,
+              percentComplete,
+              earnedRevenue,
+              billed,
+              overUnderBilled,
+              earnedGrossProfit,
+              projectedGrossProfit,
+              receivableOpen,
+              retentionHeld,
+            ]
+          properties:
+            contractValue: { $ref: '#/components/schemas/FinancialsMoney' }
+            estimatedFinalCost: { $ref: '#/components/schemas/FinancialsMoney' }
+            costToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            percentComplete: { type: string, pattern: '^\d{1,3}\.\d{2}$' }
+            earnedRevenue: { $ref: '#/components/schemas/FinancialsMoney' }
+            billed: { $ref: '#/components/schemas/FinancialsMoney' }
+            overUnderBilled: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            earnedGrossProfit: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            projectedGrossProfit: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            receivableOpen: { $ref: '#/components/schemas/FinancialsMoney' }
+            retentionHeld: { $ref: '#/components/schemas/FinancialsMoney' }
+        flags:
+          type: array
+          items:
+            type: object
+            required: [code, severity, title, detail, month, amount]
+            properties:
+              code:
+                type: string
+                enum:
+                  - cash_gap
+                  - negative_cash_now
+                  - underbilled
+                  - overbilled
+                  - overdue_receivable
+                  - disputed_claims
+                  - loss_making
+                  - no_cost_plan
+                  - unscheduled_cost
+                  - retention_no_date
+                  - no_head_contract
+              severity: { type: string, enum: [info, warn, risk] }
+              title: { type: string }
+              detail: { type: string }
+              month: { type: [string, 'null'], pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+              amount: { type: [string, 'null'] }
     BudgetForecast:
       type: object
       required: [hasBudget, months, lines]

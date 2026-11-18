@@ -3564,6 +3564,10 @@ export const GetCostForecastParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetProjectCashflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const CreateForecastAdjustmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12149,6 +12153,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetCostForecastParams,
+    query: null,
+    body: null,
+  },
+  getProjectCashflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cashflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetProjectCashflowParams,
     query: null,
     body: null,
   },
