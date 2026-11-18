@@ -19,6 +19,8 @@ export type ToolId =
   | 'submittals'
   | 'timesheets'
   | 'crews'
+  | 'equipment'
+  | 'deliveries'
   | 'ownerPortal';
 
 export interface ToolDef {
@@ -140,6 +142,27 @@ export const TOOLS: readonly ToolDef[] = [
       'M16 14h5',
     ],
     route: mobileRoutes.crews,
+  },
+  {
+    id: 'equipment',
+    label: 'Equipment',
+    icon: [
+      'M3 17h13l3-5h-6l-2-5H6v10',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M14 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.equipment,
+  },
+  {
+    id: 'deliveries',
+    label: 'Deliveries',
+    icon: [
+      'M3 7h11v10H3z',
+      'M14 10h4l3 3v4h-7',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M17 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.deliveries,
   },
   {
     id: 'ownerPortal',
