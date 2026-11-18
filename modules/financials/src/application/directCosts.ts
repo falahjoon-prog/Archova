@@ -24,6 +24,8 @@ export interface RecordDirectCostInput {
   amount: string;
   /** The GST on top, zero if none. */
   gst?: string;
+  /** Who is on record as the author, when a job records the cost for someone (scheduled plant hire). */
+  createdBy?: string;
 }
 
 /** Locks the budget line, then moves its actual by `deltaCents`. */
@@ -92,7 +94,7 @@ export async function insertDirectCost(
       incurredOn: input.incurredOn,
       amount: input.amount,
       gst: input.gst ?? '0',
-      createdBy: scope.ctx.userId,
+      createdBy: input.createdBy ?? scope.ctx.userId,
     })
     .returning();
   await recordRetention(scope, {

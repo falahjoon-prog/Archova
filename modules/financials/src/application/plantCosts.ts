@@ -13,6 +13,22 @@ export interface PlantCostInput {
   incurredOn: string;
   /** Ex GST, in cents, more than zero. */
   amountCents: number;
+  /** The person who authorised the hire; recorded as the author of the direct cost. */
+  authorisedBy: string;
+}
+
+/** Does the cost code belong to the project and have a budget line there? Used when plant is allocated. */
+export async function costCodeBudgeted(
+  scope: TenantScope,
+  projectId: string,
+  costCodeId: string,
+): Promise<boolean> {
+  const [line] = await scope.tx
+    .select({ id: budgetLines.id })
+    .from(budgetLines)
+    .where(and(eq(budgetLines.projectId, projectId), eq(budgetLines.costCodeId, costCodeId)))
+    .limit(1);
+  return !!line;
 }
 
 /**
@@ -39,6 +55,7 @@ export async function postPlantCost(
     reference: input.reference,
     incurredOn: input.incurredOn,
     amount: fromCents(input.amountCents),
+    createdBy: input.authorisedBy,
   });
   return { directCostId: cost.id };
 }

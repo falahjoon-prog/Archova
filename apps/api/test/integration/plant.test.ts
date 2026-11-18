@@ -196,6 +196,28 @@ describe('plant and equipment', () => {
     );
     expect(noLine.statusCode).toBe(201);
 
+    // A costed allocation must stay inside the project's own budget and inside a sane date range.
+    const other = await createProject(ana.browser, org.id);
+    const foreignCode = (
+      await ana.browser.post(`/v1/orgs/${org.id}/projects/${other.id}/cost-codes`, {
+        code: '09',
+        description: 'Elsewhere',
+      })
+    ).json() as { id: string };
+    const bad = async (body: Record<string, unknown>) =>
+      (
+        await ana.browser.post(`${base}/assets/${hired.id}/allocations`, {
+          projectId: project.id,
+          costCodeId: code.id,
+          startsOn: '2030-01-01',
+          endsOn: '2030-01-02',
+          ...body,
+        })
+      ).statusCode;
+    expect(await bad({ costCodeId: foreignCode.id })).toBe(422);
+    expect(await bad({ startsOn: '2020-01-01', endsOn: '2020-01-05' })).toBe(422);
+    expect(await bad({ startsOn: '2030-01-01', endsOn: '2032-01-01' })).toBe(422);
+
     const run = () =>
       t.database.withTenantTx(
         {
@@ -210,9 +232,9 @@ describe('plant and equipment', () => {
       );
     // Five days of the hired crane at $500: $2,500 on the budget line. The owned machine and the code with no
     // budget line post nothing, and the unbudgeted hire waits.
-    expect(await run()).toEqual({ posted: 1, waiting: 1 });
+    expect(await run()).toEqual({ posted: 1, waiting: 1, skipped: 0 });
     expect(await actualOf()).toBe('2500.00');
-    expect(await run()).toEqual({ posted: 0, waiting: 1 });
+    expect(await run()).toEqual({ posted: 0, waiting: 1, skipped: 0 });
     expect(await actualOf()).toBe('2500.00');
     const list = (await ana.browser.get(`${base}/allocations`)).json() as {
       data: Array<{ assetId: string; postedThrough: string | null }>;

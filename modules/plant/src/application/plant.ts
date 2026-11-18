@@ -31,8 +31,16 @@ export const PLANT_TIME_ZONE = 'Australia/Sydney';
 const TIME_ZONE = PLANT_TIME_ZONE;
 const MAX_ROWS = 1000;
 
+/** How far back an allocation may start, and how long it may run: a typo in the date can't raise a large charge. */
+const MAX_BACKDATE_DAYS = 31;
+const MAX_ALLOCATION_DAYS = 366;
+
 export interface PlantDeps {
   access: AccessService;
+  /** Throws if the project isn't in the org (`platform`). */
+  requireProject: (scope: TenantScope, projectId: string) => Promise<unknown>;
+  /** Does the cost code belong to the project and carry a budget line there (`financials`)? */
+  costCodeBudgeted: (scope: TenantScope, projectId: string, costCodeId: string) => Promise<boolean>;
   now?: () => Date;
 }
 
@@ -214,6 +222,17 @@ export function createPlantService(deps: PlantDeps) {
     },
   ) {
     await need(scope, 'plant.allocations.manage');
+    await deps.requireProject(scope, input.projectId);
+    if (input.costCodeId) {
+      // Tagging a cost code charges that project's budget, so it takes the right to record costs there.
+      await deps.access.assert(scope, 'financials.direct_costs.manage', {
+        projectId: input.projectId,
+      });
+      if (!(await deps.costCodeBudgeted(scope, input.projectId, input.costCodeId)))
+        throw new AppError('validation_failed', 'That cost code is not on this project’s budget.', [
+          { path: 'costCodeId', message: 'Pick a cost code with a budget line on this project' },
+        ]);
+    }
     // Lock the machine so two people allocating it at once are serialised and the clash check holds.
     const a = await assetRow(scope, assetId, true);
     if (!allocatable(a.status))
@@ -225,6 +244,16 @@ export function createPlantService(deps: PlantDeps) {
       throw new AppError('validation_failed', 'An allocation must not end before it starts.', [
         { path: 'endsOn', message: 'Must be on or after the start' },
       ]);
+    if (input.costCodeId) {
+      if (input.startsOn < addDays(today(), -MAX_BACKDATE_DAYS))
+        throw new AppError('validation_failed', 'A costed allocation can’t start that far back.', [
+          { path: 'startsOn', message: `Must be within the last ${MAX_BACKDATE_DAYS} days` },
+        ]);
+      if (spanDays(input) > MAX_ALLOCATION_DAYS)
+        throw new AppError('validation_failed', 'A costed allocation can’t run that long.', [
+          { path: 'endsOn', message: `Must be within ${MAX_ALLOCATION_DAYS} days of the start` },
+        ]);
+    }
     const existing = await scope.tx
       .select()
       .from(allocations)

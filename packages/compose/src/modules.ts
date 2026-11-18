@@ -548,6 +548,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const plant = createPlantModule(services, {
     access: access.api,
     postCost: financials.api.postPlantCost,
+    requireProject: platform.api.getProject,
+    costCodeBudgeted: financials.api.costCodeBudgeted,
   });
 
   const workforce = createWorkforceModule(services, {
