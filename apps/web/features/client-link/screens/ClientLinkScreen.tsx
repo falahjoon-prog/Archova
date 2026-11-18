@@ -64,7 +64,8 @@ export function ClientLinkScreen({ token }: { token: string }) {
   );
 }
 
-function ClientPage({ view }: { view: ClientView }) {
+/** The client's page body, also used for the team's preview. */
+export function ClientPage({ view }: { view: ClientView }) {
   const tz = view.project.timezone;
   return (
     <>

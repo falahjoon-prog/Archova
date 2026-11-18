@@ -1,1 +1,1 @@
-export { ClientLinkScreen } from './screens/ClientLinkScreen';
+export { ClientLinkScreen, ClientPage } from './screens/ClientLinkScreen';

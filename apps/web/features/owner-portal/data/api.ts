@@ -12,6 +12,8 @@ export type CapitalItemInput = S['OwnerCapitalItemInput'];
 export type ShareLink = S['OwnerShareLink'];
 export type CreatedShareLink = S['CreatedOwnerShareLink'];
 export type SharedPhoto = S['OwnerSharedPhoto'];
+export type ShareChange = S['OwnerShareChange'];
+export type SharePreview = S['OwnerPortalAccess'];
 
 const B = '/v1/orgs/{orgId}/projects/{projectId}/owner-portal';
 const idem = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -42,6 +44,28 @@ export function createOwnerPortalApi(orgId: string) {
           params: { path: { ...path(projectId), linkId } },
         }),
       );
+    },
+    async sharePreview(projectId: string): Promise<SharePreview> {
+      return unwrap(
+        await api.GET(`${B}/share-preview` as const, { params: { path: path(projectId) } }),
+      );
+    },
+    async shareChanges(projectId: string): Promise<ShareChange[]> {
+      return unwrap(
+        await api.GET(`${B}/share-changes` as const, { params: { path: path(projectId) } }),
+      ).data;
+    },
+    async setChangeHidden(
+      projectId: string,
+      reference: string,
+      hidden: boolean,
+    ): Promise<ShareChange[]> {
+      return unwrap(
+        await api.PUT(`${B}/share-changes/{reference}` as const, {
+          params: { path: { ...path(projectId), reference } },
+          body: { hidden },
+        }),
+      ).data;
     },
     async sharedPhotos(projectId: string): Promise<SharedPhoto[]> {
       return unwrap(

@@ -33,7 +33,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { upcomingMilestones } from '../domain/share';
-import { approvals, progressUpdates, sharedPhotos } from '../infra/tables';
+import { approvals, hiddenChanges, progressUpdates, sharedPhotos } from '../infra/tables';
 
 export const PORTAL_LINK_ENTITY = 'owner_portal';
 /** Its own cookie, so opening a portal link never replaces a tender, transmittal or induction session. */
@@ -152,6 +152,18 @@ export function createShareService(deps: ShareDeps) {
       recipientEmail: email,
       expiresAt,
     });
+    scope.events.add({
+      type: 'ownerportal.share_link.issued.v1',
+      projectId,
+      entityType: 'owner_portal',
+      entityId: projectId,
+      data: {
+        actorId: scope.ctx.userId,
+        linkId: link.id,
+        emailed: !!email,
+        expiresAt: expiresAt.toISOString(),
+      },
+    });
     return { link, token, url: `${deps.baseUrl}/c/${token}`, email, expiresAt };
   }
 
@@ -190,7 +202,15 @@ export function createShareService(deps: ShareDeps) {
     const link = await getAccessLink(scope, linkId);
     if (!link || link.entityType !== PORTAL_LINK_ENTITY || link.entityId !== projectId)
       throw new AppError('access_link.not_found');
-    return linkDto(await revokeAccessLink(scope, linkId));
+    const revoked = await revokeAccessLink(scope, linkId);
+    scope.events.add({
+      type: 'ownerportal.share_link.revoked.v1',
+      projectId,
+      entityType: 'owner_portal',
+      entityId: projectId,
+      data: { actorId: scope.ctx.userId, linkId },
+    });
+    return linkDto(revoked);
   }
 
   // ---- photos the builder picked
@@ -257,6 +277,13 @@ export function createShareService(deps: ShareDeps) {
         target: [sharedPhotos.orgId, sharedPhotos.fileId],
         set: { caption: (input.caption ?? '').trim().slice(0, 300) },
       });
+    scope.events.add({
+      type: 'ownerportal.shared_photo.added.v1',
+      projectId,
+      entityType: 'owner_portal',
+      entityId: projectId,
+      data: { actorId: scope.ctx.userId, fileId },
+    });
     return listPhotos(scope, projectId);
   }
 
@@ -266,6 +293,13 @@ export function createShareService(deps: ShareDeps) {
     await scope.tx
       .delete(sharedPhotos)
       .where(and(eq(sharedPhotos.projectId, projectId), eq(sharedPhotos.fileId, fileId)));
+    scope.events.add({
+      type: 'ownerportal.shared_photo.removed.v1',
+      projectId,
+      entityType: 'owner_portal',
+      entityId: projectId,
+      data: { actorId: scope.ctx.userId, fileId },
+    });
     return listPhotos(scope, projectId);
   }
 
@@ -353,8 +387,85 @@ export function createShareService(deps: ShareDeps) {
   }
 
   /** What the client sees. Only published updates, picked photos and approved changes: never a draft or a figure. */
+  async function changeCandidates(scope: TenantScope, projectId: string) {
+    const decided = await scope.tx
+      .select()
+      .from(approvals)
+      .where(and(eq(approvals.projectId, projectId), inArray(approvals.status, ['approved'])))
+      .orderBy(asc(approvals.decidedAt))
+      .limit(100);
+    const variations = await deps.approvedChanges(scope, projectId);
+    const hidden = new Set(
+      (
+        await scope.tx
+          .select({ reference: hiddenChanges.reference })
+          .from(hiddenChanges)
+          .where(eq(hiddenChanges.projectId, projectId))
+      ).map((h) => h.reference),
+    );
+    const all = [
+      ...variations.map((v) => ({
+        kind: 'variation' as const,
+        reference: `VAR-${String(v.number).padStart(3, '0')}`,
+        title: v.title,
+        description: v.description ?? '',
+        timeImpactDays: v.timeImpactDays,
+        approvedAt: v.approvedAt?.toISOString() ?? null,
+      })),
+      ...decided.map((a) => ({
+        kind: 'decision' as const,
+        reference: `DEC-${String(a.number).padStart(3, '0')}`,
+        title: a.title,
+        description: a.description,
+        timeImpactDays: 0,
+        approvedAt: a.decidedAt?.toISOString() ?? null,
+      })),
+    ].sort((a, b) => (b.approvedAt ?? '').localeCompare(a.approvedAt ?? ''));
+    return all.map((c) => ({ ...c, hidden: hidden.has(c.reference) }));
+  }
+
+  /** The team's list of approved changes with whether each is kept off the client view. */
+  async function listChanges(scope: TenantScope, projectId: string) {
+    return { data: await changeCandidates(scope, projectId) };
+  }
+
+  async function setChangeHidden(
+    scope: TenantScope,
+    projectId: string,
+    reference: string,
+    hide: boolean,
+  ) {
+    const known = (await changeCandidates(scope, projectId)).some((c) => c.reference === reference);
+    if (!known) throw new AppError('ownerportal.item_not_found');
+    if (hide)
+      await scope.tx
+        .insert(hiddenChanges)
+        .values({ orgId: scope.ctx.orgId, projectId, reference, hiddenBy: scope.ctx.userId })
+        .onConflictDoNothing();
+    else
+      await scope.tx
+        .delete(hiddenChanges)
+        .where(and(eq(hiddenChanges.projectId, projectId), eq(hiddenChanges.reference, reference)));
+    scope.events.add({
+      type: hide ? 'ownerportal.shared_change.hidden.v1' : 'ownerportal.shared_change.shown.v1',
+      projectId,
+      entityType: 'owner_portal',
+      entityId: projectId,
+      data: { actorId: scope.ctx.userId, reference },
+    });
+    return listChanges(scope, projectId);
+  }
+
+  /** Exactly what a client link shows right now, for the team to check before sending. Never reaches a guest. */
+  async function preview(scope: TenantScope, projectId: string) {
+    return buildView(scope, projectId, new Date(now().getTime() + 30 * 86_400_000));
+  }
+
   async function accessView(scope: TenantScope, link: AccessLink) {
-    const projectId = link.projectId!;
+    return buildView(scope, link.projectId!, link.expiresAt);
+  }
+
+  async function buildView(scope: TenantScope, projectId: string, expiresAt: Date) {
     const [org, project] = await Promise.all([
       deps.platform.getOrg(scope),
       deps.platform.getProject(scope, projectId),
@@ -365,13 +476,7 @@ export function createShareService(deps: ShareDeps) {
       .where(and(eq(progressUpdates.projectId, projectId), eq(progressUpdates.status, 'published')))
       .orderBy(desc(progressUpdates.periodEnd), desc(progressUpdates.createdAt))
       .limit(6);
-    const decided = await scope.tx
-      .select()
-      .from(approvals)
-      .where(and(eq(approvals.projectId, projectId), inArray(approvals.status, ['approved'])))
-      .orderBy(asc(approvals.decidedAt))
-      .limit(100);
-    const variations = await deps.approvedChanges(scope, projectId);
+    const changes = (await changeCandidates(scope, projectId)).filter((c) => !c.hidden);
     const photoRows = await scope.tx
       .select()
       .from(sharedPhotos)
@@ -417,26 +522,9 @@ export function createShareService(deps: ShareDeps) {
         summary: u.summary,
         publishedAt: u.publishedAt?.toISOString() ?? null,
       })),
-      changes: [
-        ...variations.map((v) => ({
-          kind: 'variation' as const,
-          reference: `VAR-${String(v.number).padStart(3, '0')}`,
-          title: v.title,
-          description: v.description ?? '',
-          timeImpactDays: v.timeImpactDays,
-          approvedAt: v.approvedAt?.toISOString() ?? null,
-        })),
-        ...decided.map((a) => ({
-          kind: 'decision' as const,
-          reference: `DEC-${String(a.number).padStart(3, '0')}`,
-          title: a.title,
-          description: a.description,
-          timeImpactDays: 0,
-          approvedAt: a.decidedAt?.toISOString() ?? null,
-        })),
-      ].sort((a, b) => (b.approvedAt ?? '').localeCompare(a.approvedAt ?? '')),
+      changes: changes.map(({ hidden: _h, ...c }) => c),
       photos,
-      expiresAt: link.expiresAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
     };
   }
 
@@ -449,6 +537,14 @@ export function createShareService(deps: ShareDeps) {
       const link = await findAccessLink(scope, token);
       if (!link) return null;
       await usable(scope, link, true);
+      if (link.useCount === 0)
+        scope.events.add({
+          type: 'ownerportal.share_link.first_opened.v1',
+          projectId: link.projectId,
+          entityType: 'owner_portal',
+          entityId: link.entityId,
+          data: { linkId: link.id },
+        });
       await countAccessLinkUse(scope, link.id);
       const { token: cookie } = await openAccessLinkSession(scope, link, {
         ip: facts.ip,
@@ -492,7 +588,20 @@ export function createShareService(deps: ShareDeps) {
     );
   }
 
-  return { listLinks, issue, deliver, revoke, listPhotos, addPhoto, removePhoto, open, view };
+  return {
+    listLinks,
+    issue,
+    deliver,
+    revoke,
+    listPhotos,
+    addPhoto,
+    removePhoto,
+    listChanges,
+    setChangeHidden,
+    preview,
+    open,
+    view,
+  };
 }
 
 export type ShareService = ReturnType<typeof createShareService>;

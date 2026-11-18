@@ -4384,6 +4384,20 @@ export const RemoveOwnerSharedPhotoParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 });
+export const PreviewOwnerShareViewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerShareChangesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetOwnerShareChangeHiddenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "reference": z.string().regex(new RegExp("^(VAR|DEC)-[0-9]{3,}$")),
+});
+export const SetOwnerShareChangeHiddenBody = s.SetOwnerShareChangeHiddenRequestSchema;
 export const OpenOwnerPortalAccessBody = s.OpenInductionAccessRequestSchema;
 export const ListPrefabUnitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -14083,6 +14097,42 @@ export const operations = {
     params: RemoveOwnerSharedPhotoParams,
     query: null,
     body: null,
+  },
+  previewOwnerShareView: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-preview',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: PreviewOwnerShareViewParams,
+    query: null,
+    body: null,
+  },
+  listOwnerShareChanges: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerShareChangesParams,
+    query: null,
+    body: null,
+  },
+  setOwnerShareChangeHidden: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes/{reference}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetOwnerShareChangeHiddenParams,
+    query: null,
+    body: SetOwnerShareChangeHiddenBody,
   },
   getOwnerPortalAccess: {
     method: 'GET',

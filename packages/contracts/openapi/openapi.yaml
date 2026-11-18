@@ -17902,6 +17902,66 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-preview:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: previewOwnerShareView
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Exactly what a client link shows right now, so the team can check it before sending.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerPortalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerShareChanges
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Approved variations and decisions that appear on the client link, with whether each is hidden. Titles and descriptions are free text and can contain prices.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareChangeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes/{reference}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - name: reference
+        in: path
+        required: true
+        schema: { type: string, pattern: '^(VAR|DEC)-[0-9]{3,}$' }
+    put:
+      operationId: setOwnerShareChangeHidden
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Hide an approved change from the client link, or show it again.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetOwnerShareChangeHiddenRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareChangeList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/owner-portal-access:
     post:
       operationId: openOwnerPortalAccess
@@ -21565,6 +21625,30 @@ components:
       properties:
         fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
         caption: { type: string, maxLength: 300 }
+    OwnerShareChange:
+      type: object
+      required: [kind, reference, title, description, timeImpactDays, approvedAt, hidden]
+      properties:
+        kind: { type: string, enum: [variation, decision] }
+        reference: { type: string }
+        title: { type: string }
+        description: { type: string }
+        timeImpactDays: { type: integer }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        hidden: { type: boolean }
+    OwnerShareChangeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerShareChange' }
+    SetOwnerShareChangeHiddenRequest:
+      type: object
+      additionalProperties: false
+      required: [hidden]
+      properties:
+        hidden: { type: boolean }
     OwnerPortalAccessUpdate:
       type: object
       required: [title, periodStart, periodEnd, percentComplete, summary, publishedAt]

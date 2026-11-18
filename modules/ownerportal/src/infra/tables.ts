@@ -75,3 +75,12 @@ export const sharedPhotos = ownerportalSchema.table('shared_photos', {
   addedBy: uuid('added_by'),
   addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const hiddenChanges = ownerportalSchema.table('hidden_changes', {
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  /** `VAR-001` or `DEC-001`: the number the client sees. */
+  reference: text('reference').notNull(),
+  hiddenBy: uuid('hidden_by'),
+  hiddenAt: timestamp('hidden_at', { withTimezone: true }).notNull().defaultNow(),
+});

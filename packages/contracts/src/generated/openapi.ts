@@ -13185,6 +13185,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Exactly what a client link shows right now, so the team can check it before sending. */
+        get: operations["previewOwnerShareView"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Approved variations and decisions that appear on the client link, with whether each is hidden. Titles and descriptions are free text and can contain prices. */
+        get: operations["listOwnerShareChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                reference: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Hide an approved change from the client link, or show it again. */
+        put: operations["setOwnerShareChangeHidden"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/owner-portal-access": {
         parameters: {
             query?: never;
@@ -15288,6 +15349,23 @@ export interface components {
         AddOwnerSharedPhotoRequest: {
             fileId: string;
             caption?: string;
+        };
+        OwnerShareChange: {
+            /** @enum {string} */
+            kind: "variation" | "decision";
+            reference: string;
+            title: string;
+            description: string;
+            timeImpactDays: number;
+            /** Format: date-time */
+            approvedAt: string | null;
+            hidden: boolean;
+        };
+        OwnerShareChangeList: {
+            data: components["schemas"]["OwnerShareChange"][];
+        };
+        SetOwnerShareChangeHiddenRequest: {
+            hidden: boolean;
         };
         OwnerPortalAccessUpdate: {
             title: string;
@@ -48147,6 +48225,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    previewOwnerShareView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerShareChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setOwnerShareChangeHidden: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOwnerShareChangeHiddenRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareChangeList"];
                 };
             };
             default: components["responses"]["Problem"];
