@@ -63,6 +63,7 @@ export type ProjectTool =
   | 'equipment'
   | 'deliveries'
   | 'prefab'
+  | 'eot'
   | 'timesheets'
   | 'observations'
   | 'action-plans'

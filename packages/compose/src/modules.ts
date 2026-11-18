@@ -503,6 +503,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary: diary.api,
     rfis: rfis.api,
     submittals: submittals.api,
+    correspondence: correspondence.api,
     platform: platform.api,
     access: access.api,
   });

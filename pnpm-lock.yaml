@@ -2396,6 +2396,9 @@ importers:
       '@archova/mod-access':
         specifier: workspace:*
         version: link:../access
+      '@archova/mod-correspondence':
+        specifier: workspace:*
+        version: link:../correspondence
       '@archova/mod-diary':
         specifier: workspace:*
         version: link:../diary

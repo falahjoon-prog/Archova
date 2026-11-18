@@ -169,6 +169,11 @@ export function projectToolGroups(
       label: 'Delay register',
       icon: DelaysIcon,
     },
+    canRead('diary') && {
+      href: webRoutes.eot(orgSlug, projectId),
+      label: 'EOT claims',
+      icon: DelaysIcon,
+    },
     canRead('schedule') && {
       href: webRoutes.programme(orgSlug, projectId),
       label: 'Programme',
@@ -383,7 +388,15 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
+    tools: [
+      'Site diary',
+      'Delay register',
+      'EOT claims',
+      'Programme',
+      'Attendance',
+      'Deliveries',
+      'Prefab',
+    ],
   },
   {
     id: 'quality-safety',

@@ -256,6 +256,75 @@ export const GetDelayRegisterQuery = z.object({
   "source": z.enum(["diary", "rfi"]).optional(),
   "eotOnly": z.enum(["true", "false"]).optional(),
 });
+export const GetEotSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PutEotSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PutEotSettingsBody = s.PutEotSettingsRequestSchema;
+export const ListDelayEventCandidatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventCandidatesQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+  "includeAttached": z.enum(["true", "false"]).optional(),
+});
+export const GetDelayEventInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventsQuery = z.object({
+  "status": s.DelayEventStatusSchema.optional(),
+});
+export const CreateDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDelayEventBody = s.CreateDelayEventRequestSchema;
+export const GetDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDelayEventBody = s.UpdateDelayEventRequestSchema;
+export const AddDelayEventEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const AddDelayEventEvidenceBody = s.AddDelayEventEvidenceRequestSchema;
+export const RemoveDelayEventEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^dxi_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDelayEventBody = s.DelayEventTransitionRequestSchema;
+export const DraftDelayEventLetterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const DraftDelayEventLetterBody = s.DelayEventDraftRequestSchema;
 export const ListSchedulesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5279,6 +5348,150 @@ export const operations = {
     params: GetDelayRegisterParams,
     query: GetDelayRegisterQuery,
     body: null,
+  },
+  getEotSettings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/eot-settings',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetEotSettingsParams,
+    query: null,
+    body: null,
+  },
+  putEotSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/eot-settings',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: PutEotSettingsParams,
+    query: null,
+    body: PutEotSettingsBody,
+  },
+  listDelayEventCandidates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListDelayEventCandidatesParams,
+    query: ListDelayEventCandidatesQuery,
+    body: null,
+  },
+  getDelayEventInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-event-insights',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayEventInsightsParams,
+    query: null,
+    body: null,
+  },
+  listDelayEvents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListDelayEventsParams,
+    query: ListDelayEventsQuery,
+    body: null,
+  },
+  createDelayEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDelayEventParams,
+    query: null,
+    body: CreateDelayEventBody,
+  },
+  getDelayEvent: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayEventParams,
+    query: null,
+    body: null,
+  },
+  updateDelayEvent: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDelayEventParams,
+    query: null,
+    body: UpdateDelayEventBody,
+  },
+  addDelayEventEvidence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddDelayEventEvidenceParams,
+    query: null,
+    body: AddDelayEventEvidenceBody,
+  },
+  removeDelayEventEvidence: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: RemoveDelayEventEvidenceParams,
+    query: null,
+    body: null,
+  },
+  transitionDelayEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionDelayEventParams,
+    query: null,
+    body: TransitionDelayEventBody,
+  },
+  draftDelayEventLetter: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: DraftDelayEventLetterParams,
+    query: null,
+    body: DraftDelayEventLetterBody,
   },
   listSchedules: {
     method: 'GET',

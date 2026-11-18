@@ -1331,6 +1331,249 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DelayRegister' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/eot-settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEotSettings
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'The contract notice and claim periods and the rain-day rule for delay events (SCH-AC4). Builder staff only. Until a person saves them they are the AS 4000 defaults, to be checked against the contract.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EotSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: putEotSettings
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Save the contract periods. `confirmed` records that a person checked them against the contract and its special conditions; until then every deadline is shown as an estimate.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutEotSettingsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EotSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDelayEventCandidates
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Delays, RFI time impacts and rain days that could go into a delay event, newest first. Rain days come from the site diary weather by the project rain-day threshold. Evidence already in an event is left out unless `includeAttached`.'
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - {
+            name: includeAttached,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventCandidateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-event-insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDelayEventInsights
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Nova on delay events: notice and claim clocks running down, delays marked as possible EOT that no event covers, events with no evidence, and the days claimed and granted. Found by rules from the contract periods, so it costs nothing and never says an extension is due.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDelayEvents
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Delay events on the project, newest first, each with its notice and claim clocks and an evidence summary.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/DelayEventStatus' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Group delays into an event (SCH-US3). `candidateKeys` from the candidates list are copied in as evidence, each as a snapshot.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDelayEventRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    get:
+      operationId: getDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'A delay event with its evidence pack and history.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Change an event: dates, cause, days claimed, critical-path judgement or a deadline set to match a contract amendment. A closed or withdrawn event must be reopened first.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDelayEventRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: addDelayEventEvidence
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Add evidence: candidates from the register, notices from correspondence, or a written note. A piece of evidence supports one event at a time.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddDelayEventEvidenceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+      - $ref: '#/components/parameters/DelayEventItemId'
+    delete:
+      operationId: removeDelayEventEvidence
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Take a piece of evidence out of an event. The source is untouched and can go into another event.'
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: transitionDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Record that notice was given or the claim sent (optionally linking the correspondence item), the superintendent assessment and days granted, or close, withdraw or reopen the event. This records what a person did; nothing is sent from here.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelayEventTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: draftDelayEventLetter
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Nova drafts a notice of delay or an EOT claim from the event and its evidence pack. The draft is text for a person to edit and send; it is not stored as correspondence and nothing is sent. It never says an extension is due.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelayEventDraftRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18276,6 +18519,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    DelayEventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxi_[0-9A-Za-z]{26}$' }
     PrefabUnitId:
       name: unitId
       in: path
@@ -22153,6 +22406,377 @@ components:
             diaryHours: { type: number }
             rfiDays: { type: integer }
         truncated: { type: boolean }
+    EotForm:
+      type: string
+      enum: [as4000, as2124, as4902, other]
+    EotDayBasis:
+      type: string
+      enum: [calendar, business]
+    DelayEventStatus:
+      type: string
+      enum: [draft, notice_given, claimed, assessed, closed, withdrawn]
+    DelayEventItemKind:
+      type: string
+      enum: [diary_delay, rfi_impact, rfi_late, weather_day, correspondence, note]
+    EotSettings:
+      type: object
+      required:
+        [
+          form,
+          noticeDays,
+          claimDays,
+          dayBasis,
+          noticeClause,
+          claimClause,
+          confirmed,
+          confirmedAt,
+          rainThresholdMm,
+          wetDayAllowance,
+          isDefault,
+          version,
+        ]
+      properties:
+        form: { $ref: '#/components/schemas/EotForm' }
+        noticeDays: { type: integer }
+        claimDays: { type: integer }
+        dayBasis: { $ref: '#/components/schemas/EotDayBasis' }
+        noticeClause: { type: [string, 'null'] }
+        claimClause: { type: [string, 'null'] }
+        confirmed: { type: boolean }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        rainThresholdMm: { type: number }
+        wetDayAllowance: { type: [integer, 'null'] }
+        isDefault: { type: boolean }
+        version: { type: integer }
+    PutEotSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [form, noticeDays, claimDays, dayBasis, confirmed, rainThresholdMm]
+      properties:
+        form: { $ref: '#/components/schemas/EotForm' }
+        noticeDays: { type: integer, minimum: 0, maximum: 365 }
+        claimDays: { type: integer, minimum: 0, maximum: 365 }
+        dayBasis: { $ref: '#/components/schemas/EotDayBasis' }
+        noticeClause: { type: [string, 'null'], maxLength: 100 }
+        claimClause: { type: [string, 'null'], maxLength: 100 }
+        confirmed: { type: boolean }
+        rainThresholdMm: { type: number, minimum: 0, maximum: 1000 }
+        wetDayAllowance: { type: [integer, 'null'], minimum: 0, maximum: 1000 }
+    DelayEventCandidate:
+      type: object
+      required: [key, kind, cause, date, label, detail, hours, days, rainMm, possibleEot, eventId]
+      properties:
+        key: { type: string }
+        kind: { type: string, enum: [diary_delay, rfi_impact, rfi_late, weather_day] }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        date: { type: string, format: date }
+        label: { type: string }
+        detail: { type: [string, 'null'] }
+        hours: { type: [number, 'null'] }
+        days: { type: [number, 'null'] }
+        rainMm: { type: [number, 'null'] }
+        possibleEot: { type: boolean }
+        eventId: { type: [string, 'null'], pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventCandidateList:
+      type: object
+      required: [today, rainThresholdMm, truncated, data]
+      properties:
+        today: { type: string, format: date }
+        rainThresholdMm: { type: number }
+        truncated: { type: boolean }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventCandidate' }
+    DelayEventClock:
+      type: object
+      required: [dueOn, daysLeft, state, overridden]
+      properties:
+        dueOn: { type: string, format: date }
+        daysLeft:
+          {
+            type: [integer, 'null'],
+            description: 'Calendar days from today to the due date; negative once it has passed. Null once given.',
+          }
+        state: { type: string, enum: [met, met_late, ok, due_soon, due_today, overdue] }
+        overridden:
+          { type: boolean, description: 'A person set this date to match a contract amendment.' }
+    DelayEventEvidenceSummary:
+      type: object
+      required: [items, diaryHours, rfiDays, rainDays, rainMm, notices, firstDate, lastDate]
+      properties:
+        items: { type: integer }
+        diaryHours: { type: number }
+        rfiDays: { type: number }
+        rainDays: { type: integer }
+        rainMm: { type: number }
+        notices: { type: integer }
+        firstDate: { type: [string, 'null'], format: date }
+        lastDate: { type: [string, 'null'], format: date }
+    DelayEvent:
+      type: object
+      required:
+        [
+          id,
+          number,
+          ref,
+          title,
+          cause,
+          status,
+          startedOn,
+          endedOn,
+          awareOn,
+          criticalPath,
+          summary,
+          affected,
+          daysClaimed,
+          suggestedDays,
+          noticeDueOn,
+          claimDueOn,
+          noticeSentOn,
+          noticeRefLabel,
+          claimSentOn,
+          claimRefLabel,
+          assessedOn,
+          daysGranted,
+          assessmentNote,
+          noticeClock,
+          claimClock,
+          evidence,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        ref: { type: string, description: 'EOT-001' }
+        title: { type: string }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        status: { $ref: '#/components/schemas/DelayEventStatus' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn: { type: string, format: date }
+        criticalPath:
+          { type: [boolean, 'null'], description: "The planner's judgement, not calculated." }
+        summary: { type: [string, 'null'] }
+        affected: { type: [string, 'null'] }
+        daysClaimed: { type: integer }
+        suggestedDays:
+          {
+            type: integer,
+            description: 'Calendar days the event spans, counting both ends. A starting point, not an entitlement.',
+          }
+        noticeDueOn:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'A deadline a person set; null means counted from the contract periods.',
+          }
+        claimDueOn: { type: [string, 'null'], format: date }
+        noticeSentOn: { type: [string, 'null'], format: date }
+        noticeRefLabel: { type: [string, 'null'] }
+        claimSentOn: { type: [string, 'null'], format: date }
+        claimRefLabel: { type: [string, 'null'] }
+        assessedOn: { type: [string, 'null'], format: date }
+        daysGranted: { type: [integer, 'null'] }
+        assessmentNote: { type: [string, 'null'] }
+        noticeClock: { $ref: '#/components/schemas/DelayEventClock' }
+        claimClock: { $ref: '#/components/schemas/DelayEventClock' }
+        evidence: { $ref: '#/components/schemas/DelayEventEvidenceSummary' }
+        version: { type: integer }
+    DelayEventList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEvent' }
+    DelayEventItem:
+      type: object
+      required: [id, kind, sourceKey, date, label, detail, hours, days, rainMm]
+      properties:
+        id: { type: string, pattern: '^dxi_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/DelayEventItemKind' }
+        sourceKey: { type: [string, 'null'] }
+        date: { type: [string, 'null'], format: date }
+        label: { type: string }
+        detail: { type: [string, 'null'] }
+        hours: { type: [number, 'null'] }
+        days: { type: [number, 'null'] }
+        rainMm: { type: [number, 'null'] }
+    DelayEventLogEntry:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^dxl_[0-9A-Za-z]{26}$' }
+        kind: { type: string }
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DelayEventDetail:
+      type: object
+      required: [event, items, history, settings]
+      properties:
+        event: { $ref: '#/components/schemas/DelayEvent' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventItem' }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventLogEntry' }
+        settings: { $ref: '#/components/schemas/EotSettings' }
+    CreateDelayEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title, cause, startedOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn:
+          {
+            type: string,
+            format: date,
+            description: 'The day the builder became aware of the delay. Starts the notice clock. Defaults to the day it began.',
+          }
+        criticalPath: { type: [boolean, 'null'] }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        affected: { type: [string, 'null'], maxLength: 1000 }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        noticeDueOn: { type: [string, 'null'], format: date }
+        claimDueOn: { type: [string, 'null'], format: date }
+        candidateKeys:
+          type: array
+          maxItems: 200
+          items: { type: string, maxLength: 100 }
+    UpdateDelayEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn: { type: string, format: date }
+        criticalPath: { type: [boolean, 'null'] }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        affected: { type: [string, 'null'], maxLength: 1000 }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        noticeDueOn: { type: [string, 'null'], format: date }
+        claimDueOn: { type: [string, 'null'], format: date }
+    AddDelayEventEvidenceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        candidateKeys:
+          type: array
+          maxItems: 200
+          items: { type: string, maxLength: 100 }
+        correspondenceIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
+        notes:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [label]
+            properties:
+              date: { type: string, format: date }
+              label: { type: string, minLength: 1, maxLength: 400 }
+              detail: { type: string, maxLength: 2000 }
+    DelayEventTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          {
+            type: string,
+            enum: [give_notice, submit_claim, record_assessment, close, withdraw, reopen],
+          }
+        on:
+          {
+            type: string,
+            format: date,
+            description: 'The day it happened. Defaults to today in the project zone; not in the future.',
+          }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        daysGranted: { type: integer, minimum: 0, maximum: 3650 }
+        note: { type: string, maxLength: 2000 }
+        correspondenceId: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
+    DelayEventDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [notice, claim] }
+        senderName: { type: string, maxLength: 200 }
+    DelayEventDraft:
+      type: object
+      required: [eventId, subject, body, warnings]
+      properties:
+        eventId: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+        subject: { type: string }
+        body: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    DelayEventFlag:
+      type: object
+      required: [kind, severity, message, eventId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [
+              notice_overdue,
+              notice_due_soon,
+              claim_overdue,
+              claim_due_soon,
+              periods_unconfirmed,
+              untracked_delay,
+              no_evidence,
+              days_over_span,
+              wet_days_over_allowance,
+              assessment_waiting,
+            ]
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        eventId: { type: [string, 'null'], pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventInsights:
+      type: object
+      required: [asOf, today, flags, summary]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventFlag' }
+        summary:
+          type: object
+          required:
+            [
+              events,
+              open,
+              daysClaimed,
+              daysGranted,
+              awaitingAssessment,
+              untrackedDelays,
+              wetDays,
+              wetDayAllowance,
+              periodsConfirmed,
+            ]
+          properties:
+            events: { type: integer }
+            open: { type: integer }
+            daysClaimed: { type: integer }
+            daysGranted: { type: integer }
+            awaitingAssessment: { type: integer }
+            untrackedDelays: { type: integer }
+            wetDays: { type: integer }
+            wetDayAllowance: { type: [integer, 'null'] }
+            periodsConfirmed: { type: boolean }
     CreateProjectRequest:
       type: object
       additionalProperties: false

@@ -1075,6 +1075,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/eot-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The contract notice and claim periods and the rain-day rule for delay events (SCH-AC4). Builder staff only. Until a person saves them they are the AS 4000 defaults, to be checked against the contract. */
+        get: operations["getEotSettings"];
+        /** Save the contract periods. `confirmed` records that a person checked them against the contract and its special conditions; until then every deadline is shown as an estimate. */
+        put: operations["putEotSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Delays, RFI time impacts and rain days that could go into a delay event, newest first. Rain days come from the site diary weather by the project rain-day threshold. Evidence already in an event is left out unless `includeAttached`. */
+        get: operations["listDelayEventCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-event-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova on delay events: notice and claim clocks running down, delays marked as possible EOT that no event covers, events with no evidence, and the days claimed and granted. Found by rules from the contract periods, so it costs nothing and never says an extension is due. */
+        get: operations["getDelayEventInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Delay events on the project, newest first, each with its notice and claim clocks and an evidence summary. */
+        get: operations["listDelayEvents"];
+        put?: never;
+        /** Group delays into an event (SCH-US3). `candidateKeys` from the candidates list are copied in as evidence, each as a snapshot. */
+        post: operations["createDelayEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        /** A delay event with its evidence pack and history. */
+        get: operations["getDelayEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change an event: dates, cause, days claimed, critical-path judgement or a deadline set to match a contract amendment. A closed or withdrawn event must be reopened first. */
+        patch: operations["updateDelayEvent"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add evidence: candidates from the register, notices from correspondence, or a written note. A piece of evidence supports one event at a time. */
+        post: operations["addDelayEventEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+                itemId: components["parameters"]["DelayEventItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a piece of evidence out of an event. The source is untouched and can go into another event. */
+        delete: operations["removeDelayEventEvidence"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that notice was given or the claim sent (optionally linking the correspondence item), the superintendent assessment and days granted, or close, withdraw or reopen the event. This records what a person did; nothing is sent from here. */
+        post: operations["transitionDelayEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nova drafts a notice of delay or an EOT claim from the event and its evidence pack. The draft is text for a person to edit and send; it is not stored as correspondence and nothing is sent. It never says an extension is due. */
+        post: operations["draftDelayEventLetter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules": {
         parameters: {
             query?: never;
@@ -15581,6 +15770,255 @@ export interface components {
             };
             truncated: boolean;
         };
+        /** @enum {string} */
+        EotForm: "as4000" | "as2124" | "as4902" | "other";
+        /** @enum {string} */
+        EotDayBasis: "calendar" | "business";
+        /** @enum {string} */
+        DelayEventStatus: "draft" | "notice_given" | "claimed" | "assessed" | "closed" | "withdrawn";
+        /** @enum {string} */
+        DelayEventItemKind: "diary_delay" | "rfi_impact" | "rfi_late" | "weather_day" | "correspondence" | "note";
+        EotSettings: {
+            form: components["schemas"]["EotForm"];
+            noticeDays: number;
+            claimDays: number;
+            dayBasis: components["schemas"]["EotDayBasis"];
+            noticeClause: string | null;
+            claimClause: string | null;
+            confirmed: boolean;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            rainThresholdMm: number;
+            wetDayAllowance: number | null;
+            isDefault: boolean;
+            version: number;
+        };
+        PutEotSettingsRequest: {
+            form: components["schemas"]["EotForm"];
+            noticeDays: number;
+            claimDays: number;
+            dayBasis: components["schemas"]["EotDayBasis"];
+            noticeClause?: string | null;
+            claimClause?: string | null;
+            confirmed: boolean;
+            rainThresholdMm: number;
+            wetDayAllowance?: number | null;
+        };
+        DelayEventCandidate: {
+            key: string;
+            /** @enum {string} */
+            kind: "diary_delay" | "rfi_impact" | "rfi_late" | "weather_day";
+            cause: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            date: string;
+            label: string;
+            detail: string | null;
+            hours: number | null;
+            days: number | null;
+            rainMm: number | null;
+            possibleEot: boolean;
+            eventId: string | null;
+        };
+        DelayEventCandidateList: {
+            /** Format: date */
+            today: string;
+            rainThresholdMm: number;
+            truncated: boolean;
+            data: components["schemas"]["DelayEventCandidate"][];
+        };
+        DelayEventClock: {
+            /** Format: date */
+            dueOn: string;
+            /** @description Calendar days from today to the due date; negative once it has passed. Null once given. */
+            daysLeft: number | null;
+            /** @enum {string} */
+            state: "met" | "met_late" | "ok" | "due_soon" | "due_today" | "overdue";
+            /** @description A person set this date to match a contract amendment. */
+            overridden: boolean;
+        };
+        DelayEventEvidenceSummary: {
+            items: number;
+            diaryHours: number;
+            rfiDays: number;
+            rainDays: number;
+            rainMm: number;
+            notices: number;
+            /** Format: date */
+            firstDate: string | null;
+            /** Format: date */
+            lastDate: string | null;
+        };
+        DelayEvent: {
+            id: string;
+            number: number;
+            /** @description EOT-001 */
+            ref: string;
+            title: string;
+            cause: components["schemas"]["DiaryDelayType"];
+            status: components["schemas"]["DelayEventStatus"];
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn: string | null;
+            /** Format: date */
+            awareOn: string;
+            /** @description The planner's judgement, not calculated. */
+            criticalPath: boolean | null;
+            summary: string | null;
+            affected: string | null;
+            daysClaimed: number;
+            /** @description Calendar days the event spans, counting both ends. A starting point, not an entitlement. */
+            suggestedDays: number;
+            /**
+             * Format: date
+             * @description A deadline a person set; null means counted from the contract periods.
+             */
+            noticeDueOn: string | null;
+            /** Format: date */
+            claimDueOn: string | null;
+            /** Format: date */
+            noticeSentOn: string | null;
+            noticeRefLabel: string | null;
+            /** Format: date */
+            claimSentOn: string | null;
+            claimRefLabel: string | null;
+            /** Format: date */
+            assessedOn: string | null;
+            daysGranted: number | null;
+            assessmentNote: string | null;
+            noticeClock: components["schemas"]["DelayEventClock"];
+            claimClock: components["schemas"]["DelayEventClock"];
+            evidence: components["schemas"]["DelayEventEvidenceSummary"];
+            version: number;
+        };
+        DelayEventList: {
+            data: components["schemas"]["DelayEvent"][];
+        };
+        DelayEventItem: {
+            id: string;
+            kind: components["schemas"]["DelayEventItemKind"];
+            sourceKey: string | null;
+            /** Format: date */
+            date: string | null;
+            label: string;
+            detail: string | null;
+            hours: number | null;
+            days: number | null;
+            rainMm: number | null;
+        };
+        DelayEventLogEntry: {
+            id: string;
+            kind: string;
+            detail: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DelayEventDetail: {
+            event: components["schemas"]["DelayEvent"];
+            items: components["schemas"]["DelayEventItem"][];
+            history: components["schemas"]["DelayEventLogEntry"][];
+            settings: components["schemas"]["EotSettings"];
+        };
+        CreateDelayEventRequest: {
+            title: string;
+            cause: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /**
+             * Format: date
+             * @description The day the builder became aware of the delay. Starts the notice clock. Defaults to the day it began.
+             */
+            awareOn?: string;
+            criticalPath?: boolean | null;
+            summary?: string | null;
+            affected?: string | null;
+            daysClaimed?: number;
+            /** Format: date */
+            noticeDueOn?: string | null;
+            /** Format: date */
+            claimDueOn?: string | null;
+            candidateKeys?: string[];
+        };
+        UpdateDelayEventRequest: {
+            title?: string;
+            cause?: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            startedOn?: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /** Format: date */
+            awareOn?: string;
+            criticalPath?: boolean | null;
+            summary?: string | null;
+            affected?: string | null;
+            daysClaimed?: number;
+            /** Format: date */
+            noticeDueOn?: string | null;
+            /** Format: date */
+            claimDueOn?: string | null;
+        };
+        AddDelayEventEvidenceRequest: {
+            candidateKeys?: string[];
+            correspondenceIds?: string[];
+            notes?: {
+                /** Format: date */
+                date?: string;
+                label: string;
+                detail?: string;
+            }[];
+        };
+        DelayEventTransitionRequest: {
+            /** @enum {string} */
+            action: "give_notice" | "submit_claim" | "record_assessment" | "close" | "withdraw" | "reopen";
+            /**
+             * Format: date
+             * @description The day it happened. Defaults to today in the project zone; not in the future.
+             */
+            on?: string;
+            daysClaimed?: number;
+            daysGranted?: number;
+            note?: string;
+            correspondenceId?: string;
+        };
+        DelayEventDraftRequest: {
+            /** @enum {string} */
+            kind: "notice" | "claim";
+            senderName?: string;
+        };
+        DelayEventDraft: {
+            eventId: string;
+            subject: string;
+            body: string;
+            warnings: string[];
+        };
+        DelayEventFlag: {
+            /** @enum {string} */
+            kind: "notice_overdue" | "notice_due_soon" | "claim_overdue" | "claim_due_soon" | "periods_unconfirmed" | "untracked_delay" | "no_evidence" | "days_over_span" | "wet_days_over_allowance" | "assessment_waiting";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            eventId: string | null;
+        };
+        DelayEventInsights: {
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date */
+            today: string;
+            flags: components["schemas"]["DelayEventFlag"][];
+            summary: {
+                events: number;
+                open: number;
+                daysClaimed: number;
+                daysGranted: number;
+                awaitingAssessment: number;
+                untrackedDelays: number;
+                wetDays: number;
+                wetDayAllowance: number | null;
+                periodsConfirmed: boolean;
+            };
+        };
         CreateProjectRequest: {
             name: string;
             number?: string;
@@ -25068,6 +25506,8 @@ export interface components {
     };
     parameters: {
         LogisticsResourceId: string;
+        DelayEventId: string;
+        DelayEventItemId: string;
         PrefabUnitId: string;
         PrefabCheckId: string;
         DeliveryId: string;
@@ -26817,6 +27257,331 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DelayRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEotSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EotSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putEotSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutEotSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EotSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDelayEventCandidates: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                includeAttached?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventCandidateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelayEventInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDelayEvents: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["DelayEventStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDelayEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDelayEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDelayEventEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDelayEventEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeDelayEventEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+                itemId: components["parameters"]["DelayEventItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelayEventTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftDelayEventLetter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelayEventDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDraft"];
                 };
             };
             default: components["responses"]["Problem"];
