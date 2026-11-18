@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Alert, PageHeader } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
@@ -24,6 +24,10 @@ export function DefectNewScreen() {
   const { create } = useDefectMutations();
   const { live } = useDefectsSource();
   const [saved, setSaved] = useState<string[]>([]);
+  // A warranty claim arrives from the warranty register with its item and the liability-period stage filled in.
+  const params = useSearchParams();
+  const warrantyItemId = params.get('warrantyItemId');
+  const initial = warrantyItemId ? { stage: 'dlp' as const, warrantyItemId } : undefined;
 
   return (
     <div className="stack-lg">
@@ -33,7 +37,7 @@ export function DefectNewScreen() {
             Defects
           </Link>
         }
-        title="New defect"
+        title={warrantyItemId ? 'New warranty claim' : 'New defect'}
         description={
           live
             ? 'Choose the drawing, mark where it is and who fixes it. Photos go to the company with the defect.'
@@ -51,6 +55,7 @@ export function DefectNewScreen() {
         </Alert>
       ) : null}
       <DefectForm
+        {...(initial ? { initial } : {})}
         busy={create.isPending}
         error={create.error}
         onSave={(input, meta) =>

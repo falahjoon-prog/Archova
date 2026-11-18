@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useState } from 'react';
 import {
   ActivityTimeline,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -14,6 +16,7 @@ import {
   TextField,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useSheetPicker } from '@/features/drawings';
@@ -24,13 +27,14 @@ import { locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { RelatedItemsPanel } from '@/features/links';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
 import { READY_NEEDS_PHOTO } from '../data/source';
 import { useDefect, useDefectMutations, useDefectsSource } from '../hooks/useDefects';
 import { defectCan } from '../lib/lifecycle';
 import { PRIORITY_LABELS, STATUS_LABELS, formatDefectNumber, type Defect } from '../lib/types';
 
-type Pending = 'ready' | 'close' | 'reject' | 'dispute' | 'void' | 'reassign' | null;
+type Pending = 'ready' | 'close' | 'reject' | 'dispute' | 'void' | 'reassign' | 'reopen' | null;
 
 const DIALOG: Record<
   Exclude<Pending, null>,
@@ -45,6 +49,11 @@ const DIALOG: Record<
     title: 'Close defect',
     description: 'Closing confirms the fix was inspected. Add a photo as evidence if you have one.',
     confirm: 'Close defect',
+  },
+  reopen: {
+    title: 'Reopen',
+    description: 'The defect goes back to the company as open. They see your reason.',
+    confirm: 'Reopen',
   },
   reject: {
     title: 'Reject the fix',
@@ -125,7 +134,12 @@ function DefectView({ d }: { d: Defect }) {
       m.markReady.mutate({ id: d.id, note, photos }, done);
     } else if (pending === 'close') {
       m.close.mutate({ id: d.id, note, photos }, done);
-    } else if (pending === 'reject' || pending === 'dispute' || pending === 'void') {
+    } else if (
+      pending === 'reject' ||
+      pending === 'dispute' ||
+      pending === 'void' ||
+      pending === 'reopen'
+    ) {
       if (!note.trim()) return setProblem('Give a reason.');
       m.withReason.mutate({ id: d.id, action: pending, reason: note }, done);
     } else if (pending === 'reassign') {
@@ -143,6 +157,13 @@ function DefectView({ d }: { d: Defect }) {
 
   const actions = (
     <>
+      <BookmarkButton
+        entityType="defect"
+        entityId={d.id}
+        projectId={project.projectId}
+        title={`${formatDefectNumber(d.number)} ${d.title}`}
+        subtitle={STATUS_LABELS[d.status]}
+      />
       {defectCan(d, 'issue') && d.assigneeCompanyId ? (
         <Button disabled={m.issue.isPending} onClick={() => m.issue.mutate(d.id)}>
           Send to company
@@ -160,6 +181,11 @@ function DefectView({ d }: { d: Defect }) {
             </Button>
           ) : null}
         </>
+      ) : null}
+      {defectCan(d, 'reopen') ? (
+        <Button variant="secondary" onClick={() => open('reopen')}>
+          Reopen
+        </Button>
       ) : null}
       {defectCan(d, 'reassign') ? (
         <Button
@@ -199,12 +225,20 @@ function DefectView({ d }: { d: Defect }) {
       }
     : null;
 
+  const personOrDash = (id: string | null) => (id ? dir.personName(id) : '—');
   const photoName = (id: string) => d.photos.find((p) => p.id === id)?.name ?? id;
-  const needsReason = pending === 'reject' || pending === 'dispute' || pending === 'void';
+  const needsReason =
+    pending === 'reject' || pending === 'dispute' || pending === 'void' || pending === 'reopen';
   const takesPhotos = pending === 'ready' || pending === 'close';
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="defect"
+        entityId={d.id}
+        projectId={project.projectId}
+        title={`${formatDefectNumber(d.number)} ${d.title}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.defects(org.orgSlug, project.projectId)}>
           Defects
@@ -231,69 +265,96 @@ function DefectView({ d }: { d: Defect }) {
       />
       {live ? null : <PreviewDataNotice tool="Defects" />}
       <div className="detail-grid">
-        <section className="stack" aria-labelledby="defect-details">
-          <h2 id="defect-details" className="panel-heading">
-            Details
-          </h2>
-          {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
-          <DescriptionList
-            items={[
-              ...(live ? [] : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
-              {
-                label: 'Drawing',
-                value: drawing ? (
-                  drawing.sheetId ? (
-                    <Link
-                      className="link"
-                      href={webRoutes.drawing(
-                        org.orgSlug,
-                        project.projectId,
-                        drawing.sheetId,
-                        drawing.revisionId,
-                      )}
-                    >
-                      {drawing.label}
-                    </Link>
-                  ) : (
-                    drawing.label
-                  )
-                ) : (
-                  'No pin yet'
-                ),
-              },
-              { label: 'Trade', value: d.trade || '—' },
-              { label: 'Priority', value: PRIORITY_LABELS[d.priority] },
-              {
-                label: 'Raised by',
-                value: `${d.raisedBy}, ${formatInstant(d.createdAt, project.timezone)}`,
-              },
-            ]}
-          />
-          <h3 className="panel-subheading">Photos</h3>
-          {d.photos.length ? (
-            <ul className="photo-list plain-list" aria-label="Photos">
-              {d.photos.map((p) => (
-                <li key={p.id} className="photo-chip">
-                  <StatusPill tone={p.kind === 'before' ? 'neutral' : 'success'}>
-                    {p.kind === 'before' ? 'Before' : p.kind === 'after' ? 'After' : 'Close-out'}
-                  </StatusPill>
-                  {p.name}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="u-muted u-m-0">No photos.</p>
-          )}
-        </section>
-        <section className="stack" aria-labelledby="defect-history">
-          <h2 id="defect-history" className="panel-heading">
-            History
-          </h2>
+        <div className="stack-lg">
+          <Card title="Details">
+            <div className="stack">
+              {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
+              <DescriptionList
+                items={[
+                  ...(live
+                    ? []
+                    : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
+                  {
+                    label: 'Drawing',
+                    value: drawing ? (
+                      drawing.sheetId ? (
+                        <Link
+                          className="link"
+                          href={webRoutes.drawing(
+                            org.orgSlug,
+                            project.projectId,
+                            drawing.sheetId,
+                            drawing.revisionId,
+                          )}
+                        >
+                          {drawing.label}
+                        </Link>
+                      ) : (
+                        drawing.label
+                      )
+                    ) : (
+                      'No pin yet'
+                    ),
+                  },
+                  { label: 'Trade', value: d.trade || '—' },
+                  { label: 'Punch item manager', value: personOrDash(d.managerUserId) },
+                  { label: 'Final approver', value: personOrDash(d.finalApproverUserId) },
+                  ...(d.approverDelegateUserId
+                    ? [
+                        {
+                          label: 'Stand-in',
+                          value: `${dir.personName(d.approverDelegateUserId)}${d.approverDelegateFrom || d.approverDelegateUntil ? `, ${d.approverDelegateFrom ?? 'now'} to ${d.approverDelegateUntil ?? 'further notice'}` : ''}`,
+                        },
+                      ]
+                    : []),
+                  ...(d.requireCloseEvidence
+                    ? [{ label: 'To close', value: 'A note or photo is required' }]
+                    : []),
+                  {
+                    label: 'Assignees',
+                    value: d.assigneeUserIds.length
+                      ? d.assigneeUserIds.map((u) => dir.personName(u)).join(', ')
+                      : '—',
+                  },
+                  {
+                    label: 'Distribution',
+                    value: d.distributionUserIds.length
+                      ? d.distributionUserIds.map((u) => dir.personName(u)).join(', ')
+                      : '—',
+                  },
+                  { label: 'Priority', value: PRIORITY_LABELS[d.priority] },
+                  {
+                    label: 'Raised by',
+                    value: `${d.raisedBy}, ${formatInstant(d.createdAt, project.timezone)}`,
+                  },
+                ]}
+              />
+            </div>
+          </Card>
+          <Card title="Photos">
+            {d.photos.length ? (
+              <ul className="photo-list plain-list" aria-label="Photos">
+                {d.photos.map((p) => (
+                  <li key={p.id} className="photo-chip">
+                    <StatusPill tone={p.kind === 'before' ? 'neutral' : 'success'}>
+                      {p.kind === 'before' ? 'Before' : p.kind === 'after' ? 'After' : 'Close-out'}
+                    </StatusPill>
+                    {p.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="u-muted u-m-0">No photos.</p>
+            )}
+          </Card>
+          {live ? <RelatedItemsPanel type="defect" id={d.id} /> : null}
+        </div>
+        <Card title="History">
           <ActivityTimeline
             label="Defect history"
             entries={d.events.map((e) => ({
               id: e.id,
-              actor: e.by,
+              actor: e.onBehalfOf ? `${e.by} (for ${e.onBehalfOf})` : e.by,
               action: e.fromStatus
                 ? `moved it to ${STATUS_LABELS[e.toStatus]}`
                 : 'raised the defect',
@@ -320,7 +381,7 @@ function DefectView({ d }: { d: Defect }) {
               atIso: e.at,
             }))}
           />
-        </section>
+        </Card>
       </div>
 
       <Dialog

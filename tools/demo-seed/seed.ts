@@ -69,12 +69,18 @@ const existingProjects = new Map(
 );
 const projectIds: string[] = [];
 
-async function upload(projectId: string, module: string, filename: string, bytes: Uint8Array) {
+async function upload(
+  projectId: string,
+  module: string,
+  filename: string,
+  bytes: Uint8Array,
+  mime = 'application/pdf',
+) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const up = await s.ok<{ id: string; uploadUrl: string; uploadHeaders: Record<string, string> }>(
     'POST',
     `${o()}/uploads`,
-    { filename, mime: 'application/pdf', sizeBytes: bytes.length, sha256, module, projectId },
+    { filename, mime, sizeBytes: bytes.length, sha256, module, projectId },
   );
   const put = await fetch(up.uploadUrl, { method: 'PUT', headers: up.uploadHeaders, body: bytes });
   if (!put.ok) throw new Error(`upload of ${filename} -> ${put.status} ${await put.text()}`);

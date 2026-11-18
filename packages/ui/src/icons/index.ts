@@ -3,8 +3,11 @@
 export {
   AlertOctagon,
   AlertTriangle,
+  Ban,
   ArrowLeft,
   Bell,
+  Bookmark,
+  BookmarkCheck,
   Calendar,
   Camera,
   Captions,
@@ -17,6 +20,7 @@ export {
   Circle,
   CircleDot,
   Copy,
+  Clock,
   Download,
   Eye,
   FileText,
@@ -26,6 +30,7 @@ export {
   Info,
   Lock,
   Layers,
+  Link2,
   MapPin,
   Maximize,
   Minus,
@@ -38,6 +43,7 @@ export {
   RefreshCw,
   RotateCcw,
   Ruler,
+  Star,
   Save,
   Search,
   Building2,
@@ -62,16 +68,24 @@ export {
 export {
   BookOpen as DiaryIcon,
   HardHat as AttendanceIcon,
+  Truck as DeliveriesIcon,
+  Factory as PrefabIcon,
   Eye as ObservationsIcon,
+  ListChecks as ActionPlansIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,
+  Megaphone as ToolboxIcon,
+  FileBadge as PermitsIcon,
+  MountainSnow as GeotechIcon,
+  ShieldCheck as InsuranceIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   Boxes as CoordinationIcon,
   FileUp as ImportsIcon,
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
+  BadgeCheck as WarrantyIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,
@@ -86,9 +100,11 @@ export {
   Scale as EstimatingIcon,
   Users as MeetingsIcon,
   Send as TransmittalsIcon,
-  Sparkles as NovaIcon,
   Settings as AdminIcon,
 } from 'lucide-react';
 
 /** Default icon props: 20 px, 1.5 px stroke, hidden from assistive tech (the label carries the meaning). */
 export const iconProps = { size: 20, strokeWidth: 1.5, 'aria-hidden': true } as const;
+
+/** The Nova mark (brand/nova-mark): the one icon for anything Nova wrote or does. */
+export { NovaMark as NovaIcon, type NovaMarkProps } from './NovaMark';

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Button, TextField } from '@archova/ui';
+import { Alert, Button, Card, TextField } from '@archova/ui';
+import { NovaIcon } from '@archova/ui/icons';
+import { useRegisterAssistantAction } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useInductionRefresh } from '../hooks/useBuilder';
@@ -30,41 +32,43 @@ export function NovaDraftPanel({
   const project = useCurrentProject();
   const nova = useInductionRefresh();
   const [siteName, setSiteName] = useState(project.name);
+  // Ask Nova's "Draft with Nova" button runs the same draft as this page's button, so both stay in step.
+  useRegisterAssistantAction('draft', () => {
+    if (!disabled && !nova.draft.isPending && !pending && siteName.trim()) {
+      nova.draft.mutate(siteName, { onSuccess: onPending });
+    }
+  });
   const parsed = pending ? parseDraft(pending) : null;
   const warnings =
     (pending?.payload as { warnings?: unknown[] } | undefined)?.warnings?.length ?? 0;
 
   return (
-    <section className="card stack" aria-labelledby="nova-draft-h">
-      <h2 id="nova-draft-h" className="u-m-0">
-        Draft this induction with Nova
-      </h2>
+    <Card title="Draft this induction with Nova">
       {!parsed ? (
-        <>
-          <p className="u-m-0">
+        <div className="stack">
+          <p className="u-m-0 u-muted">
             Nova reads the project documents you can open and drafts slides, a script and a quiz,
             citing the source of every point. Sections the documents don't cover are left for you to
-            add.
+            add. Uses 3 Nova credits. Nothing changes until you take it in.
           </p>
-          <TextField
-            label="Site name"
-            value={siteName}
-            disabled={disabled || nova.draft.isPending}
-            onChange={(e) => setSiteName(e.target.value)}
-          />
-          <div className="row-actions">
+          <div className="row-end">
+            <TextField
+              label="Site name"
+              value={siteName}
+              disabled={disabled || nova.draft.isPending}
+              onChange={(e) => setSiteName(e.target.value)}
+            />
             <Button
+              variant="nova"
               disabled={disabled || nova.draft.isPending || !siteName.trim()}
               onClick={() => nova.draft.mutate(siteName, { onSuccess: onPending })}
             >
+              <NovaIcon size={16} aria-hidden="true" />
               {nova.draft.isPending ? 'Nova is drafting…' : 'Draft with Nova'}
             </Button>
-            <span className="u-caption">
-              Uses 3 Nova credits. Nothing changes until you take it in.
-            </span>
           </div>
           <ErrorAlert error={nova.draft.error} title="Nova couldn't draft the induction" />
-        </>
+        </div>
       ) : (
         <Alert tone="info" title="Nova's draft is ready">
           <div className="stack">
@@ -105,6 +109,6 @@ export function NovaDraftPanel({
           </div>
         </Alert>
       )}
-    </section>
+    </Card>
   );
 }

@@ -148,6 +148,12 @@ export function AttendanceScreen() {
             </Link>
             <Link
               className={buttonClassName('secondary')}
+              href={webRoutes.attendanceClearance(org.orgSlug, project.projectId)}
+            >
+              Site clearance
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
               href={webRoutes.attendanceRoster(org.orgSlug, project.projectId)}
             >
               Roster

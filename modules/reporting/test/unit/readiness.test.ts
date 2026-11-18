@@ -77,28 +77,59 @@ const day = (id: string) => ({ id, name: id, number: null, status: 'active' });
 
 function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
   const tool = {
-    portfolioCounts: async () => ({ restricted: false, open: 0, overdue: 0 }),
+    portfolioCounts: async () => ({ restricted: false, open: 0, overdue: 0, dueSoon: 0 }),
     reportRows: async () => ({ rows: [], truncated: false, restricted: false }),
   };
   return {
     platform: {
       listProjects: async () => ({ data: [day('a'), day('b')], nextCursor: null }),
     } as unknown as ReportingDeps['platform'],
+    environment: { portfolioSummary: async () => ({ restricted: true }) as never },
     rfis: tool,
     defects: tool,
     submittals: tool,
     claims: tool,
     variations: tool,
-    incidents: tool,
-    programme: tool,
+    incidents: {
+      ...tool,
+      portfolioCounts: async () => ({
+        ...(await tool.portfolioCounts()),
+        lastInjuryOn: null,
+        lastIncidentOn: null,
+        daysSinceInjury: null,
+        daysSinceIncident: null,
+        last12Months: 0,
+      }),
+    },
+    observations: tool,
+    inspections: tool,
+    programme: {
+      ...tool,
+      portfolioCounts: async () => ({
+        ...(await tool.portfolioCounts()),
+        notStarted: 0,
+        completed: 0,
+        lateDays: 0,
+      }),
+    },
+    quality: {
+      dbpRows: async () => ({
+        restricted: true,
+        truncated: false,
+        inspections: [],
+        observations: [],
+      }),
+    },
     budget: {
       portfolioSummary: async () => ({
         restricted: true,
         hasBudget: false,
         revisedCents: 0,
         forecastFinalCents: 0,
+        spentCents: 0,
         varianceCents: 0,
         overBudgetCodes: 0,
+        monthly: [],
       }),
     },
     access: { can: async () => true },

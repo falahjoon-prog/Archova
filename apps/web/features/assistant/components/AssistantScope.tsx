@@ -1,5 +1,7 @@
 'use client';
 
+import type { ErrorView } from '@/shared/lib/errors';
+import { ErrorHelpProvider } from '@/shared/providers/ErrorHelpProvider';
 import { useOptionalCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import {
   createContext,
@@ -7,6 +9,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -19,6 +22,8 @@ export interface AssistantScope {
   timezone?: string;
   /** The record on screen, e.g. `{ type: 'rfi', id: 'rfi_…', label: 'RFI-003' }`. */
   record?: { type: string; id: string; label?: string };
+  /** Totals the register shows (unfiltered), so the panel can offer starters about what is open or overdue. */
+  counts?: { open?: number; overdue?: number; review?: number };
 }
 
 interface AssistantContextValue {
@@ -29,6 +34,13 @@ interface AssistantContextValue {
   /** Set by "Ask Nova about this"; the panel focuses its input when it changes. */
   focusRequest: number;
   requestFocus: () => void;
+  /** Screens register what chat may do for them ("draft"); the panel runs it so chat and the screen stay in sync. */
+  /** An error the person asked Nova about; the panel answers it once and clears it. */
+  pendingError: ErrorView | null;
+  askAboutError: (error: ErrorView) => void;
+  clearPendingError: () => void;
+  registerAction: (id: string, run: () => void) => () => void;
+  runAction: (id: string) => boolean;
 }
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
@@ -45,11 +57,55 @@ export function AssistantScopeProvider({ children }: { children: ReactNode }) {
     setOpen(true);
     setFocusRequest((n) => n + 1);
   }, []);
+  const [pendingError, setPendingError] = useState<ErrorView | null>(null);
+  const askAboutError = useCallback((error: ErrorView) => {
+    setOpen(true);
+    setPendingError(error);
+  }, []);
+  const clearPendingError = useCallback(() => setPendingError(null), []);
+  const actions = useRef(new Map<string, () => void>());
+  const registerAction = useCallback((id: string, run: () => void) => {
+    actions.current.set(id, run);
+    return () => {
+      if (actions.current.get(id) === run) actions.current.delete(id);
+    };
+  }, []);
+  const runAction = useCallback((id: string) => {
+    const run = actions.current.get(id);
+    run?.();
+    return Boolean(run);
+  }, []);
   const value = useMemo(
-    () => ({ scope, setScope, open, setOpen, focusRequest, requestFocus }),
-    [scope, open, focusRequest, requestFocus],
+    () => ({
+      scope,
+      setScope,
+      open,
+      setOpen,
+      focusRequest,
+      requestFocus,
+      pendingError,
+      askAboutError,
+      clearPendingError,
+      registerAction,
+      runAction,
+    }),
+    [
+      scope,
+      open,
+      focusRequest,
+      requestFocus,
+      pendingError,
+      askAboutError,
+      clearPendingError,
+      registerAction,
+      runAction,
+    ],
   );
-  return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
+  return (
+    <AssistantContext.Provider value={value}>
+      <ErrorHelpProvider onAskHelp={askAboutError}>{children}</ErrorHelpProvider>
+    </AssistantContext.Provider>
+  );
 }
 
 export function useAssistantScope(): AssistantScope {
@@ -63,6 +119,8 @@ export function useAssistantPanelState() {
     open: ctx?.open ?? false,
     setOpen: ctx?.setOpen ?? (() => undefined),
     focusRequest: ctx?.focusRequest ?? 0,
+    pendingError: ctx?.pendingError ?? null,
+    clearPendingError: ctx?.clearPendingError ?? (() => undefined),
   };
 }
 
@@ -86,4 +144,16 @@ export function usePublishAssistantScope(scope: AssistantScope) {
     setScope(JSON.parse(key) as AssistantScope);
     return () => setScope({});
   }, [setScope, key]);
+}
+
+/** Lets chat start an action on the current screen, e.g. "Draft with Nova" on an induction. */
+export function useRegisterAssistantAction(id: string, run: () => void) {
+  const register = useContext(AssistantContext)?.registerAction;
+  const latest = useRef(run);
+  latest.current = run;
+  useEffect(() => register?.(id, () => latest.current()), [register, id]);
+}
+
+export function useRunAssistantAction() {
+  return useContext(AssistantContext)?.runAction ?? (() => false);
 }

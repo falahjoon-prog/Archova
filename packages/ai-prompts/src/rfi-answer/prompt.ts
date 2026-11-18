@@ -93,7 +93,7 @@ export const rfiAnswerPrompt = definePrompt({
       i.attachments
         .map(
           (a) =>
-            `<attachment name="${escapeContent(a.name).replace(/"/g, '&quot;')}">${escapeContent(a.text)}</attachment>\n`,
+            `<attachment name="${escapeContent(a.name)}">${escapeContent(a.text)}</attachment>\n`,
         )
         .join('') +
       '</rfi>\n' +

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DataTable,
   DescriptionList,
   Dialog,
@@ -140,10 +141,7 @@ export function TransmittalDetailScreen({ transmittalId }: { transmittalId: stri
               transmittal can&apos;t be changed.
             </Alert>
           ) : null}
-          <section className="ac-card" aria-labelledby="tx-summary">
-            <h2 id="tx-summary" className="panel-heading">
-              Summary
-            </h2>
+          <Card title="Summary">
             <DescriptionList
               items={[
                 { label: 'Purpose', value: PURPOSE_LABELS[t.purpose] },
@@ -155,29 +153,23 @@ export function TransmittalDetailScreen({ transmittalId }: { transmittalId: stri
                 ...(t.message ? [{ label: 'Message', value: t.message }] : []),
               ]}
             />
-          </section>
-          <section className="stack" aria-labelledby="tx-items">
-            <h2 id="tx-items" className="panel-heading">
-              Items ({detail.items.length})
-            </h2>
+          </Card>
+          <Card title={`Items (${detail.items.length})`}>
             <DataTable
               caption="Items on this transmittal"
               columns={items}
               rows={detail.items}
               getRowId={(i) => `${i.revisionType}:${i.revisionId}`}
             />
-          </section>
-          <section className="stack" aria-labelledby="tx-recipients">
-            <h2 id="tx-recipients" className="panel-heading">
-              {t.status === 'sent' ? 'Receipts' : 'Recipients'}
-            </h2>
+          </Card>
+          <Card title={t.status === 'sent' ? 'Receipts' : 'Recipients'}>
             <DataTable
               caption={t.status === 'sent' ? 'Receipts by recipient' : 'Recipients'}
               columns={recipients}
               rows={detail.recipients}
               getRowId={(r) => r.id}
             />
-          </section>
+          </Card>
         </>
       ) : null}
       <Dialog
