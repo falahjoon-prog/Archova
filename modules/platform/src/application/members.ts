@@ -8,6 +8,33 @@ import type { CompanyService } from './companies';
 import type { ProjectService } from './projects';
 import { uniqueViolation } from './errors';
 
+/** Public query used by `access` to build effective permissions (also by the worker's plant job). */
+export async function lookupProjectMembership(
+  scope: TenantScope,
+  projectId: string,
+  userId: string,
+): Promise<ProjectMembershipInfo | null> {
+  const [row] = await scope.tx
+    .select()
+    .from(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.userId, userId),
+        eq(projectMembers.status, 'active'),
+      ),
+    )
+    .limit(1);
+  return row
+    ? {
+        id: row.id,
+        companyId: row.companyId,
+        permissionTemplateId: row.permissionTemplateId,
+        isExternal: row.isExternal,
+      }
+    : null;
+}
+
 export function createMemberService(deps: {
   identity: Pick<IdentityApi, 'findUserByEmail' | 'getUsers'>;
   access: AccessService;
@@ -360,31 +387,7 @@ export function createMemberService(deps: {
   }
 
   /** Public query used by `access` to build effective permissions. */
-  async function getProjectMembership(
-    scope: TenantScope,
-    projectId: string,
-    userId: string,
-  ): Promise<ProjectMembershipInfo | null> {
-    const [row] = await scope.tx
-      .select()
-      .from(projectMembers)
-      .where(
-        and(
-          eq(projectMembers.projectId, projectId),
-          eq(projectMembers.userId, userId),
-          eq(projectMembers.status, 'active'),
-        ),
-      )
-      .limit(1);
-    return row
-      ? {
-          id: row.id,
-          companyId: row.companyId,
-          permissionTemplateId: row.permissionTemplateId,
-          isExternal: row.isExternal,
-        }
-      : null;
-  }
+  const getProjectMembership = lookupProjectMembership;
 
   /** How someone's access to a project stands, active or ended (the drain grant reads this, X38). */
   async function getProjectAccessState(scope: TenantScope, projectId: string, userId: string) {

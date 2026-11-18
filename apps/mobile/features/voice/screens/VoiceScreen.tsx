@@ -146,6 +146,12 @@ export function VoiceScreen({
           testID="voice-listen"
           accessibilityLabel="Tap and speak a command"
         />
+        <Button
+          label="Talk through the whole day"
+          variant="secondary"
+          onPress={() => router.push(mobileRoutes.voiceLog(projectId))}
+          testID="voice-open-log"
+        />
         {phase === 'denied' ? (
           <Text accessibilityLiveRegion="polite" style={{ color: t.color.statusDanger }}>
             Microphone or speech access is off. Turn it on for Archova in your phone settings.

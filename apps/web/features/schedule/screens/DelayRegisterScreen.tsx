@@ -11,6 +11,7 @@ import {
   Select,
   SkeletonRows,
   StatusPill,
+  buttonClassName,
   type DataTableColumn,
 } from '@archova/ui';
 import { DelaysIcon } from '@archova/ui/icons';
@@ -103,6 +104,14 @@ export function DelayRegisterScreen() {
       <PageHeader
         title="Delay register"
         description="Delays from the site diary, RFIs with a schedule impact and RFIs answered late. Each row links to its source."
+        actions={
+          <Link
+            className={buttonClassName('secondary')}
+            href={webRoutes.eot(org.orgSlug, project.projectId)}
+          >
+            EOT claims
+          </Link>
+        }
       />
       <FilterBar label="Delay filters">
         <Select

@@ -24,8 +24,10 @@ import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { laborProductivitySuite } from './suites/labor-productivity';
 import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
+import { bidLevelSuite } from './suites/bid-levelling';
 import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
+import { voiceLogSuite } from './suites/voice-log';
 import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
 import { swmsDraftSuite } from './suites/swms-draft';
@@ -49,6 +51,7 @@ export const SUITES: readonly AnySuite[] = [
   helpExplainSuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
+  voiceLogSuite,
   rfiDraftSuite,
   rfiAnswerSuite,
   swmsDraftSuite,
@@ -60,6 +63,7 @@ export const SUITES: readonly AnySuite[] = [
   importMappingSuite,
   quoteReadSuite,
   quoteNegotiateSuite,
+  bidLevelSuite,
   laborProductivitySuite,
   announcementDraftSuite,
   contractReviewSuite,

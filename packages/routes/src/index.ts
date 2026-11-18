@@ -85,6 +85,7 @@ export const webRoutes = {
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  eot: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays/eot`,
   programme: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/programme`,
   contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
   newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
@@ -131,6 +132,7 @@ export const webRoutes = {
   toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
+  handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
@@ -196,6 +198,8 @@ export const mobileRoutes = {
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
   voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
+  /** Dictate the whole day; Nova splits it into diary notes, delays, safety observations and tasks to review. */
+  voiceLog: (projectId: string) => `/project/${enc(projectId)}/voice-log`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,

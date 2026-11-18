@@ -56,6 +56,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.read': 1.5,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
+  // Nova: levelling every bid of a tender package at once (all bids in, one structured read out); two negotiation turns worth. Priya to confirm.
+  'bid.level': 1,
   // Nova: one turn of discussion on a slow cost code's labor productivity; same size as a quote negotiation turn. Priya to confirm.
   'labor.productivity': 0.5,
   // Nova: a short announcement drafted from rough notes at the fast tier; half a credit like other short drafts. Priya to confirm.
@@ -71,6 +73,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // Nova listening: one short spoken question turned into text. Priya to confirm.
   'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
+  // Voice log: a few minutes of dictation split into diary records; a meeting minutes run's size less. Priya to confirm.
+  'voice.log': 1,
   // The Nova panel with tools: a cheap planning step, then one cited answer (ai/07 §3). Priya to confirm.
   'assist.plan': 0.1,
   'assist.answer': 1,

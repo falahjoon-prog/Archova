@@ -6,6 +6,7 @@ import { api } from '@/shared/lib/api';
 
 type S = components['schemas'];
 export type PlantAsset = S['PlantAsset'];
+export type CostCode = S['CostCode'];
 export type PlantAssetCategory = S['PlantAssetCategory'];
 export type PlantAssetStatus = S['PlantAssetStatus'];
 export type PlantAllocation = S['PlantAllocation'];
@@ -62,6 +63,13 @@ export function createPlantApi(orgId: string) {
           params: { path: { ...org, allocationId } },
         }),
       );
+    },
+    async costCodes(projectId: string): Promise<CostCode[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/cost-codes', {
+          params: { path: { ...org, projectId } },
+        }),
+      ).data;
     },
     async plans(): Promise<PlantPlan[]> {
       return unwrap(
