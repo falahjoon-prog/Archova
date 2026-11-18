@@ -1,6 +1,14 @@
 // Report builder and portfolio rules. Pure, no IO.
 
-export const REPORT_SOURCES = ['rfis', 'defects', 'submittals'] as const;
+export const REPORT_SOURCES = [
+  'rfis',
+  'defects',
+  'submittals',
+  'claims',
+  'variations',
+  'incidents',
+  'programme',
+] as const;
 export type ReportSource = (typeof REPORT_SOURCES)[number];
 
 export const REPORT_STATES = ['open', 'closed', 'all'] as const;
@@ -78,16 +86,101 @@ export interface ToolCounts {
   restricted: boolean;
   open: number;
   overdue: number;
+  /** Open and due from today through the next 7 days (not overdue). Open items with no due date are in neither. */
+  dueSoon: number;
+}
+
+/** Programme activities, with the split the schedule insights need on top of open and late. */
+export interface ProgrammeCounts extends ToolCounts {
+  notStarted: number;
+  completed: number;
+  /** Days late summed over the late activities, so the average is this over `overdue`. */
+  lateDays: number;
+}
+
+/** Incidents, with the dates the safety streaks and the 12-month trend are worked out from. */
+export interface IncidentCounts extends ToolCounts {
+  /** Project-local date of the latest injury, or null when none is recorded (or the caller cannot read incidents). */
+  lastInjuryOn: string | null;
+  /** The latest incident of any type except a near miss, same rule. */
+  lastIncidentOn: string | null;
+  /** Whole days from those dates to today in the project's zone; null when none is recorded. */
+  daysSinceInjury: number | null;
+  daysSinceIncident: number | null;
+  /** Incidents of any type, near misses included, recorded in the last 12 months. */
+  last12Months: number;
 }
 
 export interface ProjectCounts {
   rfis: ToolCounts;
   defects: ToolCounts;
   submittals: ToolCounts;
+  claims: ToolCounts;
+  variations: ToolCounts;
+  incidents: IncidentCounts;
+  observations: ToolCounts;
+  inspections: ToolCounts;
+  programme: ProgrammeCounts;
+}
+
+/**
+ * Budget against forecast for one project, in whole cents ex GST. Unlike the counts above this is money, so it is
+ * not folded into `attention` or the ordering: a project over budget is not "overdue".
+ */
+export interface BudgetSummary {
+  restricted: boolean;
+  hasBudget: boolean;
+  revisedCents: number;
+  forecastFinalCents: number;
+  /** Claimed by subcontractors plus direct costs recorded: what has been spent so far. */
+  spentCents: number;
+  /** Revised budget less forecast final cost: negative means the forecast is over budget. */
+  varianceCents: number;
+  /** Cost codes whose own forecast is over their revised budget. */
+  overBudgetCodes: number;
+  /** Spend by calendar month, oldest first, quiet months as zero. Empty when there is no spend. */
+  monthly: { month: string; spentCents: number }[];
+}
+
+const money = (cents: number) => {
+  const abs = Math.abs(cents);
+  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+};
+
+/** The API shape of a project's budget line: decimal strings, and no figures at all when the caller may not see them. */
+export const budgetView = (b: BudgetSummary) => ({
+  restricted: b.restricted,
+  hasBudget: b.hasBudget,
+  revised: money(b.restricted || !b.hasBudget ? 0 : b.revisedCents),
+  forecastFinal: money(b.restricted || !b.hasBudget ? 0 : b.forecastFinalCents),
+  spent: money(b.restricted || !b.hasBudget ? 0 : b.spentCents),
+  variance: money(b.restricted || !b.hasBudget ? 0 : b.varianceCents),
+  overBudgetCodes: b.restricted || !b.hasBudget ? 0 : b.overBudgetCodes,
+  monthly:
+    b.restricted || !b.hasBudget
+      ? []
+      : b.monthly.map((m) => ({ month: m.month, spent: money(m.spentCents) })),
+});
+
+/** Company-wide budget position over the projects that have a budget the caller can see. */
+export function budgetTotals(budgets: readonly BudgetSummary[]) {
+  const seen = budgets.filter((b) => !b.restricted && b.hasBudget);
+  const sum = (pick: (b: BudgetSummary) => number) => seen.reduce((n, b) => n + pick(b), 0);
+  return {
+    budgetProjects: seen.length,
+    projectsOverBudget: seen.filter((b) => b.varianceCents < 0).length,
+    budgetRevised: money(sum((b) => b.revisedCents)),
+    budgetForecastFinal: money(sum((b) => b.forecastFinalCents)),
+    budgetVariance: money(sum((b) => b.varianceCents)),
+  };
 }
 
 export const attention = (p: ProjectCounts) =>
-  p.rfis.overdue + p.defects.overdue + p.submittals.overdue;
+  p.rfis.overdue +
+  p.defects.overdue +
+  p.submittals.overdue +
+  p.claims.overdue +
+  p.variations.overdue;
 
 /** Company totals; a tool the caller cannot read on a project adds nothing (its counts are zero). */
 export function totals(projects: readonly ProjectCounts[]) {
@@ -101,6 +194,14 @@ export function totals(projects: readonly ProjectCounts[]) {
     defectsOverdue: sum((p) => p.defects, 'overdue'),
     submittalsOpen: sum((p) => p.submittals, 'open'),
     submittalsOverdue: sum((p) => p.submittals, 'overdue'),
+    claimsOpen: sum((p) => p.claims, 'open'),
+    claimsOverdue: sum((p) => p.claims, 'overdue'),
+    variationsOpen: sum((p) => p.variations, 'open'),
+    variationsOverdue: sum((p) => p.variations, 'overdue'),
+    incidentsOpen: sum((p) => p.incidents, 'open'),
+    incidentsOverdue: sum((p) => p.incidents, 'overdue'),
+    programmeOpen: sum((p) => p.programme, 'open'),
+    programmeOverdue: sum((p) => p.programme, 'overdue'),
   };
 }
 
@@ -108,7 +209,14 @@ export function totals(projects: readonly ProjectCounts[]) {
 export function orderPortfolio<T extends { name: string; attention: number } & ProjectCounts>(
   rows: readonly T[],
 ): T[] {
-  const open = (p: ProjectCounts) => p.rfis.open + p.defects.open + p.submittals.open;
+  const open = (p: ProjectCounts) =>
+    p.rfis.open +
+    p.defects.open +
+    p.submittals.open +
+    p.claims.open +
+    p.variations.open +
+    p.incidents.open +
+    p.programme.open;
   return [...rows].sort(
     (a, b) => b.attention - a.attention || open(b) - open(a) || a.name.localeCompare(b.name),
   );

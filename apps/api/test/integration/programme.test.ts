@@ -31,6 +31,9 @@ type Detail = {
     durationDays: number;
     floatDays: number;
     critical: boolean;
+    baselineStart: string | null;
+    baselineFinish: string | null;
+    varianceDays: number | null;
   }>;
   dependencies: Array<{ id: string; slackDays: number; violated: boolean; type: string }>;
   criticalCount: number;
@@ -112,6 +115,60 @@ describe('Programme: Gantt, float, import and look-ahead (product/08 S4/S5)', ()
     expect((unlinked.json() as Detail).dependencies).toHaveLength(1);
     const gone = await s.pm.browser.del(`${s.base}/schedules/${sid}/activities/${services}`);
     expect((gone.json() as Detail).activities).toHaveLength(3);
+  });
+
+  it('re-flows successors when an activity is dragged and tracks slippage against a baseline', async () => {
+    const s = await setup();
+    const sid = (
+      (await s.pm.browser.post(`${s.base}/schedules`, { name: 'Baselined' })).json() as Detail
+    ).schedule.id;
+    const add = async (body: Record<string, unknown>) =>
+      ((await s.pm.browser.post(`${s.base}/schedules/${sid}/activities`, body)).json() as Detail)
+        .activities;
+    await add({ name: 'Slab', start: '2030-03-04', finish: '2030-03-05' });
+    await add({ name: 'Frame', start: '2030-03-06', finish: '2030-03-07' });
+    const acts = await add({ name: 'Roof', start: '2030-03-08', finish: '2030-03-08' });
+    const [slab, frame, roof] = acts.map((a) => a.id) as [string, string, string];
+    for (const [p, q] of [
+      [slab, frame],
+      [frame, roof],
+    ] as const)
+      await s.pm.browser.post(`${s.base}/schedules/${sid}/dependencies`, {
+        predecessorId: p,
+        successorId: q,
+      });
+
+    const baseline = await s.pm.browser.put(`${s.base}/schedules/${sid}/baseline`, {});
+    expect(baseline.statusCode).toBe(200);
+    expect((baseline.json() as Detail).activities.every((a) => a.varianceDays === 0)).toBe(true);
+
+    // Slab slips two working days; Frame and Roof are pushed along, keeping their durations.
+    const moved = await s.pm.browser.patch(`${s.base}/schedules/${sid}/activities/${slab}`, {
+      start: '2030-03-06',
+      finish: '2030-03-07',
+      cascade: true,
+    });
+    expect(moved.statusCode).toBe(200);
+    const byName = Object.fromEntries((moved.json() as Detail).activities.map((a) => [a.name, a]));
+    expect(byName['Frame']).toMatchObject({ start: '2030-03-08', finish: '2030-03-11' });
+    expect(byName['Roof']).toMatchObject({ start: '2030-03-12', finish: '2030-03-12' });
+    expect(byName['Roof']).toMatchObject({ baselineFinish: '2030-03-08', varianceDays: 2 });
+    expect((moved.json() as Detail).violationCount).toBe(0);
+
+    // Without cascade a move leaves the logic broken, as before.
+    const plain = await s.pm.browser.patch(`${s.base}/schedules/${sid}/activities/${slab}`, {
+      start: '2030-03-20',
+      finish: '2030-03-21',
+    });
+    expect((plain.json() as Detail).violationCount).toBeGreaterThan(0);
+
+    const cleared = await s.pm.browser.del(`${s.base}/schedules/${sid}/baseline`);
+    expect((cleared.json() as Detail).activities.every((a) => a.varianceDays === null)).toBe(true);
+
+    // A subcontractor can read the programme but not set a baseline.
+    expect((await s.sub.browser.put(`${s.base}/schedules/${sid}/baseline`, {})).statusCode).toBe(
+      403,
+    );
   });
 
   it('imports MS Project XML and P6 XER, and keeps a revision list', async () => {

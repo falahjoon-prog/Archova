@@ -26,3 +26,4 @@ infra/cells/**/.terraform.lock.hcl
 apps/web/test-results/
 apps/web/playwright-report/
 .local-ca.crt
+apps/web/public/wasm/

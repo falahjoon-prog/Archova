@@ -9,7 +9,9 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { BrandingStyle, useBranding, useLogoUrl } from '@/features/branding';
 import { InboxLink } from '@/features/notifications';
+import { SearchLink } from '@/features/search';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -58,38 +60,86 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            { href: webRoutes.bookmarks(orgSlug), label: 'Bookmarks' },
             ...(membership.kind === 'member'
               ? [
-                  { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
-                  { href: webRoutes.reports(orgSlug), label: 'Reports' },
-                  { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
-                  { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
+                  {
+                    label: 'Portfolio',
+                    items: [
+                      { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
+                      { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                      { href: webRoutes.dbpInsights(orgSlug), label: 'DBP Act insights' },
+                      ...(membership.role === 'owner' || membership.role === 'admin'
+                        ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]
+                        : []),
+                    ],
+                  },
+                  {
+                    label: 'Operations',
+                    items: [{ href: webRoutes.plant(orgSlug), label: 'Plant and equipment' }],
+                  },
+                  {
+                    label: 'Tendering',
+                    items: [
+                      { href: webRoutes.readiness(orgSlug), label: 'Tender readiness' },
+                      { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
+                      { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
+                    ],
+                  },
                 ]
               : []),
-            { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
-            { href: webRoutes.subcontractorWallets(orgSlug), label: 'Subcontractor wallets' },
-            { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
+            {
+              label: 'Compliance',
+              items: [
+                { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
+                { href: webRoutes.subcontractorWallets(orgSlug), label: 'Subcontractor wallets' },
+              ],
+            },
             // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
+            {
+              label: 'Connections',
+              items: [
+                { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
+                ...(membership.role === 'owner' || membership.role === 'admin'
+                  ? [
+                      { href: webRoutes.integrations(orgSlug), label: 'Integrations' },
+                      { href: webRoutes.apps(orgSlug), label: 'Apps' },
+                      { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
+                      { href: webRoutes.folders(orgSlug), label: 'SharePoint and Drive' },
+                    ]
+                  : []),
+              ],
+            },
             ...(membership.role === 'owner' || membership.role === 'admin'
               ? [
-                  { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
-                  { href: webRoutes.folders(orgSlug), label: 'SharePoint and Drive' },
-                  { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
-                  { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
-                  { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
-                  { href: webRoutes.permissionTemplates(orgSlug), label: 'Permission templates' },
-                  { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                  {
+                    label: 'Settings',
+                    items: [
+                      { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
+                      { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
+                      { href: webRoutes.branding(orgSlug), label: 'Branding' },
+                      { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
+                      {
+                        href: webRoutes.permissionTemplates(orgSlug),
+                        label: 'Permission templates',
+                      },
+                      { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                      { href: webRoutes.dataExport(orgSlug), label: 'Export your data' },
+                    ],
+                  },
                 ]
               : []),
           ]}
           actions={
             <>
+              <SearchLink />
               <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />
             </>
           }
         >
+          <BrandingStyle />
           <SupportBanner />
           {children}
         </OrgAppShell>
@@ -99,11 +149,14 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
 }
 
 /** The app shell wired to the Ask Nova panel state, which lives in the assistant provider above it. */
-function OrgAppShell(props: Omit<ComponentProps<typeof AppShell>, 'assistant'>) {
+function OrgAppShell(props: Omit<ComponentProps<typeof AppShell>, 'assistant' | 'orgLogoUrl'>) {
   const panel = useAssistantPanelState();
+  const branding = useBranding();
+  const logo = useLogoUrl(branding.data?.logoFileId);
   return (
     <AppShell
       {...props}
+      orgLogoUrl={logo.data ?? null}
       assistant={{
         label: 'Ask Nova',
         panel: <AssistantPanel />,

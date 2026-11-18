@@ -1,13 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusPill } from '@archova/ui';
 import { formatLocalDate } from '@/shared/lib/format';
 import type { ScheduleActivity, ScheduleDetail } from '../data/programme';
 import { openItemsLabel, type OpenItems } from '../lib/links';
-import { barBox, chartSpan, weekendBands, weekTicks, ZOOMS, type Zoom } from '../lib/gantt';
+import {
+  barBox,
+  chartSpan,
+  dragDays,
+  draggedDates,
+  varianceLabel,
+  weekendBands,
+  weekTicks,
+  ZOOMS,
+  type DragMode,
+  type Zoom,
+} from '../lib/gantt';
 
 const ROW_H = 44;
+const DRAG_HELP =
+  'Drag to move. Arrow keys move one day, shift plus arrow one week, alt plus arrow changes the finish.';
 const HEAD_H = 32;
 
 /**
@@ -20,6 +33,7 @@ export function GanttChart({
   zoom,
   openItems,
   onSelect,
+  onReschedule,
 }: {
   detail: ScheduleDetail;
   today: string;
@@ -28,6 +42,8 @@ export function GanttChart({
   openItems?: ReadonlyMap<string, OpenItems>;
   /** Set when the caller may edit; each activity then opens its editor. */
   onSelect?: (a: ScheduleActivity) => void;
+  /** Set when the caller may edit: bars can be dragged (move) or stretched from the right edge (finish). */
+  onReschedule?: (a: ScheduleActivity, dates: { start: string; finish: string }) => void;
 }) {
   const dayWidth = ZOOMS[zoom];
   const { activities, dependencies, schedule } = detail;
@@ -43,6 +59,41 @@ export function GanttChart({
   const ticks = useMemo(() => weekTicks(span, dayWidth), [span, dayWidth]);
   const weekends = useMemo(() => weekendBands(span, dayWidth), [span, dayWidth]);
   const scroller = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ id: string; mode: DragMode; x: number } | null>(null);
+  const [preview, setPreview] = useState<{ id: string; mode: DragMode; days: number } | null>(null);
+
+  const commit = (a: ScheduleActivity, mode: DragMode, days: number) => {
+    if (days === 0 || !onReschedule) return;
+    onReschedule(a, draggedDates(a, mode, days));
+  };
+  const startDrag = (e: React.PointerEvent<HTMLElement>, a: ScheduleActivity, mode: DragMode) => {
+    if (!onReschedule || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { id: a.id, mode, x: e.clientX };
+    setPreview({ id: a.id, mode, days: 0 });
+  };
+  const moveDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const days = dragDays(e.clientX - d.x, dayWidth);
+    setPreview((p) => (p && p.days === days ? p : { id: d.id, mode: d.mode, days }));
+  };
+  const endDrag = (a: ScheduleActivity, cancelled: boolean) => {
+    const d = drag.current;
+    drag.current = null;
+    const days = preview?.days ?? 0;
+    setPreview(null);
+    if (d && !cancelled) commit(a, d.mode, days);
+  };
+  // Keyboard: arrows move a day, shift moves a week, alt stretches the finish instead of moving.
+  const keyDrag = (e: React.KeyboardEvent<HTMLElement>, a: ScheduleActivity) => {
+    if (!onReschedule || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    const step = (e.shiftKey ? 7 : 1) * (e.key === 'ArrowLeft' ? -1 : 1);
+    commit(a, e.altKey ? 'resize' : 'move', step);
+  };
   const rowOf = new Map(activities.map((a, i) => [a.id, i]));
   const byId = new Map(activities.map((a) => [a.id, a]));
   const todayLeft = barBox(span, today, today, dayWidth).left + dayWidth / 2;
@@ -92,6 +143,16 @@ export function GanttChart({
           <div className="gantt__body">
             {activities.map((a) => {
               const box = barBox(span, a.start, a.finish, dayWidth);
+              const live = preview?.id === a.id ? preview : null;
+              if (live) {
+                const dd = draggedDates(a, live.mode, live.days);
+                Object.assign(box, barBox(span, dd.start, dd.finish, dayWidth));
+              }
+              const base =
+                a.baselineStart && a.baselineFinish
+                  ? barBox(span, a.baselineStart, a.baselineFinish, dayWidth)
+                  : null;
+              const variance = varianceLabel(a.varianceDays);
               const open = openItems?.get(a.id);
               const openText = open ? openItemsLabel(open) : '';
               const range = `${formatLocalDate(a.start)}${a.kind === 'milestone' ? '' : ` to ${formatLocalDate(a.finish)}`}`;
@@ -113,6 +174,15 @@ export function GanttChart({
                       {a.wbs ? `${a.wbs} · ` : ''}
                       {range}
                       {a.assignee ? ` · ${a.assignee}` : ''}
+                      {variance ? (
+                        <span
+                          className="gantt__variance"
+                          data-late={(a.varianceDays ?? 0) > 0 || undefined}
+                        >
+                          {' · '}
+                          {variance}
+                        </span>
+                      ) : null}
                       {open ? (
                         <span className="gantt__open" data-risk={open.atRisk || undefined}>
                           {' · '}
@@ -129,6 +199,13 @@ export function GanttChart({
                         style={{ left: w.left, width: w.width }}
                       />
                     ))}
+                    {base ? (
+                      <span
+                        className="gantt__baseline"
+                        style={{ left: base.left, width: base.width }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     {open ? (
                       <span
                         className="gantt__flag"
@@ -147,19 +224,57 @@ export function GanttChart({
                       <span
                         className="gantt__milestone"
                         data-critical={a.critical || undefined}
+                        data-editable={onReschedule ? true : undefined}
+                        data-dragging={live ? true : undefined}
                         style={{ left: box.left + dayWidth / 2 - 8 }}
-                        role="img"
+                        {...(onReschedule
+                          ? {
+                              role: 'button',
+                              tabIndex: 0,
+                              'aria-description': DRAG_HELP,
+                              onPointerDown: (e: React.PointerEvent<HTMLElement>) =>
+                                startDrag(e, a, 'move'),
+                              onPointerMove: moveDrag,
+                              onPointerUp: () => endDrag(a, false),
+                              onPointerCancel: () => endDrag(a, true),
+                              onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => keyDrag(e, a),
+                            }
+                          : { role: 'img' })}
                         aria-label={`${a.name}, milestone, ${range}`}
                       />
                     ) : (
                       <span
                         className="gantt__bar"
                         data-critical={a.critical || undefined}
+                        data-editable={onReschedule ? true : undefined}
+                        data-dragging={live ? true : undefined}
                         style={{ left: box.left, width: box.width }}
-                        role="img"
+                        {...(onReschedule
+                          ? {
+                              role: 'button',
+                              tabIndex: 0,
+                              'aria-description': DRAG_HELP,
+                              onPointerDown: (e: React.PointerEvent<HTMLElement>) =>
+                                startDrag(e, a, 'move'),
+                              onPointerMove: moveDrag,
+                              onPointerUp: () => endDrag(a, false),
+                              onPointerCancel: () => endDrag(a, true),
+                              onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => keyDrag(e, a),
+                            }
+                          : { role: 'img' })}
                         aria-label={`${a.name}, ${range}, ${a.pctComplete}% complete${a.critical ? ', critical' : ''}`}
                       >
                         <span className="gantt__progress" style={{ width: `${a.pctComplete}%` }} />
+                        {onReschedule ? (
+                          <span
+                            className="gantt__handle"
+                            aria-hidden="true"
+                            onPointerDown={(e) => startDrag(e, a, 'resize')}
+                            onPointerMove={moveDrag}
+                            onPointerUp={() => endDrag(a, false)}
+                            onPointerCancel={() => endDrag(a, true)}
+                          />
+                        ) : null}
                       </span>
                     )}
                   </div>
@@ -206,6 +321,11 @@ export function GanttChart({
         <li>
           <span className="gantt__swatch gantt__swatch--link" /> Link
         </li>
+        {schedule.baselineSetAt ? (
+          <li>
+            <span className="gantt__swatch gantt__swatch--baseline" /> Baseline
+          </li>
+        ) : null}
         <li>
           <span className="gantt__swatch gantt__swatch--flag" /> Open RFIs or submittals
         </li>

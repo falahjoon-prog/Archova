@@ -81,6 +81,8 @@ function blockOf(b: S['InductionBlock']): SectionBlock {
       return { type: 'slides', slides: b.slides.map(({ title, points }) => ({ title, points })) };
     case 'text':
       return { type: 'text', body: b.body };
+    case 'animation':
+      return { type: 'animation', title: b.title ?? null, scenes: b.scenes };
     case 'swms':
       return {
         type: 'swms',

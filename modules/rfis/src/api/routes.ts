@@ -9,8 +9,9 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { StoredShape } from '@archova/markup';
 import type { RfiFields, RfiService } from '../application/rfis';
-import { toRfiActivity, toRfiDetail, toRfiDto } from './mappers';
+import { toAnnotationDto, toRfiActivity, toRfiDetail, toRfiDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -49,6 +50,7 @@ type FieldsBody = {
   specSection?: string | null;
   location?: string | null;
   pin?: { drawingRevisionId: string; x?: number; y?: number } | null;
+  fileIds?: string[];
 };
 
 /** Request body → service fields, decoding prefixed ids and keeping "absent" distinct from "null". */
@@ -77,6 +79,7 @@ function fields(b: FieldsBody): RfiFields {
   if (b.delayDays !== undefined) out.delayDays = b.delayDays;
   if (b.specSection !== undefined) out.specSection = b.specSection;
   if (b.location !== undefined) out.location = b.location;
+  if (b.fileIds) out.fileIds = refs('file', b.fileIds, 'fileIds')!;
   if (b.pin !== undefined)
     out.pin =
       b.pin === null
@@ -144,6 +147,28 @@ export function rfisRoutes(database: Database, rfis: RfiService) {
         await read(input, (s) => rfis.activity(s, project(input.params), rfiId(input.params))),
       ),
     }),
+    listRfiAnnotations: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            rfis.listAnnotations(s, project(input.params), rfiId(input.params)),
+          )
+        ).map(toAnnotationDto),
+      },
+    }),
+    putRfiFileAnnotation: async (input) => {
+      const row = await tx(input, (s) =>
+        rfis.setAnnotation(
+          s,
+          project(input.params),
+          rfiId(input.params),
+          ref('file', input.params.fileId, 'fileId'),
+          input.body.shapes as StoredShape[],
+        ),
+      );
+      return { status: 200, body: { annotation: row ? toAnnotationDto(row) : null } };
+    },
     updateRfi: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       const x = await tx(input, (s) =>

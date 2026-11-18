@@ -49,6 +49,8 @@ export interface DrawingCanvasProps {
   cursor?: string;
   onPointerDown?: (e: CanvasPointerEvent) => void;
   onPointerMove?: (e: CanvasPointerEvent) => void;
+  /** The button was released after a tool press (not after panning); lets a tool finish a drag or a stroke. */
+  onPointerUp?: (e: CanvasPointerEvent) => void;
   onPointerLeave?: () => void;
   /** Keyboard handler for the focused canvas (tool shortcuts, Enter, Esc, Backspace). Return true if handled. */
   onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => boolean;
@@ -73,6 +75,7 @@ export function DrawingCanvas({
   cursor,
   onPointerDown,
   onPointerMove,
+  onPointerUp,
   onPointerLeave,
   onKeyDown,
   handleRef,
@@ -83,6 +86,7 @@ export function DrawingCanvas({
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
   const [box, setBox] = useState({ w: 800, h: 600 });
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
+  const toolPress = useRef(false);
 
   // At zoom 1 the sheet fits the viewport, centred; measured on mount and resize.
   useEffect(() => {
@@ -156,6 +160,9 @@ export function DrawingCanvas({
       e.currentTarget.setPointerCapture?.(e.pointerId);
       return;
     }
+    // Keep the stroke going if the pointer leaves the sheet before the button is released.
+    if (onPointerUp) e.currentTarget.setPointerCapture?.(e.pointerId);
+    toolPress.current = true;
     const p = toPoint(e.clientX, e.clientY);
     if (p) onPointerDown?.({ ...p, shiftKey: e.shiftKey, button: e.button });
   };
@@ -172,6 +179,21 @@ export function DrawingCanvas({
 
   const endDrag = () => {
     drag.current = null;
+  };
+
+  const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    endDrag();
+    if (!toolPress.current) return;
+    toolPress.current = false;
+    const p = toPoint(e.clientX, e.clientY);
+    // Clamp: a stroke released outside the sheet ends at its edge.
+    if (p)
+      onPointerUp?.({
+        ...p,
+        point: { x: Math.min(1, Math.max(0, p.point.x)), y: Math.min(1, Math.max(0, p.point.y)) },
+        shiftKey: e.shiftKey,
+        button: e.button,
+      });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -239,8 +261,11 @@ export function DrawingCanvas({
         onWheel={onWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => {
+          endDrag();
+          toolPress.current = false;
+        }}
         onPointerLeave={() => {
           endDrag();
           onPointerLeave?.();

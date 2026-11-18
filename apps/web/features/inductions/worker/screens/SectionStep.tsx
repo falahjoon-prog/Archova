@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
+  AnimationPlayer,
   Button,
   Dialog,
   SkeletonRows,
@@ -22,11 +23,12 @@ type Of<T extends SectionBlock['type']> = Extract<SectionBlock, { type: T }>;
 
 /** Blocks that must be watched, paged through or opened before the section counts; the rest are read. */
 const needsAction = (b: SectionBlock) =>
-  b.type === 'video' || b.type === 'slides' || b.type === 'swms';
+  b.type === 'video' || b.type === 'slides' || b.type === 'swms' || b.type === 'animation';
 
 const BLOCKED_LABEL: Record<string, string> = {
   video: 'Watch to the end to continue',
   slides: 'See every page to continue',
+  animation: 'Watch to the end to continue',
   swms: 'Open each SWMS to continue',
 };
 
@@ -134,6 +136,15 @@ function Block({
       return <Video block={block} watched={watched} onDone={onDone} onLeft={onVideoLeft} />;
     case 'slides':
       return <Slides block={block} onAllSeen={onDone} />;
+    case 'animation':
+      return (
+        <AnimationPlayer
+          title={block.title ?? 'Induction animation'}
+          scenes={block.scenes}
+          enforce={!watched}
+          onComplete={onDone}
+        />
+      );
     case 'text':
       return <TextBody body={block.body} />;
     case 'swms':

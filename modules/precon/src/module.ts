@@ -15,7 +15,7 @@ export function createPreconModule(services: KernelServices, deps: PreconDeps) {
   return {
     definition: defineModule({ name: 'precon', permissions: PRECON_PERMISSIONS }),
     routes: preconRoutes(services.database, templates, forms, settings),
-    api: { tenderGate: settings.tenderGate },
+    api: { tenderGate: settings.tenderGate, readinessSummary: settings.readinessSummary },
   };
 }
 

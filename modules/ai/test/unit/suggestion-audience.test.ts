@@ -28,6 +28,7 @@ describe('suggestion audience', () => {
       'defect.tag',
       'rfi.draft',
       'rfi.answer',
+      'swms.draft',
       'import.mapping',
       'quote.read',
     ])

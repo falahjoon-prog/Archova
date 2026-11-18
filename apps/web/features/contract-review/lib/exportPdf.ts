@@ -6,6 +6,8 @@ import {
   SEVERITY,
   SUMMARY_LABEL,
   TIME_BAR_LABEL,
+  OBLIGATION_CATEGORY_LABEL,
+  OBLIGATION_PARTY_LABEL,
   currentDecisions,
 } from './labels';
 
@@ -135,6 +137,18 @@ export function reviewExportLines(
         : ` (${DAY_TYPE_LABEL[t.dayType]})`;
     out.push({ text: `${TIME_BAR_LABEL[t.event]}: ${t.period}${days}`, style: 'body', indent: 1 });
     out.push({ text: cite(t.source), style: 'small', indent: 2 });
+  }
+
+  if (r.obligations?.length) {
+    out.push({ text: 'Obligations', style: 'heading' });
+    for (const o of r.obligations) {
+      out.push({
+        text: `${OBLIGATION_PARTY_LABEL[o.party]} (${OBLIGATION_CATEGORY_LABEL[o.category]}): ${o.action}${o.timing ? ` (${o.timing})` : ''}`,
+        style: 'body',
+        indent: 1,
+      });
+      out.push({ text: cite(o.source), style: 'small', indent: 2 });
+    }
   }
 
   if (answers.length) {

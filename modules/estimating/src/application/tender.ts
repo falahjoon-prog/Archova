@@ -48,7 +48,15 @@ export type QuoteView = QuoteRow & { lines: QuoteLineRow[] };
 
 export interface EstimatingDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies' | 'companyExists'>;
+  platform: Pick<
+    PlatformApi,
+    | 'getProject'
+    | 'getOrg'
+    | 'projectCompanies'
+    | 'companyExists'
+    | 'companyContacts'
+    | 'resolveTenantAccess'
+  >;
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   /** Raising a subcontract from the awarded quote. */

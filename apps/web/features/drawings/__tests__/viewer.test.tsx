@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nav, renderInProject } from '@/test/render';
@@ -67,15 +67,73 @@ describe('DrawingViewerScreen', () => {
     renderInProject(<DrawingViewerScreen sheetId="sht_a101" />);
     await screen.findByRole('heading', { level: 1 });
     // Draw a rectangle: pick the tool, then two clicks on the canvas.
-    await user.click(screen.getByRole('button', { name: 'Rectangle markup' }));
+    await user.click(screen.getByRole('button', { name: 'Box' }));
     const canvas = screen.getByRole('application');
     await user.pointer([
-      { target: canvas, keys: '[MouseLeft]' },
-      { target: canvas, keys: '[MouseLeft]' },
+      { target: canvas, keys: '[MouseLeft]', coords: { clientX: 100, clientY: 100 } },
+      { target: canvas, keys: '[MouseLeft]', coords: { clientX: 400, clientY: 300 } },
     ]);
     const publish = await screen.findByRole('button', { name: 'Publish to project' });
     await user.click(publish);
     expect(await screen.findByText('Publish this markup to the project?')).toBeTruthy();
+    vi.restoreAllMocks();
+  });
+
+  it('draws a freehand stroke by dragging, in the chosen colour', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 841,
+      height: 594,
+      right: 841,
+      bottom: 594,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const { container } = renderInProject(<DrawingViewerScreen sheetId="sht_a101" />);
+    await screen.findByRole('heading', { level: 1 });
+    await user.click(screen.getByRole('button', { name: 'Pen' }));
+    await user.click(screen.getByRole('radio', { name: 'Blue' }));
+    const canvas = screen.getByRole('application');
+    await user.pointer([
+      { target: canvas, keys: '[MouseLeft>]', coords: { clientX: 100, clientY: 100 } },
+      { target: canvas, coords: { clientX: 200, clientY: 160 } },
+      { target: canvas, coords: { clientX: 300, clientY: 140 } },
+      { target: canvas, keys: '[/MouseLeft]', coords: { clientX: 400, clientY: 220 } },
+    ]);
+    // The stroke is saved as one markup, listed in the side panel, and drawn in blue.
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-layer="markups"] polyline')?.getAttribute('stroke'),
+      ).toBe('#1D4ED8'),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('keeps a click without a drag from leaving a stray mark', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 841,
+      height: 594,
+      right: 841,
+      bottom: 594,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const { container } = renderInProject(<DrawingViewerScreen sheetId="sht_a101" />);
+    await screen.findByRole('heading', { level: 1 });
+    await user.click(screen.getByRole('button', { name: 'Pen' }));
+    await user.pointer({
+      target: screen.getByRole('application'),
+      keys: '[MouseLeft]',
+      coords: { clientX: 100, clientY: 100 },
+    });
+    expect(container.querySelector('[data-layer="markups"] polyline')).toBeNull();
     vi.restoreAllMocks();
   });
 });

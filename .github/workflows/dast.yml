@@ -20,8 +20,9 @@ on:
     - cron: '30 19 * * 1' # Tuesday 5:30am Sydney: rescan main with the latest ZAP rules
 
 concurrency:
-  group: dast-${{ github.ref }}
-  cancel-in-progress: true
+  group: dast-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -29,12 +30,26 @@ permissions:
 jobs:
   baseline:
     name: DAST baseline (ZAP, high-risk alerts fail)
-    runs-on: ubuntu-24.04
+    # Fixed ports (8080 and the compose stack): runs on the one "integration" self-hosted runner so it never collides.
+    runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-24.04' }}
     timeout-minutes: 30
     env:
       ORIGIN: http://demo.localhost:8080
     steps:
       - uses: actions/checkout@v4
+
+      - name: Ensure docker compose (self-hosted runners may only have the docker.io package)
+        run: |
+          if ! docker compose version >/dev/null 2>&1; then
+            v=v2.29.7
+            dir="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"; mkdir -p "$dir"
+            base="https://github.com/docker/compose/releases/download/$v"
+            curl -fsSL -o "$dir/docker-compose" "$base/docker-compose-linux-x86_64"
+            sum=$(curl -fsSL "$base/checksums.txt" | grep 'docker-compose-linux-x86_64$' | awk '{print $1}')
+            echo "$sum  $dir/docker-compose" | sha256sum -c -
+            chmod +x "$dir/docker-compose"
+          fi
+          docker compose version
 
       - name: Start the stack
         run: docker compose -f docker-compose.demo.yml up -d --build
@@ -74,6 +89,7 @@ jobs:
 
       - name: Upload the report
         if: always()
+        continue-on-error: true # a full artifact quota must not fail the job
         uses: actions/upload-artifact@v4
         with:
           name: dast-report

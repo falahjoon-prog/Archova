@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useState, type FormEvent } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
@@ -13,9 +15,11 @@ import {
   StatusPill,
   Textarea,
 } from '@archova/ui';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { RelatedItemsPanel } from '@/features/links';
 import { OnProgramme } from '@/features/schedule';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -78,6 +82,12 @@ function Detail({ d }: { d: SubmittalDetail }) {
 
   return (
     <div className="stack-lg">
+      <RecordRecent
+        entityType="submittal"
+        entityId={s.id}
+        projectId={project.projectId}
+        title={`${s.numberLabel} ${s.title}`}
+      />
       <p className="u-m-0">
         <Link className="link" href={webRoutes.submittals(org.orgSlug, project.projectId)}>
           Submittals
@@ -96,6 +106,13 @@ function Detail({ d }: { d: SubmittalDetail }) {
         }
         actions={
           <>
+            <BookmarkButton
+              entityType="submittal"
+              entityId={s.id}
+              projectId={project.projectId}
+              title={`${s.numberLabel} ${s.title}`}
+              subtitle={s.status}
+            />
             {canSend ? (
               <Button onClick={() => setSending(true)}>
                 {s.status === 'draft' ? 'Submit for review' : 'Resubmit'}
@@ -130,52 +147,51 @@ function Detail({ d }: { d: SubmittalDetail }) {
 
       {turn ? <RespondForm key={turn.id} detail={d} step={turn} /> : null}
 
-      <section className="stack" aria-labelledby="sub-details">
-        <h2 id="sub-details" className="u-h3">
-          Details
-        </h2>
-        <DescriptionList
-          items={[
-            { label: 'Type', value: TYPE_LABELS[s.type] },
-            { label: 'Spec section', value: s.specSection ?? '—' },
-            {
-              label: 'Responsible',
-              value: s.responsibleCompanyId ? dir.companyName(s.responsibleCompanyId) : '—',
-            },
-            {
-              label: 'Builder reviewer',
-              value: s.managerId ? dir.personName(s.managerId) : '—',
-            },
-            {
-              label: 'Required on site',
-              value: s.requiredOnSite ? formatLocalDate(s.requiredOnSite) : '—',
-            },
-            { label: 'Lead time', value: `${s.leadTimeDays} business days` },
-            { label: 'Review time', value: `${s.reviewDays} business days` },
-          ]}
-        />
-      </section>
-
-      <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
-
-      <section className="stack" aria-labelledby="sub-history">
-        <h2 id="sub-history" className="u-h3">
-          Review
-        </h2>
-        {d.revisions.length === 0 ? (
-          <p className="u-muted u-m-0">Not sent for review yet.</p>
-        ) : (
-          [...d.revisions]
-            .reverse()
-            .map((r) => (
-              <Revision
-                key={r.revision}
-                revision={r}
-                isCurrent={r.revision === s.currentRevision}
-              />
-            ))
-        )}
-      </section>
+      <div className="detail-grid">
+        <Card title="Review">
+          <div className="stack">
+            {d.revisions.length === 0 ? (
+              <p className="u-muted u-m-0">Not sent for review yet.</p>
+            ) : (
+              [...d.revisions]
+                .reverse()
+                .map((r) => (
+                  <Revision
+                    key={r.revision}
+                    revision={r}
+                    isCurrent={r.revision === s.currentRevision}
+                  />
+                ))
+            )}
+          </div>
+        </Card>
+        <div className="stack-lg">
+          <Card title="Details">
+            <DescriptionList
+              items={[
+                { label: 'Type', value: TYPE_LABELS[s.type] },
+                { label: 'Spec section', value: s.specSection ?? '—' },
+                {
+                  label: 'Responsible',
+                  value: s.responsibleCompanyId ? dir.companyName(s.responsibleCompanyId) : '—',
+                },
+                {
+                  label: 'Builder reviewer',
+                  value: s.managerId ? dir.personName(s.managerId) : '—',
+                },
+                {
+                  label: 'Required on site',
+                  value: s.requiredOnSite ? formatLocalDate(s.requiredOnSite) : '—',
+                },
+                { label: 'Lead time', value: `${s.leadTimeDays} business days` },
+                { label: 'Review time', value: `${s.reviewDays} business days` },
+              ]}
+            />
+          </Card>
+          <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
+          <RelatedItemsPanel type="submittal" id={s.id} />
+        </div>
+      </div>
 
       <SendDialog
         open={sending}

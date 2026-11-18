@@ -34,6 +34,8 @@ export const SUGGESTION_TASKS: Readonly<Record<string, SuggestionTask>> = {
   // F5, F3: the person who asked for the tag or draft decides it; the photo, note or markup is theirs until they raise it.
   'defect.tag': { permission: 'defects.defects.create', audience: 'creator' },
   'rfi.draft': { permission: 'rfis.rfis.create', audience: 'creator' },
+  // F20: the person who asked drafts a SWMS from what they know of the job; they edit it and submit it to the register.
+  'swms.draft': { permission: 'safety.swms.submit', audience: 'creator' },
   // F3: the person who asked for the response decides it; their direction and the thread are theirs until they send it.
   'rfi.answer': { permission: 'rfis.rfis.respond', audience: 'creator' },
   // F34: the commercial team works a contract review together (design/09 CR3), so any member of the project holding the

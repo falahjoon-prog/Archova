@@ -44,6 +44,8 @@ export interface ViewerToolBinding {
   cursor?: string;
   onPointerDown?: (e: CanvasPointerEvent) => void;
   onPointerMove?: (e: CanvasPointerEvent) => void;
+  /** After a tool press is released; lets a tool finish a drag or a freehand stroke. */
+  onPointerUp?: (e: CanvasPointerEvent) => void;
   onPointerLeave?: () => void;
   onKeyDown?: (e: KeyboardEvent<HTMLElement>) => boolean;
 }

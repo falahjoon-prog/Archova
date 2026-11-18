@@ -14,8 +14,9 @@ on:
     - cron: '30 18 * * 1' # Tuesday 4:30am Sydney: catch new advisories on unchanged code
 
 concurrency:
-  group: security-${{ github.ref }}
-  cancel-in-progress: true
+  group: security-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -23,7 +24,7 @@ permissions:
 jobs:
   secrets:
     name: Secret scan (gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +37,7 @@ jobs:
 
   audit:
     name: Dependency audit (high and critical)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +51,7 @@ jobs:
   codeql:
     name: CodeQL
     if: vars.CODE_SCANNING_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
+  Browser,
   createOrg,
   createProject,
   createTestContext,
@@ -546,5 +547,115 @@ describe('tender packages and quotes (product/10)', () => {
     }
     expect((await s.pm.browser.del(`${base}/${made.json().id}`)).statusCode).toBe(204);
     expect((await s.pm.browser.get(base)).json().data).toHaveLength(1);
+  });
+});
+
+describe('tender invite links (X45)', () => {
+  const tokenIn = (to: string) => {
+    const mail = t.messages.sent.filter((m) => m.to === to).at(-1)!;
+    return /\/q\/(arl_[A-Za-z0-9_-]+)/.exec(mail.text)![1]!;
+  };
+
+  it('emails each invited company its own link once the package goes out, and lets it answer', async () => {
+    const pm = await signUp(t.app, 'inv-pm');
+    const org = await createOrg(pm.browser, 'Invite Builder');
+    const project = await createProject(pm.browser, org.id, { name: 'Tower Q', state: 'QLD' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+    const a = await signUp(t.app, 'inv-a');
+    const b = await signUp(t.app, 'inv-b');
+    const coA = await addMember(
+      pm.browser,
+      org.id,
+      project.id,
+      a.email,
+      'Subcontractor',
+      'Inv A',
+      [],
+      'bids@inv-a.example.com',
+    );
+    const coB = await addMember(pm.browser, org.id, project.id, b.email, 'Subcontractor', 'Inv B');
+
+    const draft = await pm.browser.post(`${base}/tender-packages`, {
+      name: 'Tiling',
+      trade: 'Tiling',
+      dueAt: '2031-01-15T05:00:00Z',
+      scope,
+    });
+    const pkg = draft.json();
+    await pm.browser.post(`${base}/tender-packages/${pkg.id}/invites`, {
+      companyIds: [coA.companyId, coB.companyId],
+    });
+    // Nothing goes out while the package is a draft.
+    expect(t.messages.sent.filter((m) => m.to === 'bids@inv-a.example.com')).toHaveLength(0);
+
+    const sent = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/transition`,
+      { action: 'send' },
+      {
+        'if-match': (await pm.browser.get(`${base}/tender-packages/${pkg.id}`)).headers
+          .etag as string,
+      },
+    );
+    expect(sent.statusCode).toBe(200);
+    expect(JSON.stringify(sent.json())).not.toMatch(/arl_/);
+    const byCompany = (
+      body: { invites: Array<{ companyId: string; deliveredAt: string | null }> },
+      id: string,
+    ) => body.invites.find((i) => i.companyId === id)!;
+    expect(byCompany(sent.json(), coA.companyId).deliveredAt).toBeTruthy();
+    // No address on the company record: nothing is sent, and the invite says so.
+    expect(byCompany(sent.json(), coB.companyId).deliveredAt).toBeNull();
+    expect(t.messages.sent.filter((m) => m.to === 'bids@inv-a.example.com')).toHaveLength(1);
+
+    const guest = new Browser(t.app);
+    const first = tokenIn('bids@inv-a.example.com');
+    const opened = await guest.post('/v1/tender-access', { token: first });
+    expect(opened.statusCode).toBe(200);
+    expect(opened.headers['referrer-policy']).toBe('no-referrer');
+    expect(opened.json()).toMatchObject({
+      package: { number: 'TP-001', name: 'Tiling', fromOrg: 'Invite Builder' },
+      invite: { status: 'viewed' },
+    });
+    // The guest sees the scope wording only: no quantities, no other bidders.
+    expect(JSON.stringify(opened.json())).not.toMatch(/quantity|Inv B/);
+
+    const intends = await guest.post('/v1/tender-access/respond', { response: 'intends_to_quote' });
+    expect(intends.json().invite.status).toBe('intends_to_quote');
+    const seen = (await pm.browser.get(`${base}/tender-packages/${pkg.id}`)).json();
+    expect(byCompany(seen, coA.companyId)).toMatchObject({ status: 'intends_to_quote' });
+
+    // The builder cannot resend to a company with no address.
+    const none = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/invites/${coB.companyId}/resend`,
+    );
+    expect(none.json().code).toBe('tender.no_contact_email');
+
+    // A lost email: resend replaces the link, and the old one stops working at once.
+    const resent = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/invites/${coA.companyId}/resend`,
+    );
+    expect(resent.statusCode).toBe(200);
+    expect(tokenIn('bids@inv-a.example.com')).not.toBe(first);
+    expect((await guest.get('/v1/tender-access')).json().code).toBe('access_link.invalid');
+    expect((await new Browser(t.app).post('/v1/tender-access', { token: first })).json().code).toBe(
+      'access_link.invalid',
+    );
+
+    // No cookie, no access; and a link ends with the tender.
+    expect((await new Browser(t.app).get('/v1/tender-access')).json().code).toBe(
+      'access_link.session_required',
+    );
+    const fresh = new Browser(t.app);
+    expect(
+      (await fresh.post('/v1/tender-access', { token: tokenIn('bids@inv-a.example.com') }))
+        .statusCode,
+    ).toBe(200);
+    const latest = await pm.browser.get(`${base}/tender-packages/${pkg.id}`);
+    await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/transition`,
+      { action: 'close' },
+      { 'if-match': latest.headers.etag as string },
+    );
+    expect((await fresh.get('/v1/tender-access')).json().code).toBe('access_link.invalid');
   });
 });

@@ -12,19 +12,19 @@ export function createSesSender(opts: {
   const client = new SESv2Client({ region: opts.region });
   return {
     async send(m: EmailMessage) {
-      // Attachments need a raw message; plain mail keeps the simple request.
+      // Attachments need a raw message; plain mail keeps the simple request. Built once so the bytes we keep as
+      // evidence are the bytes we sent.
+      const raw = m.attachments?.length
+        ? Buffer.from(buildRawMessage(m, opts.from, opts.replyTo), 'utf8')
+        : null;
       const res = await client.send(
         new SendEmailCommand({
           FromEmailAddress: opts.from,
           ReplyToAddresses: opts.replyTo ? [opts.replyTo] : undefined,
           ConfigurationSetName: opts.configurationSet,
           Destination: { ToAddresses: [m.to] },
-          Content: m.attachments?.length
-            ? {
-                Raw: {
-                  Data: Buffer.from(buildRawMessage(m, opts.from, opts.replyTo), 'utf8'),
-                },
-              }
+          Content: raw
+            ? { Raw: { Data: raw } }
             : {
                 Simple: {
                   Subject: { Data: m.subject, Charset: 'UTF-8' },
@@ -36,7 +36,12 @@ export function createSesSender(opts: {
               },
         }),
       );
-      return res.MessageId ? { messageId: res.MessageId } : undefined;
+      return res.MessageId
+        ? {
+            messageId: res.MessageId,
+            ...(raw ? { raw } : {}),
+          }
+        : undefined;
     },
   };
 }
@@ -47,7 +52,7 @@ export function createLogSender(
 ): EmailSender {
   return {
     async send(m) {
-      log('email not sent: WORKER_EMAIL_PROVIDER is not ses', { subject: m.subject });
+      log('email not sent: WORKER_EMAIL_PROVIDER is not ses or smtp', { subject: m.subject });
     },
   };
 }

@@ -1,7 +1,7 @@
 import { encodeId } from '@archova/domain';
-import type { Rfi, RfiActivity, RfiResponse } from '@archova/contracts';
+import type { MarkupShape, Rfi, RfiActivity, RfiAnnotation, RfiResponse } from '@archova/contracts';
 import { ballInCourt, formatRfiNumber } from '../domain/rfi';
-import type { ResponseRow, RfiService, RfiView } from '../application/rfis';
+import type { PhotoAnnotationRow, ResponseRow, RfiService, RfiView } from '../application/rfis';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 const user = (id: string) => encodeId('user', id);
@@ -31,7 +31,11 @@ export const toRfiDto = (r: RfiView): Rfi => {
       isBallInCourt: a.isBallInCourt,
       respondedAt: isoOrNull(a.respondedAt),
     })),
-    ballInCourt: { side: ball.side, userIds: ball.userIds.map(user) },
+    ballInCourt: {
+      side: ball.side,
+      userIds: ball.userIds.map(user),
+      since: ball.side ? isoOrNull(r.ballSince) : null,
+    },
     distributionUserIds: r.distributionUserIds.map(user),
     distributionCompanyIds: r.distributionCompanyIds.map((c) => encodeId('company', c)),
     dueDate: r.dueDate,
@@ -53,6 +57,7 @@ export const toRfiDto = (r: RfiView): Rfi => {
           y: r.pinY,
         }
       : null,
+    fileIds: r.fileIds.map((f) => encodeId('file', f)),
     officialResponseId: r.officialResponseId ? encodeId('rfiResponse', r.officialResponseId) : null,
     createdBy: userOrNull(r.createdBy),
     createdAt: r.createdAt.toISOString(),
@@ -111,4 +116,14 @@ export const toRfiActivity = (entries: ActivityEntry[]): RfiActivity => ({
       },
     };
   }),
+});
+
+export const toAnnotationDto = (a: PhotoAnnotationRow): RfiAnnotation => ({
+  id: encodeId('rfiAnnotation', a.id),
+  rfiId: encodeId('rfi', a.rfiId),
+  fileId: encodeId('file', a.fileId),
+  authorId: user(a.authorId),
+  shapes: a.shapes as MarkupShape[],
+  createdAt: a.createdAt.toISOString(),
+  updatedAt: a.updatedAt.toISOString(),
 });

@@ -13,8 +13,10 @@ import { localDateOf, type LocalDate } from '@archova/time';
 import { ImportError, parseMspXml, parseXer, type ImportedProgramme } from '../domain/import';
 import {
   analyse,
+  cascade,
   durationDays,
   lookahead,
+  varianceDays,
   wouldCycle,
   type ActivityInput,
   type DependencyInput,
@@ -59,6 +61,7 @@ export function createProgrammeService(deps: ProgrammeDeps) {
     a: ActivityInput,
     f: { floatDays: number; critical: boolean },
     externalId: string | null,
+    baseline: { start: LocalDate; finish: LocalDate } | null,
   ) {
     return {
       id: encodeId('scheduleActivity', a.id),
@@ -73,6 +76,9 @@ export function createProgrammeService(deps: ProgrammeDeps) {
       externalId,
       floatDays: f.floatDays,
       critical: f.critical,
+      baselineStart: baseline?.start ?? null,
+      baselineFinish: baseline?.finish ?? null,
+      varianceDays: baseline ? varianceDays(a.finish, baseline.finish) : null,
     };
   }
 
@@ -82,6 +88,7 @@ export function createProgrammeService(deps: ProgrammeDeps) {
     name: r.name,
     source: r.source,
     dataDate: r.dataDate,
+    baselineSetAt: r.baselineSetAt?.toISOString() ?? null,
     activityCount: acts.length,
     startDate: acts.length
       ? acts.reduce((m, a) => (a.startDate < m ? a.startDate : m), acts[0]!.startDate)
@@ -135,10 +142,18 @@ export function createProgrammeService(deps: ProgrammeDeps) {
       lagDays: l.lagDays,
     }));
     const result = analyse(inputs, depInputs);
-    const external = new Map(acts.map((a) => [a.id, a.externalId]));
-    const activityDtos = inputs.map((a) =>
-      activityDto(a, result.activities.get(a.id)!, external.get(a.id) ?? null),
-    );
+    const rowById = new Map(acts.map((a) => [a.id, a]));
+    const activityDtos = inputs.map((a) => {
+      const r = rowById.get(a.id)!;
+      return activityDto(
+        a,
+        result.activities.get(a.id)!,
+        r.externalId,
+        r.baselineStart && r.baselineFinish
+          ? { start: r.baselineStart, finish: r.baselineFinish }
+          : null,
+      );
+    });
     const dependencyDtos = links.map((l) => {
       const d = result.dependencies.get(l.id) ?? { slackDays: 0, violated: false };
       return {
@@ -375,9 +390,56 @@ export function createProgrammeService(deps: ProgrammeDeps) {
         updatedAt: now(),
       })
       .where(eq(activities.id, current.id));
+    if (patch.cascade && (patch.start || patch.finish)) {
+      const { acts, links } = await load(scope, sched);
+      const moved = cascade(
+        acts.map(toInput),
+        links.map((l) => ({
+          id: l.id,
+          predecessorId: l.predecessorId,
+          successorId: l.successorId,
+          type: l.type,
+          lagDays: l.lagDays,
+        })),
+        current.id,
+      );
+      for (const [id, dates] of moved)
+        await scope.tx
+          .update(activities)
+          .set({ startDate: dates.start, finishDate: dates.finish, updatedAt: now() })
+          .where(eq(activities.id, id));
+    }
     await scope.tx
       .update(schedules)
       .set({ updatedAt: now(), updatedBy: scope.ctx.userId })
+      .where(eq(schedules.id, sched.id));
+    return full(scope, projectId, sched.id);
+  }
+
+  async function setBaseline(scope: TenantScope, projectId: string, scheduleId: string) {
+    await project(scope, projectId);
+    const sched = await getSchedule(scope, projectId, scheduleId);
+    await scope.tx
+      .update(activities)
+      .set({ baselineStart: activities.startDate, baselineFinish: activities.finishDate })
+      .where(eq(activities.scheduleId, sched.id));
+    await scope.tx
+      .update(schedules)
+      .set({ baselineSetAt: now(), updatedAt: now(), updatedBy: scope.ctx.userId })
+      .where(eq(schedules.id, sched.id));
+    return full(scope, projectId, sched.id);
+  }
+
+  async function clearBaseline(scope: TenantScope, projectId: string, scheduleId: string) {
+    await project(scope, projectId);
+    const sched = await getSchedule(scope, projectId, scheduleId);
+    await scope.tx
+      .update(activities)
+      .set({ baselineStart: null, baselineFinish: null })
+      .where(eq(activities.scheduleId, sched.id));
+    await scope.tx
+      .update(schedules)
+      .set({ baselineSetAt: null, updatedAt: now(), updatedBy: scope.ctx.userId })
       .where(eq(schedules.id, sched.id));
     return full(scope, projectId, sched.id);
   }
@@ -518,6 +580,8 @@ export function createProgrammeService(deps: ProgrammeDeps) {
     deleteActivity,
     createDependency,
     deleteDependency,
+    setBaseline,
+    clearBaseline,
     lookahead: lookaheadFor,
   };
 }

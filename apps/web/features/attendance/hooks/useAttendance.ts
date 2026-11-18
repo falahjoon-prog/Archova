@@ -7,6 +7,8 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createAttendanceApi } from '../data/api';
+import { checkInPreview, createCheckInApi } from '../data/checkin';
+import { clearancePreview, createClearanceApi } from '../data/clearance';
 import { attendancePreview, type AttendanceSource } from '../data/source';
 import type {
   AttendanceSite,
@@ -166,4 +168,39 @@ export function useWorkerMutations() {
       }) => settle(await source.updateWorker(projectId, v.worker, v.patch)),
     }),
   };
+}
+
+/** Check in or out of the site from a gate link (a phone camera scan). Not optimistic: the answer is the record. */
+export function useCheckInMutations() {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const qc = useQueryClient();
+  const source = useMemo(
+    () => (previewDataOnly ? checkInPreview : createCheckInApi(orgId)),
+    [orgId],
+  );
+  const settle = <T>(value: T) => {
+    void qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'attendance') });
+    return value;
+  };
+  return {
+    checkIn: useMutation({
+      mutationFn: async (gateCode: string) => settle(await source.checkIn(projectId, gateCode)),
+    }),
+    checkOut: useMutation({
+      mutationFn: async (gateCode: string | null) =>
+        settle(await source.checkOut(projectId, gateCode)),
+    }),
+  };
+}
+
+/** One Safety ID lookup at a time; the answer is live, so nothing is cached between scans. */
+export function useClearanceCheck() {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useMemo(
+    () => (previewDataOnly ? clearancePreview : createClearanceApi(orgId)),
+    [orgId],
+  );
+  return useMutation({ mutationFn: (code: string) => source.check(projectId, code) });
 }

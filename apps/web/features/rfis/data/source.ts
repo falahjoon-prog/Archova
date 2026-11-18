@@ -12,14 +12,25 @@ import type {
   NovaRfiDraft,
   NovaRfiSource,
   Rfi,
+  RfiAnnotation,
   RfiInput,
+  RfiPhoto,
   RfiStatus,
 } from '../lib/types';
+import type { MarkupShape } from '@archova/markup';
 
 interface Store {
   rfis: Rfi[];
   nextNumber: number;
+  /** Photos by file id; `url` is a data or object URL, standing in for the signed download link. */
+  photoFiles: Record<string, { name: string; url: string }>;
+  annotations: RfiAnnotation[];
 }
+
+/** A stand-in site photo: a wall with a door opening, so marks have something to point at. */
+const SAMPLE_PHOTO = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect width="800" height="600" fill="#cfd4d6"/><rect y="430" width="800" height="170" fill="#9aa3a6"/><rect x="120" y="90" width="230" height="340" fill="#7a8588"/><rect x="150" y="120" width="170" height="310" fill="#e8ecee"/><rect x="430" y="60" width="260" height="190" fill="#b9c1c4"/><circle cx="560" cy="155" r="42" fill="#8e989b"/></svg>',
+)}`;
 
 export interface Actor {
   id: string;
@@ -39,6 +50,8 @@ function seedRfi(
     assigneeCompanyId: 'cmp_struct',
     ballInCourtId: 'usr_eng',
     ballInCourtCompanyId: 'cmp_struct',
+    ballInCourtSince: null,
+    receivedFromCompanyId: null,
     distributionCompanyIds: [],
     dueDate: null,
     costImpact: 'tbc',
@@ -46,6 +59,7 @@ function seedRfi(
     drawing: null,
     specSection: null,
     location: null,
+    fileIds: [],
     responses: [],
     officialResponseId: null,
     activity: [],
@@ -58,7 +72,9 @@ function seedRfi(
 
 function seed(): Store {
   return {
-    nextNumber: 5,
+    nextNumber: 6,
+    photoFiles: { fil_binstore: { name: 'bin-store-door.jpg', url: SAMPLE_PHOTO } },
+    annotations: [],
     rfis: [
       seedRfi({
         id: 'rfi_001',
@@ -83,6 +99,7 @@ function seed(): Store {
             body: 'S-201 governs. Set out the slab edge 150 mm off grid C as shown.',
             isOfficial: true,
             aiSuggestionId: null,
+            fileIds: [],
             createdAt: at('2026-09-05'),
           },
         ],
@@ -111,6 +128,7 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_arch',
         ballInCourtId: 'usr_pm',
         ballInCourtCompanyId: 'cmp_builder',
+        ballInCourtSince: at('2026-09-24'),
         dueDate: '2026-09-26',
         costImpact: 'yes',
         scheduleImpactDays: 2,
@@ -126,6 +144,7 @@ function seed(): Store {
             body: 'Use the sheet membrane per detail 7/A-501. Spec 0421 will be updated.',
             isOfficial: false,
             aiSuggestionId: null,
+            fileIds: [],
             createdAt: at('2026-09-24'),
           },
         ],
@@ -146,9 +165,11 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_arch',
         ballInCourtId: 'usr_arch',
         ballInCourtCompanyId: 'cmp_arch',
+        ballInCourtSince: at('2026-09-23'),
         dueDate: '2026-09-29',
         drawing: { sheetId: 'sht_a101', revisionId: 'rev_a101_c', label: 'A-101 Rev C' },
         location: 'Ground, bin store',
+        fileIds: ['fil_binstore'],
         activity: [
           { id: 'a1', actor: 'Luca Romano', action: 'submitted the RFI', at: at('2026-09-23') },
         ],
@@ -164,11 +185,33 @@ function seed(): Store {
         assigneeCompanyId: 'cmp_elec',
         ballInCourtId: 'usr_elec',
         ballInCourtCompanyId: 'cmp_elec',
+        ballInCourtSince: at('2026-10-01'),
         dueDate: '2026-10-09',
         costImpact: 'tbc',
         drawing: { sheetId: 'sht_e301', revisionId: 'rev_e301_a', label: 'E-301 Rev A' },
         activity: [
           { id: 'a1', actor: 'Dana Okafor', action: 'submitted the RFI', at: at('2026-10-01') },
+        ],
+      }),
+      seedRfi({
+        id: 'rfi_005',
+        number: 5,
+        subject: 'Hydraulic riser clash with beam at level 1',
+        question:
+          'HY-401 P1 routes the 100 mm stack through the transfer beam at grid D. Can the riser move 300 mm east, or does the structural engineer need to sleeve the beam?',
+        status: 'open',
+        assigneeId: 'usr_eng',
+        assigneeCompanyId: 'cmp_struct',
+        ballInCourtId: 'usr_eng',
+        ballInCourtCompanyId: 'cmp_struct',
+        dueDate: '2026-10-14',
+        costImpact: 'tbc',
+        scheduleImpactDays: 3,
+        drawing: { sheetId: 'sht_hy401', revisionId: 'rev_hy401_p1', label: 'HY-401 Rev P1' },
+        specSection: '0331 Structural concrete',
+        location: 'Level 1, grid D',
+        activity: [
+          { id: 'a1', actor: 'Dana Okafor', action: 'submitted the RFI', at: at('2026-10-05') },
         ],
       }),
     ],
@@ -242,6 +285,9 @@ export const rfisSource = {
       assigneeCompanyId: personCompanyId(input.assigneeId),
       ballInCourtId: actor.id,
       ballInCourtCompanyId: actor.companyId,
+      ballInCourtSince: null,
+      receivedFromCompanyId: null,
+      fileIds: [],
       responses: [],
       officialResponseId: null,
       activity: [],
@@ -273,6 +319,7 @@ export const rfisSource = {
       if (rfi.status === 'open') {
         rfi.ballInCourtId = input.assigneeId;
         rfi.ballInCourtCompanyId = personCompanyId(input.assigneeId);
+        rfi.ballInCourtSince = nowIso();
       }
     }
     Object.assign(rfi, input, { assigneeCompanyId: personCompanyId(input.assigneeId) });
@@ -292,10 +339,67 @@ export const rfisSource = {
     rfi.status = 'open';
     rfi.ballInCourtId = rfi.assigneeId;
     rfi.ballInCourtCompanyId = rfi.assigneeCompanyId;
+    rfi.ballInCourtSince = nowIso();
     log(rfi, actor, 'submitted the RFI', {
       detail: `Waiting on ${companyName(rfi.assigneeCompanyId)}`,
     });
     return delay(rfi);
+  },
+
+  async photos(projectId: string, rfi: Rfi): Promise<RfiPhoto[]> {
+    const files = stores.get(projectId).photoFiles;
+    const origins = new Map<string, RfiPhoto['origin']>();
+    for (const id of rfi.fileIds) origins.set(id, 'question');
+    for (const r of rfi.responses)
+      for (const id of r.fileIds) origins.set(id, origins.get(id) ?? 'response');
+    return delay(
+      [...origins].flatMap(([fileId, origin]) =>
+        files[fileId] ? [{ fileId, name: files[fileId].name, url: files[fileId].url, origin }] : [],
+      ),
+    );
+  },
+
+  async addPhoto(projectId: string, rfiId: string, photo: File): Promise<Rfi> {
+    const s = stores.get(projectId);
+    const rfi = find(projectId, rfiId);
+    if (rfi.status === 'closed' || rfi.status === 'void')
+      problem(409, 'rfi.locked', 'Closed and void RFIs can’t be edited.');
+    const fileId = mockId('fil');
+    s.photoFiles[fileId] = { name: photo.name, url: URL.createObjectURL(photo) };
+    rfi.fileIds = [...rfi.fileIds, fileId];
+    return delay(rfi);
+  },
+
+  async annotations(projectId: string, rfiId: string): Promise<RfiAnnotation[]> {
+    find(projectId, rfiId);
+    return delay(stores.get(projectId).annotations.filter((a) => a.id.startsWith(`${rfiId}:`)));
+  },
+
+  /** One layer per person per photo, replaced whole; an empty list removes it. */
+  async saveAnnotation(
+    projectId: string,
+    rfiId: string,
+    fileId: string,
+    shapes: readonly MarkupShape[],
+    actor: Actor,
+  ): Promise<RfiAnnotation | null> {
+    const s = stores.get(projectId);
+    const rfi = find(projectId, rfiId);
+    if (rfi.status === 'closed' || rfi.status === 'void')
+      problem(409, 'rfi.locked', 'Closed and void RFIs can’t be marked up.');
+    const id = `${rfiId}:${fileId}:${actor.id}`;
+    s.annotations = s.annotations.filter((a) => a.id !== id);
+    if (shapes.length === 0) return delay(null);
+    const layer: RfiAnnotation = {
+      id,
+      fileId,
+      authorId: actor.id,
+      authorName: actor.name,
+      shapes: [...shapes],
+      updatedAt: nowIso(),
+    };
+    s.annotations.push(layer);
+    return delay(layer);
   },
 
   /** A response moves the RFI to Answered and the ball back to the RFI manager (RFI-AC4). */
@@ -316,6 +420,7 @@ export const rfisSource = {
       body: input.body.trim(),
       isOfficial: false,
       aiSuggestionId: input.aiSuggestionId,
+      fileIds: [],
       createdAt: nowIso(),
     });
     if (rfi.status === 'open') {
@@ -323,6 +428,7 @@ export const rfisSource = {
       rfi.answeredAt = nowIso();
       rfi.ballInCourtId = rfi.managerId;
       rfi.ballInCourtCompanyId = personCompanyId(rfi.managerId) ?? 'cmp_builder';
+      rfi.ballInCourtSince = nowIso();
     }
     log(rfi, actor, input.aiSuggestionId ? 'responded (started from a Nova draft)' : 'responded');
     return delay(rfi);
@@ -345,6 +451,7 @@ export const rfisSource = {
     rfi.closedAt = nowIso();
     rfi.ballInCourtId = null;
     rfi.ballInCourtCompanyId = null;
+    rfi.ballInCourtSince = null;
     log(rfi, actor, 'closed the RFI with the official response');
     return delay(rfi);
   },
@@ -359,6 +466,7 @@ export const rfisSource = {
     for (const r of rfi.responses) r.isOfficial = false;
     rfi.ballInCourtId = rfi.assigneeId;
     rfi.ballInCourtCompanyId = rfi.assigneeCompanyId;
+    rfi.ballInCourtSince = nowIso();
     log(rfi, actor, 'reopened the RFI', { detail: reason.trim() });
     return delay(rfi);
   },
@@ -370,6 +478,7 @@ export const rfisSource = {
     rfi.status = 'void';
     rfi.ballInCourtId = null;
     rfi.ballInCourtCompanyId = null;
+    rfi.ballInCourtSince = null;
     log(rfi, actor, 'voided the RFI', { detail: reason.trim() });
     return delay(rfi);
   },

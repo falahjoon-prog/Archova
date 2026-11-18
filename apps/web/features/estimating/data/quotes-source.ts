@@ -281,6 +281,8 @@ export interface QuotesSource {
     companyIds: string[],
     overrideReason?: string,
   ): Promise<TenderPackage>;
+  /** Email an invited company a new link; the earlier one stops working. */
+  resendInvite(projectId: string, packageId: string, companyId: string): Promise<TenderPackage>;
   /** Send a draft out to tender, or close, reopen or cancel it. */
   transition(projectId: string, packageId: string, action: PackageAction): Promise<TenderPackage>;
   listQuotes(projectId: string, packageId: string): Promise<Quote[]>;
@@ -468,6 +470,17 @@ export const quotesSource: QuotesSource & {
         pkg.invites.push({ companyId, status: 'invited', invitedAt: nowIso() });
     }
     if (pkg.status === 'draft') pkg.status = 'out_to_tender';
+    return delay(pkg);
+  },
+
+  async resendInvite(
+    projectId: string,
+    packageId: string,
+    companyId: string,
+  ): Promise<TenderPackage> {
+    const pkg = findPackage(projectId, packageId);
+    const invite = pkg.invites.find((i) => i.companyId === companyId);
+    if (invite) invite.deliveredAt = nowIso();
     return delay(pkg);
   },
 

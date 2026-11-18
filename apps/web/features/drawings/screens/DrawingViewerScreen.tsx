@@ -1,14 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { RecordRecent } from '@/features/recents';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
-import {
-  MARKUP_VISIBILITIES,
-  type MarkupShape,
-  type MarkupVisibility,
-  type Point,
-} from '@archova/markup';
+import { MARKUP_VISIBILITIES, type MarkupVisibility, type Point } from '@archova/markup';
+import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
 import {
   Alert,
@@ -20,10 +17,9 @@ import {
   StatusPill,
   TextField,
   ToggleGroup,
-  type CanvasPointerEvent,
   type DrawingCanvasHandle,
 } from '@archova/ui';
-import { ArrowLeft, Hand, MousePointer2, Square } from '@archova/ui/icons';
+import { ArrowLeft, Hand, MousePointer2 } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
 import type {
   ViewerExtension,
@@ -31,6 +27,14 @@ import type {
   ViewerToolBinding,
 } from '@/shared/drawing-viewer/extension';
 import { useUrlState } from '@/shared/hooks/useUrlState';
+import { MarkupStyleControls } from '@/shared/markup/MarkupToolbar';
+import {
+  DEFAULT_MARKUP_STYLE,
+  MARKUP_TOOLS,
+  useMarkupDrawing,
+  type MarkupStyle,
+  type MarkupTool,
+} from '@/shared/markup/useMarkupDrawing';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant } from '@/shared/lib/format';
@@ -59,7 +63,6 @@ import {
 /** Until a PDF page reports its size, sheets are assumed A1 landscape, the usual AU drawing size. */
 const A1: SheetSize = { widthMm: 841, heightMm: 594 };
 
-type MarkupTool = 'rect' | 'cloud' | 'arrow' | 'text';
 type ViewerMode = 'pan' | 'select' | MarkupTool;
 
 const VISIBILITY_LABELS: Record<MarkupVisibility, string> = {
@@ -107,8 +110,7 @@ export function DrawingViewerScreen({
   const [binding, setBinding] = useState<ViewerToolBinding | null>(null);
   const [overlayTarget, setOverlayTarget] = useState<SVGGElement | null>(null);
   const [visibility, setVisibility] = useState<MarkupVisibility>('private');
-  const [draftFrom, setDraftFrom] = useState<Point | null>(null);
-  const [hover, setHover] = useState<Point | null>(null);
+  const [style, setStyle] = useState<MarkupStyle>(DEFAULT_MARKUP_STYLE);
   const [textAt, setTextAt] = useState<Point | null>(null);
   const [movingPin, setMovingPin] = useState<DrawingPin | null>(null);
   const movePin = useMovePin(project.projectId, revisionId ?? '');
@@ -125,6 +127,14 @@ export function DrawingViewerScreen({
     () => (compareRevision ? drawingsSource.artwork(project.projectId, compareRevision.id) : null),
     [project.projectId, compareRevision],
   );
+
+  const drawing = useMarkupDrawing({
+    tool: mode === 'pan' || mode === 'select' ? null : mode,
+    style,
+    onShape: (shape) => markupMutations.create.mutate({ shape, visibility }),
+    onText: (at) => setTextAt(at),
+  });
+  const draftShape = drawing.draftShape;
 
   if (sheet.isPending) return <SkeletonRows label="Opening drawing…" />;
   if (sheet.isError || !revision) {
@@ -172,31 +182,11 @@ export function DrawingViewerScreen({
 
   const pickMode = (m: ViewerMode) => {
     setMode(m);
-    setDraftFrom(null);
+    drawing.cancel();
     setActiveExtension(null);
     setBinding(null);
     setMovingPin(null);
   };
-
-  const finishShape = (shape: MarkupShape) => {
-    markupMutations.create.mutate({ shape, visibility });
-    setDraftFrom(null);
-  };
-
-  const markupPointerDown = (e: CanvasPointerEvent) => {
-    if (mode === 'text') {
-      setTextAt(e.point);
-      return;
-    }
-    if (mode !== 'rect' && mode !== 'cloud' && mode !== 'arrow') return;
-    if (!draftFrom) setDraftFrom(e.point);
-    else finishShape({ kind: mode, from: draftFrom, to: e.point });
-  };
-
-  const draftShape: MarkupShape | null =
-    draftFrom && hover && (mode === 'rect' || mode === 'cloud' || mode === 'arrow')
-      ? { kind: mode, from: draftFrom, to: hover }
-      : null;
 
   const toolBinding: ViewerToolBinding | null = movingPin
     ? {
@@ -217,17 +207,7 @@ export function DrawingViewerScreen({
       ? binding
       : mode === 'pan' || mode === 'select'
         ? null
-        : {
-            onPointerDown: markupPointerDown,
-            onPointerMove: (e) => setHover(e.point),
-            onKeyDown: (e) => {
-              if (e.key === 'Escape') {
-                setDraftFrom(null);
-                return true;
-              }
-              return false;
-            },
-          };
+        : drawing.binding;
 
   /** The preview's drawn artwork, or the revision's PDF page. */
   const sheetImage = (rev: DrawingRevision, tone: 'ink' | 'old' | 'new' = 'ink') => {
@@ -278,6 +258,12 @@ export function DrawingViewerScreen({
 
   return (
     <div className="drawing-viewer">
+      <RecordRecent
+        entityType="drawing_sheet"
+        entityId={s.id}
+        projectId={project.projectId}
+        title={`${s.sheetNumber} ${s.title}`}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link className="link" href={webRoutes.drawings(org.orgSlug, project.projectId)}>
           <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" /> Drawings
@@ -297,6 +283,12 @@ export function DrawingViewerScreen({
           </div>
         </div>
         <div className="drawing-viewer__controls">
+          <BookmarkButton
+            entityType="drawing_sheet"
+            entityId={s.id}
+            projectId={project.projectId}
+            title={`${s.sheetNumber} ${s.title}`}
+          />
           <Select
             label="Revision"
             value={revision.id}
@@ -370,16 +362,12 @@ export function DrawingViewerScreen({
                 label: <Hand size={18} strokeWidth={1.5} aria-hidden="true" />,
                 ariaLabel: 'Pan',
               },
-              {
-                value: 'rect',
-                label: <Square size={18} strokeWidth={1.5} aria-hidden="true" />,
-                ariaLabel: 'Rectangle markup',
-              },
-              { value: 'cloud', label: 'Cloud' },
-              { value: 'arrow', label: 'Arrow' },
-              { value: 'text', label: 'Text' },
+              ...MARKUP_TOOLS.map((t) => ({ value: t.value as ViewerMode, label: t.label })),
             ]}
           />
+          {mode !== 'pan' && mode !== 'select' ? (
+            <MarkupStyleControls style={style} onChange={setStyle} />
+          ) : null}
           <label className="drawing-viewer__visibility">
             <span className="u-caption">New markups visible to</span>
             <select
@@ -404,7 +392,7 @@ export function DrawingViewerScreen({
                   pickMode('select');
                 } else {
                   setMode('select');
-                  setDraftFrom(null);
+                  drawing.cancel();
                   setActiveExtension(ext.id);
                 }
               }}
@@ -447,6 +435,7 @@ export function DrawingViewerScreen({
             cursor={toolBinding?.cursor}
             onPointerDown={toolBinding?.onPointerDown}
             onPointerMove={toolBinding?.onPointerMove}
+            onPointerUp={toolBinding?.onPointerUp}
             onPointerLeave={toolBinding?.onPointerLeave}
             onKeyDown={toolBinding?.onKeyDown}
             handleRef={canvasRef}
@@ -500,7 +489,11 @@ export function DrawingViewerScreen({
             <Button
               disabled={!text.trim()}
               onClick={() => {
-                if (textAt) finishShape({ kind: 'text', at: textAt, text: text.trim() });
+                if (textAt)
+                  markupMutations.create.mutate({
+                    shape: { kind: 'text', at: textAt, text: text.trim(), ...style },
+                    visibility,
+                  });
                 setTextAt(null);
                 setText('');
               }}

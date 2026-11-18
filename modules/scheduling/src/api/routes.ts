@@ -81,6 +81,18 @@ export function schedulingRoutes(
         ),
       ),
     }),
+    setScheduleBaseline: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        programme.setBaseline(s, proj(input.params), sched(input.params)),
+      ),
+    }),
+    clearScheduleBaseline: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        programme.clearBaseline(s, proj(input.params), sched(input.params)),
+      ),
+    }),
     createScheduleDependency: async (input) => ({
       status: 201,
       body: await tx(input, (s) =>

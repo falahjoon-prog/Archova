@@ -160,4 +160,44 @@ describe('contract review rules', () => {
     expect(r.summaryNotFound).not.toContain('liquidated_damages');
     expect(r.timeBars[0]).toMatchObject({ days: 5, dayType: 'business' });
   });
+  describe('obligations', () => {
+    const ob = (over: Record<string, unknown> = {}) => ({
+      party: 'other_party' as const,
+      category: 'insurance' as const,
+      action: 'Hold public liability insurance.',
+      timing: 'before starting work',
+      page: 1,
+      clause: '14.1',
+      quote: 'Retention of 10% is held.',
+      ...over,
+    });
+    const withObs = (obligations: ReturnType<typeof ob>[]) => ({ ...out([]), obligations });
+
+    it('keeps a cited obligation and drops one whose quote is not on a page', () => {
+      const r = run(withObs([ob(), ob({ quote: 'Nothing like this is printed anywhere.' })]));
+      expect(r.obligations).toHaveLength(1);
+      expect(r.obligations![0]).toMatchObject({
+        party: 'other_party',
+        timing: 'before starting work',
+      });
+      expect(r.dropped.notOnPage).toBe(1);
+    });
+
+    it('drops obligations that use a banned word and repeats of the same clause', () => {
+      const r = run(
+        withObs([
+          ob({ action: 'Keep the site safe.' }),
+          ob({ timing: null }),
+          ob({ timing: null }),
+        ]),
+      );
+      expect(r.obligations).toHaveLength(1);
+      expect(r.obligations![0]!.timing).toBeNull();
+      expect(r.dropped.bannedWords).toBe(1);
+    });
+
+    it('is empty when the model gives none', () => {
+      expect(run(out([])).obligations).toEqual([]);
+    });
+  });
 });

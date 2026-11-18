@@ -96,6 +96,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         audience: config.jwtIssuer,
         privateJwk: config.jwtPrivateJwk,
         webSignInUrl: config.webSignInUrl,
+        partnerApps: { enabled: config.partnerAppsEnabled },
       },
       files: {
         store: deps.store,

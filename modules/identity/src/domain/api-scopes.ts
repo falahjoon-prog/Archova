@@ -33,6 +33,10 @@ const ALLOWED_BY_AREA: Readonly<Record<(typeof AREAS)[number], readonly string[]
     'getKeyDates',
     'updateKeyDates',
     'listKeyDateChanges',
+    'listProjectLocations',
+    'createProjectLocation',
+    'updateProjectLocation',
+    'deleteProjectLocation',
   ],
   directory: ['listCompanies', 'createCompany', 'listProjectMembers'],
   documents: [
@@ -167,3 +171,29 @@ export function scopeAllows(granted: readonly string[], needed: string): boolean
 /** Unknown scopes, in the order given. */
 export const unknownScopes = (scopes: readonly string[]) =>
   scopes.filter((s) => !TOKEN_SCOPES.includes(s));
+
+/**
+ * What a third-party app may be granted: a named list, not the personal-token list by reference (Sam's review,
+ * 2026-11-05). Money (`financials`), estimating and webhook management are never offered to apps in v1. A token
+ * still needs the operation to be on the allow-list above, and the user's own permissions apply on top.
+ */
+const APP_AREAS = [
+  'projects',
+  'directory',
+  'documents',
+  'rfis',
+  'submittals',
+  'diary',
+  'defects',
+  'correspondence',
+  'meetings',
+] as const;
+export const APP_SCOPES: readonly string[] = APP_AREAS.filter(
+  (a) => ALLOWED_BY_AREA[a].length > 0,
+).flatMap((a) => [`${a}:read`, `${a}:write`]);
+
+export const unknownAppScopes = (scopes: readonly string[]) =>
+  scopes.filter((s) => !APP_SCOPES.includes(s));
+
+export const APP_ACCESS_PREFIX = 'pa_live_';
+export const APP_REFRESH_PREFIX = 'pr_live_';

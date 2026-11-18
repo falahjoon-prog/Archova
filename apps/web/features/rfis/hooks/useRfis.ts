@@ -8,6 +8,7 @@ import { useActor } from '@/shared/providers/useActor';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { createRfisApi } from '../data/api';
 import { rfisSource as previewSource, type RfiFilters, type RfisSource } from '../data/source';
+import type { MarkupShape } from '@archova/markup';
 import type { NovaRfiSource, Rfi, RfiInput } from '../lib/types';
 
 /** The API once the rfis endpoints are reachable; the in-browser preview store in preview mode and tests. */
@@ -81,6 +82,54 @@ export function useRfiMutations(projectId: string) {
       mutationFn: (v: { id: string; reason: string }) =>
         rfisSource.void(projectId, v.id, v.reason, actor),
       onSuccess: settle,
+    }),
+  };
+}
+
+/**
+ * The images on an RFI, each with a short-lived link, and everyone's marks on them (rfis, photo annotation). The
+ * links are fetched with the RFI, so a long-open tab refetches when it regains focus.
+ */
+export function useRfiPhotos(projectId: string, rfi: Rfi) {
+  const rfisSource = useRfisSource();
+  const { orgId } = useCurrentOrg();
+  const files = [...rfi.fileIds, ...rfi.responses.flatMap((r) => r.fileIds)].join(',');
+  return useQuery({
+    queryKey: queryKeys.toolItem(orgId, projectId, 'rfis', `${rfi.id}/photos/${files}`),
+    queryFn: () => rfisSource.photos(projectId, rfi),
+    staleTime: 60_000,
+  });
+}
+
+export function useRfiAnnotations(projectId: string, rfiId: string) {
+  const rfisSource = useRfisSource();
+  const { orgId } = useCurrentOrg();
+  return useQuery({
+    queryKey: queryKeys.toolItem(orgId, projectId, 'rfis', `${rfiId}/annotations`),
+    queryFn: () => rfisSource.annotations(projectId, rfiId),
+  });
+}
+
+export function usePhotoMutations(projectId: string, rfiId: string) {
+  const rfisSource = useRfisSource();
+  const { orgId } = useCurrentOrg();
+  const actor = useActor();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'rfis') });
+  return {
+    add: useMutation({
+      mutationFn: (photo: File) => rfisSource.addPhoto(projectId, rfiId, photo),
+      onSuccess: (rfi) => {
+        qc.setQueryData(queryKeys.toolItem(orgId, projectId, 'rfis', rfi.id), rfi);
+        return refresh();
+      },
+    }),
+    /** Replaces the caller's marks on one photo; an empty list removes them. */
+    saveMarks: useMutation({
+      mutationFn: (v: { fileId: string; shapes: readonly MarkupShape[] }) =>
+        rfisSource.saveAnnotation(projectId, rfiId, v.fileId, v.shapes, actor),
+      onSuccess: refresh,
     }),
   };
 }

@@ -31,6 +31,7 @@ describe('defect commands', () => {
       ...base,
       defectId: 'd1',
       mutationId: 'm1',
+      issueMutationId: 'm1_issue',
       assigneeCompanyId: 'co_tiler',
     });
     expect(result).toMatchObject({ ok: true, value: { defect: { status: 'open', number: null } } });
@@ -44,6 +45,14 @@ describe('defect commands', () => {
           status: 'open',
           locationId: 'loc_302_ensuite',
         },
+      },
+      // The server starts every defect as a draft, so an assigned one is issued right after it is created.
+      {
+        mutationId: 'm1_issue',
+        command: 'defects.issue',
+        entityId: 'd1',
+        baseVersion: 1,
+        dependsOn: ['m1'],
       },
     ]);
     expect(await listDefects(s, 'prj_a')).toMatchObject([{ id: 'd1', pending: true }]);
@@ -73,6 +82,12 @@ describe('defect commands', () => {
         mutationId: 'm4',
       }),
     ).toMatchObject({ ok: true });
+  });
+
+  it('leaves an unassigned defect as a draft with no issue command', async () => {
+    const s = await store();
+    await createDefect(s, { ...base, defectId: 'd9', mutationId: 'm9' });
+    expect((await s.listOutbox()).map((e) => e.command)).toEqual(['defects.create']);
   });
 
   it('marks ready for inspection with its after photo, sent after the photo', async () => {

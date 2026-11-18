@@ -254,6 +254,7 @@ export async function uploadBytes(
   bytes: Uint8Array,
   filename = 'document.pdf',
   mime = 'application/pdf',
+  module = 'documents',
 ) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const created = await browser.post(`/v1/orgs/${orgId}/uploads`, {
@@ -261,7 +262,7 @@ export async function uploadBytes(
     mime,
     sizeBytes: bytes.length,
     sha256,
-    module: 'documents',
+    module,
     projectId,
   });
   if (created.statusCode !== 201)
@@ -287,12 +288,14 @@ export async function addMember(
   template: string,
   companyName = 'Sparky Electrical',
   trades: string[] = [],
+  companyEmail?: string,
 ) {
   const company = (
     await owner.post(`/v1/orgs/${orgId}/companies`, {
       name: companyName,
       type: 'subcontractor',
       ...(trades.length ? { trades } : {}),
+      ...(companyEmail ? { email: companyEmail } : {}),
     })
   ).json() as { id: string };
   const templates = (await owner.get(`/v1/orgs/${orgId}/permission-templates`)).json()

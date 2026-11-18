@@ -25,6 +25,8 @@ import {
   unsupportedBlockKinds,
   unsupportedBlocksMessage,
 } from '../flow';
+import { animationKey } from '../animation';
+import { AnimationBlockView } from './AnimationBlockView';
 import { FileBlockView } from './FileBlockView';
 import { VideoBlockView } from './VideoBlockView';
 import { SignaturePad } from './SignaturePad';
@@ -137,6 +139,14 @@ export function InductionScreen({ projectId }: { projectId: string }) {
                   </View>
                 ))}
               </View>
+            ) : b.type === 'animation' ? (
+              <AnimationBlockView
+                key={animationKey(b)}
+                title={b.title}
+                scenes={b.scenes}
+                viewed={viewed.has(animationKey(b))}
+                onViewed={() => setViewed((v) => new Set(v).add(animationKey(b)))}
+              />
             ) : b.type === 'video' ? (
               <VideoBlockView
                 key={b.fileId}

@@ -6,6 +6,7 @@ import type {
   InductionSectionKey,
   Induction,
 } from './types';
+import { animationProblems } from './animation';
 import { SECTION_LABELS } from './types';
 
 export const emptyContent = (): InductionContent => ({ sections: [], quiz: [], passMark: 80 });
@@ -25,6 +26,8 @@ export function blockSummary(b: InductionBlock): string {
       return 'Text';
     case 'slides':
       return `${b.slides.length} ${b.slides.length === 1 ? 'slide' : 'slides'}`;
+    case 'animation':
+      return `Animation: ${b.scenes.length} ${b.scenes.length === 1 ? 'scene' : 'scenes'}`;
     case 'swms':
       return b.title ? `SWMS: ${b.title}` : 'SWMS';
     default:
@@ -59,6 +62,7 @@ export function contentProblems(c: InductionContent): string[] {
     s.blocks.forEach((b) => {
       if (b.type === 'text' && !b.body.trim())
         out.push(`${s.title || `Section ${i + 1}`} has an empty text block.`);
+      if (b.type === 'animation') out.push(...animationProblems(b, s.title || `Section ${i + 1}`));
     });
   });
   c.quiz.forEach((q, i) => {

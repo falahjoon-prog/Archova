@@ -5,11 +5,13 @@ import { useState, type FormEvent } from 'react';
 import {
   Alert,
   Button,
+  Card,
   DescriptionList,
   Dialog,
   ItemHeader,
   SkeletonRows,
   StatusPill,
+  Tabs,
   TextField,
   Textarea,
 } from '@archova/ui';
@@ -17,10 +19,12 @@ import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useProjectPermissions } from '@/features/projects';
+import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { RelatedItemsPanel } from '@/features/links';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { CorrespondenceStatusPill, TimeBar } from '../components/CorrespondenceChips';
 import { useCorrespondence, useCorrespondenceMutations } from '../hooks/useCorrespondence';
@@ -50,6 +54,8 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
   const perms = useProjectPermissions(org.orgId, project.projectId);
   const m = useCorrespondenceMutations(project.projectId);
   const [voiding, setVoiding] = useState(false);
+  const [params, setParams] = useUrlState(['tab'] as const);
+  const tab = params.tab === 'related' ? 'related' : 'general';
   const i = d.item;
   const isAdmin =
     perms.data?.orgRole === 'admin' ||
@@ -115,58 +121,94 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
         </Alert>
       ) : null}
 
-      {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
-
-      <section className="stack" aria-labelledby="cor-details">
-        <h2 id="cor-details" className="u-h3">
-          Details
-        </h2>
-        <DescriptionList
-          items={[
-            { label: 'Type', value: i.typeName },
-            { label: 'From', value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—' },
-            {
-              label: 'To',
-              value: i.toCompanyIds.length
-                ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
-                : '—',
-            },
-            {
-              label: 'Sent',
-              value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
-            },
-            {
-              label: 'Event date',
-              value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
-            },
-            {
-              label: 'Response due',
-              value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
-            },
-          ]}
-        />
-      </section>
-
-      <section className="stack" aria-labelledby="cor-replies">
-        <h2 id="cor-replies" className="u-h3">
-          Responses
-        </h2>
-        {d.responses.length === 0 ? (
-          <p className="u-muted u-m-0">No responses yet.</p>
+      <Tabs
+        label="Correspondence sections"
+        value={tab}
+        onValueChange={(t) => setParams({ tab: t === 'general' ? null : t })}
+        tabs={[
+          { id: 'general', label: 'General' },
+          { id: 'related', label: 'Related items', count: i.related.length },
+        ]}
+      >
+        {tab === 'general' ? (
+          <div className="detail-grid">
+            <div className="stack-lg">
+              {i.status === 'draft' ? <DraftEditor key={i.version} d={d} /> : <Record d={d} />}
+              <Card title="Responses">
+                <div className="stack">
+                  {d.responses.length === 0 ? (
+                    <p className="u-muted u-m-0">No responses yet.</p>
+                  ) : (
+                    d.responses.map((r) => (
+                      <article key={r.id} className="stack" aria-label="Response">
+                        <p className="u-caption u-m-0">
+                          {dir.personName(r.authorId)}
+                          {r.authorCompanyId
+                            ? ` · ${dir.companyName(r.authorCompanyId)}`
+                            : ''} · {formatInstant(r.sentAt, project.timezone)}
+                        </p>
+                        <p className="u-m-0 u-prewrap">{r.body}</p>
+                      </article>
+                    ))
+                  )}
+                  {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
+                </div>
+              </Card>
+            </div>
+            <Card title="General information">
+              <DescriptionList
+                items={[
+                  { label: 'Number', value: <span className="u-mono">{i.numberLabel}</span> },
+                  { label: 'Status', value: <CorrespondenceStatusPill status={i.status} /> },
+                  { label: 'Subject', value: i.subject || '—' },
+                  { label: 'Type', value: i.typeName },
+                  {
+                    label: 'Created',
+                    value: `${dir.personName(i.createdBy)}, ${formatInstant(i.createdAt, project.timezone)}`,
+                  },
+                  {
+                    label: 'Received from',
+                    value: i.fromCompanyId ? dir.companyName(i.fromCompanyId) : '—',
+                  },
+                  {
+                    label: 'Distribution',
+                    value: i.toCompanyIds.length
+                      ? i.toCompanyIds.map((c) => dir.companyName(c)).join(', ')
+                      : '—',
+                  },
+                  {
+                    label: 'Issued on',
+                    value: i.sentAt ? formatInstant(i.sentAt, project.timezone) : '—',
+                  },
+                  {
+                    label: 'Event date',
+                    value: i.eventDate ? formatLocalDate(i.eventDate) : '—',
+                  },
+                  {
+                    label: 'Response due',
+                    value: i.responseRequired && i.dueDate ? formatLocalDate(i.dueDate) : '—',
+                  },
+                ]}
+              />
+            </Card>
+          </div>
         ) : (
-          d.responses.map((r) => (
-            <article key={r.id} className="stack" aria-label="Response">
-              <p className="u-caption u-m-0">
-                {dir.personName(r.authorId)}
-                {r.authorCompanyId ? ` · ${dir.companyName(r.authorCompanyId)}` : ''} ·{' '}
-                {formatInstant(r.sentAt, project.timezone)}
-              </p>
-              <p className="u-m-0 u-prewrap">{r.body}</p>
-            </article>
-          ))
+          <div className="stack-lg">
+            <RelatedItemsPanel type="correspondence" id={i.id} />
+            {i.related.length > 0 ? (
+              <Card title="Referenced in this item">
+                <ul className="stack u-m-0">
+                  {i.related.map((r) => (
+                    <li key={`${r.kind}-${r.id}`}>
+                      <span className="u-caption">{r.kind}</span> · {r.label || r.id}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+          </div>
         )}
-        {i.status === 'sent' || i.status === 'responded' ? <ReplyForm id={i.id} /> : null}
-      </section>
+      </Tabs>
 
       <VoidDialog
         open={voiding}
@@ -186,12 +228,9 @@ function Detail({ d }: { d: CorrespondenceDetail }) {
 
 function Record({ d }: { d: CorrespondenceDetail }) {
   return (
-    <section className="stack" aria-labelledby="cor-body">
-      <h2 id="cor-body" className="u-h3">
-        {d.item.subject}
-      </h2>
+    <Card title={d.item.subject}>
       <p className="u-m-0 u-prewrap">{d.item.body}</p>
-    </section>
+    </Card>
   );
 }
 

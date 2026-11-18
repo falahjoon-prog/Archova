@@ -5,7 +5,9 @@ import {
   createEvidenceSigner,
   parseTimestampResponse,
   requestTimestamp,
+  emailContentSha256,
   sealMessage,
+  sendProofMessage,
   sha256Bytes,
 } from '../../src/domain/seal-proof';
 
@@ -139,5 +141,58 @@ describe('RFC 3161 timestamp', () => {
     await expect(
       requestTimestamp('https://tsa.example/ts', msg, post, ok, new Date('2026-11-05T08:30:00Z')),
     ).rejects.toThrow(/too far from now/);
+  });
+});
+
+describe('send proof', () => {
+  const base = {
+    evidenceId: 'e1',
+    deliveryId: 'd1',
+    recipient: 'Pay@Owner.example',
+    addressBasis: 'cl 12.3',
+    sentAt: '2026-11-05T09:00:00.000Z',
+    providerMessageId: 'm1',
+    contentSha256: 'c'.repeat(64),
+    rawSha256: 'd'.repeat(64),
+    snapshotSha256: 'a'.repeat(64),
+    pdfSha256: 'b'.repeat(64),
+  };
+  it('binds recipient, address basis, time and every hash, and says dispatch only', () => {
+    const m = sendProofMessage(base);
+    expect(m).toContain('to:pay@owner.example');
+    expect(m).toContain('address-basis:cl 12.3');
+    expect(m).toContain('sent:2026-11-05T09:00:00.000Z');
+    expect(m).toContain(`content-sha256:${'c'.repeat(64)}`);
+    expect(m).toContain(`raw-sha256:${'d'.repeat(64)}`);
+    expect(sendProofMessage({ ...base, rawSha256: 'e'.repeat(64) })).not.toBe(m);
+    expect(m).not.toMatch(/served|delivered|verified/i);
+    expect(sendProofMessage({ ...base, sentAt: '2026-11-05T09:00:01.000Z' })).not.toBe(m);
+  });
+  it('cannot be forged by line breaks in the address basis', () => {
+    const m = sendProofMessage({ ...base, addressBasis: 'x\nsent:2020-01-01T00:00:00.000Z' });
+    expect(m.split('\n').filter((l) => l.startsWith('sent:'))).toHaveLength(1);
+  });
+  it('hashes content so any change to a body or attachment changes it', () => {
+    const msg = {
+      subject: 's',
+      text: 't',
+      html: 'h',
+      attachments: [
+        { filename: 'a.pdf', contentType: 'application/pdf', content: Buffer.from('x') },
+      ],
+    };
+    const h = emailContentSha256(msg);
+    expect(h).toMatch(/^[0-9a-f]{64}$/);
+    expect(emailContentSha256({ ...msg, text: 't2' })).not.toBe(h);
+    expect(
+      emailContentSha256({
+        ...msg,
+        attachments: [{ ...msg.attachments[0]!, content: Buffer.from('y') }],
+      }),
+    ).not.toBe(h);
+    // Moving a byte between fields changes the hash (length-prefixed).
+    expect(emailContentSha256({ ...msg, subject: 'st', text: '' })).not.toBe(
+      emailContentSha256({ ...msg, subject: 's', text: 't' }),
+    );
   });
 });

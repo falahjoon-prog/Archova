@@ -1,5 +1,7 @@
 import {
   findUntimestamped,
+  findUntimestampedSends,
+  recordSendTimestamp,
   recordTimestamp,
   requestTimestamp,
   type TimestampVerifier,
@@ -49,8 +51,26 @@ export function evidenceTimestamps(
     async run(database, orgId, now) {
       const ctx = jobContext(orgId, `financials.evidence-timestamps:${orgId}`);
       const todo = await database.withTenantTx(ctx, (s) => findUntimestamped(s));
+      const sends = await database.withTenantTx(ctx, (s) => findUntimestampedSends(s));
       let stamped = 0;
       let failed = 0;
+      // Send proofs are stamped the same way as seals; the authority only ever sees a hash.
+      for (const r of sends) {
+        try {
+          const t = await requestTimestamp(authorityUrl, r.message, post, verify, now);
+          await database.withTenantTx(ctx, (s) =>
+            recordSendTimestamp(s, r.deliveryId, r.projectId, host, t, caChainPem),
+          );
+          stamped += 1;
+        } catch (e) {
+          failed += 1;
+          log('send proof timestamp failed', {
+            host,
+            errorClass: e instanceof Error ? e.constructor.name : typeof e,
+          });
+          return { stamped, failed };
+        }
+      }
       for (const r of todo) {
         try {
           const t = await requestTimestamp(authorityUrl, r.message, post, verify, now);

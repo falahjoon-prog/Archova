@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import {
+  Card,
   Alert,
   Button,
   Checkbox,
@@ -370,65 +371,64 @@ function Quotes({
   if (loading) return <SkeletonRows label="Loading quotes…" />;
   return (
     <div className="stack-lg">
-      <section className="stack ac-card" aria-labelledby="upload-quote">
-        <h2 id="upload-quote" className="panel-heading">
-          Upload a quote
-        </h2>
-        <p className="u-m-0 u-caption">
-          {live ? 'PDF.' : 'PDF or Excel.'} Nova reads the lines, exclusions and qualifications; you
-          check them before they count. A new quote from the same company replaces its earlier one,
-          and both are kept.
-        </p>
-        {live && tradeFirst.length === 0 ? (
-          <Alert tone="info">
-            Invite a subcontractor on the Scope and invites tab before uploading their quote.
-          </Alert>
-        ) : null}
-        <div className="form-row">
-          <Select
-            label="Subcontractor"
-            value={companyId}
-            placeholder="Choose a company"
-            options={tradeFirst.map((c) => ({
-              value: c.id,
-              label: `${c.name} · ${c.trades.join(', ')}`,
-            }))}
-            onChange={(e) => setCompanyId(e.target.value)}
-          />
-          <div className="stack">
-            <label className="ac-field__label" htmlFor="quote-file">
-              Quote file
-            </label>
-            <input
-              key={fileKey}
-              id="quote-file"
-              className="file-input"
-              type="file"
-              accept={live ? '.pdf' : '.pdf,.xlsx,.xls,.csv'}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      <Card title="Upload a quote">
+        <div className="stack">
+          <p className="u-m-0 u-caption">
+            {live ? 'PDF.' : 'PDF or Excel.'} Nova reads the lines, exclusions and qualifications;
+            you check them before they count. A new quote from the same company replaces its earlier
+            one, and both are kept.
+          </p>
+          {live && tradeFirst.length === 0 ? (
+            <Alert tone="info">
+              Invite a subcontractor on the Scope and invites tab before uploading their quote.
+            </Alert>
+          ) : null}
+          <div className="form-row">
+            <Select
+              label="Subcontractor"
+              value={companyId}
+              placeholder="Choose a company"
+              options={tradeFirst.map((c) => ({
+                value: c.id,
+                label: `${c.name} · ${c.trades.join(', ')}`,
+              }))}
+              onChange={(e) => setCompanyId(e.target.value)}
             />
+            <div className="stack">
+              <label className="ac-field__label" htmlFor="quote-file">
+                Quote file
+              </label>
+              <input
+                key={fileKey}
+                id="quote-file"
+                className="file-input"
+                type="file"
+                accept={live ? '.pdf' : '.pdf,.xlsx,.xls,.csv'}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
           </div>
-        </div>
-        <div>
-          <Button
-            disabled={!companyId || !file || m.upload.isPending || pkg.status !== 'out_to_tender'}
-            onClick={() =>
-              m.upload.mutate(
-                { companyId, file: file! },
-                {
-                  onSuccess: () => {
-                    setFile(null);
-                    setFileKey((k) => k + 1);
+          <div>
+            <Button
+              disabled={!companyId || !file || m.upload.isPending || pkg.status !== 'out_to_tender'}
+              onClick={() =>
+                m.upload.mutate(
+                  { companyId, file: file! },
+                  {
+                    onSuccess: () => {
+                      setFile(null);
+                      setFileKey((k) => k + 1);
+                    },
                   },
-                },
-              )
-            }
-          >
-            Upload quote
-          </Button>
+                )
+              }
+            >
+              Upload quote
+            </Button>
+          </div>
+          <ErrorAlert error={m.upload.error} title="We couldn't upload the quote" />
         </div>
-        <ErrorAlert error={m.upload.error} title="We couldn't upload the quote" />
-      </section>
+      </Card>
 
       {current.length === 0 ? (
         <EmptyState
@@ -497,6 +497,7 @@ function Quotes({
 
 function Scope({ pkg }: { pkg: TenderPackage }) {
   const { companies, companyName, onProject } = useProjectDirectory();
+  const project = useCurrentProject();
   const m = usePackageMutations(pkg.id);
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
@@ -516,221 +517,252 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
 
   return (
     <div className="stack-lg">
-      <section className="stack" aria-labelledby="scope-lines">
-        <h2 id="scope-lines" className="panel-heading">
-          Scope lines
-        </h2>
-        {pkg.scope.length ? (
-          <div className="table-wrap">
-            <table className="table">
-              <caption className="u-visually-hidden">Scope lines</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Description</th>
-                  <th scope="col" className="ac-table__num">
-                    Quantity
-                  </th>
-                  <th scope="col">From</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pkg.scope.map((s) => (
-                  <tr key={s.key}>
-                    <th scope="row">{s.description}</th>
-                    <td className="ac-table__num">
-                      {s.quantity ?? '—'} {s.unit}
-                    </td>
-                    <td>
-                      {s.source === 'takeoff' ? 'Takeoff' : s.source === 'csv' ? 'CSV' : 'Typed'}
-                    </td>
+      <Card title="Scope lines">
+        <div className="stack">
+          {pkg.scope.length ? (
+            <div className="table-wrap">
+              <table className="table">
+                <caption className="u-visually-hidden">Scope lines</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Description</th>
+                    <th scope="col" className="ac-table__num">
+                      Quantity
+                    </th>
+                    <th scope="col">From</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="u-muted u-m-0">
-            No scope yet. Type lines, paste a CSV, or send quantities from a drawing&apos;s Measure
-            panel.
-          </p>
-        )}
-        {!locked ? (
-          <>
-            <div className="form-row diary-line">
-              <TextField
-                label="Description"
-                value={line.description}
-                onChange={(e) => setLine({ ...line, description: e.target.value })}
-              />
-              <TextField
-                label="Quantity"
-                type="number"
-                min={0}
-                value={line.quantity}
-                onChange={(e) => setLine({ ...line, quantity: e.target.value })}
-              />
-              <TextField
-                label="Unit"
-                value={line.unit}
-                onChange={(e) => setLine({ ...line, unit: e.target.value })}
+                </thead>
+                <tbody>
+                  {pkg.scope.map((s) => (
+                    <tr key={s.key}>
+                      <th scope="row">{s.description}</th>
+                      <td className="ac-table__num">
+                        {s.quantity ?? '—'} {s.unit}
+                      </td>
+                      <td>
+                        {s.source === 'takeoff' ? 'Takeoff' : s.source === 'csv' ? 'CSV' : 'Typed'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="u-muted u-m-0">
+              No scope yet. Type lines, paste a CSV, or send quantities from a drawing&apos;s
+              Measure panel.
+            </p>
+          )}
+          {!locked ? (
+            <>
+              <div className="form-row diary-line">
+                <TextField
+                  label="Description"
+                  value={line.description}
+                  onChange={(e) => setLine({ ...line, description: e.target.value })}
+                />
+                <TextField
+                  label="Quantity"
+                  type="number"
+                  min={0}
+                  value={line.quantity}
+                  onChange={(e) => setLine({ ...line, quantity: e.target.value })}
+                />
+                <TextField
+                  label="Unit"
+                  value={line.unit}
+                  onChange={(e) => setLine({ ...line, unit: e.target.value })}
+                />
+                <div>
+                  <Button
+                    variant="secondary"
+                    disabled={!line.description.trim()}
+                    onClick={() =>
+                      m.addScope.mutate(
+                        [
+                          {
+                            key: mockId('scp'),
+                            description: line.description.trim(),
+                            quantity: line.quantity === '' ? null : Number(line.quantity),
+                            unit: line.unit || 'item',
+                            source: 'typed',
+                          },
+                        ],
+                        {
+                          onSuccess: () =>
+                            setLine({ description: '', quantity: '', unit: line.unit }),
+                        },
+                      )
+                    }
+                  >
+                    Add line
+                  </Button>
+                </div>
+              </div>
+              <Textarea
+                label="Paste CSV"
+                hint="One line per row: description, quantity, unit."
+                rows={3}
+                value={csv}
+                onChange={(e) => setCsv(e.target.value)}
               />
               <div>
                 <Button
                   variant="secondary"
-                  disabled={!line.description.trim()}
+                  disabled={!csv.trim()}
                   onClick={() =>
                     m.addScope.mutate(
-                      [
-                        {
-                          key: mockId('scp'),
-                          description: line.description.trim(),
-                          quantity: line.quantity === '' ? null : Number(line.quantity),
-                          unit: line.unit || 'item',
-                          source: 'typed',
-                        },
-                      ],
-                      {
-                        onSuccess: () =>
-                          setLine({ description: '', quantity: '', unit: line.unit }),
-                      },
+                      parseScopeCsv(csv, () => mockId('scp')),
+                      { onSuccess: () => setCsv('') },
                     )
                   }
                 >
-                  Add line
+                  Import lines
                 </Button>
               </div>
-            </div>
-            <Textarea
-              label="Paste CSV"
-              hint="One line per row: description, quantity, unit."
-              rows={3}
-              value={csv}
-              onChange={(e) => setCsv(e.target.value)}
-            />
-            <div>
-              <Button
-                variant="secondary"
-                disabled={!csv.trim()}
-                onClick={() =>
-                  m.addScope.mutate(
-                    parseScopeCsv(csv, () => mockId('scp')),
-                    { onSuccess: () => setCsv('') },
-                  )
-                }
-              >
-                Import lines
-              </Button>
-            </div>
-          </>
-        ) : null}
-        <ErrorAlert error={m.addScope.error} title="We couldn't add the lines" />
-      </section>
+            </>
+          ) : null}
+          <ErrorAlert error={m.addScope.error} title="We couldn't add the lines" />
+        </div>
+      </Card>
 
-      <section className="stack" aria-labelledby="invites">
-        <h2 id="invites" className="panel-heading">
-          Invited subcontractors
-        </h2>
-        {pkg.invites.length ? (
-          <ul className="plain-list">
-            {pkg.invites.map((i) => (
-              <li key={i.companyId} className="row-actions">
-                <span>{companyName(i.companyId)}</span>
-                <StatusPill
-                  tone={
-                    i.status === 'declined'
-                      ? 'neutral'
-                      : i.status === 'submitted'
-                        ? 'success'
-                        : 'info'
-                  }
-                >
-                  {INVITE_STATUS_LABELS[i.status]}
-                </StatusPill>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="u-muted u-m-0">No one invited yet.</p>
-        )}
-        {!locked && candidates.length === 0 && pkg.invites.length === 0 ? (
-          <p className="u-caption u-m-0">
-            No subcontractors are on this project yet. Add them to the project first, then invite
-            them here.
-          </p>
-        ) : null}
-        {!locked && candidates.length ? (
-          <fieldset className="fieldset stack">
-            <legend>Invite (they get one link by email and can quote without an account)</legend>
-            {bidderLists.data?.length ? (
-              <Select
-                label="Tick a bidder list"
-                value=""
-                placeholder="Choose a list"
-                hint="Ticks the list's subcontractors who are on this project and not yet invited."
-                options={listsFor(bidderLists.data, pkg.trade).map((l) => ({
-                  value: l.id,
-                  label: l.trade ? `${l.name} · ${l.trade}` : l.name,
-                }))}
-                onChange={(e) => {
-                  const list = bidderLists.data?.find((l) => l.id === e.target.value);
-                  if (list)
-                    setInvite([
-                      ...new Set([
-                        ...invite,
-                        ...listCandidates(
-                          list,
-                          candidates.map((c) => c.id),
-                        ),
-                      ]),
-                    ]);
-                }}
-              />
-            ) : null}
-            <div className="check-grid">
-              {candidates.map((c) => (
-                <Checkbox
-                  key={c.id}
-                  label={`${c.name} · ${c.trades.join(', ')}`}
-                  checked={invite.includes(c.id)}
-                  onChange={(e) =>
-                    setInvite(
-                      e.target.checked ? [...invite, c.id] : invite.filter((id) => id !== c.id),
+      <Card title="Invited subcontractors">
+        <div className="stack">
+          {pkg.invites.length ? (
+            <ul className="plain-list">
+              {pkg.invites.map((i) => (
+                <li key={i.companyId} className="row-actions">
+                  <span>
+                    {companyName(i.companyId)}
+                    {pkg.status === 'draft' ? (
+                      <span className="u-caption u-block">
+                        Gets a link by email when you send it.
+                      </span>
+                    ) : i.deliveredAt ? (
+                      <span className="u-caption u-block">
+                        Link emailed {formatInstant(i.deliveredAt, project.timezone)}
+                        {i.lastRemindedAt
+                          ? ` · reminded ${formatInstant(i.lastRemindedAt, project.timezone)}`
+                          : ''}
+                      </span>
+                    ) : (
+                      <span className="u-caption u-block">
+                        Not emailed yet. Check the company has an email address, then resend.
+                      </span>
+                    )}
+                  </span>
+                  {pkg.status === 'out_to_tender' &&
+                  ['invited', 'viewed', 'intends_to_quote'].includes(i.status) ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={m.resend.isPending && m.resend.variables === i.companyId}
+                      aria-label={`Resend link to ${companyName(i.companyId)}`}
+                      onClick={() => m.resend.mutate(i.companyId)}
+                    >
+                      Resend link
+                    </Button>
+                  ) : null}
+                  <StatusPill
+                    tone={
+                      i.status === 'declined'
+                        ? 'neutral'
+                        : i.status === 'submitted'
+                          ? 'success'
+                          : 'info'
+                    }
+                  >
+                    {INVITE_STATUS_LABELS[i.status]}
+                  </StatusPill>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="u-muted u-m-0">No one invited yet.</p>
+          )}
+          {!locked && candidates.length === 0 && pkg.invites.length === 0 ? (
+            <p className="u-caption u-m-0">
+              No subcontractors are on this project yet. Add them to the project first, then invite
+              them here.
+            </p>
+          ) : null}
+          {!locked && candidates.length ? (
+            <fieldset className="fieldset stack">
+              <legend>
+                Invite (each gets a link by email to see the scope and say if they will quote)
+              </legend>
+              {bidderLists.data?.length ? (
+                <Select
+                  label="Tick a bidder list"
+                  value=""
+                  placeholder="Choose a list"
+                  hint="Ticks the list's subcontractors who are on this project and not yet invited."
+                  options={listsFor(bidderLists.data, pkg.trade).map((l) => ({
+                    value: l.id,
+                    label: l.trade ? `${l.name} · ${l.trade}` : l.name,
+                  }))}
+                  onChange={(e) => {
+                    const list = bidderLists.data?.find((l) => l.id === e.target.value);
+                    if (list)
+                      setInvite([
+                        ...new Set([
+                          ...invite,
+                          ...listCandidates(
+                            list,
+                            candidates.map((c) => c.id),
+                          ),
+                        ]),
+                      ]);
+                  }}
+                />
+              ) : null}
+              <div className="check-grid">
+                {candidates.map((c) => (
+                  <Checkbox
+                    key={c.id}
+                    label={`${c.name} · ${c.trades.join(', ')}`}
+                    checked={invite.includes(c.id)}
+                    onChange={(e) =>
+                      setInvite(
+                        e.target.checked ? [...invite, c.id] : invite.filter((id) => id !== c.id),
+                      )
+                    }
+                  />
+                ))}
+              </div>
+              {notQualified ? (
+                <TextField
+                  label="Override reason (admins only)"
+                  value={overrideReason}
+                  maxLength={500}
+                  hint="These companies aren't prequalified. To invite them anyway, an admin can record why."
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                />
+              ) : null}
+              <div className="u-m-0">
+                <Button
+                  disabled={!invite.length || m.invite.isPending}
+                  onClick={() =>
+                    m.invite.mutate(
+                      { companyIds: invite, overrideReason: overrideReason.trim() || undefined },
+                      {
+                        onSuccess: () => {
+                          setInvite([]);
+                          setOverrideReason('');
+                        },
+                      },
                     )
                   }
-                />
-              ))}
-            </div>
-            {notQualified ? (
-              <TextField
-                label="Override reason (admins only)"
-                value={overrideReason}
-                maxLength={500}
-                hint="These companies aren't prequalified. To invite them anyway, an admin can record why."
-                onChange={(e) => setOverrideReason(e.target.value)}
-              />
-            ) : null}
-            <div className="u-m-0">
-              <Button
-                disabled={!invite.length || m.invite.isPending}
-                onClick={() =>
-                  m.invite.mutate(
-                    { companyIds: invite, overrideReason: overrideReason.trim() || undefined },
-                    {
-                      onSuccess: () => {
-                        setInvite([]);
-                        setOverrideReason('');
-                      },
-                    },
-                  )
-                }
-              >
-                Send {invite.length || ''} {invite.length === 1 ? 'invite' : 'invites'}
-              </Button>
-            </div>
-          </fieldset>
-        ) : null}
-        <ErrorAlert error={m.invite.error} title="We couldn't send the invites" />
-      </section>
+                >
+                  Send {invite.length || ''} {invite.length === 1 ? 'invite' : 'invites'}
+                </Button>
+              </div>
+            </fieldset>
+          ) : null}
+          <ErrorAlert error={m.invite.error} title="We couldn't send the invites" />
+          <ErrorAlert error={m.resend.error} title="We couldn't resend that link" />
+        </div>
+      </Card>
     </div>
   );
 }

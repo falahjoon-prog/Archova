@@ -5,6 +5,7 @@ export {
   useAskNova,
   useAssistantPanelState,
   useAssistantScope,
+  useRegisterAssistantAction,
   usePublishAssistantScope,
   type AssistantScope,
 } from './components/AssistantScope';

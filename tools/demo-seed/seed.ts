@@ -4,10 +4,13 @@
 //
 // Env: SEED_APP_ORIGIN (e.g. https://demo.archova.com.au), SEED_PASSWORD (the demo login's password),
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
-import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
+import { COMPANIES, type CompanyKey, DOCS, ORG, PROJECTS } from './data';
+import { seedExtra } from './extra';
+import { enableAllFlags } from './flags';
 import { makePdf } from './pdf';
+import { Session } from './session';
 
 const need = (k: string) => {
   const v = process.env[k];
@@ -20,71 +23,7 @@ const EMAIL = process.env.SEED_EMAIL ?? 'demo@archova.com.au';
 const PASSWORD = need('SEED_PASSWORD');
 const NAME = process.env.SEED_NAME ?? 'Demo Builder';
 
-class Session {
-  private cookies = new Map<string, string>();
-  private csrf: string | null = null;
-  /** ETag of the last response, for If-Match on the next update. */
-  etag: string | null = null;
-
-  async call<T = Record<string, unknown>>(
-    method: string,
-    path: string,
-    body?: unknown,
-    extra: Record<string, string> = {},
-  ): Promise<{ status: number; json: T }> {
-    const headers: Record<string, string> = { accept: 'application/json', ...extra };
-    if (body !== undefined) headers['content-type'] = 'application/json';
-    if (method !== 'GET') {
-      headers.origin = ORIGIN;
-      if (this.csrf) headers['x-csrf-token'] = this.csrf;
-    }
-    if (method === 'POST' && !headers['idempotency-key']) headers['idempotency-key'] = randomUUID();
-    let res: Response;
-    // Rate limits (Nova today, the WAF later) answer 429 with Retry-After; wait and send the same request again,
-    // with the same Idempotency-Key.
-    for (let attempt = 0; ; attempt++) {
-      if (this.cookies.size)
-        headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
-      res = await fetch(`${ORIGIN}${path}`, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      if (res.status !== 429 || attempt >= 4) break;
-      const wait = Math.min(Number(res.headers.get('retry-after')) || 5, 60);
-      console.log(`${method} ${path} rate limited; retrying in ${wait}s`);
-      await res.text();
-      await new Promise((r) => setTimeout(r, wait * 1000));
-    }
-    for (const c of res.headers.getSetCookie()) {
-      const [pair] = c.split(';');
-      const i = pair!.indexOf('=');
-      const name = pair!.slice(0, i).trim();
-      const value = pair!.slice(i + 1).trim();
-      if (value === '' || /max-age=0/i.test(c)) this.cookies.delete(name);
-      else this.cookies.set(name, value);
-    }
-    this.etag = res.headers.get('etag');
-    const text = await res.text();
-    const json = (text ? JSON.parse(text) : {}) as T & { csrfToken?: string };
-    if (json && typeof json === 'object' && json.csrfToken) this.csrf = json.csrfToken;
-    return { status: res.status, json };
-  }
-
-  async ok<T = Record<string, unknown>>(
-    method: string,
-    path: string,
-    body?: unknown,
-    extra?: Record<string, string>,
-  ): Promise<T> {
-    const r = await this.call<T>(method, path, body, extra);
-    if (r.status >= 300)
-      throw new Error(`${method} ${path} -> ${r.status} ${JSON.stringify(r.json)}`);
-    return r.json;
-  }
-}
-
-const s = new Session();
+const s = new Session(ORIGIN);
 const login = await s.call('POST', '/v1/auth/login', { email: EMAIL, password: PASSWORD });
 if (login.status === 401 || login.status === 400 || login.status === 404) {
   await s.ok('POST', '/v1/auth/signup', { email: EMAIL, password: PASSWORD, name: NAME });
@@ -130,12 +69,18 @@ const existingProjects = new Map(
 );
 const projectIds: string[] = [];
 
-async function upload(projectId: string, module: string, filename: string, bytes: Uint8Array) {
+async function upload(
+  projectId: string,
+  module: string,
+  filename: string,
+  bytes: Uint8Array,
+  mime = 'application/pdf',
+) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const up = await s.ok<{ id: string; uploadUrl: string; uploadHeaders: Record<string, string> }>(
     'POST',
     `${o()}/uploads`,
-    { filename, mime: 'application/pdf', sizeBytes: bytes.length, sha256, module, projectId },
+    { filename, mime, sizeBytes: bytes.length, sha256, module, projectId },
   );
   const put = await fetch(up.uploadUrl, { method: 'PUT', headers: up.uploadHeaders, body: bytes });
   if (!put.ok) throw new Error(`upload of ${filename} -> ${put.status} ${await put.text()}`);
@@ -577,6 +522,38 @@ for (const [i, p] of PROJECTS.entries()) {
     `Seeded ${p.name} sign-ins for ${today}: ${CREW.filter((c) => !c.out).length} on site, ${CREW.filter((c) => c.out).length} signed out`,
   );
 }
+
+// Every feature flag on for the demo org (staff-managed rules, so this needs direct database access).
+if (process.env.SEED_DB_URL) {
+  try {
+    console.log(`Flags: ${await enableAllFlags(process.env.SEED_DB_URL, orgId!)}`);
+  } catch (e) {
+    console.warn(`Flags failed: ${(e as Error).message}`);
+  }
+} else {
+  console.warn(
+    'SEED_DB_URL is not set: feature flags left as they are (prequalification etc. stay off).',
+  );
+}
+
+// Ten records of each major kind on the first active project (see extra.ts).
+await seedExtra({
+  s,
+  org: o(),
+  projects: PROJECTS.map((p, i) => ({
+    id: projectIds[i]!,
+    name: p.name,
+    status: p.status,
+    timezone: p.timezone,
+  })),
+  company,
+  userId: me.user.id,
+  origin: ORIGIN,
+  password: PASSWORD,
+  upload,
+  sheets: PROJECTS[0]!.sheets,
+  documents: DOCS,
+});
 
 // Ask Nova answers only from indexed documents and drawings. Indexing is idempotent, so every run brings each
 // project up to date. A failure here (e.g. Bedrock not enabled yet) leaves the demo usable without Nova.

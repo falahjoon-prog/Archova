@@ -176,6 +176,17 @@ export function createSessionService({
     await multi.exec();
   }
 
+  /** Ends every open session of a person (account deletion). */
+  async function revokeAllForUser(userId: string): Promise<void> {
+    const open = await database.withGlobalTx('identity', (tx) =>
+      tx
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt))),
+    );
+    for (const s of open) await revoke(s.id);
+  }
+
   /** Bearer requests check the `sid` on every call (ADR-0004 §2). */
   async function isRevoked(sessionId: string): Promise<boolean> {
     if (redis) return (await redis.exists(revokedKey(sessionId))) === 1;
@@ -186,7 +197,7 @@ export function createSessionService({
     return !row || !isSessionActive(row, new Date());
   }
 
-  return { create, resolve, revoke, isRevoked };
+  return { create, resolve, revoke, revokeAllForUser, isRevoked };
 }
 
 export type SessionService = ReturnType<typeof createSessionService>;

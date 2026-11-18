@@ -66,8 +66,97 @@ export function dueDateFor(sentLocalDate: string, responseDays: number): string 
   return addBusinessDays(sentLocalDate as LocalDate, responseDays);
 }
 
+export const FIELD_KINDS = ['text', 'date', 'number', 'yesNo'] as const;
+export type FieldKind = (typeof FIELD_KINDS)[number];
+/** An extra field a type asks for, such as a Construction Start Date. */
+export interface FieldDefinition {
+  key: string;
+  label: string;
+  kind: FieldKind;
+  required: boolean;
+}
+export type FieldValue = string | number | boolean | null;
+export type FieldValues = Record<string, FieldValue>;
+export interface HistoryChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+export const MAX_TYPE_FIELDS = 12;
+const FIELD_KEY = /^[a-z][a-zA-Z0-9]{0,29}$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Problems with a type's field list, as validation details; empty when it is fine. */
+export function checkFieldDefinitions(defs: readonly FieldDefinition[]) {
+  const problems: Array<{ path: string; message: string }> = [];
+  if (defs.length > MAX_TYPE_FIELDS)
+    problems.push({ path: 'fields', message: `At most ${MAX_TYPE_FIELDS} fields` });
+  const seen = new Set<string>();
+  defs.forEach((d, i) => {
+    if (!FIELD_KEY.test(d.key))
+      problems.push({
+        path: `fields/${i}/key`,
+        message: 'Start with a lower-case letter; letters and digits only',
+      });
+    if (seen.has(d.key)) problems.push({ path: `fields/${i}/key`, message: 'Already used' });
+    seen.add(d.key);
+    if (!d.label.trim() || d.label.length > 60)
+      problems.push({ path: `fields/${i}/label`, message: 'Give a label of up to 60 characters' });
+    if (!FIELD_KINDS.includes(d.kind))
+      problems.push({ path: `fields/${i}/kind`, message: 'Unknown kind' });
+  });
+  return problems;
+}
+
+const validDate = (v: string) => {
+  if (!ISO_DATE.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+};
+
+/**
+ * Checks `values` against the type's fields: only known keys, the right kind of value, null clears. With
+ * `forSend` the required ones must be filled. Returns the values to keep and any problems.
+ */
+export function checkFieldValues(
+  defs: readonly FieldDefinition[],
+  values: Record<string, unknown>,
+  opts: { forSend: boolean },
+) {
+  const problems: Array<{ path: string; message: string }> = [];
+  const out: FieldValues = {};
+  const byKey = new Map(defs.map((d) => [d.key, d]));
+  for (const [key, value] of Object.entries(values)) {
+    const d = byKey.get(key);
+    if (!d) {
+      problems.push({ path: `fieldValues/${key}`, message: 'Not a field of this type' });
+      continue;
+    }
+    if (value === null || value === undefined || value === '') continue;
+    const ok =
+      (d.kind === 'text' && typeof value === 'string' && value.length <= 1000) ||
+      (d.kind === 'date' && typeof value === 'string' && validDate(value)) ||
+      (d.kind === 'number' && typeof value === 'number' && Number.isFinite(value)) ||
+      (d.kind === 'yesNo' && typeof value === 'boolean');
+    if (!ok) {
+      problems.push({ path: `fieldValues/${key}`, message: `Expected ${d.kind}` });
+      continue;
+    }
+    out[key] = value as FieldValue;
+  }
+  if (opts.forSend)
+    for (const d of defs)
+      if (d.required && (out[d.key] === undefined || out[d.key] === null))
+        problems.push({ path: `fieldValues/${d.key}`, message: 'Required to send' });
+  return { values: out, problems };
+}
+
 export interface CorrespondenceAudience {
   status: CorrespondenceStatus;
+  isPrivate?: boolean;
+  /** The viewer is on the item's private access list. */
+  onAccessList?: boolean;
   createdBy: string | null;
   fromCompanyId: string | null;
   toCompanyIds: readonly string[];
@@ -87,6 +176,8 @@ export interface CorrespondenceViewer {
  */
 export function canSeeItem(a: CorrespondenceAudience, v: CorrespondenceViewer): boolean {
   if (a.createdBy === v.userId || (v.isInternal && v.isAdmin)) return true;
+  // A private item is for its author, admins and the people listed on it, and only once it has been sent.
+  if (a.isPrivate) return a.status !== 'draft' && a.onAccessList === true;
   if (v.isInternal) return a.status !== 'draft';
   if (a.status === 'draft' || !v.companyId) return false;
   return a.fromCompanyId === v.companyId || a.toCompanyIds.includes(v.companyId);

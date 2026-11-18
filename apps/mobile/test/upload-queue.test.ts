@@ -101,7 +101,7 @@ async function setup() {
 }
 
 describe('photo capture and the upload queue', () => {
-  it('saves the photo at once and queues photos.create with the file id once stored', async () => {
+  it('saves the photo at once and queues defects.attachPhoto with the file id once stored', async () => {
     const t = await setup();
     await t.take();
     expect(await t.store.get('photo', 'pho_1')).toMatchObject({
@@ -118,16 +118,11 @@ describe('photo capture and the upload queue', () => {
       {
         mutationId: 'm_pho_1',
         status: 'pending',
-        command: 'photos.create',
-        entityId: 'pho_1',
+        command: 'defects.attachPhoto',
+        entityId: 'dfx_1',
         dependsOn: ['m_defect'],
         clientAt: '2026-10-02T23:30:00.000Z',
-        payload: {
-          projectId: 'prj_a',
-          defectId: 'dfx_1',
-          fileId: 'fil_1',
-          capture: { takenAt: '2026-10-02T23:30:00.000Z', timeZone: 'Australia/Brisbane' },
-        },
+        payload: { fileId: 'fil_1', purpose: 'before' },
       },
     ]);
     expect(await t.uploads.waitingCount()).toBe(0);

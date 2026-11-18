@@ -10,6 +10,7 @@ export const schedules = schedulingSchema.table('schedules', {
   name: text('name').notNull(),
   source: text('source').$type<'native' | 'msp' | 'p6'>().notNull().default('native'),
   dataDate: date('data_date'),
+  baselineSetAt: timestamp('baseline_set_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
@@ -31,6 +32,8 @@ export const activities = schedulingSchema.table('activities', {
   pctComplete: integer('pct_complete').notNull().default(0),
   assignee: text('assignee').notNull().default(''),
   externalId: text('external_id'),
+  baselineStart: date('baseline_start'),
+  baselineFinish: date('baseline_finish'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

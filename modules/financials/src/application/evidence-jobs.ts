@@ -1,7 +1,20 @@
-import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
-import { type TenantScope } from '@archova/kernel';
-import { sealMessage, type TimestampResult } from '../domain/seal-proof';
-import { evidenceDeliveries, evidenceRecords, evidenceTimestamps } from '../infra/tables';
+import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
+import { recordRetention, type TenantScope } from '@archova/kernel';
+import {
+  sealMessage,
+  sendProofMessage,
+  sha256Bytes,
+  type EvidenceSigner,
+  type TimestampResult,
+} from '../domain/seal-proof';
+import {
+  evidenceArchive,
+  evidenceDeliveries,
+  evidenceRecords,
+  evidenceSendProofs,
+  evidenceSendTimestamps,
+  evidenceTimestamps,
+} from '../infra/tables';
 
 /** Worker-side steps for sealed evidence: sending the service emails and taking the outside timestamps. */
 
@@ -21,6 +34,9 @@ export interface DeliveryJob {
   pdf: Buffer;
   snapshotText: string;
   signatureKeyId: string | null;
+  evidenceId: string;
+  projectId: string;
+  addressBasis: string | null;
 }
 
 /**
@@ -74,6 +90,9 @@ export async function takeDueDeliveries(scope: TenantScope, now: Date, limit = 1
       pdf: rec.pdf,
       snapshotText: rec.snapshotText,
       signatureKeyId: sig.rows[0]?.key_id ?? null,
+      evidenceId: d.evidenceId,
+      projectId: d.projectId,
+      addressBasis: d.addressBasis,
     });
   }
   return jobs;
@@ -192,4 +211,212 @@ export async function recordTimestamp(
       caChainPem,
     })
     .onConflictDoNothing();
+}
+
+export interface SendReport {
+  provider: 'ses' | 'smtp' | 'log';
+  providerMessageId: string | null;
+  /** SHA-256 of `renderEvidenceEmail` output (see emailContentSha256). */
+  contentSha256: string;
+  /** The exact bytes handed to the relay, when the sender reports them; stored and hashed. */
+  raw?: Uint8Array | null;
+  serverResponse?: string | null;
+}
+
+/**
+ * Records that the message left our mail system: when, to whom, and the hash of exactly what went. Written in the same
+ * transaction that marks the delivery sent, signed when a key is held, and append-only. This is dispatch only; it is
+ * never delivery confirmation and must not be shown as service (compliance/01 §4).
+ */
+export async function recordSendProof(
+  scope: TenantScope,
+  job: DeliveryJob,
+  sentAt: Date,
+  report: SendReport,
+  signer: EvidenceSigner | null,
+) {
+  const rawSha256 = report.raw ? sha256Bytes(report.raw).toString('hex') : null;
+  const message = sendProofMessage({
+    evidenceId: job.evidenceId,
+    deliveryId: job.id,
+    recipient: job.recipientEmail,
+    addressBasis: job.addressBasis,
+    sentAt: sentAt.toISOString(),
+    providerMessageId: report.providerMessageId,
+    contentSha256: report.contentSha256,
+    rawSha256,
+    snapshotSha256: job.snapshotSha256,
+    pdfSha256: job.pdfSha256,
+  });
+  const [created] = await scope.tx
+    .insert(evidenceSendProofs)
+    .values({
+      deliveryId: job.id,
+      orgId: scope.ctx.orgId,
+      projectId: job.projectId,
+      evidenceId: job.evidenceId,
+      provider: report.provider,
+      recipientEmail: job.recipientEmail,
+      providerMessageId: report.providerMessageId,
+      sentAt,
+      message,
+      messageSha256: sha256Bytes(message).toString('hex'),
+      contentSha256: report.contentSha256,
+      addressBasis: job.addressBasis,
+      rawMessage: report.raw ? Buffer.from(report.raw) : null,
+      rawSha256,
+      serverResponse: report.serverResponse?.slice(0, 500) ?? null,
+      keyId: signer?.keyId ?? null,
+      signature: signer ? signer.sign(message) : null,
+    })
+    .onConflictDoNothing()
+    .returning({ id: evidenceSendProofs.id });
+  // Sealed claim evidence is kept for 10 years, or longer under a hold (compliance/07 §3).
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_send_proofs',
+      recordId: created.id,
+      projectId: job.projectId,
+      category: 'sopa_evidence_10y',
+      anchor: sentAt,
+    });
+}
+
+export interface UntimestampedSend {
+  deliveryId: string;
+  projectId: string;
+  /** The send-proof message; its SHA-256 is what the authority timestamps. */
+  message: string;
+}
+
+/** Send proofs with no outside timestamp yet, oldest first. */
+export async function findUntimestampedSends(
+  scope: TenantScope,
+  limit = 20,
+): Promise<UntimestampedSend[]> {
+  const rows = await scope.tx
+    .select({
+      id: evidenceSendProofs.deliveryId,
+      projectId: evidenceSendProofs.projectId,
+      message: evidenceSendProofs.message,
+    })
+    .from(evidenceSendProofs)
+    .leftJoin(
+      evidenceSendTimestamps,
+      eq(evidenceSendTimestamps.deliveryId, evidenceSendProofs.deliveryId),
+    )
+    .where(isNull(evidenceSendTimestamps.deliveryId))
+    .orderBy(asc(evidenceSendProofs.sentAt))
+    .limit(limit);
+  return rows.map((r) => ({ deliveryId: r.id, projectId: r.projectId, message: r.message }));
+}
+
+export async function recordSendTimestamp(
+  scope: TenantScope,
+  deliveryId: string,
+  projectId: string,
+  authority: string,
+  t: TimestampResult,
+  caChainPem: string,
+) {
+  const [created] = await scope.tx
+    .insert(evidenceSendTimestamps)
+    .values({
+      deliveryId,
+      orgId: scope.ctx.orgId,
+      projectId,
+      authority,
+      imprintSha256: t.imprintHex,
+      genTime: t.genTime,
+      serialHex: t.serialHex,
+      token: t.token,
+      caChainPem,
+    })
+    .onConflictDoNothing()
+    .returning({ id: evidenceSendTimestamps.id });
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_send_timestamps',
+      recordId: created.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: t.genTime,
+    });
+}
+
+export interface UnarchivedSend {
+  deliveryId: string;
+  evidenceId: string;
+  projectId: string;
+  /** Hex SHA-256 of `raw`. */
+  rawSha256: string;
+  raw: Buffer;
+}
+
+/** Send proofs whose raw bytes have no write-once copy yet, oldest first. Read only by the archive job. */
+export async function findUnarchivedSends(
+  scope: TenantScope,
+  limit = 10,
+): Promise<UnarchivedSend[]> {
+  const rows = await scope.tx
+    .select({
+      deliveryId: evidenceSendProofs.deliveryId,
+      evidenceId: evidenceSendProofs.evidenceId,
+      projectId: evidenceSendProofs.projectId,
+      rawSha256: evidenceSendProofs.rawSha256,
+      raw: evidenceSendProofs.rawMessage,
+    })
+    .from(evidenceSendProofs)
+    .leftJoin(evidenceArchive, eq(evidenceArchive.deliveryId, evidenceSendProofs.deliveryId))
+    .where(and(isNull(evidenceArchive.deliveryId), isNotNull(evidenceSendProofs.rawMessage)))
+    .orderBy(asc(evidenceSendProofs.sentAt))
+    .limit(limit);
+  return rows.flatMap((r) =>
+    r.raw && r.rawSha256
+      ? [
+          {
+            deliveryId: r.deliveryId,
+            evidenceId: r.evidenceId,
+            projectId: r.projectId,
+            rawSha256: r.rawSha256,
+            raw: r.raw,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Records that the write-once copy exists. Only the first record for a delivery counts. */
+export async function recordArchive(
+  scope: TenantScope,
+  a: {
+    deliveryId: string;
+    projectId: string;
+    objectKey: string;
+    rawSha256: string;
+    storedSha256: string | null;
+  },
+  at: Date,
+) {
+  const [created] = await scope.tx
+    .insert(evidenceArchive)
+    .values({
+      deliveryId: a.deliveryId,
+      orgId: scope.ctx.orgId,
+      projectId: a.projectId,
+      objectKey: a.objectKey,
+      rawSha256: a.rawSha256,
+      storedSha256: a.storedSha256,
+      archivedAt: at,
+    })
+    .onConflictDoNothing()
+    .returning({ id: evidenceArchive.id });
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_archive',
+      recordId: created.id,
+      projectId: a.projectId,
+      category: 'sopa_evidence_10y',
+      anchor: at,
+    });
 }

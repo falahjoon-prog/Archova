@@ -12,8 +12,9 @@ on:
     branches: [main]
 
 concurrency:
-  group: images-${{ github.ref }}
-  cancel-in-progress: true
+  group: images-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -21,7 +22,7 @@ permissions:
 jobs:
   hadolint:
     name: Dockerfile lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -32,13 +33,15 @@ jobs:
 
   build:
     name: Image ${{ matrix.target }}
-    runs-on: ubuntu-24.04-arm
+    # Self-hosted runners are x86: the arm64 image is built under QEMU there (slower, free). Hosted arm64 stays the fallback.
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
     strategy:
       fail-fast: false
+      max-parallel: 2 # the self-hosted PC has limited RAM
       matrix:
         target: [api, web, worker, ai-worker, migrate]
     env:
@@ -46,17 +49,25 @@ jobs:
       TAG: ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}', github.event.number, github.event.pull_request.head.sha) || github.sha }}
     steps:
       - uses: actions/checkout@v4
+      # Emulated arm64 builds only when the image is really pushed (AWS Graviton); otherwise build natively so four
+      # self-hosted runners are not each running a 20+ minute QEMU build on one PC.
+      - uses: docker/setup-qemu-action@v3
+        if: env.PUSH == 'true' && runner.arch != 'ARM64'
+        with:
+          platforms: arm64
+      # driver: docker builds in the PC's own Docker daemon, whose layer cache persists between runs. No GitHub-hosted
+      # cache or build-record upload, which count against GitHub storage quotas.
       - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
       - name: Build
         uses: docker/build-push-action@v6
         with:
           context: .
           target: ${{ matrix.target }}
-          platforms: linux/arm64
+          platforms: ${{ env.PUSH == 'true' && 'linux/arm64' || (runner.arch == 'ARM64' && 'linux/arm64' || 'linux/amd64') }}
           load: true
           tags: archova/${{ matrix.target }}:${{ env.TAG }}
-          cache-from: type=gha,scope=${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
       - name: Trivy (fixable high and critical fail the build)
         uses: aquasecurity/trivy-action@v0.36.0
@@ -72,6 +83,9 @@ jobs:
           image: archova/${{ matrix.target }}:${{ env.TAG }}
           format: spdx-json
           artifact-name: sbom-${{ matrix.target }}.spdx.json
+          upload-artifact: false # artifact storage is a GitHub-billed quota
+          upload-release-assets: false
+          output-file: sbom-${{ matrix.target }}.spdx.json
 
       # --- Push and sign (once AWS exists) ---------------------------------------------------------------------
       - uses: aws-actions/configure-aws-credentials@v4
@@ -105,8 +119,13 @@ jobs:
 
   a11y:
     name: Accessibility (axe, serious and critical fail)
-    runs-on: ubuntu-24.04 # Playwright 1.56 has no browser for the 26.04 that ubuntu-latest now points to
+    # Fixed port 3000: runs on the one "integration" runner so it never collides with DAST. Hosted fallback must stay 24.04
+    # (Playwright 1.56 has no browser for the 26.04 that ubuntu-latest now points to).
+    runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-24.04' }}
     timeout-minutes: 20
+    # On the self-hosted PC (Ubuntu 26.04, unsupported by Playwright) the job runs in Playwright's own image, which has the
+    # browsers and libraries, and a private network so port 3000 cannot clash with anything on the PC.
+    container: ${{ vars.CI_RUNNER_INTEGRATION && 'mcr.microsoft.com/playwright:v1.56.1-noble' || null }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -122,12 +141,13 @@ jobs:
           cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
           PORT=3000 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js &
           npx --yes wait-on@8 --timeout 60000 http://127.0.0.1:3000/login
-      - run: pnpm --filter @archova/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @archova/web exec playwright install ${{ vars.CI_RUNNER_INTEGRATION && 'chromium' || '--with-deps chromium' }}
       - name: axe on journey pages
         run: pnpm --filter @archova/web test:a11y
         env:
           A11Y_BASE_URL: http://127.0.0.1:3000
       - uses: actions/upload-artifact@v4
+        continue-on-error: true # a full artifact quota must not fail the job
         if: failure()
         with:
           name: a11y-report

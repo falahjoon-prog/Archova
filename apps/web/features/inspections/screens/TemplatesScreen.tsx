@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { TRADE_CATEGORY_LABELS, optionsOf, type TradeCategoryKey } from '@/shared/lib/dbp';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
 import {
@@ -158,6 +159,7 @@ function NewDialog({
 }) {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
+  const [tradeCategory, setTradeCategory] = useState('');
   const [items, setItems] = useState<TemplateItemInput[]>([]);
   const [prompt, setPrompt] = useState('');
   const [section, setSection] = useState('');
@@ -183,7 +185,14 @@ function NewDialog({
           </Button>
           <Button
             disabled={!name.trim() || items.length === 0 || pending}
-            onClick={() => onSave({ name: name.trim(), type: type.trim() || undefined, items })}
+            onClick={() =>
+              onSave({
+                name: name.trim(),
+                type: type.trim() || undefined,
+                tradeCategory: (tradeCategory || undefined) as TradeCategoryKey | undefined,
+                items,
+              })
+            }
           >
             {pending ? 'Saving…' : 'Save draft'}
           </Button>
@@ -197,6 +206,14 @@ function NewDialog({
           value={type}
           hint="For example ITP, pre-pour, handover or safety walk."
           onChange={(e) => setType(e.target.value)}
+        />
+        <Select
+          label="Building element"
+          value={tradeCategory}
+          placeholder="Not set"
+          hint="Groups this checklist's results under DBP Act insights."
+          options={optionsOf(TRADE_CATEGORY_LABELS)}
+          onChange={(e) => setTradeCategory(e.target.value)}
         />
         {items.length > 0 ? (
           <ol>

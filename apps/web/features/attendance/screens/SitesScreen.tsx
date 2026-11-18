@@ -29,6 +29,7 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { GateQr, gateQrSvg } from '../components/GateQr';
+import { buildCheckInLink } from '../lib/checkin';
 import { useSiteMutations, useSites } from '../hooks/useAttendance';
 import {
   CHECK_MODE_LABELS,
@@ -54,6 +55,12 @@ function dayEnd(hhmm: string): string {
 export function SitesScreen() {
   const org = useCurrentOrg();
   const project = useCurrentProject();
+  const checkInLink = (code: string) =>
+    buildCheckInLink(
+      window.location.origin,
+      webRoutes.attendanceCheckIn(org.orgSlug, project.projectId),
+      code,
+    );
   const permissions = useProjectPermissions(org.orgId, project.projectId);
   // UI gating only; the API enforces `workforce.attendance.manage` (site managers, tool level admin).
   const canManage =
@@ -133,7 +140,7 @@ export function SitesScreen() {
       <PageHeader
         eyebrow="Workforce"
         title="Sites and gates"
-        description="Each gate has a QR code on a poster. People scan it to sign in and out."
+        description="Each gate has a QR code on a poster. Scanning it with any phone camera opens the check-in page."
         actions={
           <>
             <Link
@@ -296,7 +303,7 @@ export function SitesScreen() {
             {shown ? (
               <a
                 className={buttonClassName('secondary')}
-                href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(gateQrSvg(shown.code))}`}
+                href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(gateQrSvg(checkInLink(shown.code)))}`}
                 download={`${shown.gate.name.replace(/[^\w-]+/g, '-')}-qr.svg`}
               >
                 Download QR
@@ -312,7 +319,7 @@ export function SitesScreen() {
               This code is shown once. If you lose it, issue a new code, which stops the old one
               working.
             </Alert>
-            <GateQr code={shown.code} label={`QR code for ${shown.gate.name}`} />
+            <GateQr code={checkInLink(shown.code)} label={`QR code for ${shown.gate.name}`} />
             <p className="u-caption u-m-0">
               Can’t scan? The code is <span className="u-mono">{shown.code}</span>
             </p>

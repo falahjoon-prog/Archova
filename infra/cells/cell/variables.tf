@@ -119,6 +119,11 @@ variable "audit_archive_retention_days" {
   type        = number
 }
 
+variable "claims_evidence_retention_days" {
+  description = "Object Lock (compliance mode) default retention for the claims evidence bucket: 3653 (10 years, SOPA evidence retention in compliance/07) in prod. Compliance mode cannot be shortened or removed by anyone, so non-prod uses 1 to 30."
+  type        = number
+}
+
 variable "backup" {
   description = "AWS Backup plan for Aurora; null disables (dev, loadtest)."
   type = object({

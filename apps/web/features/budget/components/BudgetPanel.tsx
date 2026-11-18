@@ -11,6 +11,7 @@ import {
   EmptyState,
   SkeletonRows,
   StatusPill,
+  TextField,
   type DataTableColumn,
 } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -19,8 +20,11 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { BudgetLine } from '../data/api';
 import { useBudget, useBudgetMutations, useCostCodes } from '../hooks/useBudget';
 import { aud } from '../lib/money';
+import { downloadCsv, toCsv } from '../lib/reports';
 import { AdjustDialog } from './AdjustDialog';
+import { ImportDialog } from './ImportDialog';
 import { LineDialog } from './LineDialog';
+import { NovaBudgetPanel } from './NovaBudgetPanel';
 
 /**
  * The project budget. A draft is edited freely; locking freezes the original, and from then on every change is an
@@ -34,6 +38,8 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
   const [editing, setEditing] = useState<BudgetLine | 'new' | null>(null);
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [confirmLock, setConfirmLock] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [filter, setFilter] = useState('');
 
   const budget = q.data;
   const locked = budget?.status === 'locked';
@@ -136,6 +142,12 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
   }
 
   const t = budget.totals;
+  const needle = filter.trim().toLowerCase();
+  const shown = needle
+    ? budget.lines.filter((l) =>
+        `${l.code} ${l.codeDescription} ${l.description}`.toLowerCase().includes(needle),
+      )
+    : budget.lines;
   return (
     <div className="stack-lg">
       <div className="row-actions">
@@ -156,6 +168,9 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
             >
               Add line
             </Button>
+            <Button variant="secondary" onClick={() => setImporting(true)}>
+              Import
+            </Button>
             <Button onClick={() => setConfirmLock(true)} disabled={budget.lines.length === 0}>
               Lock budget
             </Button>
@@ -168,6 +183,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
         </Alert>
       ) : null}
       <ErrorAlert error={lock.error ?? deleteLine.error} title="We couldn't update the budget" />
+      <NovaBudgetPanel canManage={canManage} />
       <Card>
         <DescriptionList
           items={[
@@ -183,16 +199,50 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
           ]}
         />
       </Card>
+      <div className="form-row">
+        <TextField
+          label="Filter lines"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          hint="By cost code or description"
+        />
+        <Button
+          variant="secondary"
+          disabled={shown.length === 0}
+          onClick={() =>
+            downloadCsv(
+              'budget.csv',
+              toCsv(
+                ['Cost code', 'Description', 'Note', 'Original', 'Approved changes', 'Revised'],
+                shown.map((l) => [
+                  l.code,
+                  l.codeDescription,
+                  l.description,
+                  l.original,
+                  l.approvedChanges,
+                  l.revised,
+                ]),
+              ),
+            )
+          }
+        >
+          Export CSV
+        </Button>
+      </div>
       <DataTable
         caption="Budget lines"
         columns={columns}
-        rows={budget.lines}
+        rows={shown}
         getRowId={(l) => l.id}
         defaultSort={{ columnId: 'code', direction: 'asc' }}
         empty={
           <EmptyState
-            title="No lines yet"
-            description="Add a line for each cost code you want to budget."
+            title={needle ? 'No lines match' : 'No lines yet'}
+            description={
+              needle
+                ? 'Try a different cost code or word.'
+                : 'Add a line for each cost code you want to budget.'
+            }
           />
         }
       />
@@ -203,6 +253,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
           onClose={() => setEditing(null)}
         />
       ) : null}
+      {importing ? <ImportDialog onClose={() => setImporting(false)} /> : null}
       {adjustingLine ? (
         <AdjustDialog
           line={adjustingLine}

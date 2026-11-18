@@ -66,6 +66,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.diary(projectId))}
       />
       <ListItem
+        title="Hands-free voice"
+        subtitle="Log diary notes and delays by speaking, gloves on"
+        onPress={() => router.push(mobileRoutes.voice(projectId))}
+      />
+      <ListItem
         title="Defects"
         subtitle="Raise, fix and close defects, offline"
         onPress={() => router.push(mobileRoutes.defects(projectId))}
@@ -104,6 +109,16 @@ export function ProjectScreen({
         title="Tenders"
         subtitle="Packages you are invited to, and your quotes"
         onPress={() => router.push(mobileRoutes.tenders(projectId))}
+      />
+      <ListItem
+        title="Permits"
+        subtitle="Approvals, expiry dates and renewals"
+        onPress={() => router.push(mobileRoutes.permits(projectId))}
+      />
+      <ListItem
+        title="Environment"
+        subtitle="Compliance conditions, waste and carbon"
+        onPress={() => router.push(mobileRoutes.environment(projectId))}
       />
       <ListItem
         title="Owner portal"

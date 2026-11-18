@@ -2,7 +2,7 @@
 // subbie accepts with the builder's share code, and the builder then reads the subbie's documents in its own
 // tenant transaction. The database floor is org, item type and expiry (RLS); the project match is checked here.
 import { randomBytes } from 'node:crypto';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
@@ -12,6 +12,7 @@ import { canonicalJson, sha256 } from '../domain/induction';
 import type { InductionDeps } from './inductions';
 import {
   CODE_VALID_DAYS,
+  INSURANCE_ITEM_TYPES,
   SHAREABLE_ITEM_TYPES,
   expiryState,
   grantLive,
@@ -63,7 +64,7 @@ const FILE_URL_TTL_S = 60;
 const hashCode = (code: string) => sha256(code.trim());
 
 export function createWalletGrantService(deps: {
-  access: Pick<AccessService, 'assert'>;
+  access: Pick<AccessService, 'assert' | 'can'>;
   platform: Pick<PlatformApi, 'getOrg' | 'getProject'>;
   files: Pick<InductionDeps['files'], 'downloadUrl'>;
   now?: () => Date;
@@ -470,7 +471,95 @@ export function createWalletGrantService(deps: {
       .limit(Math.min(limit, 200));
   }
 
+  /**
+   * Nova project risk (`reporting`): the insurance documents of the given subcontractor orgs, read only through this
+   * builder's live grants that cover the project and an insurance type. A subbie with no such grant comes back in
+   * `unseen`, so the answer says "can't see their insurance" instead of implying it is fine. Each read is written to
+   * the subbie's access log like any other view. Needs the same permission as reading a grant (`attendance.manage`).
+   */
+  async function insuranceSignals(
+    scope: TenantScope,
+    projectId: string,
+    subbieOrgIds: readonly string[],
+  ) {
+    if (!(await deps.access.can(scope, 'workforce.attendance.manage', { projectId })))
+      return { restricted: true as const, insurances: [], unseen: [...subbieOrgIds] };
+    const t = today();
+    const grants = (
+      await scope.tx
+        .select()
+        .from(complianceGrants)
+        .where(
+          and(
+            eq(complianceGrants.granteeOrgId, scope.ctx.orgId),
+            inArray(complianceGrants.orgId, [...subbieOrgIds]),
+          ),
+        )
+        .orderBy(complianceGrants.expiresOn)
+    ).filter((g) => grantLive(g, t) && (g.allProjects || g.projectId === projectId));
+    const insurances: Array<{
+      subbieOrgId: string;
+      documentId: string;
+      itemType: string;
+      title: string;
+      insurer: string | null;
+      expiresOn: string | null;
+      expiry: ReturnType<typeof expiryState>;
+    }> = [];
+    const seen = new Set<string>();
+    for (const g of grants) {
+      const types = g.itemTypes.filter((i) =>
+        (INSURANCE_ITEM_TYPES as readonly string[]).includes(i),
+      );
+      if (types.length === 0) continue;
+      await scope.tx.execute(sql`select set_config('app.wallet_grant', ${g.id}, true)`);
+      const docs = await scope.tx
+        .select()
+        .from(complianceDocuments)
+        .where(
+          and(
+            eq(complianceDocuments.orgId, g.orgId),
+            inArray(complianceDocuments.itemType, types),
+            isNull(complianceDocuments.archivedAt),
+          ),
+        );
+      seen.add(g.orgId);
+      if (docs.length === 0) await logView(scope, g, 'list');
+      for (const d of docs) await logView(scope, g, 'document', d);
+      scope.events.add({
+        type: 'workforce.compliance_grant.viewed.v1',
+        projectId,
+        entityType: 'compliance_grant',
+        entityId: g.id,
+        data: {
+          grantId: g.id,
+          subbieOrgId: g.orgId,
+          itemTypes: [...new Set(docs.map((d) => d.itemType))],
+        },
+      });
+      for (const d of docs) {
+        insurances.push({
+          subbieOrgId: g.orgId,
+          documentId: d.id,
+          itemType: d.itemType,
+          title: d.title,
+          insurer: d.insurer,
+          expiresOn: d.expiresOn,
+          expiry: expiryState(d.expiresOn, t),
+        });
+      }
+    }
+    // The grant setting is per transaction; clear it so nothing later in this one reads a subbie's rows.
+    await scope.tx.execute(sql`select set_config('app.wallet_grant', '', true)`);
+    return {
+      restricted: false as const,
+      insurances,
+      unseen: subbieOrgIds.filter((id) => !seen.has(id)),
+    };
+  }
+
   return {
+    insuranceSignals,
     createRequest,
     listRequests,
     cancelRequest,

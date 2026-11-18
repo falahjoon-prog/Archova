@@ -12,10 +12,10 @@ import type {
   DrawingRevision as ApiRevision,
   DrawingSheet as ApiSheet,
   Markup as ApiMarkup,
-  MarkupShape as ApiShape,
   PublishConflict,
 } from '@archova/contracts';
-import { formatScale, parseScale, type MarkupShape } from '@archova/markup';
+import { formatScale, parseScale } from '@archova/markup';
+import { fromApiShape, toApiShape } from '@/shared/markup/api-shape';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectPeople } from '@/shared/lib/people';
@@ -66,6 +66,7 @@ export function toSheet(s: ApiSheet): DrawingSheet {
     currentRev: cr?.rev ?? '—',
     currentIssuedFor: cr?.issuedFor ?? null,
     currentDrawingDate: cr?.drawingDate ?? null,
+    currentSetId: cr?.setId ?? null,
     revisionCount: null,
   };
 }
@@ -90,30 +91,7 @@ export function toRevision(r: ApiRevision): DrawingRevision {
   };
 }
 
-/** The API shape for one of ours: the same fields plus the shape's own id. */
-export function toApiShape(shape: MarkupShape, id: string): ApiShape {
-  return { id, ...shape };
-}
-
-/** Ours from the API's, or null for a shape missing the fields its kind needs. */
-export function fromApiShape(s: ApiShape): MarkupShape | null {
-  switch (s.kind) {
-    case 'pen':
-      return s.points ? { kind: 'pen', points: s.points } : null;
-    case 'line':
-    case 'arrow':
-    case 'rect':
-    case 'ellipse':
-    case 'cloud':
-      return s.from && s.to ? { kind: s.kind, from: s.from, to: s.to } : null;
-    case 'text':
-      return s.at ? { kind: 'text', at: s.at, text: s.text ?? '' } : null;
-    case 'pin':
-      return s.at && s.entityType && s.entityId
-        ? { kind: 'pin', at: s.at, entityType: s.entityType, entityId: s.entityId }
-        : null;
-  }
-}
+export { fromApiShape, toApiShape };
 
 /** One row per shape, as the viewer lists them; the id carries the markup and shape so actions find both. */
 export function toMarkups(
@@ -396,6 +374,28 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
         .sort((a, b) => a.sheetNumber.localeCompare(b.sheetNumber, 'en-AU', { numeric: true }));
     },
 
+    async listSets(projectId) {
+      const sets = await allPages(async (cursor) =>
+        unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawing-sets', {
+            params: {
+              path: { orgId, projectId },
+              query: { limit: 200, ...(cursor ? { cursor } : {}) },
+            },
+          }),
+        ),
+      );
+      return sets
+        .filter((s) => s.status === 'published')
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          status: s.status,
+          issuedDate: s.issuedDate,
+          receivedDate: s.receivedDate,
+        }));
+    },
+
     async listAllRevisions(projectId) {
       const sheets = await source.listSheets(projectId);
       const perSheet = await mapLimit(sheets, 6, async (sheet) =>
@@ -423,6 +423,7 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
           currentRev: current.rev,
           currentIssuedFor: current.issuedFor,
           currentDrawingDate: current.drawingDate,
+          currentSetId: current.setId,
           revisionCount: revs.length,
         },
         revisions: revs.map(toRevision).sort((a, b) => compareRevs(b.rev, a.rev)),
@@ -605,12 +606,19 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
             body: { fileId: stored.id },
           }),
         );
-        const sheets = read.suggestions
-          .map((s) => ({ id: s.id, p: s.payload as unknown as TitleBlockPayload }))
+        const parsed = read.suggestions.map((s) => ({
+          id: s.id,
+          p: s.payload as unknown as TitleBlockPayload,
+        }));
+        const sheets = parsed
           .filter(({ p }) => p.isDrawing)
           .map(({ id, p }) => ({ page: p.page, fields: p.fields, suggestionId: id }));
-        // Scanned pages Nova couldn't read still go in the set, for a person to fill in.
-        for (const page of read.skippedPages) {
+        // Pages Nova couldn't read (scans, or the read was refused) still go in the set, for a person to
+        // fill in, so an upload never silently turns into an empty set.
+        const placeholders = new Set<number>([...read.skippedPages, ...read.refusedPages]);
+        // If Nova decided no page of this file is a drawing, keep them all for a person to judge.
+        if (!sheets.length) for (const { p } of parsed) placeholders.add(p.page);
+        for (const page of placeholders) {
           sheets.push({ page, fields: undefined as never, suggestionId: undefined as never });
         }
         for (const sheet of sheets.sort((a, b) => a.page - b.page)) {

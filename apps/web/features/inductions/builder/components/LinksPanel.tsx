@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Dialog, EmptyState, SkeletonRows, StatusPill, TextField } from '@archova/ui';
-import { InductionsIcon } from '@archova/ui/icons';
+import { InductionsIcon, Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -80,7 +80,7 @@ export function LinksPanel({ induction }: { induction: Induction }) {
           before they start.
         </p>
         <Button disabled={!canCreate} onClick={() => setCreating(true)}>
-          Create link
+          <Plus size={16} aria-hidden="true" /> Create link
         </Button>
       </div>
       {!canCreate ? (

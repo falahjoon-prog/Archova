@@ -70,6 +70,10 @@ export function usePackageMutations(packageId: string) {
         quotesSource.invite(projectId, packageId, v.companyIds, v.overrideReason),
       onSuccess: invalidate,
     }),
+    resend: useMutation({
+      mutationFn: (companyId: string) => quotesSource.resendInvite(projectId, packageId, companyId),
+      onSuccess: invalidate,
+    }),
     upload: useMutation({
       mutationFn: (v: { companyId: string; file: File }) =>
         quotesSource.uploadQuote(projectId, packageId, v),

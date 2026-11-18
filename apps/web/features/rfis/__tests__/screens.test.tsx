@@ -35,6 +35,27 @@ describe('RfiListScreen', () => {
     expect(within(rfi4).getByText('(5 business days)')).toBeTruthy();
   });
 
+  it('shows the register columns and lets Nova flag a ball held too long', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiListScreen />);
+    await screen.findByRole('link', { name: 'RFI-003' });
+    for (const name of [
+      'Responsible contractor',
+      'Received from',
+      'Date initiated',
+      'RFI manager',
+      'Assignee',
+      'Ball in court',
+    ])
+      expect(screen.getByRole('columnheader', { name: new RegExp(name) })).toBeTruthy();
+    const row3 = screen.getByRole('link', { name: 'RFI-003' }).closest('tr')!;
+    expect(within(row3).getByText(/Waiting \d+ business days/)).toBeTruthy();
+    const row4 = screen.getByRole('link', { name: 'RFI-004' }).closest('tr')!;
+    expect(within(row4).queryByText(/Waiting \d+ business days/)).toBeNull();
+    await user.click(screen.getByLabelText('Ball held 5+ days'));
+    expect(nav.search).toBe('stale=1');
+  });
+
   it('keeps filters in the URL', async () => {
     const user = userEvent.setup();
     renderInProject(<RfiListScreen />);
@@ -71,6 +92,22 @@ describe('RfiNewScreen', () => {
       (screen.getByRole('textbox', { name: /^Question/ }) as HTMLTextAreaElement).value,
     ).toMatch(/Please confirm/);
     expect(screen.queryByText('Drafted RFI')).toBeNull();
+  });
+
+  it('creates a draft RFI straight from a Nova draft, without submitting it (F3)', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiNewScreen />);
+    await enterText(
+      user,
+      await screen.findByLabelText('What did you find on site?'),
+      'Slab edge at grid C is 20 mm proud.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Draft with Nova' }));
+    expect(await screen.findByText('Drafted RFI')).toBeTruthy();
+    expect(nav.pushed).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Create draft RFI' }));
+    await waitFor(() => expect(nav.pushed).toHaveLength(1));
+    expect(nav.pushed[0]).toMatch(/^\/acme\/projects\/prj_test\/rfis\/rfi_/);
   });
 
   it('defaults the due date to 5 business days and blocks submit until required fields are set', async () => {
@@ -216,5 +253,65 @@ describe('RfiDetailScreen', () => {
     await enterText(user, within(dialog).getByLabelText('Reason'), 'Raised in error');
     await user.click(within(dialog).getByRole('button', { name: 'Void RFI' }));
     expect(await screen.findByText('This RFI is void')).toBeTruthy();
+  });
+
+  it("marks up an RFI photo into the caller's own layer, only saved on Save (photo annotation)", async () => {
+    const user = userEvent.setup();
+    // jsdom loads no images and has no layout: give the photo a size and the canvas a box.
+    class FakeImage {
+      naturalWidth = 800;
+      naturalHeight = 600;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    vi.stubGlobal('Image', FakeImage);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 800,
+      height: 600,
+      right: 800,
+      bottom: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    nav.search = 'tab=details';
+    const { rerender } = renderInProject(<RfiDetailScreen rfiId="rfi_003" />);
+    const tile = await screen.findByRole('button', { name: /bin-store-door\.jpg/ });
+    expect(within(tile).getByText('Open to mark up')).toBeTruthy();
+    await user.click(tile);
+    // The open photo is in the URL; the screen reads it back on the next render.
+    expect(nav.search).toContain('photo=fil_binstore');
+    rerender(<RfiDetailScreen rfiId="rfi_003" />);
+
+    const canvas = await screen.findByRole('application');
+    await user.click(screen.getByRole('button', { name: 'Arrow' }));
+    await user.pointer([
+      { target: canvas, keys: '[MouseLeft>]', coords: { clientX: 100, clientY: 100 } },
+      { target: canvas, coords: { clientX: 300, clientY: 250 } },
+      { target: canvas, keys: '[/MouseLeft]', coords: { clientX: 400, clientY: 300 } },
+    ]);
+    expect(screen.getByText(/You: 1 mark \(not saved\)/)).toBeTruthy();
+    // Nothing is stored until Save.
+    expect(await rfisSource.annotations('prj_test', 'rfi_003')).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Save marks' }));
+    await waitFor(async () =>
+      expect(await rfisSource.annotations('prj_test', 'rfi_003')).toHaveLength(1),
+    );
+    const [layer] = await rfisSource.annotations('prj_test', 'rfi_003');
+    expect(layer!.shapes[0]).toMatchObject({ kind: 'arrow', color: '#D92D20', strokeWidth: 2 });
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps marks read-only once the RFI is closed', async () => {
+    renderInProject(<RfiDetailScreen rfiId="rfi_001" />);
+    // RFI-001 has no photos, and a closed RFI offers no way to add one.
+    expect(await screen.findByText('Nothing was attached to this RFI.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add photo' })).toBeNull();
   });
 });

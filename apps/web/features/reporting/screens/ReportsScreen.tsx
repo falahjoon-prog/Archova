@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
+  Card,
   Checkbox,
   DataTable,
   EmptyState,
@@ -15,7 +16,7 @@ import {
   TextField,
   type DataTableColumn,
 } from '@archova/ui';
-import { DocumentsIcon } from '@archova/ui/icons';
+import { DocumentsIcon, Download, Save, Trash2 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate } from '@/shared/lib/format';
 import {
@@ -155,111 +156,122 @@ export function ReportsScreen() {
         description="Build a report across your projects from RFIs, defects or submittals. Rows only include what you are allowed to open on each project."
       />
       <ErrorAlert error={reports.error} title="We couldn't load your saved reports" />
-      <div className="form-row">
-        <Select
-          label="Saved report"
-          value={selected}
-          placeholder="New report"
-          options={list.map((r) => ({
-            value: r.id,
-            label: r.shared ? `${r.name} (shared)` : r.name,
-          }))}
-          onChange={(e) => open(e.target.value)}
-        />
-      </div>
-      <div className="form-row">
-        <Select
-          label="Report on"
-          value={config.source}
-          options={(Object.keys(SOURCE_LABELS) as ReportSource[]).map((s) => ({
-            value: s,
-            label: SOURCE_LABELS[s],
-          }))}
-          onChange={(e) => patch({ source: e.target.value as ReportSource })}
-        />
-        <Select
-          label="Include"
-          value={config.state}
-          options={(Object.keys(STATE_LABELS) as ReportState[]).map((s) => ({
-            value: s,
-            label: STATE_LABELS[s],
-          }))}
-          onChange={(e) => patch({ state: e.target.value as ReportState })}
-        />
-      </div>
-      <Checkbox
-        label="Overdue items only"
-        checked={config.overdueOnly}
-        onChange={(e) => patch({ overdueOnly: e.target.checked })}
-      />
-      <fieldset className="fieldset">
-        <legend>Projects (none ticked means all of them)</legend>
-        {(projects.data ?? []).map((p) => (
+      <Card title="Report setup">
+        <div className="stack">
+          <div className="form-row">
+            <Select
+              label="Saved report"
+              value={selected}
+              placeholder="New report"
+              options={list.map((r) => ({
+                value: r.id,
+                label: r.shared ? `${r.name} (shared)` : r.name,
+              }))}
+              onChange={(e) => open(e.target.value)}
+            />
+            <Select
+              label="Report on"
+              value={config.source}
+              options={(Object.keys(SOURCE_LABELS) as ReportSource[]).map((s) => ({
+                value: s,
+                label: SOURCE_LABELS[s],
+              }))}
+              onChange={(e) => patch({ source: e.target.value as ReportSource })}
+            />
+            <Select
+              label="Include"
+              value={config.state}
+              options={(Object.keys(STATE_LABELS) as ReportState[]).map((s) => ({
+                value: s,
+                label: STATE_LABELS[s],
+              }))}
+              onChange={(e) => patch({ state: e.target.value as ReportState })}
+            />
+          </div>
           <Checkbox
-            key={p.id}
-            label={p.name}
-            checked={config.projectIds.includes(p.id)}
-            onChange={(e) => toggleProject(p.id, e.target.checked)}
+            label="Overdue items only"
+            checked={config.overdueOnly}
+            onChange={(e) => patch({ overdueOnly: e.target.checked })}
           />
-        ))}
-      </fieldset>
-      <fieldset className="fieldset">
-        <legend>Columns</legend>
-        {COLUMN_ORDER.map((c) => (
-          <Checkbox
-            key={c}
-            label={COLUMN_LABELS[c]}
-            checked={config.columns.includes(c)}
-            onChange={(e) => toggleColumn(c, e.target.checked)}
-          />
-        ))}
-      </fieldset>
-      <div className="stack">
-        <TextField
-          label="Name"
-          value={name}
-          maxLength={120}
-          onChange={(e) => {
-            setSaved(null);
-            setName(e.target.value);
-          }}
-        />
-        <Switch
-          label="Share with everyone in the company"
-          checked={shared}
-          onCheckedChange={(v) => {
-            setSaved(null);
-            setShared(v);
-          }}
-        />
-        <div className="form-row">
-          <Button
-            onClick={() => void onSave()}
-            loading={save.isPending}
-            disabled={!name.trim() || !canChange}
-          >
-            {current ? 'Save changes' : 'Save report'}
-          </Button>
-          {current && current.mine ? (
-            <Button variant="danger" onClick={() => void onDelete()} loading={remove.isPending}>
-              Delete
-            </Button>
-          ) : null}
-          <Button
-            variant="secondary"
-            disabled={!result || result.rows.length === 0}
-            onClick={() => result && download(fileName(name), toCsv(result))}
-          >
-            Download CSV
-          </Button>
         </div>
-        <ErrorAlert error={save.error ?? remove.error} title="We couldn't save that" />
-        {saved ? (
-          <p className="u-muted" role="status">
-            {saved}
-          </p>
-        ) : null}
+      </Card>
+      <div className="detail-grid">
+        <Card title="Projects">
+          <p className="u-caption u-m-0">None ticked means all of them.</p>
+          <div className="check-grid">
+            {(projects.data ?? []).map((p) => (
+              <Checkbox
+                key={p.id}
+                label={p.name}
+                checked={config.projectIds.includes(p.id)}
+                onChange={(e) => toggleProject(p.id, e.target.checked)}
+              />
+            ))}
+          </div>
+        </Card>
+        <Card title="Columns">
+          <div className="check-grid">
+            {COLUMN_ORDER.map((c) => (
+              <Checkbox
+                key={c}
+                label={COLUMN_LABELS[c]}
+                checked={config.columns.includes(c)}
+                onChange={(e) => toggleColumn(c, e.target.checked)}
+              />
+            ))}
+          </div>
+        </Card>
       </div>
+      <Card title="Save and export">
+        <div className="stack">
+          <div className="form-row">
+            <TextField
+              label="Name"
+              value={name}
+              maxLength={120}
+              onChange={(e) => {
+                setSaved(null);
+                setName(e.target.value);
+              }}
+            />
+            <Switch
+              label="Share with everyone in the company"
+              checked={shared}
+              onCheckedChange={(v) => {
+                setSaved(null);
+                setShared(v);
+              }}
+            />
+          </div>
+          <div className="row-actions">
+            <Button
+              onClick={() => void onSave()}
+              loading={save.isPending}
+              disabled={!name.trim() || !canChange}
+            >
+              <Save size={16} aria-hidden="true" /> {current ? 'Save changes' : 'Save report'}
+            </Button>
+            {current && current.mine ? (
+              <Button variant="danger" onClick={() => void onDelete()} loading={remove.isPending}>
+                <Trash2 size={16} aria-hidden="true" /> Delete
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              disabled={!result || result.rows.length === 0}
+              onClick={() => result && download(fileName(name), toCsv(result))}
+            >
+              <Download size={16} aria-hidden="true" /> Download CSV
+            </Button>
+          </div>
+          <ErrorAlert error={save.error ?? remove.error} title="We couldn't save that" />
+          {saved ? (
+            <p className="u-muted" role="status">
+              {saved}
+            </p>
+          ) : null}
+        </div>
+      </Card>
       {result?.truncated ? (
         <Alert tone="info" title="Showing part of the report">
           This report is longer than we show at once. Narrow it to some projects or to overdue

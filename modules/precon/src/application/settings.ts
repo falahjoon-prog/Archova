@@ -73,7 +73,28 @@ export function createSettingsService(deps: Pick<PreconDeps, 'now'>) {
     return { required: true, blocked };
   }
 
-  return { get, set, tenderGate };
+  /**
+   * Where the organisation's companies stand on prequalification, one count per standing (a company counts once, by
+   * its {@link companyStanding}). Used by `reporting` for the tender-readiness pack.
+   */
+  async function readinessSummary(scope: TenantScope) {
+    const rows = await scope.tx.select().from(prequalifications);
+    const today = localDateOf(now(), PRECON_TIME_ZONE);
+    const byCompany = new Map<string, typeof rows>();
+    for (const r of rows) byCompany.set(r.companyId, [...(byCompany.get(r.companyId) ?? []), r]);
+    const counts = { qualified: 0, expiring: 0, pending: 0, expired: 0, not_qualified: 0 };
+    for (const forms of byCompany.values()) {
+      const standing = companyStanding(forms, today);
+      if (standing && standing.state !== 'none') counts[standing.state] += 1;
+    }
+    return {
+      companies: byCompany.size,
+      ...counts,
+      requiredForTenders: (await get(scope)).requireForTenders,
+    };
+  }
+
+  return { get, set, tenderGate, readinessSummary };
 }
 
 export type SettingsService = ReturnType<typeof createSettingsService>;

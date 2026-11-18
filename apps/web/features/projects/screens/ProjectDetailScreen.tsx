@@ -5,14 +5,23 @@ import { useMemo, useState } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { AnnouncementsCard } from '@/features/announcements';
+import { BookmarksCard } from '@/features/bookmarks';
+import { RecentsCard } from '@/features/recents';
+import { ConversationsCard } from '@/features/conversations';
 import { KeyDatesCard } from '@/features/schedule';
 import { Button, Card, Dialog, PageHeader } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { DirectionsCard } from '../components/DirectionsCard';
+import { PhotosCard } from '../components/PhotosCard';
+import { ProjectHero } from '../components/ProjectHero';
+import { ProjectStatusCard } from '../components/ProjectStatusCard';
+import { useUpdateProject } from '../hooks/useProjectMutations';
 import { MemberList } from '../components/MemberList';
-import { projectToolGroups } from '../components/ProjectShell';
+import { NeedsAttentionCard, OpenItemsCard } from '../components/ProjectOverviewCards';
 import { AddMemberForm } from '../forms/AddMemberForm';
 import {
   useCompanies,
@@ -30,11 +39,16 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
   const permissions = useProjectPermissions(org.orgId, projectId);
+  const updateProject = useUpdateProject(org.orgId, projectId);
 
   // UI gating only; the API enforces the same rule (frontend 02 §6). The contract types tool names as plain
   // strings, while `can()` takes the domain's narrower `Tool` union; unknown tools are simply never matched.
   const canManageMembers = permissions.data
     ? can(permissions.data as EffectivePermissions, 'platform.project_members.manage')
+    : false;
+
+  const canEditProject = permissions.data
+    ? can(permissions.data as EffectivePermissions, 'platform.projects.update')
     : false;
 
   // Names for the member table. Only fetched when the caller manages members (they need the same reference data).
@@ -64,13 +78,6 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   }
 
   const p = project.data;
-  const tools = projectToolGroups(
-    org.orgSlug,
-    projectId,
-    permissions.data as EffectivePermissions | undefined,
-  )
-    .flatMap((g) => g.items)
-    .filter((item) => !item.exact);
   return (
     <>
       <nav aria-label="Breadcrumb" className="breadcrumb">
@@ -82,48 +89,78 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
       </nav>
       <PageHeader title={p.name} eyebrow={p.number ? `Project ${p.number}` : undefined} />
       <div className="stack-lg">
-        <KeyDatesCard
-          projectId={projectId}
-          timeZone={p.timezone}
-          permissions={permissions.data as EffectivePermissions | undefined}
+        <ProjectHero
+          orgId={org.orgId}
+          fileId={p.heroFileId}
+          name={p.name}
+          onRemove={
+            canEditProject
+              ? () => updateProject.mutate({ version: p.version, body: { heroFileId: null } })
+              : undefined
+          }
         />
-        <section aria-labelledby="tools-heading" className="stack">
-          <h2 id="tools-heading" className="panel-heading">
-            Tools
-          </h2>
-          <ul className="project-grid tool-grid">
-            {tools.map(({ href, label, icon: Icon }) => (
-              <li key={href} className="project-card tool-card">
-                <Icon size={20} aria-hidden="true" />
-                <Link className="project-card__link tool-card__link" href={href}>
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <Card title="Details">
-          <dl className="details">
-            <div>
-              <dt>Status</dt>
-              <dd>{statusLabel(p.status)}</dd>
-            </div>
-            <div>
-              <dt>State or territory</dt>
-              <dd>{p.state && isAuState(p.state) ? AU_STATE_NAMES[p.state] : 'Not set'}</dd>
-            </div>
-            <div>
-              <dt>Project number</dt>
-              <dd className="u-mono">{p.number ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt>Time zone</dt>
-              <dd>{p.timezone}</dd>
-            </div>
-          </dl>
-        </Card>
-
+        <ProjectStatusCard
+          orgId={org.orgId}
+          projectId={projectId}
+          version={p.version}
+          tile={p.statusTile ?? null}
+          canEdit={canEditProject}
+        />
+        <ErrorAlert error={updateProject.error} title="We couldn't change the project photo" />
+      </div>
+      <div className="project-overview project-overview--spaced">
+        <div className="project-overview__col">
+          <Card title="Project information">
+            <dl className="details">
+              <div>
+                <dt>Status</dt>
+                <dd>{statusLabel(p.status)}</dd>
+              </div>
+              <div>
+                <dt>State or territory</dt>
+                <dd>{p.state && isAuState(p.state) ? AU_STATE_NAMES[p.state] : 'Not set'}</dd>
+              </div>
+              <div>
+                <dt>Project number</dt>
+                <dd className="u-mono">{p.number ?? 'Not set'}</dd>
+              </div>
+              <div>
+                <dt>Time zone</dt>
+                <dd>{p.timezone}</dd>
+              </div>
+            </dl>
+          </Card>
+          <KeyDatesCard
+            projectId={projectId}
+            timeZone={p.timezone}
+            permissions={permissions.data as EffectivePermissions | undefined}
+          />
+          <BookmarksCard projectId={projectId} />
+          <ConversationsCard projectId={projectId} timeZone={p.timezone} />
+        </div>
+        <div className="project-overview__col">
+          <AnnouncementsCard projectId={projectId} timeZone={p.timezone} />
+          <OpenItemsCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <NeedsAttentionCard orgSlug={org.orgSlug} projectId={projectId} timeZone={p.timezone} />
+          <DirectionsCard
+            projectId={projectId}
+            permissions={permissions.data as EffectivePermissions | undefined}
+          />
+          <RecentsCard projectId={projectId} />
+          <PhotosCard
+            projectId={projectId}
+            timeZone={p.timezone}
+            heroFileId={p.heroFileId}
+            onUseAsHero={
+              canEditProject
+                ? (fileId) =>
+                    updateProject.mutate({ version: p.version, body: { heroFileId: fileId } })
+                : undefined
+            }
+          />
+        </div>
+      </div>
+      <div className="stack-lg project-overview__below">
         <Card
           title="Members"
           actions={

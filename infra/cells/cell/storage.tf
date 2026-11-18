@@ -73,6 +73,7 @@ module "exports" {
   kms_key_arn                        = module.kms_files.arn
   expiration_days                    = 30
   noncurrent_version_expiration_days = 1
+  expire_prefixes                    = { "exports/" = 8 } # one-click full data export (Sam): gone after 8 days, earlier than the bucket's 30
   access_log_bucket                  = module.access_logs.id
   force_destroy                      = var.force_destroy_buckets
   tags                               = merge(local.tags, { service = "files" })
@@ -160,4 +161,18 @@ data "aws_iam_policy_document" "waf_logs" {
       values   = [local.account]
     }
   }
+}
+
+# Write-once copies of the raw bytes of sealed payment-claim emails (SOPA delivery proof, compliance/07): Object Lock in
+# compliance mode with a 10-year default retention in prod, so nobody (root included) can delete or shorten it. Separate
+# from the audit archive because that one is retained for 7 years. Only the worker can write, and only PutObject.
+module "claims_evidence" {
+  source                             = "../../modules/s3-bucket"
+  name                               = "${local.name}-claims-evidence-${local.acct6}"
+  kms_key_arn                        = module.kms_files.arn
+  object_lock_retention_days         = var.claims_evidence_retention_days
+  noncurrent_version_expiration_days = null
+  access_log_bucket                  = module.access_logs.id
+  force_destroy                      = false
+  tags                               = merge(local.tags, { service = "worker" })
 }

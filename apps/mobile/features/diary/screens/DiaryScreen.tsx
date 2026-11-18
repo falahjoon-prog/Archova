@@ -41,7 +41,7 @@ interface Option {
 }
 
 /** The project's zone: from the API while online, else the synced project record. */
-function useProjectTimeZone(data: DeviceData | null, projectId: string) {
+export function useProjectTimeZone(data: DeviceData | null, projectId: string) {
   const { orgId } = useCurrentOrg();
   const project = useProject(orgId, projectId);
   const local = useLocalQuery(data ? () => data.store.get('project', projectId) : null, [

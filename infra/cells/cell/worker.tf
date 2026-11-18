@@ -25,7 +25,13 @@ module "worker" {
   image        = var.images["worker"]
   cpu          = local.worker.cpu
   memory       = local.worker.memory
-  environment  = { NODE_ENV = "production", LOG_LEVEL = "info" }
+  environment = {
+    NODE_ENV               = "production"
+    LOG_LEVEL              = "info"
+    WORKER_EVIDENCE_STORE  = "s3"
+    WORKER_EVIDENCE_BUCKET = module.claims_evidence.id
+    WORKER_EVIDENCE_REGION = local.region
+  }
   secrets = {
     DATABASE_URL          = "${module.aurora.role_secret_arns["app_rw"]}:url::"
     DATABASE_PLATFORM_URL = "${module.aurora.role_secret_arns["app_platform"]}:url::"
@@ -47,4 +53,31 @@ module "worker" {
   log_retention_days       = var.log_retention_days
 
   tags = merge(local.tags, { service = "worker" })
+}
+
+# Put-only on the claims evidence bucket: no read, no delete, no retention or Object Lock changes (the bucket's default
+# retention applies to every object, so the worker must not send its own retention headers).
+data "aws_iam_policy_document" "worker_evidence" {
+  statement {
+    sid       = "ClaimsEvidencePutOnly"
+    actions   = ["s3:PutObject"]
+    resources = ["${module.claims_evidence.arn}/*"]
+  }
+
+  statement {
+    sid       = "FilesKey"
+    actions   = ["kms:Encrypt", "kms:GenerateDataKey"]
+    resources = [module.kms_files.arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${local.region}.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "worker_evidence" {
+  name   = "claims-evidence-put-only"
+  role   = aws_iam_role.task["worker"].id
+  policy = data.aws_iam_policy_document.worker_evidence.json
 }

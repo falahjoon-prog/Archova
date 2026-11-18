@@ -22,3 +22,39 @@ export const toApiTokenDto = (t: ApiTokenRow): ApiToken => ({
   revokedAt: t.revokedAt?.toISOString() ?? null,
   createdAt: t.createdAt.toISOString(),
 });
+
+export const toOauthAppDto = (c: {
+  clientId: string;
+  name: string;
+  description: string | null;
+  redirectUris: string[];
+  scopes: string[];
+  disabledAt: Date | null;
+}) => ({
+  clientId: c.clientId,
+  name: c.name,
+  description: c.description,
+  redirectUris: c.redirectUris,
+  scopes: c.scopes,
+  disabled: c.disabledAt !== null,
+});
+
+export const toAppInstallDto = (i: {
+  id: string;
+  clientId: string;
+  appName: string;
+  scopes: string[];
+  installedBy: string;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+  revokedAt: Date | null;
+}) => ({
+  id: encodeId('appInstall', i.id),
+  clientId: i.clientId,
+  appName: i.appName,
+  scopes: i.scopes,
+  installedBy: encodeId('user', i.installedBy),
+  createdAt: i.createdAt.toISOString(),
+  lastUsedAt: i.lastUsedAt?.toISOString() ?? null,
+  revokedAt: i.revokedAt?.toISOString() ?? null,
+});

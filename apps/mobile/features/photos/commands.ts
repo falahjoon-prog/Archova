@@ -21,6 +21,8 @@ export interface LocalPhoto {
   thumbnailUri: string;
   /** Set once the server has stored the file. */
   fileId: string | null;
+  /** The queued command that sends this photo, so a step that needs it can follow it. */
+  mutationId: string;
 }
 
 export interface CapturePhotoInput {
@@ -57,6 +59,7 @@ export async function capturePhoto(
     localUri: input.file.localUri,
     thumbnailUri: input.file.thumbnailUri,
     fileId: null,
+    mutationId: input.mutationId,
   };
   await deps.db.withExclusiveTransactionAsync(async (tx) => {
     await deps.store.writeLocalIn(tx, {
@@ -65,24 +68,37 @@ export async function capturePhoto(
       projectId: photo.projectId,
       data: photo,
     });
+    // A defect photo is attached to the defect once uploaded; any other photo is a `photos.create`.
     await deps.store.enqueueIn(
       tx,
-      {
-        mutationId: input.mutationId,
-        command: 'photos.create',
-        entityType: PHOTO_ENTITY,
-        entityId: photo.id,
-        projectId: photo.projectId,
-        baseVersion: null,
-        clientAt: input.clientAt,
-        dependsOn: input.dependsOn ?? [],
-        payload: {
-          projectId: photo.projectId,
-          defectId: photo.defectId,
-          purpose: photo.purpose,
-          capture: input.capture,
-        },
-      },
+      photo.defectId
+        ? {
+            mutationId: input.mutationId,
+            command: 'defects.attachPhoto',
+            entityType: 'defect',
+            entityId: photo.defectId,
+            projectId: photo.projectId,
+            baseVersion: null,
+            clientAt: input.clientAt,
+            dependsOn: input.dependsOn ?? [],
+            payload: { purpose: photo.purpose ?? 'before' },
+          }
+        : {
+            mutationId: input.mutationId,
+            command: 'photos.create',
+            entityType: PHOTO_ENTITY,
+            entityId: photo.id,
+            projectId: photo.projectId,
+            baseVersion: null,
+            clientAt: input.clientAt,
+            dependsOn: input.dependsOn ?? [],
+            payload: {
+              projectId: photo.projectId,
+              defectId: photo.defectId,
+              purpose: photo.purpose,
+              capture: input.capture,
+            },
+          },
       { held: true },
     );
     await deps.uploads.addIn(tx, {

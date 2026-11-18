@@ -6,6 +6,8 @@
 // about fairness, safety, validity or legal effect, or advice to sign) is dropped, not rewritten.
 import type {
   ContractPage,
+  ObligationCategory,
+  ObligationParty,
   ContractReviewOutput,
   Severity,
   SummaryKey,
@@ -61,6 +63,15 @@ export interface ReviewedTimeBar {
   source: ContractSource;
 }
 
+export interface ReviewedObligation {
+  party: ObligationParty;
+  category: ObligationCategory;
+  action: string;
+  /** The contract's own words for when, never a worked-out date. */
+  timing: string | null;
+  source: ContractSource;
+}
+
 export type WordingStatus = 'offered' | 'review_due' | 'none';
 
 export interface ReviewedFlag {
@@ -91,6 +102,8 @@ export interface ReviewedContract {
   /** Key terms Nova did not find: shown as "Not found in this contract". */
   summaryNotFound: SummaryKey[];
   timeBars: ReviewedTimeBar[];
+  /** Who must do what, cited. Rows saved before this existed have none. */
+  obligations?: ReviewedObligation[];
   flags: ReviewedFlag[];
   /** What code removed from the model's answer, so the person knows the list was cut. */
   dropped: { notOnPage: number; bannedWords: number; unknownTopic: number };
@@ -243,6 +256,22 @@ export function reviewContract(
   }
   timeBars.sort((a, b) => a.source.page - b.source.page);
 
+  const obligations: ReviewedObligation[] = [];
+  for (const o of output.obligations ?? []) {
+    if (!clean(o.action, ...(o.timing ? [o.timing] : []))) continue;
+    const source = cite(o);
+    if (!source) continue;
+    if (obligations.some((x) => x.source.quote === source.quote && x.party === o.party)) continue;
+    obligations.push({
+      party: o.party,
+      category: o.category,
+      action: o.action.trim(),
+      timing: o.timing?.trim() || null,
+      source,
+    });
+  }
+  obligations.sort((a, b) => a.source.page - b.source.page);
+
   const flags: ReviewedFlag[] = [];
   for (const d of output.departures) {
     const topic = topics.get(d.topicKey);
@@ -276,6 +305,7 @@ export function reviewContract(
     summary,
     summaryNotFound: SUMMARY_KEYS.filter((k) => !summary.some((s) => s.key === k)),
     timeBars,
+    obligations,
     flags,
     dropped,
   };

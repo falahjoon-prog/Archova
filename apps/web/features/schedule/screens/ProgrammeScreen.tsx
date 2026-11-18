@@ -155,6 +155,11 @@ export function ProgrammeScreen() {
                 {d.criticalCount ? (
                   <StatusPill tone="warning">{d.criticalCount} critical</StatusPill>
                 ) : null}
+                {d.schedule.baselineSetAt ? (
+                  <StatusPill tone="neutral">
+                    Baseline set {formatLocalDate(d.schedule.baselineSetAt.slice(0, 10))}
+                  </StatusPill>
+                ) : null}
                 {d.violationCount ? (
                   <StatusPill tone="danger">
                     {d.violationCount} broken {d.violationCount === 1 ? 'link' : 'links'}
@@ -183,6 +188,24 @@ export function ProgrammeScreen() {
                     onValueChange={setZoom}
                   />
                   <div className="row-actions">
+                    {canWrite && d?.activities.length ? (
+                      <Button
+                        variant="secondary"
+                        loading={m.setBaseline.isPending}
+                        onClick={() => m.setBaseline.mutate()}
+                      >
+                        {d.schedule.baselineSetAt ? 'Reset baseline' : 'Set baseline'}
+                      </Button>
+                    ) : null}
+                    {canWrite && d?.schedule.baselineSetAt ? (
+                      <Button
+                        variant="tertiary"
+                        loading={m.clearBaseline.isPending}
+                        onClick={() => m.clearBaseline.mutate()}
+                      >
+                        Clear baseline
+                      </Button>
+                    ) : null}
                     {canWrite ? (
                       <Button variant="secondary" onClick={() => setEditing('new')}>
                         <Plus size={16} aria-hidden="true" /> Add activity
@@ -195,6 +218,10 @@ export function ProgrammeScreen() {
                     ) : null}
                   </div>
                 </div>
+                <ErrorAlert
+                  error={m.reschedule.error ?? m.setBaseline.error ?? m.clearBaseline.error}
+                  title="We couldn't save that change"
+                />
                 {detail.isPending ? <SkeletonRows rows={6} label="Loading programme…" /> : null}
                 {d && !d.activities.length ? (
                   <EmptyState
@@ -213,7 +240,13 @@ export function ProgrammeScreen() {
                     today={today}
                     zoom={zoom}
                     openItems={openItems}
-                    {...(canWrite ? { onSelect: setEditing } : {})}
+                    {...(canWrite
+                      ? {
+                          onSelect: setEditing,
+                          onReschedule: (a, dates) =>
+                            m.reschedule.mutate({ activityId: a.id, ...dates }),
+                        }
+                      : {})}
                   />
                 ) : null}
               </div>

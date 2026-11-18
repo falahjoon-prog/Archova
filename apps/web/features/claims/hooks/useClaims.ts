@@ -8,6 +8,7 @@ import {
   createClaimsApi,
   type CreateContract,
   type CreateForecastAdjustment,
+  type CreateOwnerInvoice,
   type CreateVariation,
   type IssuePaymentSchedule,
   type RecordClaimStatement,
@@ -212,6 +213,63 @@ export function useClaimsMutations(projectId: string) {
     issueSchedule: useMutation({
       mutationFn: (v: { claimId: string; body: IssuePaymentSchedule }) =>
         source.issueSchedule(projectId, v.claimId, v.body),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+/** Subcontractor claims that can go on the next owner invoice, checked by Nova. Off until the dialog is open. */
+export function useOwnerInvoicePrefill(
+  projectId: string,
+  contractId: string,
+  periodEnd: string,
+  enabled: boolean,
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-invoices', {
+      prefill: contractId,
+      periodEnd,
+    }),
+    queryFn: () => source.ownerInvoicePrefill(projectId, contractId, periodEnd),
+    enabled,
+  });
+}
+
+export function useOwnerInvoices(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-invoices', { contractId }),
+    queryFn: () => source.ownerInvoices(projectId, contractId),
+  });
+}
+
+export function useOwnerInvoice(projectId: string, ownerInvoiceId: string | null) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolItem(orgId, projectId, 'owner-invoices', ownerInvoiceId ?? ''),
+    queryFn: () => source.ownerInvoice(projectId, ownerInvoiceId!),
+    enabled: ownerInvoiceId !== null,
+  });
+}
+
+export function useOwnerInvoiceMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'owner-invoices') });
+  return {
+    create: useMutation({
+      mutationFn: (body: CreateOwnerInvoice) =>
+        source.createOwnerInvoice(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    discard: useMutation({
+      mutationFn: (ownerInvoiceId: string) => source.discardOwnerInvoice(projectId, ownerInvoiceId),
       onSuccess: refresh,
     }),
   };

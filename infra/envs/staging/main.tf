@@ -36,8 +36,9 @@ module "cell" {
     replicas        = 1
   }
 
-  audit_archive_retention_days = 30
-  backup                       = null
+  audit_archive_retention_days   = 30
+  claims_evidence_retention_days = 30
+  backup                         = null
 
   images = {
     api       = "${var.image_registry}/archova/api:bootstrap"

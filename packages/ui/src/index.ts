@@ -37,6 +37,33 @@ export {
   type DrawingCanvasProps,
 } from './patterns/DrawingCanvas';
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
+export {
+  DonutChart,
+  FlowBars,
+  GroupedBars,
+  SegmentBar,
+  SiteMap,
+  ToneBars,
+  type BarGroup,
+  type BarSegment,
+  type BarSeries,
+  type DonutSlice,
+  type FlowRow,
+  type MapPoint,
+  type TonedBar,
+} from './patterns/Charts';
+export { RichText } from './patterns/RichText';
+export { RichTextEditor, type RichTextEditorProps } from './patterns/RichTextEditor';
+export {
+  docFromElement,
+  docText,
+  fillElement,
+  type RichBlock,
+  type RichColour,
+  type RichDoc,
+  type RichRun,
+} from './patterns/richText';
+export { StatGrid, type StatItem, type StatTone } from './patterns/StatGrid';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState';
 export { FilterBar } from './patterns/FilterBar';
 export { ItemHeader, type ItemHeaderProps } from './patterns/ItemHeader';
@@ -71,5 +98,23 @@ export {
   type WatchProgress,
   type WatchToEndVideoProps,
 } from './patterns/WatchToEndVideo';
+
+export {
+  AnimationPlayer,
+  SceneFrame,
+  ANIMATION_ICONS,
+  type AnimationElement,
+  type AnimationPlayerProps,
+  type AnimationScene,
+} from './patterns/animation/AnimationPlayer';
+export {
+  locate as locateAnimation,
+  motionAt,
+  sceneStart,
+  totalMs as animationTotalMs,
+  type Motion as AnimationMotion,
+  type MotionPreset,
+  type MotionState,
+} from './patterns/animation/timeline';
 
 export { cx } from './lib/cx';

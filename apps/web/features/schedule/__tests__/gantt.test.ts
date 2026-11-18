@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { barBox, chartSpan, weekendBands, weekTicks } from '../lib/gantt';
+import {
+  barBox,
+  chartSpan,
+  dragDays,
+  draggedDates,
+  varianceLabel,
+  weekendBands,
+  weekTicks,
+} from '../lib/gantt';
 import { groupByWeek } from '../lib/lookahead';
 import { formatForFile } from '../lib/labels';
 import { openItemsByActivity, openItemsLabel } from '../lib/links';
@@ -109,5 +117,30 @@ describe('open linked items on the programme', () => {
       openItemsByActivity([link({ dueDate: '2026-11-06' })], starts, '2026-11-05').get('a1')
         ?.atRisk,
     ).toBe(false);
+  });
+});
+
+describe('drag-to-reschedule', () => {
+  const task = { kind: 'task' as const, start: '2026-11-09', finish: '2026-11-11' };
+  it('snaps a pointer travel to whole days', () => {
+    expect(dragDays(13, 10)).toBe(1);
+    expect(dragDays(-14, 10)).toBe(-1);
+    expect(dragDays(4, 10)).toBe(0);
+    expect(Object.is(dragDays(-3, 10), -0)).toBe(false);
+  });
+  it('moves both ends, or only the finish when resizing', () => {
+    expect(draggedDates(task, 'move', 2)).toEqual({ start: '2026-11-11', finish: '2026-11-13' });
+    expect(draggedDates(task, 'resize', 2)).toEqual({ start: '2026-11-09', finish: '2026-11-13' });
+  });
+  it('never lets a finish pass the start and keeps a milestone to one day', () => {
+    expect(draggedDates(task, 'resize', -9)).toEqual({ start: '2026-11-09', finish: '2026-11-09' });
+    const ms = { kind: 'milestone' as const, start: '2026-11-09', finish: '2026-11-09' };
+    expect(draggedDates(ms, 'resize', 3)).toEqual({ start: '2026-11-12', finish: '2026-11-12' });
+  });
+  it('words the variance', () => {
+    expect(varianceLabel(null)).toBe('');
+    expect(varianceLabel(0)).toBe('On baseline');
+    expect(varianceLabel(1)).toBe('1 day late');
+    expect(varianceLabel(-3)).toBe('3 days ahead');
   });
 });

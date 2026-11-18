@@ -2,9 +2,16 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
-import { localDateOf } from '@archova/time';
+import { localDateOf, type LocalDate } from '@archova/time';
 import type { NumberVault } from '../domain/number-vault';
-import { checkNumber, hasNumberCheck, isWorkerItem, last4 } from '../domain/wallet';
+import {
+  checkNumber,
+  expiryState,
+  hasNumberCheck,
+  isWorkerItem,
+  last4,
+  type ExpiryState,
+} from '../domain/wallet';
 import {
   attendanceSessions,
   complianceDocuments,
@@ -414,7 +421,81 @@ export function createWalletService(deps: { files: InductionDeps['files']; vault
     return { row: (await withWorkers(scope, [row]))[0]!, today: today() };
   }
 
-  return { list, listAlerts, create, update, sight };
+  /**
+   * The company's own licences and insurances as one row each with how current it is, for the tender-readiness pack
+   * (`reporting`). Per-worker items (white card, high-risk licence) are left out: they are personal to the holder.
+   * "Recorded" and "sighted" are the strongest claims; nothing here has been checked against a register.
+   */
+  async function readinessSummary(scope: TenantScope) {
+    const rows = await scope.tx
+      .select({
+        itemType: complianceDocuments.itemType,
+        title: complianceDocuments.title,
+        insurer: complianceDocuments.insurer,
+        expiresOn: complianceDocuments.expiresOn,
+        evidence: complianceDocuments.evidence,
+      })
+      .from(complianceDocuments)
+      .where(
+        and(eq(complianceDocuments.orgId, scope.ctx.orgId), isNull(complianceDocuments.archivedAt)),
+      )
+      .orderBy(sql`${complianceDocuments.expiresOn} asc nulls last`);
+    const day = today();
+    const items = rows
+      .filter((r) => !isWorkerItem(r.itemType))
+      .map((r) => ({ ...r, state: expiryState(r.expiresOn, day) }));
+    const counts: Record<ExpiryState, number> = {
+      current: 0,
+      expiring: 0,
+      expired: 0,
+      no_expiry: 0,
+    };
+    for (const i of items) counts[i.state] += 1;
+    return { counts, items };
+  }
+
+  /**
+   * Licences held in the wallet that have expired or expire within the warning period, for the permits register's
+   * Nova flags. The holder's name and the licence title only: no number, no files. Not checked against a register.
+   */
+  async function lapsedLicences(scope: TenantScope, day: string) {
+    const rows = await scope.tx
+      .select({
+        itemType: complianceDocuments.itemType,
+        title: complianceDocuments.title,
+        holderName: complianceDocuments.holderName,
+        expiresOn: complianceDocuments.expiresOn,
+      })
+      .from(complianceDocuments)
+      .where(
+        and(
+          eq(complianceDocuments.orgId, scope.ctx.orgId),
+          isNull(complianceDocuments.archivedAt),
+          inArray(complianceDocuments.itemType, [
+            'trade_licence',
+            'contractor_licence',
+            'hrw_licence',
+          ]),
+        ),
+      )
+      .orderBy(sql`${complianceDocuments.expiresOn} asc nulls last`);
+    return rows.flatMap((r) => {
+      const state = expiryState(r.expiresOn, day as LocalDate);
+      return state === 'expired' || state === 'expiring'
+        ? [
+            {
+              title: r.title,
+              holder: r.holderName,
+              itemType: r.itemType,
+              expiresOn: r.expiresOn!,
+              state,
+            },
+          ]
+        : [];
+    });
+  }
+
+  return { list, listAlerts, create, update, sight, readinessSummary, lapsedLicences };
 }
 
 export type WalletService = ReturnType<typeof createWalletService>;
