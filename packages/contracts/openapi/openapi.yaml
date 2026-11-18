@@ -31,8 +31,10 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: esign
   - name: conversations
   - name: announcements
+  - name: links
   - name: bim
   - name: defects
   - name: financials
@@ -42,12 +44,14 @@ tags:
   - name: insurance
   - name: safety
   - name: permits
+  - name: geotech
   - name: estimating
   - name: integrations
   - name: sync
   - name: diary
   - name: workforce
   - name: logistics
+  - name: prefab
   - name: scheduling
   - name: meetings
   - name: ownerportal
@@ -58,6 +62,7 @@ tags:
   - name: reporting
   - name: search
   - name: data-export
+  - name: workflows
 paths:
   /v1/auth/signup:
     post:
@@ -1670,9 +1675,13 @@ paths:
       tags: [projects]
       x-module: platform
       x-permission: platform.project_members.read
+      summary: The project directory. `q` matches name, email, phone, title, trade or company name.
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
       responses:
         '200':
           description: A page of project members
@@ -1699,6 +1708,98 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: memberId, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateProjectMember
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.manage
+      summary: Change the phone, job title or trade shown for a member in the directory. Null or empty clears a field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectMemberRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/company-contacts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCompanyContacts
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.read
+      summary: People at companies who have no login. Org-wide, so every project sees the same entry.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: A page of contacts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContactPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompanyContactRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContact' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/company-contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - { name: contactId, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCompanyContactRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContact' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCompanyContact
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      responses:
+        '204': { description: Deleted }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove:
     parameters:
@@ -1909,6 +2010,142 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/ProjectPhoto' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos/browse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: browseProjectPhotos
+      tags: [files]
+      x-module: files
+      summary: Page through the project's site photos, newest first, for the Photos tool (feed, timeline and album views).
+      description: |
+        Filter by `album` (an auto album key such as `punch_list`, or a project album id), by filename (`q`) and by a
+        capture-date range. Photos nobody has filed carry `needsReview` once they have sat unfiled for 24 hours, and a
+        rule-based `suggestion` taken from already-filed photos taken nearby or by the same person at the same time.
+        Incident and induction photos are never listed. Links work for 5 minutes.
+      parameters:
+        - { name: album, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 48 },
+          }
+      responses:
+        '200':
+          description: A page of photos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, next]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/SitePhoto' }
+                  next: { type: [string, 'null'], description: Pass as `cursor` for the next page. }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: filePhoto
+      tags: [files]
+      x-module: files
+      summary: File a photo under an album, optionally on the record it belongs to. Accepts a Nova suggestion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhotoFilingRequest' }
+      responses:
+        '200':
+          description: Filed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoFiling' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPhotoAlbums
+      tags: [files]
+      x-module: files
+      summary: The auto albums (by where each photo was taken or filed) with counts, and the project's own albums.
+      responses:
+        '200':
+          description: Albums
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoAlbums' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPhotoAlbum
+      tags: [files]
+      x-module: files
+      summary: Create an album of your own.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+      responses:
+        '201':
+          description: The album
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoAlbum' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PhotoAlbumId'
+    delete:
+      operationId: deletePhotoAlbum
+      tags: [files]
+      x-module: files
+      summary: Delete an album. The photos stay on the project.
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PhotoAlbumId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: addPhotoToAlbum
+      tags: [files]
+      x-module: files
+      summary: Add a photo to an album. Adding it twice is fine.
+      responses:
+        '204':
+          description: Added
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removePhotoFromAlbum
+      tags: [files]
+      x-module: files
+      summary: Take a photo out of an album.
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/folders:
     parameters:
@@ -2218,6 +2455,12 @@ paths:
             schema: { $ref: '#/components/schemas/CoordinationIssueStatus' },
           }
         - { name: modelId, in: query, schema: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' } }
+        - {
+            name: drawingRevisionId,
+            in: query,
+            description: Only the issues pinned on this drawing revision.,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
       responses:
         '200':
@@ -2327,6 +2570,14 @@ paths:
       parameters:
         - { name: folderId, in: query, schema: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' } }
         - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - name: createdSince
+          in: query
+          description: Only documents registered at or after this instant ("new this week").
+          schema: { type: string, format: date-time }
+        - name: tracked
+          in: query
+          description: Send `true` for only the documents the caller tracks.
+          schema: { type: string, enum: ['true'] }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Cursor'
       responses:
@@ -2397,6 +2648,80 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Move the document to the recycle bin. Revisions and files are kept; `restoreDocument` undoes it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Moved to the recycle bin }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/bin:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeletedDocuments
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: The recycle bin, most recently deleted last page first; restore with `restoreDocument`.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of deleted documents in folders the caller can open
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      operationId: restoreDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Take a document out of the recycle bin. 409 `document.number_taken` if its number was reused.
+      responses:
+        '200':
+          description: Restored
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    put:
+      operationId: trackDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Add the document to the caller's own "Items You Are Tracking". Repeating it is a no-op.
+      responses:
+        '204': { description: Tracked }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: untrackDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Remove the document from the caller's tracked items.
+      responses:
+        '204': { description: No longer tracked }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions:
     parameters:
@@ -4092,6 +4417,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftContractSov
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.contracts.manage
+      summary: Ask Nova to propose a contract's schedule of values from its PDF.
+      description: |
+        For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+        contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+        and the printed row it came from, and is shown only when code found that row on the page and the amount is
+        printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+        blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+        against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+        saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+        by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { $ref: '#/components/schemas/FileRef' }
+                contractValue:
+                  description: The contract value ex GST the person has entered, to check the lines against.
+                  oneOf:
+                    - { $ref: '#/components/schemas/FinancialsMoney' }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: The proposed lines
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractSovDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5309,6 +5675,95 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DataExportDownload' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWorkflows
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: The approval workflows this organisation has set up.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Set up an approval chain for a kind of record.
+      description: |
+        Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+        minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+        workflow per kind of record: activating a second one is refused with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkflowRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows/{workflowId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WorkflowId'
+    patch:
+      operationId: updateWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Change a workflow, or switch it on or off.
+      description: Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkflowRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Remove a workflow. Variations already going through it carry on.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    get:
+      operationId: getVariationWorkflow
+      tags: [workflows]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Where a variation is in its approval chain.
+      description: '`run` is null when no workflow applied to the variation.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationWorkflow' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -7784,6 +8239,96 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AnnouncementDraft' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listRelatedItems
+      tags: [links]
+      x-module: links
+      x-permission: links.links.read
+      summary: Everything linked to one record, from either end, newest first.
+      description: >
+        Records the caller cannot open in their own tool are not described; they are only counted in `hidden`.
+        404 when the record itself is missing or not visible to the caller.
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { $ref: '#/components/schemas/LinkEntityType' },
+          }
+        - { name: id, in: query, required: true, schema: { type: string, maxLength: 64 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedItemList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createRelatedItem
+      tags: [links]
+      x-module: links
+      x-permission: links.links.create
+      summary: Link two records on the project. Linking the same pair twice returns the existing link.
+      description: The caller must be able to open both records in their own tools.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRelatedItemRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items/candidates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: searchRelatedItemCandidates
+      tags: [links]
+      x-module: links
+      x-permission: links.links.create
+      summary: Records of one type that can be linked, matching some words; only ones the caller can open.
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { $ref: '#/components/schemas/LinkEntityType' },
+          }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 8 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelatedItemCandidateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/related-items/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RelatedLinkId'
+    delete:
+      operationId: deleteRelatedItem
+      tags: [links]
+      x-module: links
+      x-permission: links.links.delete
+      summary: Remove a link. Whoever made it can always remove it; anyone else must be able to open both records.
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/correspondence:
     parameters:
@@ -13120,6 +13665,200 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RespondToReadingResult' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listActionPlans
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: The project's action plans, newest first. People outside the builder's team see only plans with a step assigned to their company.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ActionPlanStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Start an action plan, from a template or with its steps, optionally raised from an observation or inspection. It is numbered AP-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    get:
+      operationId: getActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: One action plan with its steps.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateActionPlan
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Edit the plan, cancel it, or reopen a cancelled one. A plan completes by itself when every step is done or skipped.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateActionPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    post:
+      operationId: addActionPlanItem
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Add a step to the end of the plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+      - $ref: '#/components/parameters/ActionPlanItemId'
+    patch:
+      operationId: updateActionPlanItem
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.read
+      summary: Builder staff edit a step; the company it is assigned to marks it done, skipped or open again and leaves a note.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateActionPlanItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/save-as-template:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ActionPlanId'
+    post:
+      operationId: saveActionPlanAsTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Keep the plan's steps as a template to start the same plan again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveActionPlanTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/action-plan-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listActionPlanTemplates
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: The project's action plan templates.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createActionPlanTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.action_plans.manage
+      summary: Write a template of steps with due dates as days after the plan starts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActionPlanTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionPlanTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incidents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13784,6 +14523,246 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/investigations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechInvestigations
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Site investigations (boreholes, test pits, CPT) for a project, newest first.
+      parameters:
+        - {
+            name: kind,
+            in: query,
+            schema: { $ref: '#/components/schemas/GeotechInvestigationKind' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a site investigation. It is numbered GEO-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechInvestigationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechInvestigationId'
+    get:
+      operationId: getGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: A site investigation.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Edit a site investigation.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGeotechInvestigationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/tests:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechTests
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Material and soil test results, each judged against the spec limits typed on it.
+      parameters:
+        - {
+            name: investigationId,
+            in: query,
+            schema: { type: string, pattern: '^gin_[0-9A-Za-z]{26}$' },
+          }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/GeotechTestKind' } }
+        - { name: result, in: query, schema: { $ref: '#/components/schemas/GeotechTestOutcome' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechTestPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechTest
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a test result with optional spec limits.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechTestRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechTest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechTestId'
+    delete:
+      operationId: deleteGeotechTest
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Remove a test result entered by mistake.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Cut, fill, import and export entries, newest first.
+      parameters:
+        - { name: zone, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/GeotechEarthworksKind' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a cut, fill, import or export volume for a zone.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechEarthworksRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getGeotechEarthworksSummary
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Cut, fill and the net material balance by zone and for the whole project.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechEarthworksId'
+    delete:
+      operationId: deleteGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Remove an earthworks entry entered by mistake.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechFlags
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: "Nova's rule-based flags (no model): failed tests, zones short of fill, investigations with no report."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechFlagList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/permits:
     parameters:
@@ -15569,6 +16548,100 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    put:
+      operationId: linkCommitmentContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Link a subcontract commitment to the contract its payment claims are made on, or clear the link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkCommitmentContractRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: getCommitmentInvoices
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: The commitment's invoices (payment claims on its linked contract) with contract sum, retainage and payments.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentInvoices' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: getCommitmentInvoice
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: One invoice as a payment application, with its schedule-of-values breakdown and Nova's proofread.
+      description: >
+        Read-only, over the same claim data as the Invoices tab. `findings` is Nova's proofread: every figure is
+        re-added from the claim lines and the dates and the step up on the last period are checked by code, not a
+        model. Nothing is sent or changed from here; the person reads the findings and decides. Needs
+        `financials.commitments.read` as well, and builder staff only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentApplication' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    post:
+      operationId: getCommitmentInvoicePdf
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: The payment application as a PDF, laid out the way the person chooses.
+      description: >
+        A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered
+        from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column).
+        The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff
+        only.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentInvoicePdfRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentInvoicePdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16038,6 +17111,103 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listProjectRisks
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.read
+      summary: 'The project risk register, highest score first.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [open, mitigating, occurred, closed] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRiskList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.write
+      summary: 'Add a risk. It is numbered per project (R-1, R-2 ...).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectRiskRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRisk' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks/summary:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: getProjectRiskSummary
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.read
+      summary: 'Open risks by level, the risk RAG for the project health model, and the top risks.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRiskSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/RiskId' }
+    patch:
+      operationId: updateProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.write
+      summary: 'Change a risk. Closing it stamps the closed time; reopening clears it.'
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectRiskRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectRisk' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteProjectRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.risks.manage
+      summary: 'Remove a risk from the register.'
+      responses:
+        '204': { description: Deleted }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
@@ -16620,6 +17790,210 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPrefabUnits
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Prefabricated and modular units on the project, in install order.'
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PrefabUnitStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a unit built off site. It starts with the standard QA checklist for its kind unless told otherwise.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrefabUnitRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    get:
+      operationId: getPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'A unit with its QA checks and history.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Change a unit details, dates, install sequence, fabrication progress or delivery link.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrefabUnitRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: transitionPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: draftPrefabDelivery
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Book a draft delivery for the unit on the day it is due on site and link it. Needs an install or ship date, and the caller must also be able to manage deliveries.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: addPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a QA check to a unit.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddPrefabCheckRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+      - $ref: '#/components/parameters/PrefabCheckId'
+    patch:
+      operationId: recordPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Record a check as passed, failed, not applicable or pending. A failed factory check puts a unit that is still being made on QA hold.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordPrefabCheckRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPrefabInsights
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Where the units stand, and what Nova flags by rule: late fabrication, QA holds, late shipping, unbooked deliveries, overdue installs, out-of-sequence installs.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: planPrefabDates
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Work back from an install date to when the unit must ship and when fabrication must start and finish.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabPlanDatesRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabDatePlan' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/logistics/resources:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17125,6 +18499,311 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CoverDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEsignEnvelopes
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: Envelopes sent for signature on a project, newest first. Filter by the record they were started from.
+      parameters:
+        - { name: sourceType, in: query, schema: { $ref: '#/components/schemas/EsignSourceType' } }
+        - { name: sourceId, in: query, schema: { type: string, minLength: 1, maxLength: 40 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/EsignEnvelopeStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelopePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Start a draft envelope with its documents, recipients and options. Nothing is emailed until it is sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEsignEnvelopeRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    get:
+      operationId: getEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: One envelope with its recipients' progress and the audit trail.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Change a draft. Documents, recipients and fields, when given, replace the current lists.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEsignEnvelopeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.write
+      summary: Discard a draft. A sent envelope is voided instead.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/send:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: sendEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      x-rate-limit: 30
+      summary: Send the draft. Each recipient whose turn it is gets an emailed link that needs no account.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: The sent envelope
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: voidEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.void
+      summary: Cancel a sent envelope. Every link stops working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidEsignEnvelopeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/remind:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+    post:
+      operationId: remindEsignEnvelope
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      x-rate-limit: 10
+      summary: Email everyone who still has to act. Each recipient can be reminded at most once an hour.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/recipients/{recipientId}/paper-signed:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+      - $ref: '#/components/parameters/EsignRecipientId'
+    post:
+      operationId: confirmEsignPaperSigned
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.send
+      summary: Record that a recipient signed on paper (only when the envelope allows it). Counts as their signature.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignEnvelope' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes/{envelopeId}/documents/{documentId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EsignEnvelopeId'
+      - $ref: '#/components/parameters/EsignDocumentId'
+    get:
+      operationId: getEsignDocumentPdf
+      tags: [esign]
+      x-module: esign
+      x-permission: esign.envelopes.read
+      summary: The signed PDF with its certificate of completion once the envelope is complete; the original before that.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access:
+    post:
+      operationId: openEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: Exchange the link from a signing email for a session on that envelope (web `/sign/[token]`). Marks the recipient as having viewed it.
+      description: 'Sets a link-bound cookie (12 hours, this envelope only). An expired, voided or unknown link returns `access_link.invalid` with no detail about the envelope.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The envelope as this recipient sees it
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The envelope behind the current signing session.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/sign:
+    post:
+      operationId: signEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The recipient signs (typed or drawn). Records the time, network address and browser.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/decline:
+    post:
+      operationId: declineEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: The recipient declines to sign. The envelope stops and the sender is told.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeclineEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/delegate:
+    post:
+      operationId: delegateEsignAccess
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: Pass signing to someone else, when the sender allowed it. The new person gets their own link and this one stops working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelegateEsignRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/esign-access/documents/{documentId}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/EsignDocumentId'
+    get:
+      operationId: getEsignAccessDocumentPdf
+      tags: [esign]
+      x-module: esign
+      x-auth: none
+      summary: A document to read before signing; the signed copy once everyone has signed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EsignPdf' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     LogisticsResourceId:
@@ -17132,6 +18811,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    PrefabUnitId:
+      name: unitId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabCheckId:
+      name: checkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
     DeliveryId:
       name: deliveryId
       in: path
@@ -17197,6 +18886,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    ActionPlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^apl_[0-9A-Za-z]{26}$' }
+    ActionPlanItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ali_[0-9A-Za-z]{26}$' }
     EnvironmentConditionId:
       name: conditionId
       in: path
@@ -17262,6 +18961,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
+    GeotechInvestigationId:
+      name: investigationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gin_[0-9A-Za-z]{26}$' }
+    GeotechTestId:
+      name: testId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gts_[0-9A-Za-z]{26}$' }
+    GeotechEarthworksId:
+      name: entryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gew_[0-9A-Za-z]{26}$' }
     PermitId:
       name: permitId
       in: path
@@ -17282,6 +18996,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+    RiskId:
+      name: riskId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rsk_[0-9A-Za-z]{26}$' }
+    PhotoAlbumId:
+      name: albumId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^alb_[0-9A-Za-z]{26}$' }
     FileId:
       name: fileId
       in: path
@@ -17362,6 +19086,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnv_[0-9A-Za-z]{26}$' }
+    RelatedLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rli_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -17591,6 +19320,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    WorkflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wfl_[0-9A-Za-z]{26}$' }
     DataExportId:
       name: exportId
       in: path
@@ -17616,6 +19350,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^[1-9][0-9]{0,5}$' }
+    EsignEnvelopeId:
+      name: envelopeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^env_[0-9A-Za-z]{26}$' }
+    EsignDocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^edc_[0-9A-Za-z]{26}$' }
+    EsignRecipientId:
+      name: recipientId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^erc_[0-9A-Za-z]{26}$' }
   headers:
     ETag:
       description: Row version, quoted (`"3"`).
@@ -17672,6 +19421,308 @@ components:
         capacity: { type: integer, minimum: 1, maximum: 20 }
         active: { type: boolean }
         note: { type: string, maxLength: 1000 }
+    PrefabUnitKind:
+      type: string
+      enum:
+        [
+          bathroom_pod,
+          wall_panel,
+          floor_cassette,
+          volumetric_module,
+          roof_truss,
+          facade_panel,
+          services_riser,
+          other,
+        ]
+    PrefabUnitStatus:
+      type: string
+      enum:
+        [planned, in_fabrication, qa_hold, ready_to_ship, in_transit, on_site, installed, rejected]
+    PrefabUnit:
+      type: object
+      required:
+        [
+          id,
+          number,
+          code,
+          name,
+          kind,
+          factoryName,
+          supplierCompanyId,
+          location,
+          installSequence,
+          weightKg,
+          dimensions,
+          status,
+          progressPct,
+          fabStart,
+          fabDue,
+          shipDate,
+          installDate,
+          shippedAt,
+          deliveredAt,
+          installedAt,
+          statusReason,
+          deliveryId,
+          deliveryLabel,
+          notes,
+          qaTotal,
+          qaDone,
+          qaFailed,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: [string, 'null'] }
+        supplierCompanyId: { type: [string, 'null'] }
+        location: { type: [string, 'null'] }
+        installSequence: { type: [integer, 'null'] }
+        weightKg: { type: [integer, 'null'] }
+        dimensions: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/PrefabUnitStatus' }
+        progressPct: { type: integer }
+        fabStart: { type: [string, 'null'], format: date }
+        fabDue: { type: [string, 'null'], format: date }
+        shipDate: { type: [string, 'null'], format: date }
+        installDate: { type: [string, 'null'], format: date }
+        shippedAt: { type: [string, 'null'], format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+        installedAt: { type: [string, 'null'], format: date-time }
+        statusReason: { type: [string, 'null'] }
+        deliveryId: { type: [string, 'null'], pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        deliveryLabel: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        qaTotal: { type: integer }
+        qaDone: { type: integer }
+        qaFailed: { type: integer }
+        version: { type: integer }
+    PrefabUnitList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabUnit' }
+    PrefabCheck:
+      type: object
+      required: [id, stage, label, required, result, note, checkedAt]
+      properties:
+        id: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string }
+        required: { type: boolean }
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: [string, 'null'] }
+        checkedAt: { type: [string, 'null'], format: date-time }
+    PrefabEvent:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^pfe_[0-9A-Za-z]{26}$' }
+        kind: { type: string }
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PrefabUnitDetail:
+      type: object
+      required: [unit, checks, events]
+      properties:
+        unit: { $ref: '#/components/schemas/PrefabUnit' }
+        checks:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabCheck' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabEvent' }
+    CreatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, kind]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        standardChecks: { type: boolean }
+    UpdatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        progressPct: { type: integer, minimum: 0, maximum: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        clear:
+          type: array
+          description: Fields to empty (an install sequence, a date or the delivery link).
+          items:
+            {
+              type: string,
+              enum: [installSequence, fabStart, fabDue, shipDate, installDate, deliveryId],
+            }
+    PrefabTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          {
+            type: string,
+            enum: [start, hold, resume, ready, ship, deliver, install, reject, reopen],
+          }
+        reason: { type: string, maxLength: 1000, description: Required to hold or reject. }
+    AddPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, label]
+      properties:
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        required: { type: boolean }
+    RecordPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: string, maxLength: 1000, description: Required when a check fails. }
+    PrefabFlag:
+      type: object
+      required: [unitId, kind, severity, message, relatedUnitIds]
+      properties:
+        unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        kind:
+          type: string
+          enum:
+            [
+              fab_late,
+              fab_not_started,
+              qa_hold,
+              ship_late,
+              delivery_not_booked,
+              install_overdue,
+              out_of_sequence,
+              dates_inconsistent,
+            ]
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        relatedUnitIds:
+          type: array
+          items: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabSummary:
+      type: object
+      required: [total, byStatus, installedPct, nextInstalls]
+      properties:
+        total: { type: integer }
+        byStatus:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              planned,
+              in_fabrication,
+              qa_hold,
+              ready_to_ship,
+              in_transit,
+              on_site,
+              installed,
+              rejected,
+            ]
+          properties:
+            planned: { type: integer }
+            in_fabrication: { type: integer }
+            qa_hold: { type: integer }
+            ready_to_ship: { type: integer }
+            in_transit: { type: integer }
+            on_site: { type: integer }
+            installed: { type: integer }
+            rejected: { type: integer }
+        installedPct: { type: integer }
+        nextInstalls:
+          type: array
+          items:
+            type: object
+            required: [unitId, code, installDate]
+            properties:
+              unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              installDate: { type: string, format: date }
+    PrefabInsights:
+      type: object
+      required: [asOf, today, summary, flags]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/PrefabSummary' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabFlag' }
+    PrefabPlanDatesRequest:
+      type: object
+      additionalProperties: false
+      required: [installDate, kind]
+      properties:
+        installDate: { type: string, format: date }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        fabDays:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 120,
+            description: Working days in the factory. Defaults by kind.,
+          }
+        transitDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days from the factory gate to site.,
+          }
+        bufferDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days between arriving on site and install.,
+          }
+    PrefabDatePlan:
+      type: object
+      required:
+        [fabStart, fabDue, shipDate, deliveryDate, installDate, fabDays, transitDays, bufferDays]
+      properties:
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        deliveryDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        fabDays: { type: integer }
+        transitDays: { type: integer }
+        bufferDays: { type: integer }
     DeliveryStatus:
       type: string
       enum: [scheduled, arrived, unloaded, delayed, missed, cancelled]
@@ -18869,6 +20920,113 @@ components:
             missing from storage); each is listed in the manifest with the reason.,
           }
         error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    WorkflowStep:
+      type: object
+      required: [name, approverUserIds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        approverUserIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string }
+          description: Any one of these people can approve the step.
+    Workflow:
+      type: object
+      required: [id, subjectType, name, minAmount, steps, active, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string }
+        minAmount:
+          type: [string, 'null']
+          description: Decimal dollars. The chain applies from this amount up; null means every variation.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkflowList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Workflow' }
+    CreateWorkflowRequest:
+      type: object
+      required: [subjectType, name, steps]
+      properties:
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean, default: true }
+    UpdateWorkflowRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+    WorkflowRunDecision:
+      type: object
+      required: [userId, decision, note, decidedAt]
+      properties:
+        userId: { type: string }
+        decision: { type: string, enum: [approved, rejected] }
+        note: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+    WorkflowRunStep:
+      type: object
+      required: [name, approverUserIds, state, decision]
+      properties:
+        name: { type: string }
+        approverUserIds:
+          type: array
+          items: { type: string }
+        state: { type: string, enum: [waiting, current, approved, rejected] }
+        decision:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRunDecision' }
+            - { type: 'null' }
+    WorkflowRun:
+      type: object
+      required:
+        [id, subjectType, subjectId, status, currentStep, steps, startedBy, createdAt, finishedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        subjectId: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, cancelled] }
+        currentStep:
+          {
+            type: [integer, 'null'],
+            description: Zero-based index of the step waiting on a decision.,
+          }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowRunStep' }
+        startedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    VariationWorkflow:
+      type: object
+      required: [run]
+      properties:
+        run:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRun' }
+            - { type: 'null' }
     DataExportList:
       type: object
       required: [data]
@@ -19409,6 +21567,102 @@ components:
           type: array
           description: One row per fiscal year, then the all-years total last.
           items: { $ref: '#/components/schemas/OwnerCapitalTotals' }
+    RiskCategory:
+      type: string
+      enum: [scope, time, cost, quality, safety, commercial, other]
+    RiskStatus:
+      type: string
+      enum: [open, mitigating, occurred, closed]
+    ProjectRisk:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          category,
+          likelihood,
+          impact,
+          score,
+          level,
+          status,
+          ownerName,
+          mitigation,
+          reviewDate,
+          closedAt,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        score: { type: integer, description: 'likelihood x impact, 1 to 25' }
+        level: { type: string, enum: [high, medium, low] }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'] }
+        mitigation: { type: string }
+        reviewDate: { type: [string, 'null'], format: date }
+        closedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectRiskList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectRisk' }
+    CreateProjectRiskRequest:
+      type: object
+      required: [title, category, likelihood, impact]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'], maxLength: 120 }
+        mitigation: { type: string, maxLength: 4000 }
+        reviewDate: { type: [string, 'null'], format: date }
+    UpdateProjectRiskRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+        category: { $ref: '#/components/schemas/RiskCategory' }
+        likelihood: { type: integer, minimum: 1, maximum: 5 }
+        impact: { type: integer, minimum: 1, maximum: 5 }
+        status: { $ref: '#/components/schemas/RiskStatus' }
+        ownerName: { type: [string, 'null'], maxLength: 120 }
+        mitigation: { type: string, maxLength: 4000 }
+        reviewDate: { type: [string, 'null'], format: date }
+    ProjectRiskSummary:
+      type: object
+      required: [rag, open, high, medium, low, overdueReviews, top]
+      properties:
+        rag:
+          type: [string, 'null']
+          enum: [red, amber, green, null]
+          description: 'Null when no risk has ever been recorded: unknown, never green.'
+        open: { type: integer, description: 'Risks not yet closed' }
+        high: { type: integer }
+        medium: { type: integer }
+        low: { type: integer }
+        overdueReviews: { type: integer }
+        top:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectRisk' }
     MeetingSeries:
       type: object
       required:
@@ -20768,8 +23022,24 @@ components:
     ProjectMember:
       type: object
       required:
-        [id, projectId, userId, name, email, companyId, permissionTemplateId, isExternal, status]
+        [
+          id,
+          projectId,
+          userId,
+          name,
+          email,
+          phone,
+          jobTitle,
+          trade,
+          companyId,
+          permissionTemplateId,
+          isExternal,
+          status,
+        ]
       properties:
+        phone: { type: [string, 'null'] }
+        jobTitle: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
         id: { type: string }
         projectId: { type: string }
         userId: { type: string }
@@ -20794,6 +23064,55 @@ components:
       properties:
         kind: { type: string, enum: [ordinary, for_cause, wipe_now] }
         reason: { type: string, maxLength: 500 }
+    UpdateProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        phone: { type: [string, 'null'], maxLength: 50 }
+        jobTitle: { type: [string, 'null'], maxLength: 100 }
+        trade: { type: [string, 'null'], maxLength: 100 }
+    CompanyContact:
+      type: object
+      required: [id, companyId, name, email, phone, jobTitle, notes, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        companyId: { type: string }
+        name: { type: string }
+        email: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        jobTitle: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateCompanyContactRequest:
+      type: object
+      additionalProperties: false
+      required: [companyId, name]
+      properties:
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { $ref: '#/components/schemas/Email' }
+        phone: { type: string, maxLength: 50 }
+        jobTitle: { type: string, maxLength: 100 }
+        notes: { type: string, maxLength: 1000 }
+    UpdateCompanyContactRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        jobTitle: { type: [string, 'null'], maxLength: 100 }
+        notes: { type: [string, 'null'], maxLength: 1000 }
+    CompanyContactPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CompanyContact' }
+        nextCursor: { type: [string, 'null'] }
     ProjectMemberPage:
       type: object
       required: [data, nextCursor]
@@ -22078,6 +24397,78 @@ components:
         truncated:
           type: boolean
           description: Part of the contract was left out (too long to read in one go).
+    NovaContractSovDraft:
+      type: object
+      required:
+        - runId
+        - fileName
+        - pageCount
+        - unreadPages
+        - truncated
+        - lines
+        - prices
+        - statedTotalExGst
+        - linesTotalExGst
+        - contractValueExGst
+        - totalCheck
+        - difference
+        - dropped
+        - warnings
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        fileName: { type: string }
+        pageCount: { type: integer, minimum: 1 }
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read, so the list may miss lines on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          type: boolean
+          description: Part of the document was left out (too long to read in one go).
+        lines:
+          type: array
+          items:
+            type: object
+            required: [code, description, amount, source]
+            properties:
+              code:
+                { type: string, description: Blank when the document prints no code for the line. }
+              description: { type: string }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              source:
+                type: object
+                required: [page, quote]
+                properties:
+                  page: { type: integer, minimum: 1 }
+                  quote: { type: string }
+        prices:
+          type: string
+          enum: [exclude_gst, include_gst, unclear]
+        statedTotalExGst:
+          description: The total the document prints, when code found it on a page.
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        linesTotalExGst: { $ref: '#/components/schemas/FinancialsMoney' }
+        contractValueExGst:
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        totalCheck:
+          type: string
+          enum: [matches, differs, no_value]
+        difference:
+          description: Lines total less the contract value, signed; null when no value was entered.
+          type: [string, 'null']
+        dropped:
+          type: integer
+          minimum: 0
+          description: Lines left out because their words or amount were not on the page.
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [prices_include_gst, items_dropped, total_differs, no_lines]
     NovaContractReview:
       type: object
       required:
@@ -22837,6 +25228,87 @@ components:
         file: { $ref: '#/components/schemas/FileObject' }
         url: { type: string }
         expiresAt: { type: string, format: date-time }
+    PhotoCategory:
+      type: string
+      enum: [safety_risk, daily_log, punch_list, drawings, inspections, rfis, unclassified]
+    PhotoRefKind:
+      type: string
+      enum: [rfi, defect, observation, inspection, diary_entry, drawing_revision]
+    PhotoFilingRequest:
+      type: object
+      required: [category]
+      properties:
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'], description: The record's id; sent with `refKind`. }
+        fromSuggestion:
+          { type: boolean, description: True when the person accepted Nova's suggestion. }
+    PhotoFiling:
+      type: object
+      required: [fileId, category, refKind, refId, source]
+      properties:
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'] }
+        source: { type: string, enum: [attach, annotation, manual, nova] }
+    PhotoFilingSuggestion:
+      type: object
+      required: [category, refKind, refId, basedOnFileId, reason]
+      properties:
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        refKind: { oneOf: [{ $ref: '#/components/schemas/PhotoRefKind' }, { type: 'null' }] }
+        refId: { type: [string, 'null'] }
+        basedOnFileId: { $ref: '#/components/schemas/FileRef' }
+        reason: { type: string, enum: [same_place, same_session] }
+    SitePhoto:
+      type: object
+      required: [file, url, expiresAt, category, filing, needsReview, suggestion]
+      properties:
+        file: { $ref: '#/components/schemas/FileObject' }
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        category: { $ref: '#/components/schemas/PhotoCategory' }
+        filing: { oneOf: [{ $ref: '#/components/schemas/PhotoFiling' }, { type: 'null' }] }
+        needsReview: { type: boolean, description: Unfiled for 24 hours or more. }
+        suggestion:
+          oneOf: [{ $ref: '#/components/schemas/PhotoFilingSuggestion' }, { type: 'null' }]
+    PhotoAlbum:
+      type: object
+      required: [id, name, count, createdAt]
+      properties:
+        id: { type: string, pattern: '^alb_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        count: { type: integer }
+        createdAt: { type: string, format: date-time }
+    PhotoAlbums:
+      type: object
+      required: [auto, own]
+      properties:
+        auto:
+          type: array
+          items:
+            type: object
+            required: [category, count, needsReview, cover]
+            properties:
+              category: { $ref: '#/components/schemas/PhotoCategory' }
+              count: { type: integer }
+              needsReview:
+                {
+                  type: integer,
+                  description: Photos unfiled for 24 hours or more (Unclassified only).,
+                }
+              cover:
+                oneOf:
+                  - type: object
+                    required: [url, expiresAt]
+                    properties:
+                      url: { type: string }
+                      expiresAt: { type: string, format: date-time }
+                  - type: 'null'
+        own:
+          type: array
+          items: { $ref: '#/components/schemas/PhotoAlbum' }
     DownloadLink:
       type: object
       required: [url, expiresAt]
@@ -22864,12 +25336,23 @@ components:
     Folder:
       type: object
       required:
-        [id, projectId, parentId, name, isPrivate, allowedUserIds, allowedCompanyIds, version]
+        [
+          id,
+          projectId,
+          parentId,
+          name,
+          isPrivate,
+          allowedUserIds,
+          allowedCompanyIds,
+          createdAt,
+          version,
+        ]
       properties:
         id: { type: string }
         projectId: { type: string }
         parentId: { type: [string, 'null'] }
         name: { type: string }
+        createdAt: { type: string, format: date-time }
         isPrivate: { type: boolean }
         allowedUserIds:
           type: array
@@ -23036,6 +25519,9 @@ components:
           elementGuids,
           location,
           rfiId,
+          pin,
+          sheetId,
+          snapshotFileId,
           resolvedAt,
           commentCount,
           version,
@@ -23058,6 +25544,13 @@ components:
           items: { type: string }
         location: { type: string }
         rfiId: { type: [string, 'null'] }
+        pin:
+          description: Where on a drawing revision the issue was raised.
+          oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
+        sheetId:
+          { type: [string, 'null'], description: The drawing sheet the pinned revision belongs to. }
+        snapshotFileId:
+          { type: [string, 'null'], description: 'Snapshot of the sheet area, taken when raised.' }
         resolvedAt: { type: [string, 'null'], format: date-time }
         commentCount: { type: integer }
         version: { type: integer }
@@ -23103,6 +25596,8 @@ components:
           items: { type: string, maxLength: 64 }
         location: { type: string, maxLength: 200 }
         rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+        snapshotFileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
     UpdateCoordinationIssueRequest:
       type: object
       additionalProperties: false
@@ -23120,6 +25615,8 @@ components:
           items: { type: string, maxLength: 64 }
         location: { type: string, maxLength: 200 }
         rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        snapshotFileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
     AddCoordinationCommentRequest:
       type: object
       additionalProperties: false
@@ -23269,6 +25766,13 @@ components:
           { oneOf: [{ $ref: '#/components/schemas/DocumentRevision' }, { type: 'null' }] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        deletedAt:
+          type: [string, 'null']
+          format: date-time
+          description: Set only on documents in the recycle bin.
+        tracked:
+          type: boolean
+          description: Whether the caller tracks it. Absent in the mobile sync pull.
         version: { type: integer }
     DocumentDetail:
       type: object
@@ -24561,6 +27065,82 @@ components:
         responses:
           type: array
           items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    LinkEntityType:
+      type: string
+      enum: [rfi, defect, submittal, correspondence, document]
+    LinkReason:
+      type: string
+      enum: [related, caused_by, blocked_by, responds_to, duplicate_of, supersedes]
+      description: Read as "<from> <reason> <to>"; `related` is symmetric.
+    LinkRecordRef:
+      type: object
+      required: [type, id]
+      properties:
+        type: { $ref: '#/components/schemas/LinkEntityType' }
+        id: { type: string }
+    CreateRelatedItemRequest:
+      type: object
+      required: [from, to, reason]
+      properties:
+        from: { $ref: '#/components/schemas/LinkRecordRef' }
+        to: { $ref: '#/components/schemas/LinkRecordRef' }
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'], maxLength: 300 }
+    RelatedLink:
+      type: object
+      required: [id, projectId, from, to, reason, note, origin, createdById, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        from: { $ref: '#/components/schemas/LinkRecordRef' }
+        to: { $ref: '#/components/schemas/LinkRecordRef' }
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'] }
+        origin: { type: string, enum: [user, nova, system] }
+        createdById: { type: string }
+        createdAt: { type: string, format: date-time }
+    RelatedItem:
+      type: object
+      required: [linkId, side, reason, note, origin, createdById, createdByName, createdAt, item]
+      properties:
+        linkId: { type: string }
+        side:
+          type: string
+          enum: [from, to]
+          description: Which end of the link the record being looked at is; `from` reads the reason as written, `to` reads its inverse.
+        reason: { $ref: '#/components/schemas/LinkReason' }
+        note: { type: [string, 'null'] }
+        origin: { type: string, enum: [user, nova, system] }
+        createdById: { type: string }
+        createdByName: { type: string }
+        createdAt: { type: string, format: date-time }
+        item: { $ref: '#/components/schemas/RelatedItemSummary' }
+    RelatedItemSummary:
+      type: object
+      required: [type, id, ref, title, status]
+      properties:
+        type: { $ref: '#/components/schemas/LinkEntityType' }
+        id: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+    RelatedItemList:
+      type: object
+      required: [data, hidden]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RelatedItem' }
+        hidden:
+          type: integer
+          description: Links to records the caller cannot open. They are counted, never described.
+    RelatedItemCandidateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RelatedItemSummary' }
     ConversationMessage:
       type: object
       required: [id, authorId, authorName, body, mentionedUserIds, createdAt]
@@ -28188,9 +30768,11 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          contractId,
         ]
       properties:
         id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
         number: { type: integer }
         kind: { type: string, enum: [subcontract, purchase_order] }
         title: { type: string }
@@ -28209,6 +30791,259 @@ components:
         budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
         description: { type: string }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    LinkCommitmentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [contractId]
+      properties:
+        contractId:
+          description: The subcontract to link, or null to clear the link.
+          type: [string, 'null']
+          pattern: '^cnt_[0-9A-Za-z]{26}$'
+    CommitmentInvoice:
+      type: object
+      required:
+        [
+          claimId,
+          number,
+          periodStart,
+          periodEnd,
+          receivedAt,
+          status,
+          thisPeriod,
+          completedToDate,
+          retainage,
+          earnedLessRetainage,
+          payable,
+          paid,
+          paymentDue,
+          paymentDueOn,
+          balanceToFinish,
+          percentComplete,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodStart: { type: [string, 'null'], format: date }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        status: { type: string }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        earnedLessRetainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        payable: { $ref: '#/components/schemas/FinancialsMoney' }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        paymentDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        percentComplete: { type: string }
+    PaymentApplicationRow:
+      type: object
+      required:
+        [
+          key,
+          code,
+          description,
+          kind,
+          costCode,
+          scheduledValue,
+          previous,
+          thisPeriod,
+          completedToDate,
+          percentComplete,
+          balanceToFinish,
+        ]
+      properties:
+        key: { type: string }
+        code: { type: string }
+        description: { type: string }
+        kind: { type: string, enum: [sov, variation] }
+        costCode: { type: [string, 'null'] }
+        scheduledValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        previous: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        percentComplete: { type: string }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    PaymentApplicationFinding:
+      type: object
+      required: [code, severity, message, itemCode]
+      properties:
+        code: { type: string }
+        severity: { type: string, enum: [error, warning, info] }
+        message: { type: string }
+        itemCode: { type: [string, 'null'] }
+    PaymentApplicationSummary:
+      type: object
+      required:
+        [
+          originalSum,
+          netChange,
+          revisedSum,
+          completedToDate,
+          retainage,
+          earnedLessRetainage,
+          lessPrevious,
+          thisPeriod,
+          gst,
+          currentPaymentDue,
+          scheduledAmount,
+          paid,
+          balanceToFinish,
+          percentComplete,
+        ]
+      properties:
+        originalSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        netChange: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        revisedSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        completedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsMoney' }
+        earnedLessRetainage: { $ref: '#/components/schemas/FinancialsMoney' }
+        lessPrevious: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        currentPaymentDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        scheduledAmount: { type: [string, 'null'] }
+        paid: { $ref: '#/components/schemas/FinancialsMoney' }
+        balanceToFinish: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        percentComplete: { type: string }
+    PaymentApplication:
+      type: object
+      required:
+        [
+          claimId,
+          commitmentTitle,
+          contractNumber,
+          contractTitle,
+          claimNumber,
+          status,
+          periodStart,
+          periodEnd,
+          receivedAt,
+          paymentDueOn,
+          scheduleDueOn,
+          summary,
+          changeOrders,
+          retentionPct,
+          rows,
+          prior,
+          findings,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        commitmentTitle: { type: string }
+        contractNumber: { type: integer }
+        contractTitle: { type: string }
+        claimNumber: { type: integer }
+        status: { type: string }
+        periodStart: { type: [string, 'null'], format: date }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        scheduleDueOn: { type: [string, 'null'], format: date }
+        summary: { $ref: '#/components/schemas/PaymentApplicationSummary' }
+        changeOrders:
+          type: object
+          required: [previousAdditions, previousDeductions, thisAdditions, thisDeductions, net]
+          properties:
+            previousAdditions: { $ref: '#/components/schemas/FinancialsMoney' }
+            previousDeductions: { $ref: '#/components/schemas/FinancialsMoney' }
+            thisAdditions: { $ref: '#/components/schemas/FinancialsMoney' }
+            thisDeductions: { $ref: '#/components/schemas/FinancialsMoney' }
+            net: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        retentionPct: { type: string }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentApplicationRow' }
+        prior:
+          oneOf:
+            - type: object
+              required: [number, periodEnd, thisPeriod, percentComplete]
+              properties:
+                number: { type: integer }
+                periodEnd: { type: string, format: date }
+                thisPeriod: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+                percentComplete: { type: string }
+            - { type: 'null' }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentApplicationFinding' }
+    CommitmentInvoicePdfRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sections:
+          type: array
+          maxItems: 5
+          items: { type: string, enum: [g702, summary, breakdown, payment, proofread] }
+        columns:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            enum:
+              [
+                code,
+                description,
+                scheduledValue,
+                previous,
+                thisPeriod,
+                completedToDate,
+                percentComplete,
+                balanceToFinish,
+              ]
+        paper: { type: string, enum: [a4, letter] }
+        orientation: { type: string, enum: [portrait, landscape] }
+        notes: { type: string, maxLength: 500 }
+        signatureBlock: { type: boolean }
+        amountCertified:
+          type: string
+          pattern: '^\d{1,12}(\.\d{1,2})?$'
+          description: The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for.
+    CommitmentInvoicePdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    CommitmentInvoiceSummary:
+      type: object
+      required:
+        [
+          originalSum,
+          netChange,
+          revisedSum,
+          invoiced,
+          retainage,
+          paid,
+          remaining,
+          percentPaid,
+          rows,
+        ]
+      properties:
+        originalSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        netChange: { $ref: '#/components/schemas/FinancialsMoney' }
+        revisedSum: { $ref: '#/components/schemas/FinancialsMoney' }
+        invoiced: { $ref: '#/components/schemas/FinancialsMoney' }
+        retainage: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        remaining: { $ref: '#/components/schemas/FinancialsMoney' }
+        percentPaid: { type: string }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentInvoice' }
+    CommitmentInvoices:
+      type: object
+      required: [linked, contractId, summary]
+      properties:
+        linked: { type: boolean }
+        contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        summary:
+          oneOf:
+            - { $ref: '#/components/schemas/CommitmentInvoiceSummary' }
+            - { type: 'null' }
     CommitmentDetail:
       type: object
       required: [commitment, lines]
@@ -33538,6 +36373,206 @@ components:
           type: string
           pattern: '^sws_[0-9A-Za-z]{26}$'
           description: For stopWork when the observation is not already linked to a SWMS.
+    ActionPlanStatus:
+      type: string
+      enum: [active, completed, cancelled]
+    ActionPlanItemStatus:
+      type: string
+      enum: [open, done, skipped]
+    ActionPlanSourceType:
+      type: string
+      enum: [observation, inspection]
+    ActionPlan:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          description,
+          status,
+          dueDate,
+          isOverdue,
+          templateId,
+          sourceType,
+          sourceId,
+          itemCount,
+          doneCount,
+          completedAt,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'AP-0007' }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/ActionPlanStatus' }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        templateId: { type: [string, 'null'] }
+        sourceType:
+          { oneOf: [{ $ref: '#/components/schemas/ActionPlanSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        itemCount: { type: integer }
+        doneCount: { type: integer, description: Steps that are done or skipped. }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    ActionPlanItem:
+      type: object
+      required:
+        [
+          id,
+          planId,
+          sort,
+          title,
+          description,
+          assigneeCompanyId,
+          dueDate,
+          isOverdue,
+          status,
+          note,
+          completedAt,
+          canUpdate,
+        ]
+      properties:
+        id: { type: string }
+        planId: { type: string }
+        sort: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        assigneeCompanyId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        status: { $ref: '#/components/schemas/ActionPlanItemStatus' }
+        note: { type: [string, 'null'] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        canUpdate: { type: boolean, description: Whether the caller can change this step. }
+    ActionPlanDetail:
+      type: object
+      required: [plan, items, canManage]
+      properties:
+        plan: { $ref: '#/components/schemas/ActionPlan' }
+        items: { type: array, items: { $ref: '#/components/schemas/ActionPlanItem' } }
+        canManage:
+          { type: boolean, description: Whether the caller can edit the plan and its steps. }
+    ActionPlanPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ActionPlan' } }
+        nextCursor: { type: [string, 'null'] }
+    NewActionPlanItem:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: string, format: date }
+    CreateActionPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        dueDate: { type: string, format: date }
+        templateId:
+          {
+            type: string,
+            pattern: '^apt_[0-9A-Za-z]{26}$',
+            description: Start from this template; its steps replace `items`.,
+          }
+        sourceType: { $ref: '#/components/schemas/ActionPlanSourceType' }
+        sourceId: { type: string, pattern: '^(obs|ins)_[0-9A-Za-z]{26}$' }
+        items:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/NewActionPlanItem' }
+    UpdateActionPlanRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        dueDate: { type: [string, 'null'], format: date }
+        status:
+          type: string
+          enum: [active, cancelled]
+          description: cancelled stops the plan; active reopens a cancelled one.
+    CreateActionPlanItemRequest:
+      $ref: '#/components/schemas/NewActionPlanItem'
+    UpdateActionPlanItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/ActionPlanItemStatus' }
+        note: { type: [string, 'null'], maxLength: 2000 }
+    ActionPlanTemplateItem:
+      type: object
+      additionalProperties: false
+      required: [title, description, dueOffsetDays]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        dueOffsetDays:
+          {
+            type: [integer, 'null'],
+            minimum: 0,
+            maximum: 3650,
+            description: Days after the plan starts.,
+          }
+    ActionPlanTemplate:
+      type: object
+      required: [id, projectId, name, description, items, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        items: { type: array, items: { $ref: '#/components/schemas/ActionPlanTemplateItem' } }
+        createdAt: { type: string, format: date-time }
+    ActionPlanTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ActionPlanTemplate' } }
+    CreateActionPlanTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, items]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: '#/components/schemas/ActionPlanTemplateItem' }
+    SaveActionPlanTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
     HighRiskWorkCategory:
       type: string
       description: The 19 high-risk construction work categories (compliance 03 §2), the same in every state.
@@ -34300,6 +37335,263 @@ components:
         dueDate: { type: [string, 'null'], format: date }
         source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
         status: { $ref: '#/components/schemas/CorrectiveStatus' }
+    GeotechInvestigationKind:
+      type: string
+      enum: [borehole, test_pit, cpt, dcp, plate_load, groundwater_bore, other]
+    GeotechTestKind:
+      type: string
+      enum:
+        [
+          cbr,
+          mdd,
+          omc,
+          moisture_content,
+          field_density_ratio,
+          plasticity_index,
+          liquid_limit,
+          ucs,
+          particle_size,
+          other,
+        ]
+    GeotechTestOutcome:
+      type: string
+      description: Derived from the value and the spec limits typed on the result. no_spec when no limits were typed.
+      enum: [pass, fail, no_spec]
+    GeotechEarthworksKind:
+      type: string
+      enum: [cut, fill, import, export]
+    GeotechInvestigation:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          kind,
+          title,
+          location,
+          latitude,
+          longitude,
+          depthM,
+          groundwaterDepthM,
+          investigatedOn,
+          consultantCompanyId,
+          summary,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string }
+        location: { type: [string, 'null'] }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        depthM: { type: [number, 'null'] }
+        groundwaterDepthM: { type: [number, 'null'] }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'] }
+        summary: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    GeotechInvestigationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechInvestigation' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechInvestigationRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title]
+      properties:
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        location: { type: [string, 'null'], maxLength: 300 }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90 }
+        longitude: { type: [number, 'null'], minimum: -180, maximum: 180 }
+        depthM: { type: [number, 'null'], minimum: 0 }
+        groundwaterDepthM: { type: [number, 'null'], minimum: 0 }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdateGeotechInvestigationRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        location: { type: [string, 'null'], maxLength: 300 }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90 }
+        longitude: { type: [number, 'null'], minimum: -180, maximum: 180 }
+        depthM: { type: [number, 'null'], minimum: 0 }
+        groundwaterDepthM: { type: [number, 'null'], minimum: 0 }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    GeotechTest:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          investigationId,
+          kind,
+          sampleRef,
+          zone,
+          depthFromM,
+          depthToM,
+          value,
+          unit,
+          specMin,
+          specMax,
+          result,
+          testedOn,
+          lab,
+          notes,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        investigationId: { type: [string, 'null'] }
+        kind: { $ref: '#/components/schemas/GeotechTestKind' }
+        sampleRef: { type: [string, 'null'] }
+        zone: { type: [string, 'null'] }
+        depthFromM: { type: [number, 'null'] }
+        depthToM: { type: [number, 'null'] }
+        value: { type: number }
+        unit: { type: string }
+        specMin: { type: [number, 'null'] }
+        specMax: { type: [number, 'null'] }
+        result: { $ref: '#/components/schemas/GeotechTestOutcome' }
+        testedOn: { type: string, format: date }
+        lab: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    GeotechTestPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechTest' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechTestRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, value, testedOn]
+      properties:
+        investigationId: { type: [string, 'null'], pattern: '^gin_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/GeotechTestKind' }
+        sampleRef: { type: [string, 'null'], maxLength: 100 }
+        zone: { type: [string, 'null'], maxLength: 100 }
+        depthFromM: { type: [number, 'null'], minimum: 0 }
+        depthToM: { type: [number, 'null'], minimum: 0 }
+        value: { type: number, minimum: -999999999, maximum: 999999999 }
+        unit: { type: [string, 'null'], maxLength: 20 }
+        specMin: { type: [number, 'null'], minimum: -999999999, maximum: 999999999 }
+        specMax: { type: [number, 'null'], minimum: -999999999, maximum: 999999999 }
+        testedOn: { type: string, format: date }
+        lab: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    GeotechEarthworksEntry:
+      type: object
+      required: [id, projectId, zone, kind, volumeM3, material, recordedOn, notes, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        zone: { type: string }
+        kind: { $ref: '#/components/schemas/GeotechEarthworksKind' }
+        volumeM3: { type: number }
+        material: { type: [string, 'null'] }
+        recordedOn: { type: string, format: date }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    GeotechEarthworksPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechEarthworksEntry' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechEarthworksRequest:
+      type: object
+      additionalProperties: false
+      required: [zone, kind, volumeM3, recordedOn]
+      properties:
+        zone: { type: string, minLength: 1, maxLength: 100 }
+        kind: { $ref: '#/components/schemas/GeotechEarthworksKind' }
+        volumeM3: { type: number, exclusiveMinimum: 0, maximum: 999999999 }
+        material: { type: [string, 'null'], maxLength: 200 }
+        recordedOn: { type: string, format: date }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    GeotechEarthworksTotals:
+      type: object
+      required: [cut, fill, imported, exported, balance]
+      properties:
+        cut: { type: number }
+        fill: { type: number }
+        imported: { type: number }
+        exported: { type: number }
+        balance:
+          {
+            type: number,
+            description: 'cut + imported - fill - exported, in cubic metres. Negative means short of material.',
+          }
+    GeotechZoneTotals:
+      allOf:
+        - $ref: '#/components/schemas/GeotechEarthworksTotals'
+        - type: object
+          required: [zone]
+          properties:
+            zone: { type: string }
+    GeotechEarthworksSummary:
+      type: object
+      required: [zones, total]
+      properties:
+        zones:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechZoneTotals' }
+        total: { $ref: '#/components/schemas/GeotechEarthworksTotals' }
+    GeotechFlag:
+      type: object
+      required: [kind, severity, title, detail, refId]
+      properties:
+        kind: { type: string, enum: [failed_test, short_of_fill, no_report] }
+        severity: { type: string, enum: [high, medium] }
+        title: { type: string }
+        detail: { type: string }
+        refId: { type: [string, 'null'] }
+    GeotechFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechFlag' }
     PermitKind:
       type: string
       enum:
@@ -34794,3 +38086,341 @@ components:
           maxItems: 20
           description: Defaults to the files on the item's answer.
           items: { $ref: '#/components/schemas/FileRef' }
+    EsignSourceType:
+      type: string
+      enum: [correspondence, rfi, submittal, contract, other]
+    EsignEnvelopeStatus:
+      type: string
+      enum: [draft, sent, completed, declined, voided, expired]
+    EsignRecipientRole:
+      type: string
+      description: needs_to_sign must sign; needs_to_view must open the documents; receives_copy only gets the finished copy.
+      enum: [needs_to_sign, needs_to_view, receives_copy]
+    EsignRecipientStatus:
+      type: string
+      enum: [pending, sent, viewed, signed, declined, delegated]
+    EsignFieldKind:
+      type: string
+      enum: [signature, date_signed]
+    EsignDocument:
+      type: object
+      required: [id, fileId, name, position, sha256, signedSha256]
+      properties:
+        id: { type: string }
+        fileId: { type: string }
+        name: { type: string }
+        position: { type: integer }
+        sha256: { type: [string, 'null'] }
+        signedSha256: { type: [string, 'null'] }
+    EsignRecipient:
+      type: object
+      required:
+        [
+          id,
+          name,
+          email,
+          role,
+          routingOrder,
+          status,
+          customSubject,
+          customMessage,
+          language,
+          sentAt,
+          viewedAt,
+          completedAt,
+          signedOnPaper,
+          declineReason,
+          delegatedFrom,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        routingOrder: { type: integer }
+        status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+        customSubject: { type: [string, 'null'] }
+        customMessage: { type: [string, 'null'] }
+        language: { type: string, enum: [en] }
+        sentAt: { type: [string, 'null'], format: date-time }
+        viewedAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        signedOnPaper: { type: boolean }
+        declineReason: { type: [string, 'null'] }
+        delegatedFrom: { type: [string, 'null'] }
+    EsignField:
+      type: object
+      required: [id, documentId, recipientId, kind, page, x, y, w, h]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        recipientId: { type: string }
+        kind: { $ref: '#/components/schemas/EsignFieldKind' }
+        page: { type: integer }
+        x: { type: number }
+        y: { type: number }
+        w: { type: number }
+        h: { type: number }
+    EsignEvent:
+      type: object
+      required: [id, recipientId, type, at, ip, data]
+      properties:
+        id: { type: string }
+        recipientId: { type: [string, 'null'] }
+        type: { type: string }
+        at: { type: string, format: date-time }
+        ip: { type: [string, 'null'] }
+        data: { type: object, additionalProperties: true }
+    EsignEnvelope:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          sourceType,
+          sourceId,
+          subject,
+          message,
+          status,
+          signingOrder,
+          allowPaper,
+          allowDelegate,
+          expiresDays,
+          reminderDays,
+          expiresAt,
+          sentAt,
+          completedAt,
+          voidedAt,
+          voidReason,
+          documents,
+          recipients,
+          fields,
+          events,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/EsignSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        subject: { type: string }
+        message: { type: string }
+        status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+        signingOrder: { type: boolean }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+        expiresDays: { type: integer }
+        reminderDays: { type: [integer, 'null'] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        voidedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/EsignDocument' }
+        recipients:
+          type: array
+          items: { $ref: '#/components/schemas/EsignRecipient' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/EsignField' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/EsignEvent' }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    EsignEnvelopeSummary:
+      type: object
+      required:
+        [
+          id,
+          subject,
+          status,
+          sourceType,
+          sourceId,
+          recipientCount,
+          signedCount,
+          sentAt,
+          expiresAt,
+          completedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        subject: { type: string }
+        status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+        sourceType: { oneOf: [{ $ref: '#/components/schemas/EsignSourceType' }, { type: 'null' }] }
+        sourceId: { type: [string, 'null'] }
+        recipientCount: { type: integer }
+        signedCount: { type: integer }
+        sentAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    EsignEnvelopePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EsignEnvelopeSummary' }
+        nextCursor: { type: [string, 'null'] }
+    EsignRecipientInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, minLength: 3, maxLength: 254 }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        routingOrder: { type: integer, minimum: 1, maximum: 50 }
+        customSubject: { type: [string, 'null'], maxLength: 100 }
+        customMessage: { type: [string, 'null'], maxLength: 2000 }
+        language: { type: string, enum: [en] }
+        userId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    EsignFieldInput:
+      type: object
+      required: [documentFileId, recipientEmail, kind, page, x, y, w, h]
+      properties:
+        documentFileId: { $ref: '#/components/schemas/FileRef' }
+        recipientEmail: { type: string, maxLength: 254 }
+        kind: { $ref: '#/components/schemas/EsignFieldKind' }
+        page: { type: integer, minimum: 1, maximum: 2000 }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+        w: { type: number, minimum: 0.01, maximum: 1 }
+        h: { type: number, minimum: 0.01, maximum: 1 }
+    EsignOptions:
+      type: object
+      properties:
+        signingOrder: { type: boolean }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+        expiresDays: { type: integer, minimum: 1, maximum: 365 }
+        reminderDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+    CreateEsignEnvelopeRequest:
+      type: object
+      properties:
+        sourceType: { $ref: '#/components/schemas/EsignSourceType' }
+        sourceId: { type: string, minLength: 1, maxLength: 40 }
+        subject: { type: string, maxLength: 100 }
+        message: { type: string, maxLength: 2000 }
+        options: { $ref: '#/components/schemas/EsignOptions' }
+        documentFileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        recipients:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/EsignRecipientInput' }
+        fields:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/EsignFieldInput' }
+    UpdateEsignEnvelopeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        subject: { type: string, maxLength: 100 }
+        message: { type: string, maxLength: 2000 }
+        options: { $ref: '#/components/schemas/EsignOptions' }
+        documentFileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        recipients:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/EsignRecipientInput' }
+        fields:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/EsignFieldInput' }
+    VoidEsignEnvelopeRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    EsignPdf:
+      type: object
+      required: [filename, contentType, dataBase64, signed]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+        signed: { type: boolean }
+    EsignAccessMe:
+      type: object
+      required: [recipientId, name, email, role, status, canAct, waiting, allowPaper, allowDelegate]
+      properties:
+        recipientId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/EsignRecipientRole' }
+        status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+        canAct: { type: boolean }
+        waiting: { type: boolean, description: 'Earlier signers have not finished yet' }
+        allowPaper: { type: boolean }
+        allowDelegate: { type: boolean }
+    EsignAccess:
+      type: object
+      required: [envelope, me, documents, fields, signers, expiresAt]
+      properties:
+        envelope:
+          type: object
+          required:
+            [subject, message, fromOrg, projectName, sentByName, status, expiresAt, completedAt]
+          properties:
+            subject: { type: string }
+            message: { type: string }
+            fromOrg: { type: string }
+            projectName: { type: string }
+            sentByName: { type: string }
+            status: { $ref: '#/components/schemas/EsignEnvelopeStatus' }
+            expiresAt: { type: [string, 'null'], format: date-time }
+            completedAt: { type: [string, 'null'], format: date-time }
+        me: { $ref: '#/components/schemas/EsignAccessMe' }
+        documents:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/EsignField' }
+        signers:
+          type: array
+          items:
+            type: object
+            required: [name, role, status, routingOrder]
+            properties:
+              name: { type: string }
+              role: { $ref: '#/components/schemas/EsignRecipientRole' }
+              status: { $ref: '#/components/schemas/EsignRecipientStatus' }
+              routingOrder: { type: integer }
+        expiresAt: { type: string, format: date-time }
+    SignEsignRequest:
+      type: object
+      required: [signatureKind, signature, consent]
+      properties:
+        signatureKind: { type: string, enum: [typed, drawn] }
+        signature: { type: string, minLength: 1, maxLength: 150000 }
+        consent:
+          { type: boolean, description: 'Must be true: the signer agreed to sign electronically' }
+    DeclineEsignRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    DelegateEsignRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, minLength: 3, maxLength: 254 }

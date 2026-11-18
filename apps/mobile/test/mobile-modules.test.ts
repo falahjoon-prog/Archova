@@ -7,6 +7,8 @@ import { documentSubtitle, folderRows } from '../features/documents';
 import { byDivision, pageText, sectionTitle } from '../features/specifications';
 import { submittalSubtitle, waitingStep, respondToStep } from '../features/submittals';
 import { assignmentSummary, shiftTitle } from '../features/crews';
+import { assetSubtitle, allocationRange } from '../features/equipment';
+import { nextCheckIn, itemsSummary } from '../features/deliveries';
 import {
   dayWindow,
   defaultRange,
@@ -25,12 +27,22 @@ vi.mock('../features/submittals/screens/SubmittalScreen', () => ({}));
 vi.mock('../features/timesheets/screens/TimesheetsScreen', () => ({}));
 vi.mock('../features/timesheets/screens/TimesheetScreen', () => ({}));
 vi.mock('../features/crews/screens/CrewsScreen', () => ({}));
+vi.mock('../features/equipment/screens/EquipmentScreen', () => ({}));
+vi.mock('../features/deliveries/screens/DeliveriesScreen', () => ({}));
 vi.mock('expo-web-browser', () => ({ openBrowserAsync: vi.fn() }));
 
 describe('tools and routes', () => {
   it('lists a tile for each new module', () => {
     const ids = TOOLS.map((t) => t.id);
-    for (const id of ['documents', 'specifications', 'submittals', 'timesheets', 'crews'])
+    for (const id of [
+      'documents',
+      'specifications',
+      'submittals',
+      'timesheets',
+      'crews',
+      'equipment',
+      'deliveries',
+    ])
       expect(ids).toContain(id);
   });
   it('builds the routes', () => {
@@ -39,6 +51,8 @@ describe('tools and routes', () => {
     expect(mobileRoutes.submittal('p', 's')).toBe('/project/p/submittals/s');
     expect(mobileRoutes.timesheet('p', 't')).toBe('/project/p/timesheets/t');
     expect(mobileRoutes.crews('p')).toBe('/project/p/crews');
+    expect(mobileRoutes.equipment('p')).toBe('/project/p/equipment');
+    expect(mobileRoutes.deliveries('p')).toBe('/project/p/deliveries');
   });
 });
 
@@ -201,5 +215,35 @@ describe('crews', () => {
     expect(
       assignmentSummary([{ status: 'accepted' }, { status: 'accepted' }, { status: 'offered' }]),
     ).toBe('2 accepted, 1 offered');
+  });
+});
+
+describe('equipment and deliveries text', () => {
+  it('describes an asset and an allocation', () => {
+    expect(
+      assetSubtitle({
+        category: 'crane',
+        ownership: 'hired',
+        supplier: 'Acme Hire',
+        status: 'active',
+      }),
+    ).toBe('Crane, hired from Acme Hire');
+    expect(
+      assetSubtitle({
+        category: 'truck',
+        ownership: 'owned',
+        supplier: null,
+        status: 'maintenance',
+      }),
+    ).toBe('Truck, owned, in the workshop');
+    expect(allocationRange('2026-11-09', '2026-11-09')).toBe('9 Nov');
+    expect(allocationRange('2026-11-09', '2026-11-13')).toBe('9 Nov to 13 Nov');
+  });
+  it('offers the next check-in', () => {
+    expect(nextCheckIn('scheduled')).toBe('arrived');
+    expect(nextCheckIn('arrived')).toBe('unloaded');
+    expect(nextCheckIn('unloaded')).toBeNull();
+    expect(nextCheckIn('cancelled')).toBeNull();
+    expect(itemsSummary([{ description: 'rebar', quantity: '4', unit: 't' }])).toBe('4 t rebar');
   });
 });

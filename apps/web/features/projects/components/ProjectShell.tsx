@@ -7,12 +7,15 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
+  ActionPlansIcon,
   InspectionsIcon,
   SwmsIcon,
   ToolboxIcon,
   IncidentsIcon,
   PermitsIcon,
+  GeotechIcon,
   InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
@@ -26,6 +29,7 @@ import {
   BudgetIcon,
   DelaysIcon,
   DiaryIcon,
+  PhotosIcon,
   DocumentsIcon,
   TransmittalsIcon,
   DrawingsIcon,
@@ -40,6 +44,7 @@ import {
   type LucideIcon,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -176,6 +181,11 @@ export function projectToolGroups(
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('coordination') && {
+      href: webRoutes.risks(orgSlug, projectId),
+      label: 'Risk register',
+      icon: AlertTriangle,
+    },
     canRead('defects') && {
       href: webRoutes.warranty(orgSlug, projectId),
       label: 'Warranty',
@@ -221,10 +231,20 @@ export function projectToolGroups(
       label: 'Attendance',
       icon: AttendanceIcon,
     },
+    canRead('documents') && {
+      href: webRoutes.photos(orgSlug, projectId),
+      label: 'Photos',
+      icon: PhotosIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.deliveries(orgSlug, projectId),
       label: 'Deliveries',
       icon: DeliveriesIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
     },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
@@ -235,6 +255,11 @@ export function projectToolGroups(
       href: webRoutes.observations(orgSlug, projectId),
       label: 'Observations',
       icon: ObservationsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.actionPlans(orgSlug, projectId),
+      label: 'Action plans',
+      icon: ActionPlansIcon,
     },
     canRead('inspections') && {
       href: webRoutes.swms(orgSlug, projectId),
@@ -260,6 +285,11 @@ export function projectToolGroups(
       href: webRoutes.permits(orgSlug, projectId),
       label: 'Permits',
       icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
     },
     canRead('inspections') && {
       href: webRoutes.insurance(orgSlug, projectId),
@@ -365,7 +395,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',
@@ -376,6 +406,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Warranty',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
       'Toolbox talks',
       'Incidents',
@@ -387,7 +418,14 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
+    tools: [
+      'Contracts',
+      'Payment claims',
+      'T&M tickets',
+      'Budget',
+      'Risk register',
+      'Owner portal',
+    ],
   },
   {
     id: 'estimating',

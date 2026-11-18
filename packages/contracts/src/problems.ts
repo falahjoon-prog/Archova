@@ -80,6 +80,8 @@ export const PROBLEM_CODES = {
   'project_member.cannot_remove_self': 422,
   'project_location.not_found': 404,
   'company.not_found': 422,
+  'company_contact.not_found': 404,
+  'company_contact.name_required': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
   'backoffice.permission_denied': 403,
@@ -136,6 +138,8 @@ export const PROBLEM_CODES = {
   'file.not_ready': 409,
   'file.blocked': 422,
   'file.not_in_project': 422,
+  'photo_album.not_found': 404,
+  'photo_album.name_taken': 409,
   // documents
   'folder.not_found': 404,
   'folder.name_taken': 409,
@@ -209,6 +213,10 @@ export const PROBLEM_CODES = {
   'announcement.audience_empty': 422,
   // conversations
   'conversation.not_found': 404,
+  // links (related items)
+  'link.not_found': 404,
+  'link.entity_not_found': 404,
+  'link.limit_reached': 422,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -281,6 +289,9 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  // risk register
+  'risk.not_found': 404,
+
   'warranty.not_found': 404,
   'warranty.responsible_required': 422,
   'warranty.item_not_on_project': 422,
@@ -294,6 +305,17 @@ export const PROBLEM_CODES = {
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
   'meeting.live_unavailable': 422,
+  // e-signature envelopes
+  'esign.not_found': 404,
+  'esign.document_not_found': 404,
+  'esign.recipient_not_found': 404,
+  'esign.invalid_state': 409,
+  'esign.incomplete': 422,
+  'esign.not_your_turn': 409,
+  'esign.not_a_pdf': 422,
+  'esign.paper_not_allowed': 403,
+  'esign.delegate_not_allowed': 403,
+  'esign.rate_limited': 429,
   // ownerportal
   'ownerportal.update_not_found': 404,
   'ownerportal.update_published': 409,
@@ -314,6 +336,13 @@ export const PROBLEM_CODES = {
   'logistics_delivery.not_found': 404,
   'logistics_delivery.bad_state': 409,
   'logistics_delivery.commitment_not_found': 422,
+  // prefab (prefabricated and modular units)
+  'prefab_unit.not_found': 404,
+  'prefab_unit.code_taken': 409,
+  'prefab_unit.bad_state': 409,
+  'prefab_unit.qa_open': 409,
+  'prefab_unit.delivery_not_found': 422,
+  'prefab_check.not_found': 404,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -325,6 +354,12 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // configurable approval workflows
+  'workflow.not_found': 404,
+  'workflow.active_exists': 409,
+  'workflow.not_approver': 403,
+  'workflow.own_submission': 403,
+  'workflow.no_eligible_approver': 422,
   // data export (one-click full export)
   'data_export.not_found': 404,
   'data_export.in_progress': 409,
@@ -371,6 +406,10 @@ export const PROBLEM_CODES = {
   'financials.commitment.bad_state': 409,
   'financials.commitment.reason_required': 422,
   'financials.commitment.over_budget': 422,
+  'financials.commitment.not_subcontract': 422,
+  'financials.commitment.contract_kind': 422,
+  'financials.commitment.contract_company': 422,
+  'financials.commitment.contract_taken': 409,
   'financials.owner_invoice.not_found': 404,
   'financials.owner_invoice.not_head_contract': 422,
   'financials.owner_invoice.claim_not_eligible': 422,
@@ -399,6 +438,13 @@ export const PROBLEM_CODES = {
   'observation.not_allowed': 403,
   'observation.reason_required': 422,
   'observation.assignee_not_on_project': 422,
+  // quality: action plans
+  'action_plan.not_found': 404,
+  'action_plan.item_not_found': 404,
+  'action_plan_template.not_found': 404,
+  'action_plan.not_allowed': 403,
+  'action_plan.cancelled': 409,
+  'action_plan.assignee_not_on_project': 422,
   // environment: EMP, compliance conditions and documents
   'environment.plan_not_found': 404,
   'environment.plan_exists': 409,
@@ -423,6 +469,10 @@ export const PROBLEM_CODES = {
   // permits: project permits and approvals register
   'permit.not_found': 404,
   'permit.invalid_transition': 409,
+  // geotech: civil and geotechnical records
+  'geotech.investigation_not_found': 404,
+  'geotech.test_not_found': 404,
+  'geotech.earthworks_not_found': 404,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,

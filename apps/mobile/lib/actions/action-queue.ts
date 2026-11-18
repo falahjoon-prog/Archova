@@ -11,7 +11,18 @@ import { isOfflineError } from '../attendance/sign-in-queue';
 export { isOfflineError };
 
 export type ActionKind =
-  'submittal.respond' | 'timesheet.submit' | 'timesheet.approve' | 'timesheet.reject';
+  | 'submittal.respond'
+  | 'rfi.respond'
+  | 'timesheet.submit'
+  | 'timesheet.approve'
+  | 'timesheet.reject'
+  | 'delivery.checkIn'
+  | 'swms.acknowledge'
+  | 'swms.transition'
+  | 'permit.startRenewal'
+  | 'environment.startCondition'
+  | 'toolbox.addAttendee'
+  | 'toolbox.transition';
 
 export interface QueuedAction {
   id: string;
@@ -103,6 +114,15 @@ export class ActionQueue {
       [targetId],
     );
     return rows.map(toAction);
+  }
+
+  /** How many entries wait to be sent and how many the server refused, across all projects, for the sync indicator. */
+  async counts(): Promise<{ pending: number; refused: number }> {
+    const rows = await this.db.getAllAsync<{ state: string; n: number }>(
+      'SELECT state, COUNT(*) AS n FROM action_queue GROUP BY state',
+    );
+    const n = (state: string) => rows.find((r) => r.state === state)?.n ?? 0;
+    return { pending: n('pending'), refused: n('refused') };
   }
 
   /** Removes an entry the person has seen (a refusal) or no longer wants (a pending one). */

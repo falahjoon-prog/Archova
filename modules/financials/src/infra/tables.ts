@@ -403,6 +403,7 @@ export const commitments = financialsSchema.table('commitments', {
   changeEventId: uuid('change_event_id'),
   sourcePackageId: uuid('source_package_id'),
   sourceQuoteId: uuid('source_quote_id'),
+  contractId: uuid('contract_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
