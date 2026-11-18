@@ -34,6 +34,14 @@ export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
 export type RecordClaimStatement = S['RecordClaimStatementRequest'];
+export type OwnerInvoice = S['OwnerInvoice'];
+export type OwnerInvoiceDetail = S['OwnerInvoiceDetail'];
+export type OwnerInvoiceLine = S['OwnerInvoiceLine'];
+export type OwnerInvoiceCandidate = S['OwnerInvoiceCandidate'];
+export type OwnerInvoicePrefill = S['OwnerInvoicePrefill'];
+export type OwnerInvoiceFlag = S['OwnerInvoiceFlag'];
+export type OwnerInvoiceBackupItem = S['OwnerInvoiceBackupItem'];
+export type CreateOwnerInvoice = S['CreateOwnerInvoiceRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -56,6 +64,50 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts`, {
           params: { path: { orgId, projectId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async ownerInvoicePrefill(
+      projectId: string,
+      contractId: string,
+      periodEnd: string,
+    ): Promise<OwnerInvoicePrefill> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/owner-invoice-prefill`, {
+          params: { path: { orgId, projectId, contractId }, query: { periodEnd } },
+        }),
+      );
+    },
+    async ownerInvoices(projectId: string, contractId: string): Promise<OwnerInvoice[]> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/owner-invoices`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      ).data;
+    },
+    async createOwnerInvoice(
+      projectId: string,
+      contractId: string,
+      body: CreateOwnerInvoice,
+    ): Promise<OwnerInvoiceDetail> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/owner-invoices`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async ownerInvoice(projectId: string, ownerInvoiceId: string): Promise<OwnerInvoiceDetail> {
+      return unwrap(
+        await api.GET(`${P}/owner-invoices/{ownerInvoiceId}`, {
+          params: { path: { orgId, projectId, ownerInvoiceId } },
+        }),
+      );
+    },
+    async discardOwnerInvoice(projectId: string, ownerInvoiceId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${P}/owner-invoices/{ownerInvoiceId}`, {
+          params: { path: { orgId, projectId, ownerInvoiceId } },
         }),
       );
     },

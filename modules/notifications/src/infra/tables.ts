@@ -4,7 +4,16 @@ export const notificationsSchema = pgSchema('notifications');
 
 /** What a notification points at; the API turns the id into a public id of this kind. */
 export type NotificationEntity =
-  'meeting' | 'tender_package' | 'contract' | 'incident' | 'compliance_document';
+  | 'meeting'
+  | 'tender_package'
+  | 'contract'
+  | 'incident'
+  | 'compliance_document'
+  | 'conversation'
+  | 'announcement'
+  | 'permit'
+  | 'cover'
+  | 'warranty_item';
 
 export const notifications = notificationsSchema.table('notifications', {
   id: uuid('id').primaryKey(),

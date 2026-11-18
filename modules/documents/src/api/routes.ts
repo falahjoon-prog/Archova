@@ -29,6 +29,7 @@ import type {
   TransmittalItemView,
   TransmittalService,
 } from '../application/transmittals';
+import type { RegisterService } from '../application/register';
 import type { TransmittalLinkService } from '../application/transmittal-links';
 import {
   toDocumentDetail,
@@ -42,6 +43,7 @@ import {
   toSpecBookDto,
   toSpecSectionDto,
   toSheetGeometryDto,
+  toRegisterRowDto,
   toTransmittalDto,
 } from './mappers';
 
@@ -56,6 +58,7 @@ export interface DocumentsRouteDeps {
   geometry: GeometryService;
   tiles: TileService;
   transmittals: TransmittalService;
+  register: RegisterService;
   links: TransmittalLinkService;
   platform: Pick<PlatformApi, 'getProject' | 'getOrg'>;
   messages: MessageSender;
@@ -294,6 +297,8 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         d.documents.list(s, project(input.params), {
           ...(q.folderId ? { folderId: id('folder', q.folderId, 'folder.not_found') } : {}),
           ...(q.q ? { q: q.q } : {}),
+          ...(q.createdSince ? { createdSince: new Date(q.createdSince) } : {}),
+          ...(q.tracked === 'true' ? { trackedOnly: true } : {}),
           limit: q.limit,
           ...(q.cursor ? { cursor: q.cursor } : {}),
         }),
@@ -342,6 +347,44 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         body: toDocumentDetail(x),
         headers: { etag: etag(x.document.version) },
       };
+    },
+    deleteDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) => d.documents.remove(s, project(input.params), documentId, expected));
+      return { status: 204, body: undefined };
+    },
+    listDeletedDocuments: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        d.documents.listDeleted(s, project(input.params), {
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toDocumentDto), nextCursor: page.nextCursor },
+      };
+    },
+    restoreDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const x = await tx(input, (s) => d.documents.restore(s, project(input.params), documentId));
+      return {
+        status: 200,
+        body: toDocumentDetail(x),
+        headers: { etag: etag(x.document.version) },
+      };
+    },
+    trackDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      await tx(input, (s) => d.documents.setTracking(s, project(input.params), documentId, true));
+      return { status: 204, body: undefined };
+    },
+    untrackDocument: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      await tx(input, (s) => d.documents.setTracking(s, project(input.params), documentId, false));
+      return { status: 204, body: undefined };
     },
     addDocumentRevision: async (input) => {
       const documentId = id('document', input.params.documentId, 'document.not_found');
@@ -569,6 +612,16 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       return { status: 204 };
     },
 
+    getDocumentRegister: async (input) => {
+      const rows = await read(input, (s) => d.register.register(s, project(input.params)));
+      // Sheet/document number order; unnumbered last.
+      rows.sort((a, b) =>
+        (a.number ?? '\uffff' + a.title).localeCompare(b.number ?? '\uffff' + b.title, 'en-AU', {
+          numeric: true,
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toRegisterRowDto) } };
+    },
     listTransmittals: async (input) => {
       const page = await read(input, (s) =>
         d.transmittals.list(s, project(input.params), {

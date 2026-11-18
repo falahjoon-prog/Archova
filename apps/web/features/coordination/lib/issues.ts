@@ -53,3 +53,10 @@ export const parseGuids = (text: string): string[] =>
     .split(/[\s,;]+/)
     .map((g) => g.trim())
     .filter(Boolean);
+
+export const issueLabel = (number: number) => `CI-${String(number).padStart(3, '0')}`;
+
+/** An issue still needs someone to act on it. */
+export const isActive = (s: CoordinationIssueStatus) => s === 'open' || s === 'in_progress';
+
+export const PRIORITY_ORDER: CoordinationIssuePriority[] = ['critical', 'high', 'medium', 'low'];

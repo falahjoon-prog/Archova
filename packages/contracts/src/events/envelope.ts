@@ -19,6 +19,11 @@ export interface FoundationEvents {
   'platform.project.created.v1': { projectId: string; name: string };
   'platform.project.updated.v1': { projectId: string; changed: string[] };
   'platform.project.key_dates_changed.v1': { projectId: string; changed: string[] };
+  'platform.project.location_changed.v1': {
+    projectId: string;
+    locationId: string;
+    change: 'added' | 'updated' | 'removed';
+  };
   'platform.project_member.added.v1': {
     projectId: string;
     userId: string;
