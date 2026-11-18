@@ -44,6 +44,7 @@ import {
   type LucideIcon,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -179,6 +180,11 @@ export function projectToolGroups(
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
       icon: DefectsIcon,
+    },
+    canRead('coordination') && {
+      href: webRoutes.risks(orgSlug, projectId),
+      label: 'Risk register',
+      icon: AlertTriangle,
     },
     canRead('defects') && {
       href: webRoutes.warranty(orgSlug, projectId),
@@ -412,7 +418,14 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
+    tools: [
+      'Contracts',
+      'Payment claims',
+      'T&M tickets',
+      'Budget',
+      'Risk register',
+      'Owner portal',
+    ],
   },
   {
     id: 'estimating',

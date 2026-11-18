@@ -289,6 +289,9 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  // risk register
+  'risk.not_found': 404,
+
   'warranty.not_found': 404,
   'warranty.responsible_required': 422,
   'warranty.item_not_on_project': 422,
