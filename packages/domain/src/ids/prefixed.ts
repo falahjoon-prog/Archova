@@ -142,6 +142,7 @@ export const ID_PREFIXES = {
   inspectionItem: 'iti',
   inspection: 'ins',
   observation: 'obs',
+  photoAlbum: 'alb',
   actionPlan: 'apl',
   actionPlanItem: 'ali',
   actionPlanTemplate: 'apt',
