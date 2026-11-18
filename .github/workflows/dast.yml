@@ -30,7 +30,8 @@ permissions:
 jobs:
   baseline:
     name: DAST baseline (ZAP, high-risk alerts fail)
-    runs-on: ubuntu-24.04
+    # Fixed ports (8080 and the compose stack): runs on the one "integration" self-hosted runner so it never collides.
+    runs-on: ${{ vars.CI_RUNNER_INTEGRATION && fromJSON(vars.CI_RUNNER_INTEGRATION) || 'ubuntu-24.04' }}
     timeout-minutes: 30
     env:
       ORIGIN: http://demo.localhost:8080
