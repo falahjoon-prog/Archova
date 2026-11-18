@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import { localDateOf } from '@archova/time';
+import { addDays, localDateOf } from '@archova/time';
 import {
   allocatable,
   bookedDays,
@@ -27,7 +27,8 @@ export type PlanRow = typeof maintenancePlans.$inferSelect;
 export type RecordRow = typeof maintenanceRecords.$inferSelect;
 
 /** Plant is planned in Australian time; the org has no zone of its own yet. */
-const TIME_ZONE = 'Australia/Sydney';
+export const PLANT_TIME_ZONE = 'Australia/Sydney';
+const TIME_ZONE = PLANT_TIME_ZONE;
 const MAX_ROWS = 1000;
 
 export interface PlantDeps {
@@ -58,7 +59,11 @@ export function createPlantService(deps: PlantDeps) {
 
   /** Daily rates are cost data: only those who manage the register see them. */
   async function canSeeRates(scope: TenantScope) {
-    return deps.access.can(scope, 'plant.assets.manage');
+    return deps.access.can(scope, 'plant.rates.view');
+  }
+  /** Setting a rate is for those who may see rates; staff who manage the register can't write what they can't read. */
+  async function needRatesToSet(scope: TenantScope, rate: number | undefined) {
+    if (rate !== undefined) await deps.access.assert(scope, 'plant.rates.view');
   }
   const redact = (a: AssetRow, rates: boolean): AssetRow =>
     rates ? a : { ...a, dailyRateCents: null };
@@ -83,6 +88,7 @@ export function createPlantService(deps: PlantDeps) {
 
   async function createAsset(scope: TenantScope, input: AssetInput) {
     await need(scope, 'plant.assets.manage');
+    await needRatesToSet(scope, input.dailyRateCents);
     const assetNumber = input.assetNumber.trim();
     const [dup] = await scope.tx
       .select({ id: assets.id })
@@ -121,6 +127,7 @@ export function createPlantService(deps: PlantDeps) {
     patch: Partial<AssetInput> & { status?: AssetStatus },
   ) {
     await need(scope, 'plant.assets.manage');
+    await needRatesToSet(scope, patch.dailyRateCents);
     const cur = await assetRow(scope, id, true);
     if (patch.status === 'retired') {
       const [future] = await scope.tx
@@ -245,15 +252,27 @@ export function createPlantService(deps: PlantDeps) {
     return (await costOf(scope, [r!]))[0]!;
   }
 
+  /**
+   * Cancels an allocation that has not started. One that is under way ends yesterday instead (the days used stay on
+   * record and are still posted to the budget); one that has finished can't be cancelled.
+   */
   async function cancelAllocation(scope: TenantScope, id: string) {
     await need(scope, 'plant.allocations.manage');
-    const [cur] = await scope.tx.select().from(allocations).where(eq(allocations.id, id)).limit(1);
+    const [cur] = await scope.tx
+      .select()
+      .from(allocations)
+      .where(eq(allocations.id, id))
+      .limit(1)
+      .for('update');
     if (!cur) throw new AppError('plant.allocation_not_found');
     if (cur.status === 'cancelled')
       throw new AppError('plant.bad_state', 'This allocation is already cancelled.');
+    const t = today();
+    if (cur.endsOn < t)
+      throw new AppError('plant.bad_state', 'This allocation has finished and can’t be cancelled.');
     const [r] = await scope.tx
       .update(allocations)
-      .set({ status: 'cancelled' })
+      .set(cur.startsOn >= t ? { status: 'cancelled' } : { endsOn: addDays(t, -1) })
       .where(eq(allocations.id, cur.id))
       .returning();
     return (await costOf(scope, [r!]))[0]!;
@@ -462,7 +481,7 @@ export function createPlantService(deps: PlantDeps) {
         dailyRateCents: rates ? a.dailyRateCents : null,
         createdOn: localDateOf(a.createdAt, TIME_ZONE),
       })),
-      allocations: allocs,
+      allocations: allocs.map((a) => ({ ...a })),
       plans,
       today: t,
       ...(opts.idleDays ? { idleDays: opts.idleDays } : {}),

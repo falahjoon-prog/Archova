@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeId } from '@archova/domain';
 import {
   addMember,
   createOrg,
@@ -137,5 +138,86 @@ describe('plant and equipment', () => {
     await addMember(ana.browser, org.id, project.id, sub.email, 'Subcontractor');
     const res = await sub.browser.get(`/v1/orgs/${org.id}/plant/assets`);
     expect(res.statusCode).toBe(403);
+  });
+
+  it('posts finished hire days to the project budget once, and only for hired machines with a cost code', async () => {
+    const ana = await signUp(t.app, 'plant-post');
+    const org = await createOrg(ana.browser, 'Plant Posting');
+    const project = await createProject(ana.browser, org.id);
+    const pBase = `/v1/orgs/${org.id}/projects/${project.id}`;
+    const base = `/v1/orgs/${org.id}/plant`;
+    const code = (
+      await ana.browser.post(`${pBase}/cost-codes`, { code: '07', description: 'Plant hire' })
+    ).json() as { id: string };
+    const noLineCode = (
+      await ana.browser.post(`${pBase}/cost-codes`, { code: '08', description: 'Unbudgeted' })
+    ).json() as { id: string };
+    await ana.browser.post(`${pBase}/budget`);
+    const line = (
+      await ana.browser.post(`${pBase}/budget/lines`, { costCodeId: code.id, original: '10000.00' })
+    ).json() as { id: string };
+    const actualOf = async () =>
+      (
+        (await ana.browser.get(`${pBase}/budget`)).json() as {
+          lines: Array<{ id: string; actual: string }>;
+        }
+      ).lines.find((l) => l.id === line.id)!.actual;
+
+    const mk = async (assetNumber: string, ownership: 'hired' | 'owned') =>
+      (
+        await ana.browser.post(`${base}/assets`, {
+          name: assetNumber,
+          assetNumber,
+          category: 'crane',
+          ownership,
+          ...(ownership === 'hired' ? { supplier: 'Coates' } : {}),
+          dailyRateCents: 50000,
+        })
+      ).json() as { id: string };
+    const hired = await mk('CR-H', 'hired');
+    const owned = await mk('CR-O', 'owned');
+    const alloc = async (assetId: string, costCodeId: string | null) =>
+      ana.browser.post(`${base}/assets/${assetId}/allocations`, {
+        projectId: project.id,
+        startsOn: '2026-01-05',
+        endsOn: '2026-01-09',
+        ...(costCodeId ? { costCodeId } : {}),
+      });
+    expect((await alloc(hired.id, code.id)).statusCode).toBe(201);
+    expect((await alloc(owned.id, code.id)).statusCode).toBe(201);
+    const noLine = await ana.browser.post(
+      `${base}/assets/${(await mk('CR-N', 'hired')).id}/allocations`,
+      {
+        projectId: project.id,
+        startsOn: '2026-01-05',
+        endsOn: '2026-01-06',
+        costCodeId: noLineCode.id,
+      },
+    );
+    expect(noLine.statusCode).toBe(201);
+
+    const run = () =>
+      t.database.withTenantTx(
+        {
+          orgId: decodeId('org', org.id)!,
+          userId: decodeId('user', ana.userId)!,
+          principalType: 'member' as const,
+          orgRole: 'owner' as const,
+          entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+          requestId: 'test',
+        },
+        (scope) => t.modules.plant.api.postHireCosts(scope),
+      );
+    // Five days of the hired crane at $500: $2,500 on the budget line. The owned machine and the code with no
+    // budget line post nothing, and the unbudgeted hire waits.
+    expect(await run()).toEqual({ posted: 1, waiting: 1 });
+    expect(await actualOf()).toBe('2500.00');
+    expect(await run()).toEqual({ posted: 0, waiting: 1 });
+    expect(await actualOf()).toBe('2500.00');
+    const list = (await ana.browser.get(`${base}/allocations`)).json() as {
+      data: Array<{ assetId: string; postedThrough: string | null }>;
+    };
+    expect(list.data.find((a) => a.assetId === hired.id)!.postedThrough).toBe('2026-01-09');
+    expect(list.data.find((a) => a.assetId === owned.id)!.postedThrough).toBeNull();
   });
 });

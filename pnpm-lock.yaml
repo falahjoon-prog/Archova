@@ -672,6 +672,9 @@ importers:
       '@archova/mod-permits':
         specifier: workspace:*
         version: link:../../modules/permits
+      '@archova/mod-plant':
+        specifier: workspace:*
+        version: link:../../modules/plant
       '@archova/mod-safety':
         specifier: workspace:*
         version: link:../../modules/safety

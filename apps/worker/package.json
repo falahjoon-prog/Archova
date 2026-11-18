@@ -34,6 +34,7 @@
     "@archova/mod-correspondence": "workspace:*",
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-permits": "workspace:*",
+    "@archova/mod-plant": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-sync": "workspace:*",
     "@archova/routes": "workspace:*",

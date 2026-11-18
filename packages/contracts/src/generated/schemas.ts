@@ -8046,6 +8046,7 @@ export const PlantAllocationSchema = z.object({
   "endsOn": z.string().date(),
   "note": z.string().nullable(),
   "status": z.enum(["active", "cancelled"]),
+  "postedThrough": z.string().date().nullable(),
   "estimatedCostCents": z.number().int().nullable(),
 });
 export type PlantAllocation = z.infer<typeof PlantAllocationSchema>;
@@ -8081,7 +8082,7 @@ export const PlantAssetListSchema = z.object({
 export type PlantAssetList = z.infer<typeof PlantAssetListSchema>;
 
 export const PlantFlagSchema = z.object({
-  "code": z.enum(["maintenance_overdue", "maintenance_due_soon", "certification_expired", "certification_expiring", "double_booking", "booked_while_unavailable", "service_during_booking", "idle"]),
+  "code": z.enum(["maintenance_overdue", "maintenance_due_soon", "certification_expired", "certification_expiring", "double_booking", "booked_while_unavailable", "service_during_booking", "hire_not_costed", "idle"]),
   "severity": z.enum(["critical", "warning", "info"]),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
   "subjectId": z.string().nullable(),
