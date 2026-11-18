@@ -124,6 +124,7 @@ export const webRoutes = {
   toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
+  geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
@@ -145,6 +146,7 @@ export const webRoutes = {
   attendanceRoster: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/roster`,
   deliveries: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/deliveries`,
+  prefab: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/prefab`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>
@@ -218,10 +220,19 @@ export const mobileRoutes = {
   submittals: (projectId: string) => `/project/${enc(projectId)}/submittals`,
   submittal: (projectId: string, submittalId: string) =>
     `/project/${enc(projectId)}/submittals/${enc(submittalId)}`,
+  rfis: (projectId: string) => `/project/${enc(projectId)}/rfis`,
+  rfi: (projectId: string, rfiId: string) => `/project/${enc(projectId)}/rfis/${enc(rfiId)}`,
+  toolboxTalks: (projectId: string) => `/project/${enc(projectId)}/toolbox`,
+  toolboxTalk: (projectId: string, talkId: string) =>
+    `/project/${enc(projectId)}/toolbox/${enc(talkId)}`,
+  swmsRegister: (projectId: string) => `/project/${enc(projectId)}/swms`,
+  swms: (projectId: string, swmsId: string) => `/project/${enc(projectId)}/swms/${enc(swmsId)}`,
   timesheets: (projectId: string) => `/project/${enc(projectId)}/timesheets`,
   timesheet: (projectId: string, timesheetId: string) =>
     `/project/${enc(projectId)}/timesheets/${enc(timesheetId)}`,
   crews: (projectId: string) => `/project/${enc(projectId)}/crews`,
+  equipment: (projectId: string) => `/project/${enc(projectId)}/equipment`,
+  deliveries: (projectId: string) => `/project/${enc(projectId)}/deliveries`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   /** My digital Safety ID badge for a project. */
   safetyBadge: (projectId: string) => `/project/${enc(projectId)}/badge`,

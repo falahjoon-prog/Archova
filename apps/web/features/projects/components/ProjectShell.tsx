@@ -7,12 +7,14 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
   ToolboxIcon,
   IncidentsIcon,
   PermitsIcon,
+  GeotechIcon,
   InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
@@ -226,6 +228,11 @@ export function projectToolGroups(
       label: 'Deliveries',
       icon: DeliveriesIcon,
     },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
       label: 'Inspections',
@@ -260,6 +267,11 @@ export function projectToolGroups(
       href: webRoutes.permits(orgSlug, projectId),
       label: 'Permits',
       icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
     },
     canRead('inspections') && {
       href: webRoutes.insurance(orgSlug, projectId),
@@ -365,7 +377,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',

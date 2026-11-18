@@ -22,6 +22,7 @@ describe('projectToolGroups', () => {
       'Programme',
       'Attendance',
       'Deliveries',
+      'Prefab',
       'Defects',
       'Warranty',
       'Inspections',

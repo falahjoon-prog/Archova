@@ -17,8 +17,13 @@ export type ToolId =
   | 'documents'
   | 'specifications'
   | 'submittals'
+  | 'rfis'
+  | 'toolbox'
+  | 'swms'
   | 'timesheets'
   | 'crews'
+  | 'equipment'
+  | 'deliveries'
   | 'permits'
   | 'environment'
   | 'ownerPortal';
@@ -126,6 +131,28 @@ export const TOOLS: readonly ToolDef[] = [
     route: mobileRoutes.submittals,
   },
   {
+    id: 'rfis',
+    label: 'RFIs',
+    icon: [
+      'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
+      'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7',
+      'M12 17v.01',
+    ],
+    route: mobileRoutes.rfis,
+  },
+  {
+    id: 'toolbox',
+    label: 'Toolbox talks',
+    icon: ['M3 8h18v12H3z', 'M9 8V5h6v3', 'M3 13h18', 'M11 13v2h2v-2'],
+    route: mobileRoutes.toolboxTalks,
+  },
+  {
+    id: 'swms',
+    label: 'SWMS',
+    icon: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z', 'M8.5 12l2.5 2.5 4.5-5'],
+    route: mobileRoutes.swmsRegister,
+  },
+  {
     id: 'timesheets',
     label: 'Timesheets',
     icon: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 7v5l3 2'],
@@ -154,6 +181,27 @@ export const TOOLS: readonly ToolDef[] = [
     label: 'Environment',
     icon: ['M5 19c0-8 5-14 14-14 0 9-6 14-14 14z', 'M5 19c3-5 6-8 10-10'],
     route: mobileRoutes.environment,
+  },
+  {
+    id: 'equipment',
+    label: 'Equipment',
+    icon: [
+      'M3 17h13l3-5h-6l-2-5H6v10',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M14 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.equipment,
+  },
+  {
+    id: 'deliveries',
+    label: 'Deliveries',
+    icon: [
+      'M3 7h11v10H3z',
+      'M14 10h4l3 3v4h-7',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M17 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.deliveries,
   },
   {
     id: 'ownerPortal',

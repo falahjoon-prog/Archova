@@ -35,6 +35,7 @@ import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-e
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
+import { GEOTECH_PERMISSIONS, createGeotechModule } from '@archova/mod-geotech';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -59,6 +60,7 @@ import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
 import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
+import { PREFAB_PERMISSIONS, createPrefabModule } from '@archova/mod-prefab';
 import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
@@ -103,12 +105,14 @@ export const MODULE_PERMISSIONS = [
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
+  GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
   LOGISTICS_PERMISSIONS,
+  PREFAB_PERMISSIONS,
   PLANT_PERMISSIONS,
   SYNC_PERMISSIONS,
 ];
@@ -384,6 +388,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
   });
+  const geotech = createGeotechModule(services, { platform: platform.api, files: files.api });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -532,6 +537,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     purchaseOrder: (scope, projectId, id) => financials.api.purchaseOrderRef(scope, projectId, id),
   });
 
+  const prefab = createPrefabModule(services, {
+    access: access.api,
+    platform: platform.api,
+    delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+  });
+
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
@@ -620,6 +631,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
     integrations,
@@ -630,6 +642,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     exportsModule,
     workforce,
     logistics,
+    prefab,
     sync,
   ];
   const routes: RouteTable = {};
@@ -668,6 +681,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
     integrations,
@@ -679,6 +693,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     exportsModule,
     workforce,
     logistics,
+    prefab,
     routes,
   };
 }

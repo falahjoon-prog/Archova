@@ -3276,6 +3276,80 @@ export const AcknowledgeSwmsParams = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListGeotechInvestigationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechInvestigationsQuery = z.object({
+  "kind": s.GeotechInvestigationKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechInvestigationBody = s.CreateGeotechInvestigationRequestSchema;
+export const GetGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationBody = s.UpdateGeotechInvestigationRequestSchema;
+export const ListGeotechTestsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechTestsQuery = z.object({
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")).optional(),
+  "kind": s.GeotechTestKindSchema.optional(),
+  "result": s.GeotechTestOutcomeSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechTestBody = s.CreateGeotechTestRequestSchema;
+export const DeleteGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "testId": z.string().regex(new RegExp("^gts_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksQuery = z.object({
+  "zone": z.string().max(100).optional(),
+  "kind": s.GeotechEarthworksKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechEarthworksBody = s.CreateGeotechEarthworksRequestSchema;
+export const GetGeotechEarthworksSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DeleteGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "entryId": z.string().regex(new RegExp("^gew_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ListPermitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3995,6 +4069,57 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListPrefabUnitsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPrefabUnitsQuery = z.object({
+  "status": s.PrefabUnitStatusSchema.optional(),
+});
+export const CreatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrefabUnitBody = s.CreatePrefabUnitRequestSchema;
+export const GetPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitBody = s.UpdatePrefabUnitRequestSchema;
+export const TransitionPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPrefabUnitBody = s.PrefabTransitionRequestSchema;
+export const AddPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const AddPrefabCheckBody = s.AddPrefabCheckRequestSchema;
+export const RecordPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "checkId": z.string().regex(new RegExp("^pfc_[0-9A-Za-z]{26}$")),
+});
+export const RecordPrefabCheckBody = s.RecordPrefabCheckRequestSchema;
+export const GetPrefabInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesBody = s.PrefabPlanDatesRequestSchema;
 export const ListLogisticsResourcesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11231,6 +11356,150 @@ export const operations = {
     query: null,
     body: AcknowledgeSwmsBody,
   },
+  listGeotechInvestigations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechInvestigationsParams,
+    query: ListGeotechInvestigationsQuery,
+    body: null,
+  },
+  createGeotechInvestigation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechInvestigationParams,
+    query: null,
+    body: CreateGeotechInvestigationBody,
+  },
+  getGeotechInvestigation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechInvestigationParams,
+    query: null,
+    body: null,
+  },
+  updateGeotechInvestigation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateGeotechInvestigationParams,
+    query: null,
+    body: UpdateGeotechInvestigationBody,
+  },
+  listGeotechTests: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechTestsParams,
+    query: ListGeotechTestsQuery,
+    body: null,
+  },
+  createGeotechTest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechTestParams,
+    query: null,
+    body: CreateGeotechTestBody,
+  },
+  deleteGeotechTest: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechTestParams,
+    query: null,
+    body: null,
+  },
+  listGeotechEarthworks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechEarthworksParams,
+    query: ListGeotechEarthworksQuery,
+    body: null,
+  },
+  createGeotechEarthworks: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechEarthworksParams,
+    query: null,
+    body: CreateGeotechEarthworksBody,
+  },
+  getGeotechEarthworksSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechEarthworksSummaryParams,
+    query: null,
+    body: null,
+  },
+  deleteGeotechEarthworks: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechEarthworksParams,
+    query: null,
+    body: null,
+  },
+  listGeotechFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/flags',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechFlagsParams,
+    query: null,
+    body: null,
+  },
   listPermits: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/permits',
@@ -12778,6 +13047,114 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listPrefabUnits: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: ListPrefabUnitsParams,
+    query: ListPrefabUnitsQuery,
+    body: null,
+  },
+  createPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePrefabUnitParams,
+    query: null,
+    body: CreatePrefabUnitBody,
+  },
+  getPrefabUnit: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabUnitParams,
+    query: null,
+    body: null,
+  },
+  updatePrefabUnit: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePrefabUnitParams,
+    query: null,
+    body: UpdatePrefabUnitBody,
+  },
+  transitionPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPrefabUnitParams,
+    query: null,
+    body: TransitionPrefabUnitBody,
+  },
+  addPrefabCheck: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddPrefabCheckParams,
+    query: null,
+    body: AddPrefabCheckBody,
+  },
+  recordPrefabCheck: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: RecordPrefabCheckParams,
+    query: null,
+    body: RecordPrefabCheckBody,
+  },
+  getPrefabInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/insights',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabInsightsParams,
+    query: null,
+    body: null,
+  },
+  planPrefabDates: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: "application/json",
+    params: PlanPrefabDatesParams,
+    query: null,
+    body: PlanPrefabDatesBody,
   },
   listLogisticsResources: {
     method: 'GET',

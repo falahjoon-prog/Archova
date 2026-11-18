@@ -314,6 +314,13 @@ export const PROBLEM_CODES = {
   'logistics_delivery.not_found': 404,
   'logistics_delivery.bad_state': 409,
   'logistics_delivery.commitment_not_found': 422,
+  // prefab (prefabricated and modular units)
+  'prefab_unit.not_found': 404,
+  'prefab_unit.code_taken': 409,
+  'prefab_unit.bad_state': 409,
+  'prefab_unit.qa_open': 409,
+  'prefab_unit.delivery_not_found': 422,
+  'prefab_check.not_found': 404,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,
@@ -420,6 +427,10 @@ export const PROBLEM_CODES = {
   // permits: project permits and approvals register
   'permit.not_found': 404,
   'permit.invalid_transition': 409,
+  // geotech: civil and geotechnical records
+  'geotech.investigation_not_found': 404,
+  'geotech.test_not_found': 404,
+  'geotech.earthworks_not_found': 404,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,

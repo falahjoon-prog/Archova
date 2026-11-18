@@ -42,12 +42,14 @@ tags:
   - name: insurance
   - name: safety
   - name: permits
+  - name: geotech
   - name: estimating
   - name: integrations
   - name: sync
   - name: diary
   - name: workforce
   - name: logistics
+  - name: prefab
   - name: scheduling
   - name: meetings
   - name: ownerportal
@@ -13785,6 +13787,246 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SwmsDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/investigations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechInvestigations
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Site investigations (boreholes, test pits, CPT) for a project, newest first.
+      parameters:
+        - {
+            name: kind,
+            in: query,
+            schema: { $ref: '#/components/schemas/GeotechInvestigationKind' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a site investigation. It is numbered GEO-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechInvestigationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechInvestigationId'
+    get:
+      operationId: getGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: A site investigation.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateGeotechInvestigation
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Edit a site investigation.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGeotechInvestigationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechInvestigation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/tests:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechTests
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Material and soil test results, each judged against the spec limits typed on it.
+      parameters:
+        - {
+            name: investigationId,
+            in: query,
+            schema: { type: string, pattern: '^gin_[0-9A-Za-z]{26}$' },
+          }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/GeotechTestKind' } }
+        - { name: result, in: query, schema: { $ref: '#/components/schemas/GeotechTestOutcome' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechTestPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechTest
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a test result with optional spec limits.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechTestRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechTest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechTestId'
+    delete:
+      operationId: deleteGeotechTest
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Remove a test result entered by mistake.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Cut, fill, import and export entries, newest first.
+      parameters:
+        - { name: zone, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/GeotechEarthworksKind' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Record a cut, fill, import or export volume for a zone.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGeotechEarthworksRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksEntry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getGeotechEarthworksSummary
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: Cut, fill and the net material balance by zone and for the whole project.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechEarthworksSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/GeotechEarthworksId'
+    delete:
+      operationId: deleteGeotechEarthworks
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.manage
+      summary: Remove an earthworks entry entered by mistake.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/geotech/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listGeotechFlags
+      tags: [geotech]
+      x-module: geotech
+      x-permission: geotech.geotech.read
+      summary: "Nova's rule-based flags (no model): failed tests, zones short of fill, investigations with no report."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeotechFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/permits:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16520,6 +16762,192 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPrefabUnits
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Prefabricated and modular units on the project, in install order.'
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PrefabUnitStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a unit built off site. It starts with the standard QA checklist for its kind unless told otherwise.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrefabUnitRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    get:
+      operationId: getPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'A unit with its QA checks and history.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Change a unit details, dates, install sequence, fabrication progress or delivery link.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrefabUnitRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: transitionPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: addPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a QA check to a unit.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddPrefabCheckRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+      - $ref: '#/components/parameters/PrefabCheckId'
+    patch:
+      operationId: recordPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Record a check as passed, failed, not applicable or pending. A failed factory check puts a unit that is still being made on QA hold.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordPrefabCheckRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPrefabInsights
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Where the units stand, and what Nova flags by rule: late fabrication, QA holds, late shipping, unbooked deliveries, overdue installs, out-of-sequence installs.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: planPrefabDates
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Work back from an install date to when the unit must ship and when fabrication must start and finish.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabPlanDatesRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabDatePlan' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/logistics/resources:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17032,6 +17460,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    PrefabUnitId:
+      name: unitId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabCheckId:
+      name: checkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
     DeliveryId:
       name: deliveryId
       in: path
@@ -17162,6 +17600,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
+    GeotechInvestigationId:
+      name: investigationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gin_[0-9A-Za-z]{26}$' }
+    GeotechTestId:
+      name: testId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gts_[0-9A-Za-z]{26}$' }
+    GeotechEarthworksId:
+      name: entryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^gew_[0-9A-Za-z]{26}$' }
     PermitId:
       name: permitId
       in: path
@@ -17567,6 +18020,308 @@ components:
         capacity: { type: integer, minimum: 1, maximum: 20 }
         active: { type: boolean }
         note: { type: string, maxLength: 1000 }
+    PrefabUnitKind:
+      type: string
+      enum:
+        [
+          bathroom_pod,
+          wall_panel,
+          floor_cassette,
+          volumetric_module,
+          roof_truss,
+          facade_panel,
+          services_riser,
+          other,
+        ]
+    PrefabUnitStatus:
+      type: string
+      enum:
+        [planned, in_fabrication, qa_hold, ready_to_ship, in_transit, on_site, installed, rejected]
+    PrefabUnit:
+      type: object
+      required:
+        [
+          id,
+          number,
+          code,
+          name,
+          kind,
+          factoryName,
+          supplierCompanyId,
+          location,
+          installSequence,
+          weightKg,
+          dimensions,
+          status,
+          progressPct,
+          fabStart,
+          fabDue,
+          shipDate,
+          installDate,
+          shippedAt,
+          deliveredAt,
+          installedAt,
+          statusReason,
+          deliveryId,
+          deliveryLabel,
+          notes,
+          qaTotal,
+          qaDone,
+          qaFailed,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: [string, 'null'] }
+        supplierCompanyId: { type: [string, 'null'] }
+        location: { type: [string, 'null'] }
+        installSequence: { type: [integer, 'null'] }
+        weightKg: { type: [integer, 'null'] }
+        dimensions: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/PrefabUnitStatus' }
+        progressPct: { type: integer }
+        fabStart: { type: [string, 'null'], format: date }
+        fabDue: { type: [string, 'null'], format: date }
+        shipDate: { type: [string, 'null'], format: date }
+        installDate: { type: [string, 'null'], format: date }
+        shippedAt: { type: [string, 'null'], format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+        installedAt: { type: [string, 'null'], format: date-time }
+        statusReason: { type: [string, 'null'] }
+        deliveryId: { type: [string, 'null'], pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        deliveryLabel: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        qaTotal: { type: integer }
+        qaDone: { type: integer }
+        qaFailed: { type: integer }
+        version: { type: integer }
+    PrefabUnitList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabUnit' }
+    PrefabCheck:
+      type: object
+      required: [id, stage, label, required, result, note, checkedAt]
+      properties:
+        id: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string }
+        required: { type: boolean }
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: [string, 'null'] }
+        checkedAt: { type: [string, 'null'], format: date-time }
+    PrefabEvent:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^pfe_[0-9A-Za-z]{26}$' }
+        kind: { type: string }
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PrefabUnitDetail:
+      type: object
+      required: [unit, checks, events]
+      properties:
+        unit: { $ref: '#/components/schemas/PrefabUnit' }
+        checks:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabCheck' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabEvent' }
+    CreatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, kind]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        standardChecks: { type: boolean }
+    UpdatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        progressPct: { type: integer, minimum: 0, maximum: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        clear:
+          type: array
+          description: Fields to empty (an install sequence, a date or the delivery link).
+          items:
+            {
+              type: string,
+              enum: [installSequence, fabStart, fabDue, shipDate, installDate, deliveryId],
+            }
+    PrefabTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          {
+            type: string,
+            enum: [start, hold, resume, ready, ship, deliver, install, reject, reopen],
+          }
+        reason: { type: string, maxLength: 1000, description: Required to hold or reject. }
+    AddPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, label]
+      properties:
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        required: { type: boolean }
+    RecordPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: string, maxLength: 1000, description: Required when a check fails. }
+    PrefabFlag:
+      type: object
+      required: [unitId, kind, severity, message, relatedUnitIds]
+      properties:
+        unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        kind:
+          type: string
+          enum:
+            [
+              fab_late,
+              fab_not_started,
+              qa_hold,
+              ship_late,
+              delivery_not_booked,
+              install_overdue,
+              out_of_sequence,
+              dates_inconsistent,
+            ]
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        relatedUnitIds:
+          type: array
+          items: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabSummary:
+      type: object
+      required: [total, byStatus, installedPct, nextInstalls]
+      properties:
+        total: { type: integer }
+        byStatus:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              planned,
+              in_fabrication,
+              qa_hold,
+              ready_to_ship,
+              in_transit,
+              on_site,
+              installed,
+              rejected,
+            ]
+          properties:
+            planned: { type: integer }
+            in_fabrication: { type: integer }
+            qa_hold: { type: integer }
+            ready_to_ship: { type: integer }
+            in_transit: { type: integer }
+            on_site: { type: integer }
+            installed: { type: integer }
+            rejected: { type: integer }
+        installedPct: { type: integer }
+        nextInstalls:
+          type: array
+          items:
+            type: object
+            required: [unitId, code, installDate]
+            properties:
+              unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              installDate: { type: string, format: date }
+    PrefabInsights:
+      type: object
+      required: [asOf, today, summary, flags]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/PrefabSummary' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabFlag' }
+    PrefabPlanDatesRequest:
+      type: object
+      additionalProperties: false
+      required: [installDate, kind]
+      properties:
+        installDate: { type: string, format: date }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        fabDays:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 120,
+            description: Working days in the factory. Defaults by kind.,
+          }
+        transitDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days from the factory gate to site.,
+          }
+        bufferDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days between arriving on site and install.,
+          }
+    PrefabDatePlan:
+      type: object
+      required:
+        [fabStart, fabDue, shipDate, deliveryDate, installDate, fabDays, transitDays, bufferDays]
+      properties:
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        deliveryDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        fabDays: { type: integer }
+        transitDays: { type: integer }
+        bufferDays: { type: integer }
     DeliveryStatus:
       type: string
       enum: [scheduled, arrived, unloaded, delayed, missed, cancelled]
@@ -34110,6 +34865,263 @@ components:
         dueDate: { type: [string, 'null'], format: date }
         source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
         status: { $ref: '#/components/schemas/CorrectiveStatus' }
+    GeotechInvestigationKind:
+      type: string
+      enum: [borehole, test_pit, cpt, dcp, plate_load, groundwater_bore, other]
+    GeotechTestKind:
+      type: string
+      enum:
+        [
+          cbr,
+          mdd,
+          omc,
+          moisture_content,
+          field_density_ratio,
+          plasticity_index,
+          liquid_limit,
+          ucs,
+          particle_size,
+          other,
+        ]
+    GeotechTestOutcome:
+      type: string
+      description: Derived from the value and the spec limits typed on the result. no_spec when no limits were typed.
+      enum: [pass, fail, no_spec]
+    GeotechEarthworksKind:
+      type: string
+      enum: [cut, fill, import, export]
+    GeotechInvestigation:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          kind,
+          title,
+          location,
+          latitude,
+          longitude,
+          depthM,
+          groundwaterDepthM,
+          investigatedOn,
+          consultantCompanyId,
+          summary,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string }
+        location: { type: [string, 'null'] }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        depthM: { type: [number, 'null'] }
+        groundwaterDepthM: { type: [number, 'null'] }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'] }
+        summary: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    GeotechInvestigationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechInvestigation' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechInvestigationRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title]
+      properties:
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        location: { type: [string, 'null'], maxLength: 300 }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90 }
+        longitude: { type: [number, 'null'], minimum: -180, maximum: 180 }
+        depthM: { type: [number, 'null'], minimum: 0 }
+        groundwaterDepthM: { type: [number, 'null'], minimum: 0 }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdateGeotechInvestigationRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/GeotechInvestigationKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        location: { type: [string, 'null'], maxLength: 300 }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90 }
+        longitude: { type: [number, 'null'], minimum: -180, maximum: 180 }
+        depthM: { type: [number, 'null'], minimum: 0 }
+        groundwaterDepthM: { type: [number, 'null'], minimum: 0 }
+        investigatedOn: { type: [string, 'null'], format: date }
+        consultantCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    GeotechTest:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          investigationId,
+          kind,
+          sampleRef,
+          zone,
+          depthFromM,
+          depthToM,
+          value,
+          unit,
+          specMin,
+          specMax,
+          result,
+          testedOn,
+          lab,
+          notes,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        investigationId: { type: [string, 'null'] }
+        kind: { $ref: '#/components/schemas/GeotechTestKind' }
+        sampleRef: { type: [string, 'null'] }
+        zone: { type: [string, 'null'] }
+        depthFromM: { type: [number, 'null'] }
+        depthToM: { type: [number, 'null'] }
+        value: { type: number }
+        unit: { type: string }
+        specMin: { type: [number, 'null'] }
+        specMax: { type: [number, 'null'] }
+        result: { $ref: '#/components/schemas/GeotechTestOutcome' }
+        testedOn: { type: string, format: date }
+        lab: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    GeotechTestPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechTest' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechTestRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, value, testedOn]
+      properties:
+        investigationId: { type: [string, 'null'], pattern: '^gin_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/GeotechTestKind' }
+        sampleRef: { type: [string, 'null'], maxLength: 100 }
+        zone: { type: [string, 'null'], maxLength: 100 }
+        depthFromM: { type: [number, 'null'], minimum: 0 }
+        depthToM: { type: [number, 'null'], minimum: 0 }
+        value: { type: number, minimum: -999999999, maximum: 999999999 }
+        unit: { type: [string, 'null'], maxLength: 20 }
+        specMin: { type: [number, 'null'], minimum: -999999999, maximum: 999999999 }
+        specMax: { type: [number, 'null'], minimum: -999999999, maximum: 999999999 }
+        testedOn: { type: string, format: date }
+        lab: { type: [string, 'null'], maxLength: 200 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    GeotechEarthworksEntry:
+      type: object
+      required: [id, projectId, zone, kind, volumeM3, material, recordedOn, notes, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        zone: { type: string }
+        kind: { $ref: '#/components/schemas/GeotechEarthworksKind' }
+        volumeM3: { type: number }
+        material: { type: [string, 'null'] }
+        recordedOn: { type: string, format: date }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    GeotechEarthworksPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechEarthworksEntry' }
+        nextCursor: { type: [string, 'null'] }
+    CreateGeotechEarthworksRequest:
+      type: object
+      additionalProperties: false
+      required: [zone, kind, volumeM3, recordedOn]
+      properties:
+        zone: { type: string, minLength: 1, maxLength: 100 }
+        kind: { $ref: '#/components/schemas/GeotechEarthworksKind' }
+        volumeM3: { type: number, exclusiveMinimum: 0, maximum: 999999999 }
+        material: { type: [string, 'null'], maxLength: 200 }
+        recordedOn: { type: string, format: date }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    GeotechEarthworksTotals:
+      type: object
+      required: [cut, fill, imported, exported, balance]
+      properties:
+        cut: { type: number }
+        fill: { type: number }
+        imported: { type: number }
+        exported: { type: number }
+        balance:
+          {
+            type: number,
+            description: 'cut + imported - fill - exported, in cubic metres. Negative means short of material.',
+          }
+    GeotechZoneTotals:
+      allOf:
+        - $ref: '#/components/schemas/GeotechEarthworksTotals'
+        - type: object
+          required: [zone]
+          properties:
+            zone: { type: string }
+    GeotechEarthworksSummary:
+      type: object
+      required: [zones, total]
+      properties:
+        zones:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechZoneTotals' }
+        total: { $ref: '#/components/schemas/GeotechEarthworksTotals' }
+    GeotechFlag:
+      type: object
+      required: [kind, severity, title, detail, refId]
+      properties:
+        kind: { type: string, enum: [failed_test, short_of_fill, no_report] }
+        severity: { type: string, enum: [high, medium] }
+        title: { type: string }
+        detail: { type: string }
+        refId: { type: [string, 'null'] }
+    GeotechFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/GeotechFlag' }
     PermitKind:
       type: string
       enum:

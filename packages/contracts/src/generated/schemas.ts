@@ -137,6 +137,13 @@ export const AddMeetingSectionRequestSchema = z.object({
 }).strict();
 export type AddMeetingSectionRequest = z.infer<typeof AddMeetingSectionRequestSchema>;
 
+export const AddPrefabCheckRequestSchema = z.object({
+  "stage": z.enum(["factory", "site"]),
+  "label": z.string().min(1).max(200),
+  "required": z.boolean().optional(),
+}).strict();
+export type AddPrefabCheckRequest = z.infer<typeof AddPrefabCheckRequestSchema>;
+
 export const EmailSchema = z.string().email().max(320);
 export type Email = z.infer<typeof EmailSchema>;
 
@@ -2487,6 +2494,57 @@ export const CreateGateRequestSchema = z.object({
 }).strict();
 export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
+export const GeotechEarthworksKindSchema = z.enum(["cut", "fill", "import", "export"]);
+export type GeotechEarthworksKind = z.infer<typeof GeotechEarthworksKindSchema>;
+
+export const CreateGeotechEarthworksRequestSchema = z.object({
+  "zone": z.string().min(1).max(100),
+  "kind": GeotechEarthworksKindSchema,
+  "volumeM3": z.number().max(999999999),
+  "material": z.string().max(200).nullable().optional(),
+  "recordedOn": z.string().date(),
+  "notes": z.string().max(2000).nullable().optional(),
+}).strict();
+export type CreateGeotechEarthworksRequest = z.infer<typeof CreateGeotechEarthworksRequestSchema>;
+
+export const GeotechInvestigationKindSchema = z.enum(["borehole", "test_pit", "cpt", "dcp", "plate_load", "groundwater_bore", "other"]);
+export type GeotechInvestigationKind = z.infer<typeof GeotechInvestigationKindSchema>;
+
+export const CreateGeotechInvestigationRequestSchema = z.object({
+  "kind": GeotechInvestigationKindSchema,
+  "title": z.string().min(1).max(300),
+  "location": z.string().max(300).nullable().optional(),
+  "latitude": z.number().min(-90).max(90).nullable().optional(),
+  "longitude": z.number().min(-180).max(180).nullable().optional(),
+  "depthM": z.number().min(0).nullable().optional(),
+  "groundwaterDepthM": z.number().min(0).nullable().optional(),
+  "investigatedOn": z.string().date().nullable().optional(),
+  "consultantCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict();
+export type CreateGeotechInvestigationRequest = z.infer<typeof CreateGeotechInvestigationRequestSchema>;
+
+export const GeotechTestKindSchema = z.enum(["cbr", "mdd", "omc", "moisture_content", "field_density_ratio", "plasticity_index", "liquid_limit", "ucs", "particle_size", "other"]);
+export type GeotechTestKind = z.infer<typeof GeotechTestKindSchema>;
+
+export const CreateGeotechTestRequestSchema = z.object({
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "kind": GeotechTestKindSchema,
+  "sampleRef": z.string().max(100).nullable().optional(),
+  "zone": z.string().max(100).nullable().optional(),
+  "depthFromM": z.number().min(0).nullable().optional(),
+  "depthToM": z.number().min(0).nullable().optional(),
+  "value": z.number().min(-999999999).max(999999999),
+  "unit": z.string().max(20).nullable().optional(),
+  "specMin": z.number().min(-999999999).max(999999999).nullable().optional(),
+  "specMax": z.number().min(-999999999).max(999999999).nullable().optional(),
+  "testedOn": z.string().date(),
+  "lab": z.string().max(200).nullable().optional(),
+  "notes": z.string().max(2000).nullable().optional(),
+}).strict();
+export type CreateGeotechTestRequest = z.infer<typeof CreateGeotechTestRequestSchema>;
+
 export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
 export type ImportEntity = z.infer<typeof ImportEntitySchema>;
 
@@ -2865,6 +2923,29 @@ export const CreatePlantMaintenancePlanRequestSchema = z.object({
   "responsible": z.string().min(1).max(200).optional(),
 }).strict();
 export type CreatePlantMaintenancePlanRequest = z.infer<typeof CreatePlantMaintenancePlanRequestSchema>;
+
+export const PrefabUnitKindSchema = z.enum(["bathroom_pod", "wall_panel", "floor_cassette", "volumetric_module", "roof_truss", "facade_panel", "services_riser", "other"]);
+export type PrefabUnitKind = z.infer<typeof PrefabUnitKindSchema>;
+
+export const CreatePrefabUnitRequestSchema = z.object({
+  "code": z.string().min(1).max(40),
+  "name": z.string().min(1).max(200),
+  "kind": PrefabUnitKindSchema,
+  "factoryName": z.string().max(200).optional(),
+  "supplierCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "location": z.string().max(200).optional(),
+  "installSequence": z.number().int().min(1).max(100000).optional(),
+  "weightKg": z.number().int().min(1).max(1000000).optional(),
+  "dimensions": z.string().max(100).optional(),
+  "fabStart": z.string().date().optional(),
+  "fabDue": z.string().date().optional(),
+  "shipDate": z.string().date().optional(),
+  "installDate": z.string().date().optional(),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")).optional(),
+  "notes": z.string().max(4000).optional(),
+  "standardChecks": z.boolean().optional(),
+}).strict();
+export type CreatePrefabUnitRequest = z.infer<typeof CreatePrefabUnitRequestSchema>;
 
 export const PrequalQuestionSchema = z.object({
   "id": z.string().regex(new RegExp("^[a-z0-9][a-z0-9_-]{0,39}$")),
@@ -4593,6 +4674,117 @@ export const GenerateTimesheetsResultSchema = z.object({
   "linesAdded": z.number().int(),
 });
 export type GenerateTimesheetsResult = z.infer<typeof GenerateTimesheetsResultSchema>;
+
+export const GeotechEarthworksEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "zone": z.string(),
+  "kind": GeotechEarthworksKindSchema,
+  "volumeM3": z.number(),
+  "material": z.string().nullable(),
+  "recordedOn": z.string().date(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type GeotechEarthworksEntry = z.infer<typeof GeotechEarthworksEntrySchema>;
+
+export const GeotechEarthworksPageSchema = z.object({
+  "data": z.array(GeotechEarthworksEntrySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechEarthworksPage = z.infer<typeof GeotechEarthworksPageSchema>;
+
+export const GeotechEarthworksTotalsSchema = z.object({
+  "cut": z.number(),
+  "fill": z.number(),
+  "imported": z.number(),
+  "exported": z.number(),
+  "balance": z.number(),
+});
+export type GeotechEarthworksTotals = z.infer<typeof GeotechEarthworksTotalsSchema>;
+
+export const GeotechZoneTotalsSchema = z.intersection(GeotechEarthworksTotalsSchema, z.object({
+  "zone": z.string(),
+}));
+export type GeotechZoneTotals = z.infer<typeof GeotechZoneTotalsSchema>;
+
+export const GeotechEarthworksSummarySchema = z.object({
+  "zones": z.array(GeotechZoneTotalsSchema),
+  "total": GeotechEarthworksTotalsSchema,
+});
+export type GeotechEarthworksSummary = z.infer<typeof GeotechEarthworksSummarySchema>;
+
+export const GeotechFlagSchema = z.object({
+  "kind": z.enum(["failed_test", "short_of_fill", "no_report"]),
+  "severity": z.enum(["high", "medium"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "refId": z.string().nullable(),
+});
+export type GeotechFlag = z.infer<typeof GeotechFlagSchema>;
+
+export const GeotechFlagListSchema = z.object({
+  "data": z.array(GeotechFlagSchema),
+});
+export type GeotechFlagList = z.infer<typeof GeotechFlagListSchema>;
+
+export const GeotechInvestigationSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "kind": GeotechInvestigationKindSchema,
+  "title": z.string(),
+  "location": z.string().nullable(),
+  "latitude": z.number().nullable(),
+  "longitude": z.number().nullable(),
+  "depthM": z.number().nullable(),
+  "groundwaterDepthM": z.number().nullable(),
+  "investigatedOn": z.string().date().nullable(),
+  "consultantCompanyId": z.string().nullable(),
+  "summary": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type GeotechInvestigation = z.infer<typeof GeotechInvestigationSchema>;
+
+export const GeotechInvestigationPageSchema = z.object({
+  "data": z.array(GeotechInvestigationSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechInvestigationPage = z.infer<typeof GeotechInvestigationPageSchema>;
+
+export const GeotechTestOutcomeSchema = z.enum(["pass", "fail", "no_spec"]);
+export type GeotechTestOutcome = z.infer<typeof GeotechTestOutcomeSchema>;
+
+export const GeotechTestSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "investigationId": z.string().nullable(),
+  "kind": GeotechTestKindSchema,
+  "sampleRef": z.string().nullable(),
+  "zone": z.string().nullable(),
+  "depthFromM": z.number().nullable(),
+  "depthToM": z.number().nullable(),
+  "value": z.number(),
+  "unit": z.string(),
+  "specMin": z.number().nullable(),
+  "specMax": z.number().nullable(),
+  "result": GeotechTestOutcomeSchema,
+  "testedOn": z.string().date(),
+  "lab": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type GeotechTest = z.infer<typeof GeotechTestSchema>;
+
+export const GeotechTestPageSchema = z.object({
+  "data": z.array(GeotechTestSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechTestPage = z.infer<typeof GeotechTestPageSchema>;
 
 export const GrantedWalletSchema = z.object({
   "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
@@ -7367,6 +7559,137 @@ export const PostConversationMessageRequestSchema = z.object({
 }).strict();
 export type PostConversationMessageRequest = z.infer<typeof PostConversationMessageRequestSchema>;
 
+export const PrefabCheckSchema = z.object({
+  "id": z.string().regex(new RegExp("^pfc_[0-9A-Za-z]{26}$")),
+  "stage": z.enum(["factory", "site"]),
+  "label": z.string(),
+  "required": z.boolean(),
+  "result": z.enum(["pending", "pass", "fail", "na"]),
+  "note": z.string().nullable(),
+  "checkedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type PrefabCheck = z.infer<typeof PrefabCheckSchema>;
+
+export const PrefabDatePlanSchema = z.object({
+  "fabStart": z.string().date(),
+  "fabDue": z.string().date(),
+  "shipDate": z.string().date(),
+  "deliveryDate": z.string().date(),
+  "installDate": z.string().date(),
+  "fabDays": z.number().int(),
+  "transitDays": z.number().int(),
+  "bufferDays": z.number().int(),
+});
+export type PrefabDatePlan = z.infer<typeof PrefabDatePlanSchema>;
+
+export const PrefabEventSchema = z.object({
+  "id": z.string().regex(new RegExp("^pfe_[0-9A-Za-z]{26}$")),
+  "kind": z.string(),
+  "detail": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type PrefabEvent = z.infer<typeof PrefabEventSchema>;
+
+export const PrefabFlagSchema = z.object({
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["fab_late", "fab_not_started", "qa_hold", "ship_late", "delivery_not_booked", "install_overdue", "out_of_sequence", "dates_inconsistent"]),
+  "severity": z.enum(["high", "medium", "low"]),
+  "message": z.string(),
+  "relatedUnitIds": z.array(z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$"))),
+});
+export type PrefabFlag = z.infer<typeof PrefabFlagSchema>;
+
+export const PrefabSummarySchema = z.object({
+  "total": z.number().int(),
+  "byStatus": z.object({
+  "planned": z.number().int(),
+  "in_fabrication": z.number().int(),
+  "qa_hold": z.number().int(),
+  "ready_to_ship": z.number().int(),
+  "in_transit": z.number().int(),
+  "on_site": z.number().int(),
+  "installed": z.number().int(),
+  "rejected": z.number().int(),
+}).strict(),
+  "installedPct": z.number().int(),
+  "nextInstalls": z.array(z.object({
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "installDate": z.string().date(),
+})),
+});
+export type PrefabSummary = z.infer<typeof PrefabSummarySchema>;
+
+export const PrefabInsightsSchema = z.object({
+  "asOf": z.string().datetime({ offset: true }),
+  "today": z.string().date(),
+  "summary": PrefabSummarySchema,
+  "flags": z.array(PrefabFlagSchema),
+});
+export type PrefabInsights = z.infer<typeof PrefabInsightsSchema>;
+
+export const PrefabPlanDatesRequestSchema = z.object({
+  "installDate": z.string().date(),
+  "kind": PrefabUnitKindSchema,
+  "fabDays": z.number().int().min(1).max(120).optional(),
+  "transitDays": z.number().int().min(0).max(30).optional(),
+  "bufferDays": z.number().int().min(0).max(30).optional(),
+}).strict();
+export type PrefabPlanDatesRequest = z.infer<typeof PrefabPlanDatesRequestSchema>;
+
+export const PrefabTransitionRequestSchema = z.object({
+  "action": z.enum(["start", "hold", "resume", "ready", "ship", "deliver", "install", "reject", "reopen"]),
+  "reason": z.string().max(1000).optional(),
+}).strict();
+export type PrefabTransitionRequest = z.infer<typeof PrefabTransitionRequestSchema>;
+
+export const PrefabUnitStatusSchema = z.enum(["planned", "in_fabrication", "qa_hold", "ready_to_ship", "in_transit", "on_site", "installed", "rejected"]);
+export type PrefabUnitStatus = z.infer<typeof PrefabUnitStatusSchema>;
+
+export const PrefabUnitSchema = z.object({
+  "id": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "code": z.string(),
+  "name": z.string(),
+  "kind": PrefabUnitKindSchema,
+  "factoryName": z.string().nullable(),
+  "supplierCompanyId": z.string().nullable(),
+  "location": z.string().nullable(),
+  "installSequence": z.number().int().nullable(),
+  "weightKg": z.number().int().nullable(),
+  "dimensions": z.string().nullable(),
+  "status": PrefabUnitStatusSchema,
+  "progressPct": z.number().int(),
+  "fabStart": z.string().date().nullable(),
+  "fabDue": z.string().date().nullable(),
+  "shipDate": z.string().date().nullable(),
+  "installDate": z.string().date().nullable(),
+  "shippedAt": z.string().datetime({ offset: true }).nullable(),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+  "installedAt": z.string().datetime({ offset: true }).nullable(),
+  "statusReason": z.string().nullable(),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")).nullable(),
+  "deliveryLabel": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "qaTotal": z.number().int(),
+  "qaDone": z.number().int(),
+  "qaFailed": z.number().int(),
+  "version": z.number().int(),
+});
+export type PrefabUnit = z.infer<typeof PrefabUnitSchema>;
+
+export const PrefabUnitDetailSchema = z.object({
+  "unit": PrefabUnitSchema,
+  "checks": z.array(PrefabCheckSchema),
+  "events": z.array(PrefabEventSchema),
+});
+export type PrefabUnitDetail = z.infer<typeof PrefabUnitDetailSchema>;
+
+export const PrefabUnitListSchema = z.object({
+  "data": z.array(PrefabUnitSchema),
+});
+export type PrefabUnitList = z.infer<typeof PrefabUnitListSchema>;
+
 export const PrequalAnswersSchema = z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]));
 export type PrequalAnswers = z.infer<typeof PrequalAnswersSchema>;
 
@@ -8036,6 +8359,12 @@ export const RecordInspectionResponsesRequestSchema = z.object({
   "responses": z.array(InspectionResponseInputSchema).min(1).max(300),
 }).strict();
 export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionResponsesRequestSchema>;
+
+export const RecordPrefabCheckRequestSchema = z.object({
+  "result": z.enum(["pending", "pass", "fail", "na"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export type RecordPrefabCheckRequest = z.infer<typeof RecordPrefabCheckRequestSchema>;
 
 export const RetentionStageSchema = z.enum(["practical_completion", "defects_end"]);
 export type RetentionStage = z.infer<typeof RetentionStageSchema>;
@@ -9928,6 +10257,21 @@ export const UpdateGateRequestSchema = z.object({
 }).strict();
 export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
 
+export const UpdateGeotechInvestigationRequestSchema = z.object({
+  "kind": GeotechInvestigationKindSchema.optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "location": z.string().max(300).nullable().optional(),
+  "latitude": z.number().min(-90).max(90).nullable().optional(),
+  "longitude": z.number().min(-180).max(180).nullable().optional(),
+  "depthM": z.number().min(0).nullable().optional(),
+  "groundwaterDepthM": z.number().min(0).nullable().optional(),
+  "investigatedOn": z.string().date().nullable().optional(),
+  "consultantCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateGeotechInvestigationRequest = z.infer<typeof UpdateGeotechInvestigationRequestSchema>;
+
 export const UpdateIncidentActionRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),
   "description": z.string().max(4000).nullable().optional(),
@@ -10145,6 +10489,26 @@ export const UpdatePlantAssetRequestSchema = z.object({
   "status": PlantAssetStatusSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdatePlantAssetRequest = z.infer<typeof UpdatePlantAssetRequestSchema>;
+
+export const UpdatePrefabUnitRequestSchema = z.object({
+  "code": z.string().min(1).max(40).optional(),
+  "name": z.string().min(1).max(200).optional(),
+  "factoryName": z.string().max(200).optional(),
+  "supplierCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "location": z.string().max(200).optional(),
+  "installSequence": z.number().int().min(1).max(100000).optional(),
+  "weightKg": z.number().int().min(1).max(1000000).optional(),
+  "dimensions": z.string().max(100).optional(),
+  "progressPct": z.number().int().min(0).max(100).optional(),
+  "fabStart": z.string().date().optional(),
+  "fabDue": z.string().date().optional(),
+  "shipDate": z.string().date().optional(),
+  "installDate": z.string().date().optional(),
+  "deliveryId": z.string().regex(new RegExp("^dlv_[0-9A-Za-z]{26}$")).optional(),
+  "notes": z.string().max(4000).optional(),
+  "clear": z.array(z.enum(["installSequence", "fabStart", "fabDue", "shipDate", "installDate", "deliveryId"])).optional(),
+}).strict();
+export type UpdatePrefabUnitRequest = z.infer<typeof UpdatePrefabUnitRequestSchema>;
 
 export const UpdatePrequalTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

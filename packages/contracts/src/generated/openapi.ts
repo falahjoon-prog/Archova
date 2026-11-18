@@ -10025,6 +10025,173 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Site investigations (boreholes, test pits, CPT) for a project, newest first. */
+        get: operations["listGeotechInvestigations"];
+        put?: never;
+        /** Record a site investigation. It is numbered GEO-0001 per project. */
+        post: operations["createGeotechInvestigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        /** A site investigation. */
+        get: operations["getGeotechInvestigation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a site investigation. */
+        patch: operations["updateGeotechInvestigation"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Material and soil test results, each judged against the spec limits typed on it. */
+        get: operations["listGeotechTests"];
+        put?: never;
+        /** Record a test result with optional spec limits. */
+        post: operations["createGeotechTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                testId: components["parameters"]["GeotechTestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a test result entered by mistake. */
+        delete: operations["deleteGeotechTest"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Cut, fill, import and export entries, newest first. */
+        get: operations["listGeotechEarthworks"];
+        put?: never;
+        /** Record a cut, fill, import or export volume for a zone. */
+        post: operations["createGeotechEarthworks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Cut, fill and the net material balance by zone and for the whole project. */
+        get: operations["getGeotechEarthworksSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                entryId: components["parameters"]["GeotechEarthworksId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an earthworks entry entered by mistake. */
+        delete: operations["deleteGeotechEarthworks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags (no model): failed tests, zones short of fill, investigations with no report. */
+        get: operations["listGeotechFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/permits": {
         parameters: {
             query?: never;
@@ -12154,6 +12321,153 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Prefabricated and modular units on the project, in install order. */
+        get: operations["listPrefabUnits"];
+        put?: never;
+        /** Add a unit built off site. It starts with the standard QA checklist for its kind unless told otherwise. */
+        post: operations["createPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        /** A unit with its QA checks and history. */
+        get: operations["getPrefabUnit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a unit details, dates, install sequence, fabrication progress or delivery link. */
+        patch: operations["updatePrefabUnit"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed. */
+        post: operations["transitionPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a QA check to a unit. */
+        post: operations["addPrefabCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+                checkId: components["parameters"]["PrefabCheckId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Record a check as passed, failed, not applicable or pending. A failed factory check puts a unit that is still being made on QA hold. */
+        patch: operations["recordPrefabCheck"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Where the units stand, and what Nova flags by rule: late fabrication, QA holds, late shipping, unbooked deliveries, overdue installs, out-of-sequence installs. */
+        get: operations["getPrefabInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Work back from an install date to when the unit must ship and when fabrication must start and finish. */
+        post: operations["planPrefabDates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/logistics/resources": {
         parameters: {
             query?: never;
@@ -12564,6 +12878,200 @@ export interface components {
             capacity?: number;
             active?: boolean;
             note?: string;
+        };
+        /** @enum {string} */
+        PrefabUnitKind: "bathroom_pod" | "wall_panel" | "floor_cassette" | "volumetric_module" | "roof_truss" | "facade_panel" | "services_riser" | "other";
+        /** @enum {string} */
+        PrefabUnitStatus: "planned" | "in_fabrication" | "qa_hold" | "ready_to_ship" | "in_transit" | "on_site" | "installed" | "rejected";
+        PrefabUnit: {
+            id: string;
+            number: number;
+            code: string;
+            name: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            factoryName: string | null;
+            supplierCompanyId: string | null;
+            location: string | null;
+            installSequence: number | null;
+            weightKg: number | null;
+            dimensions: string | null;
+            status: components["schemas"]["PrefabUnitStatus"];
+            progressPct: number;
+            /** Format: date */
+            fabStart: string | null;
+            /** Format: date */
+            fabDue: string | null;
+            /** Format: date */
+            shipDate: string | null;
+            /** Format: date */
+            installDate: string | null;
+            /** Format: date-time */
+            shippedAt: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            installedAt: string | null;
+            statusReason: string | null;
+            deliveryId: string | null;
+            deliveryLabel: string | null;
+            notes: string | null;
+            qaTotal: number;
+            qaDone: number;
+            qaFailed: number;
+            version: number;
+        };
+        PrefabUnitList: {
+            data: components["schemas"]["PrefabUnit"][];
+        };
+        PrefabCheck: {
+            id: string;
+            /** @enum {string} */
+            stage: "factory" | "site";
+            label: string;
+            required: boolean;
+            /** @enum {string} */
+            result: "pending" | "pass" | "fail" | "na";
+            note: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+        };
+        PrefabEvent: {
+            id: string;
+            kind: string;
+            detail: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        PrefabUnitDetail: {
+            unit: components["schemas"]["PrefabUnit"];
+            checks: components["schemas"]["PrefabCheck"][];
+            events: components["schemas"]["PrefabEvent"][];
+        };
+        CreatePrefabUnitRequest: {
+            code: string;
+            name: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            factoryName?: string;
+            supplierCompanyId?: string;
+            location?: string;
+            installSequence?: number;
+            weightKg?: number;
+            dimensions?: string;
+            /** Format: date */
+            fabStart?: string;
+            /** Format: date */
+            fabDue?: string;
+            /** Format: date */
+            shipDate?: string;
+            /** Format: date */
+            installDate?: string;
+            deliveryId?: string;
+            notes?: string;
+            standardChecks?: boolean;
+        };
+        UpdatePrefabUnitRequest: {
+            code?: string;
+            name?: string;
+            factoryName?: string;
+            supplierCompanyId?: string;
+            location?: string;
+            installSequence?: number;
+            weightKg?: number;
+            dimensions?: string;
+            progressPct?: number;
+            /** Format: date */
+            fabStart?: string;
+            /** Format: date */
+            fabDue?: string;
+            /** Format: date */
+            shipDate?: string;
+            /** Format: date */
+            installDate?: string;
+            deliveryId?: string;
+            notes?: string;
+            /** @description Fields to empty (an install sequence, a date or the delivery link). */
+            clear?: ("installSequence" | "fabStart" | "fabDue" | "shipDate" | "installDate" | "deliveryId")[];
+        };
+        PrefabTransitionRequest: {
+            /** @enum {string} */
+            action: "start" | "hold" | "resume" | "ready" | "ship" | "deliver" | "install" | "reject" | "reopen";
+            /** @description Required to hold or reject. */
+            reason?: string;
+        };
+        AddPrefabCheckRequest: {
+            /** @enum {string} */
+            stage: "factory" | "site";
+            label: string;
+            required?: boolean;
+        };
+        RecordPrefabCheckRequest: {
+            /** @enum {string} */
+            result: "pending" | "pass" | "fail" | "na";
+            /** @description Required when a check fails. */
+            note?: string;
+        };
+        PrefabFlag: {
+            unitId: string;
+            /** @enum {string} */
+            kind: "fab_late" | "fab_not_started" | "qa_hold" | "ship_late" | "delivery_not_booked" | "install_overdue" | "out_of_sequence" | "dates_inconsistent";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            relatedUnitIds: string[];
+        };
+        PrefabSummary: {
+            total: number;
+            byStatus: {
+                planned: number;
+                in_fabrication: number;
+                qa_hold: number;
+                ready_to_ship: number;
+                in_transit: number;
+                on_site: number;
+                installed: number;
+                rejected: number;
+            };
+            installedPct: number;
+            nextInstalls: {
+                unitId: string;
+                code: string;
+                /** Format: date */
+                installDate: string;
+            }[];
+        };
+        PrefabInsights: {
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date */
+            today: string;
+            summary: components["schemas"]["PrefabSummary"];
+            flags: components["schemas"]["PrefabFlag"][];
+        };
+        PrefabPlanDatesRequest: {
+            /** Format: date */
+            installDate: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            /** @description Working days in the factory. Defaults by kind. */
+            fabDays?: number;
+            /** @description Working days from the factory gate to site. */
+            transitDays?: number;
+            /** @description Working days between arriving on site and install. */
+            bufferDays?: number;
+        };
+        PrefabDatePlan: {
+            /** Format: date */
+            fabStart: string;
+            /** Format: date */
+            fabDue: string;
+            /** Format: date */
+            shipDate: string;
+            /** Format: date */
+            deliveryDate: string;
+            /** Format: date */
+            installDate: string;
+            fabDays: number;
+            transitDays: number;
+            bufferDays: number;
         };
         /** @enum {string} */
         DeliveryStatus: "scheduled" | "arrived" | "unloaded" | "delayed" | "missed" | "cancelled";
@@ -22959,6 +23467,166 @@ export interface components {
             status?: components["schemas"]["CorrectiveStatus"];
         };
         /** @enum {string} */
+        GeotechInvestigationKind: "borehole" | "test_pit" | "cpt" | "dcp" | "plate_load" | "groundwater_bore" | "other";
+        /** @enum {string} */
+        GeotechTestKind: "cbr" | "mdd" | "omc" | "moisture_content" | "field_density_ratio" | "plasticity_index" | "liquid_limit" | "ucs" | "particle_size" | "other";
+        /**
+         * @description Derived from the value and the spec limits typed on the result. no_spec when no limits were typed.
+         * @enum {string}
+         */
+        GeotechTestOutcome: "pass" | "fail" | "no_spec";
+        /** @enum {string} */
+        GeotechEarthworksKind: "cut" | "fill" | "import" | "export";
+        GeotechInvestigation: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            kind: components["schemas"]["GeotechInvestigationKind"];
+            title: string;
+            location: string | null;
+            latitude: number | null;
+            longitude: number | null;
+            depthM: number | null;
+            groundwaterDepthM: number | null;
+            /** Format: date */
+            investigatedOn: string | null;
+            consultantCompanyId: string | null;
+            summary: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        GeotechInvestigationPage: {
+            data: components["schemas"]["GeotechInvestigation"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechInvestigationRequest: {
+            kind: components["schemas"]["GeotechInvestigationKind"];
+            title: string;
+            location?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            depthM?: number | null;
+            groundwaterDepthM?: number | null;
+            /** Format: date */
+            investigatedOn?: string | null;
+            consultantCompanyId?: string | null;
+            summary?: string | null;
+            fileIds?: string[];
+        };
+        UpdateGeotechInvestigationRequest: {
+            kind?: components["schemas"]["GeotechInvestigationKind"];
+            title?: string;
+            location?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            depthM?: number | null;
+            groundwaterDepthM?: number | null;
+            /** Format: date */
+            investigatedOn?: string | null;
+            consultantCompanyId?: string | null;
+            summary?: string | null;
+            fileIds?: string[];
+        };
+        GeotechTest: {
+            id: string;
+            projectId: string;
+            investigationId: string | null;
+            kind: components["schemas"]["GeotechTestKind"];
+            sampleRef: string | null;
+            zone: string | null;
+            depthFromM: number | null;
+            depthToM: number | null;
+            value: number;
+            unit: string;
+            specMin: number | null;
+            specMax: number | null;
+            result: components["schemas"]["GeotechTestOutcome"];
+            /** Format: date */
+            testedOn: string;
+            lab: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        GeotechTestPage: {
+            data: components["schemas"]["GeotechTest"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechTestRequest: {
+            investigationId?: string | null;
+            kind: components["schemas"]["GeotechTestKind"];
+            sampleRef?: string | null;
+            zone?: string | null;
+            depthFromM?: number | null;
+            depthToM?: number | null;
+            value: number;
+            unit?: string | null;
+            specMin?: number | null;
+            specMax?: number | null;
+            /** Format: date */
+            testedOn: string;
+            lab?: string | null;
+            notes?: string | null;
+        };
+        GeotechEarthworksEntry: {
+            id: string;
+            projectId: string;
+            zone: string;
+            kind: components["schemas"]["GeotechEarthworksKind"];
+            volumeM3: number;
+            material: string | null;
+            /** Format: date */
+            recordedOn: string;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        GeotechEarthworksPage: {
+            data: components["schemas"]["GeotechEarthworksEntry"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechEarthworksRequest: {
+            zone: string;
+            kind: components["schemas"]["GeotechEarthworksKind"];
+            volumeM3: number;
+            material?: string | null;
+            /** Format: date */
+            recordedOn: string;
+            notes?: string | null;
+        };
+        GeotechEarthworksTotals: {
+            cut: number;
+            fill: number;
+            imported: number;
+            exported: number;
+            /** @description cut + imported - fill - exported, in cubic metres. Negative means short of material. */
+            balance: number;
+        };
+        GeotechZoneTotals: components["schemas"]["GeotechEarthworksTotals"] & {
+            zone: string;
+        };
+        GeotechEarthworksSummary: {
+            zones: components["schemas"]["GeotechZoneTotals"][];
+            total: components["schemas"]["GeotechEarthworksTotals"];
+        };
+        GeotechFlag: {
+            /** @enum {string} */
+            kind: "failed_test" | "short_of_fill" | "no_report";
+            /** @enum {string} */
+            severity: "high" | "medium";
+            title: string;
+            detail: string;
+            refId: string | null;
+        };
+        GeotechFlagList: {
+            data: components["schemas"]["GeotechFlag"][];
+        };
+        /** @enum {string} */
         PermitKind: "building_permit" | "development_approval" | "construction_certificate" | "occupation_certificate" | "council_approval" | "planning_permit" | "environmental_permit" | "road_occupancy" | "traffic_management" | "crane_hoist" | "demolition" | "hot_work" | "trade_licence" | "other";
         /**
          * @description Derived from the lifecycle and the expiry date in the project's own calendar day.
@@ -23279,6 +23947,8 @@ export interface components {
     };
     parameters: {
         LogisticsResourceId: string;
+        PrefabUnitId: string;
+        PrefabCheckId: string;
         DeliveryId: string;
         InspectionItemId: string;
         PlantAssetId: string;
@@ -23305,6 +23975,9 @@ export interface components {
         ToolboxAttendeeId: string;
         IncidentId: string;
         IncidentActionId: string;
+        GeotechInvestigationId: string;
+        GeotechTestId: string;
+        GeotechEarthworksId: string;
         PermitId: string;
         SwmsId: string;
         OrgId: string;
@@ -39888,6 +40561,337 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listGeotechInvestigations: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["GeotechInvestigationKind"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGeotechInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechTests: {
+        parameters: {
+            query?: {
+                investigationId?: string;
+                kind?: components["schemas"]["GeotechTestKind"];
+                result?: components["schemas"]["GeotechTestOutcome"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechTestPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechTest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechTestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechTest"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteGeotechTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                testId: components["parameters"]["GeotechTestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechEarthworks: {
+        parameters: {
+            query?: {
+                zone?: string;
+                kind?: components["schemas"]["GeotechEarthworksKind"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechEarthworks: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechEarthworksRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksEntry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGeotechEarthworksSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteGeotechEarthworks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                entryId: components["parameters"]["GeotechEarthworksId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listPermits: {
         parameters: {
             query?: {
@@ -43486,6 +44490,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrefabUnits: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PrefabUnitStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnitList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrefabUnitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrefabUnitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefabTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPrefabCheck: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPrefabCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordPrefabCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+                checkId: components["parameters"]["PrefabCheckId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPrefabCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrefabInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    planPrefabDates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefabPlanDatesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabDatePlan"];
                 };
             };
             default: components["responses"]["Problem"];
