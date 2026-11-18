@@ -490,6 +490,7 @@ export const PROBLEM_CODES = {
   'ai.translation.language_unavailable': 422,
   'ai.diary.nothing_to_summarise': 422,
   'ai.minutes.nothing_to_extract': 422,
+  'ai.voice_log.nothing_to_file': 422,
   'ai.drawing_compare.no_previous_revision': 422,
   'ai.drawing_compare.no_text': 422,
   'ai.takeoff.renderer_unavailable': 503,

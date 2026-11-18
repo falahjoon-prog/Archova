@@ -11360,6 +11360,11 @@ export const VerifyInductionAccessRequestSchema = z.object({
 }).strict();
 export type VerifyInductionAccessRequest = z.infer<typeof VerifyInductionAccessRequestSchema>;
 
+export const VoiceLogRequestSchema = z.object({
+  "transcript": z.string().min(1).max(12000),
+}).strict();
+export type VoiceLogRequest = z.infer<typeof VoiceLogRequestSchema>;
+
 export const VoidCorrespondenceRequestSchema = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();

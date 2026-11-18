@@ -4702,6 +4702,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day being logged, in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: parseVoiceLogWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.write
+      summary: Nova splits a dictated end-of-day transcript into proposed diary records (mobile F14).
+      description: |
+        The phone turns the person's speech into text on the device; only that text comes here. Nova proposes a diary
+        `note`, `delay`s (with a type, and hours only when the words say how long), safety `observation`s (minor or
+        serious) and `task`s (with a due date only when the words give one). Each item carries `quote`, the words of
+        the transcript it comes from. Code drops an item whose quote is not in the transcript, a number the quote
+        does not contain, hours the quote does not state, and a due date the quote does not give. Nova writes nothing:
+        the result is a pending suggestion (`task` `voice.log`) that only the person who asked can list or decide,
+        and the phone saves the records the person keeps through its own offline commands. The same transcript for
+        the same day returns the same suggestion at no cost. Costs 1 Nova credit. A transcript shorter than 15
+        characters is 422 `ai.voice_log.nothing_to_file`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoiceLogRequest' }
+      responses:
+        '200':
+          description: The suggestion; `payload` is `{ date, items, dropped, transcriptHash }`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/nova-minutes:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -23011,6 +23048,12 @@ components:
     AiSuggestionStatus:
       type: string
       enum: [pending, accepted, edited, rejected]
+    VoiceLogRequest:
+      type: object
+      additionalProperties: false
+      required: [transcript]
+      properties:
+        transcript: { type: string, minLength: 1, maxLength: 12000 }
     DraftMinutesRequest:
       type: object
       additionalProperties: false

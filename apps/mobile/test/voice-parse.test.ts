@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseVoice, readBack, spokenHours } from '../features/voice';
 
 vi.mock('../features/voice/screens/VoiceScreen', () => ({}));
+vi.mock('../features/voice/screens/VoiceLogScreen', () => ({}));
 
 describe('parseVoice', () => {
   it('takes a diary note and capitalises it', () => {

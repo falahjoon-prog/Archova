@@ -3530,6 +3530,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova splits a dictated end-of-day transcript into proposed diary records (mobile F14).
+         * @description The phone turns the person's speech into text on the device; only that text comes here. Nova proposes a diary
+         *     `note`, `delay`s (with a type, and hours only when the words say how long), safety `observation`s (minor or
+         *     serious) and `task`s (with a due date only when the words give one). Each item carries `quote`, the words of
+         *     the transcript it comes from. Code drops an item whose quote is not in the transcript, a number the quote
+         *     does not contain, hours the quote does not state, and a due date the quote does not give. Nova writes nothing:
+         *     the result is a pending suggestion (`task` `voice.log`) that only the person who asked can list or decide,
+         *     and the phone saves the records the person keeps through its own offline commands. The same transcript for
+         *     the same day returns the same suggestion at no cost. Costs 1 Nova credit. A transcript shorter than 15
+         *     characters is 422 `ai.voice_log.nothing_to_file`.
+         */
+        post: operations["parseVoiceLogWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/nova-minutes": {
         parameters: {
             query?: never;
@@ -16175,6 +16208,9 @@ export interface components {
         };
         /** @enum {string} */
         AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        VoiceLogRequest: {
+            transcript: string;
+        };
         DraftMinutesRequest: {
             notes: string;
         };
@@ -30876,6 +30912,36 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    parseVoiceLogWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceLogRequest"];
+            };
+        };
+        responses: {
+            /** @description The suggestion; `payload` is `{ date, items, dropped, transcriptHash }`. */
             200: {
                 headers: {
                     [name: string]: unknown;

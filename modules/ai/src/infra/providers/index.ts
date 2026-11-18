@@ -26,6 +26,7 @@ import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
 import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
+import { heuristicVoiceLog } from '../../eval/suites/voice-log';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { heuristicSwmsDraft } from '../../eval/suites/swms-draft';
@@ -55,6 +56,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'diary.weekly': heuristicDiaryWeekly,
   'help.explain': heuristicHelpExplain,
   'minutes.extract': heuristicMeetingMinutes,
+  'voice.log': heuristicVoiceLog,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,
   'swms.draft': heuristicSwmsDraft,
