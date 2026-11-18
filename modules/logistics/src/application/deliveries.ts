@@ -663,7 +663,18 @@ export function createLogisticsService(deps: LogisticsDeps) {
     return { to: d.supplierEmail, ...text, proposed: proposed ?? null };
   }
 
+  /** For `prefab`: a delivery on the project, so a unit can name the truck that brings it. No permission check; the caller has its own. */
+  async function deliveryRef(scope: TenantScope, projectId: string, id: string) {
+    const [r] = await scope.tx
+      .select({ id: deliveries.id, number: deliveries.number, title: deliveries.title })
+      .from(deliveries)
+      .where(and(eq(deliveries.id, id), eq(deliveries.projectId, projectId)))
+      .limit(1);
+    return r ?? null;
+  }
+
   return {
+    deliveryRef,
     listResources,
     createResource,
     updateResource,

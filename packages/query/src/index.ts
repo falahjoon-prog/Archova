@@ -61,6 +61,7 @@ export type ProjectTool =
   | 'roster'
   | 'equipment'
   | 'deliveries'
+  | 'prefab'
   | 'timesheets'
   | 'observations'
   | 'swms'

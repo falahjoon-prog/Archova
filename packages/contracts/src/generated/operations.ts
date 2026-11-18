@@ -4069,6 +4069,57 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListPrefabUnitsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPrefabUnitsQuery = z.object({
+  "status": s.PrefabUnitStatusSchema.optional(),
+});
+export const CreatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrefabUnitBody = s.CreatePrefabUnitRequestSchema;
+export const GetPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrefabUnitBody = s.UpdatePrefabUnitRequestSchema;
+export const TransitionPrefabUnitParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPrefabUnitBody = s.PrefabTransitionRequestSchema;
+export const AddPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+});
+export const AddPrefabCheckBody = s.AddPrefabCheckRequestSchema;
+export const RecordPrefabCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),
+  "checkId": z.string().regex(new RegExp("^pfc_[0-9A-Za-z]{26}$")),
+});
+export const RecordPrefabCheckBody = s.RecordPrefabCheckRequestSchema;
+export const GetPrefabInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PlanPrefabDatesBody = s.PrefabPlanDatesRequestSchema;
 export const ListLogisticsResourcesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12996,6 +13047,114 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listPrefabUnits: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: ListPrefabUnitsParams,
+    query: ListPrefabUnitsQuery,
+    body: null,
+  },
+  createPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePrefabUnitParams,
+    query: null,
+    body: CreatePrefabUnitBody,
+  },
+  getPrefabUnit: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabUnitParams,
+    query: null,
+    body: null,
+  },
+  updatePrefabUnit: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePrefabUnitParams,
+    query: null,
+    body: UpdatePrefabUnitBody,
+  },
+  transitionPrefabUnit: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPrefabUnitParams,
+    query: null,
+    body: TransitionPrefabUnitBody,
+  },
+  addPrefabCheck: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddPrefabCheckParams,
+    query: null,
+    body: AddPrefabCheckBody,
+  },
+  recordPrefabCheck: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: RecordPrefabCheckParams,
+    query: null,
+    body: RecordPrefabCheckBody,
+  },
+  getPrefabInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/insights',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: GetPrefabInsightsParams,
+    query: null,
+    body: null,
+  },
+  planPrefabDates: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: "application/json",
+    params: PlanPrefabDatesParams,
+    query: null,
+    body: PlanPrefabDatesBody,
   },
   listLogisticsResources: {
     method: 'GET',

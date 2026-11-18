@@ -12321,6 +12321,153 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Prefabricated and modular units on the project, in install order. */
+        get: operations["listPrefabUnits"];
+        put?: never;
+        /** Add a unit built off site. It starts with the standard QA checklist for its kind unless told otherwise. */
+        post: operations["createPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        /** A unit with its QA checks and history. */
+        get: operations["getPrefabUnit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a unit details, dates, install sequence, fabrication progress or delivery link. */
+        patch: operations["updatePrefabUnit"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed. */
+        post: operations["transitionPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a QA check to a unit. */
+        post: operations["addPrefabCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+                checkId: components["parameters"]["PrefabCheckId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Record a check as passed, failed, not applicable or pending. A failed factory check puts a unit that is still being made on QA hold. */
+        patch: operations["recordPrefabCheck"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Where the units stand, and what Nova flags by rule: late fabrication, QA holds, late shipping, unbooked deliveries, overdue installs, out-of-sequence installs. */
+        get: operations["getPrefabInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Work back from an install date to when the unit must ship and when fabrication must start and finish. */
+        post: operations["planPrefabDates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/logistics/resources": {
         parameters: {
             query?: never;
@@ -12731,6 +12878,200 @@ export interface components {
             capacity?: number;
             active?: boolean;
             note?: string;
+        };
+        /** @enum {string} */
+        PrefabUnitKind: "bathroom_pod" | "wall_panel" | "floor_cassette" | "volumetric_module" | "roof_truss" | "facade_panel" | "services_riser" | "other";
+        /** @enum {string} */
+        PrefabUnitStatus: "planned" | "in_fabrication" | "qa_hold" | "ready_to_ship" | "in_transit" | "on_site" | "installed" | "rejected";
+        PrefabUnit: {
+            id: string;
+            number: number;
+            code: string;
+            name: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            factoryName: string | null;
+            supplierCompanyId: string | null;
+            location: string | null;
+            installSequence: number | null;
+            weightKg: number | null;
+            dimensions: string | null;
+            status: components["schemas"]["PrefabUnitStatus"];
+            progressPct: number;
+            /** Format: date */
+            fabStart: string | null;
+            /** Format: date */
+            fabDue: string | null;
+            /** Format: date */
+            shipDate: string | null;
+            /** Format: date */
+            installDate: string | null;
+            /** Format: date-time */
+            shippedAt: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            installedAt: string | null;
+            statusReason: string | null;
+            deliveryId: string | null;
+            deliveryLabel: string | null;
+            notes: string | null;
+            qaTotal: number;
+            qaDone: number;
+            qaFailed: number;
+            version: number;
+        };
+        PrefabUnitList: {
+            data: components["schemas"]["PrefabUnit"][];
+        };
+        PrefabCheck: {
+            id: string;
+            /** @enum {string} */
+            stage: "factory" | "site";
+            label: string;
+            required: boolean;
+            /** @enum {string} */
+            result: "pending" | "pass" | "fail" | "na";
+            note: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+        };
+        PrefabEvent: {
+            id: string;
+            kind: string;
+            detail: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        PrefabUnitDetail: {
+            unit: components["schemas"]["PrefabUnit"];
+            checks: components["schemas"]["PrefabCheck"][];
+            events: components["schemas"]["PrefabEvent"][];
+        };
+        CreatePrefabUnitRequest: {
+            code: string;
+            name: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            factoryName?: string;
+            supplierCompanyId?: string;
+            location?: string;
+            installSequence?: number;
+            weightKg?: number;
+            dimensions?: string;
+            /** Format: date */
+            fabStart?: string;
+            /** Format: date */
+            fabDue?: string;
+            /** Format: date */
+            shipDate?: string;
+            /** Format: date */
+            installDate?: string;
+            deliveryId?: string;
+            notes?: string;
+            standardChecks?: boolean;
+        };
+        UpdatePrefabUnitRequest: {
+            code?: string;
+            name?: string;
+            factoryName?: string;
+            supplierCompanyId?: string;
+            location?: string;
+            installSequence?: number;
+            weightKg?: number;
+            dimensions?: string;
+            progressPct?: number;
+            /** Format: date */
+            fabStart?: string;
+            /** Format: date */
+            fabDue?: string;
+            /** Format: date */
+            shipDate?: string;
+            /** Format: date */
+            installDate?: string;
+            deliveryId?: string;
+            notes?: string;
+            /** @description Fields to empty (an install sequence, a date or the delivery link). */
+            clear?: ("installSequence" | "fabStart" | "fabDue" | "shipDate" | "installDate" | "deliveryId")[];
+        };
+        PrefabTransitionRequest: {
+            /** @enum {string} */
+            action: "start" | "hold" | "resume" | "ready" | "ship" | "deliver" | "install" | "reject" | "reopen";
+            /** @description Required to hold or reject. */
+            reason?: string;
+        };
+        AddPrefabCheckRequest: {
+            /** @enum {string} */
+            stage: "factory" | "site";
+            label: string;
+            required?: boolean;
+        };
+        RecordPrefabCheckRequest: {
+            /** @enum {string} */
+            result: "pending" | "pass" | "fail" | "na";
+            /** @description Required when a check fails. */
+            note?: string;
+        };
+        PrefabFlag: {
+            unitId: string;
+            /** @enum {string} */
+            kind: "fab_late" | "fab_not_started" | "qa_hold" | "ship_late" | "delivery_not_booked" | "install_overdue" | "out_of_sequence" | "dates_inconsistent";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            relatedUnitIds: string[];
+        };
+        PrefabSummary: {
+            total: number;
+            byStatus: {
+                planned: number;
+                in_fabrication: number;
+                qa_hold: number;
+                ready_to_ship: number;
+                in_transit: number;
+                on_site: number;
+                installed: number;
+                rejected: number;
+            };
+            installedPct: number;
+            nextInstalls: {
+                unitId: string;
+                code: string;
+                /** Format: date */
+                installDate: string;
+            }[];
+        };
+        PrefabInsights: {
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date */
+            today: string;
+            summary: components["schemas"]["PrefabSummary"];
+            flags: components["schemas"]["PrefabFlag"][];
+        };
+        PrefabPlanDatesRequest: {
+            /** Format: date */
+            installDate: string;
+            kind: components["schemas"]["PrefabUnitKind"];
+            /** @description Working days in the factory. Defaults by kind. */
+            fabDays?: number;
+            /** @description Working days from the factory gate to site. */
+            transitDays?: number;
+            /** @description Working days between arriving on site and install. */
+            bufferDays?: number;
+        };
+        PrefabDatePlan: {
+            /** Format: date */
+            fabStart: string;
+            /** Format: date */
+            fabDue: string;
+            /** Format: date */
+            shipDate: string;
+            /** Format: date */
+            deliveryDate: string;
+            /** Format: date */
+            installDate: string;
+            fabDays: number;
+            transitDays: number;
+            bufferDays: number;
         };
         /** @enum {string} */
         DeliveryStatus: "scheduled" | "arrived" | "unloaded" | "delayed" | "missed" | "cancelled";
@@ -23606,6 +23947,8 @@ export interface components {
     };
     parameters: {
         LogisticsResourceId: string;
+        PrefabUnitId: string;
+        PrefabCheckId: string;
         DeliveryId: string;
         InspectionItemId: string;
         PlantAssetId: string;
@@ -44147,6 +44490,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrefabUnits: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PrefabUnitStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnitList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrefabUnitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrefabUnitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionPrefabUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefabTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPrefabCheck: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPrefabCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordPrefabCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+                checkId: components["parameters"]["PrefabCheckId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPrefabCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrefabInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    planPrefabDates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefabPlanDatesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabDatePlan"];
                 };
             };
             default: components["responses"]["Problem"];
