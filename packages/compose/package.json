@@ -33,6 +33,7 @@
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-financials": "workspace:*",
     "@archova/mod-precon": "workspace:*",
+    "@archova/mod-handover": "workspace:*",
     "@archova/mod-insurance": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-permits": "workspace:*",

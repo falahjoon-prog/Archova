@@ -461,6 +461,11 @@ export const PROBLEM_CODES = {
   'geotech.investigation_not_found': 404,
   'geotech.test_not_found': 404,
   'geotech.earthworks_not_found': 404,
+  // handover: project handover and close-out pack
+  'handover.item_not_found': 404,
+  'handover.invalid_transition': 409,
+  'handover.nothing_to_issue': 422,
+  'handover.incomplete': 409,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,
