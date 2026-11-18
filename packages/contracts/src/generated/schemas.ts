@@ -2861,6 +2861,21 @@ export const CreateGeotechTestRequestSchema = z.object({
 }).strict();
 export type CreateGeotechTestRequest = z.infer<typeof CreateGeotechTestRequestSchema>;
 
+export const HandoverCategorySchema = z.enum(["as_built", "om_manual", "warranty", "certificate", "defect_signoff", "training", "keys_access", "other"]);
+export type HandoverCategory = z.infer<typeof HandoverCategorySchema>;
+
+export const CreateHandoverItemRequestSchema = z.object({
+  "category": HandoverCategorySchema,
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(4000).nullable().optional(),
+  "required": z.boolean().optional(),
+  "responsibleCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueOn": z.string().date().nullable().optional(),
+  "note": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(10).optional(),
+}).strict();
+export type CreateHandoverItemRequest = z.infer<typeof CreateHandoverItemRequestSchema>;
+
 export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
 export type ImportEntity = z.infer<typeof ImportEntitySchema>;
 
@@ -5340,6 +5355,143 @@ export const GrantedWalletListSchema = z.object({
 });
 export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
+export const HandoverCategorySummarySchema = z.object({
+  "category": HandoverCategorySchema,
+  "total": z.number().int(),
+  "complete": z.number().int(),
+  "requiredOutstanding": z.number().int(),
+});
+export type HandoverCategorySummary = z.infer<typeof HandoverCategorySummarySchema>;
+
+export const HandoverSummarySchema = z.object({
+  "total": z.number().int(),
+  "required": z.number().int(),
+  "requiredComplete": z.number().int(),
+  "complete": z.number().int(),
+  "received": z.number().int(),
+  "overdue": z.number().int(),
+  "percentComplete": z.number().int().min(0).max(100),
+  "byCategory": z.array(HandoverCategorySummarySchema),
+});
+export type HandoverSummary = z.infer<typeof HandoverSummarySchema>;
+
+export const HandoverStatusSchema = z.enum(["outstanding", "requested", "received", "approved", "not_applicable"]);
+export type HandoverStatus = z.infer<typeof HandoverStatusSchema>;
+
+export const HandoverExportFileSchema = z.object({
+  "id": z.string(),
+  "filename": z.string(),
+  "sizeBytes": z.number().int(),
+});
+export type HandoverExportFile = z.infer<typeof HandoverExportFileSchema>;
+
+export const HandoverExportItemSchema = z.object({
+  "numberLabel": z.string(),
+  "category": HandoverCategorySchema,
+  "title": z.string(),
+  "required": z.boolean(),
+  "status": HandoverStatusSchema,
+  "files": z.array(HandoverExportFileSchema),
+});
+export type HandoverExportItem = z.infer<typeof HandoverExportItemSchema>;
+
+export const HandoverExportSchema = z.object({
+  "projectName": z.string(),
+  "generatedAt": z.string().datetime({ offset: true }),
+  "summary": HandoverSummarySchema,
+  "items": z.array(HandoverExportItemSchema),
+});
+export type HandoverExport = z.infer<typeof HandoverExportSchema>;
+
+export const HandoverFlagSchema = z.object({
+  "kind": z.enum(["empty_checklist", "overdue", "no_responsible", "awaiting_approval", "open_defects", "warranty_register_empty", "no_occupation_certificate"]),
+  "severity": z.enum(["info", "warn", "high"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "itemId": z.string().nullable(),
+});
+export type HandoverFlag = z.infer<typeof HandoverFlagSchema>;
+
+export const HandoverFlagListSchema = z.object({
+  "data": z.array(HandoverFlagSchema),
+});
+export type HandoverFlagList = z.infer<typeof HandoverFlagListSchema>;
+
+export const HandoverIssueSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "recipientName": z.string(),
+  "note": z.string().nullable(),
+  "incompleteCount": z.number().int(),
+  "issuedBy": z.string().nullable(),
+  "issuedAt": z.string().datetime({ offset: true }),
+});
+export type HandoverIssue = z.infer<typeof HandoverIssueSchema>;
+
+export const HandoverStateSchema = z.enum(["outstanding", "requested", "received", "approved", "not_applicable", "overdue"]);
+export type HandoverState = z.infer<typeof HandoverStateSchema>;
+
+export const HandoverItemSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "category": HandoverCategorySchema,
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "required": z.boolean(),
+  "status": HandoverStatusSchema,
+  "state": HandoverStateSchema,
+  "responsibleCompanyId": z.string().nullable(),
+  "dueOn": z.string().date().nullable(),
+  "receivedOn": z.string().date().nullable(),
+  "approvedOn": z.string().date().nullable(),
+  "approvedBy": z.string().nullable(),
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type HandoverItem = z.infer<typeof HandoverItemSchema>;
+
+export const HandoverItemEventSchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "fromStatus": z.union([HandoverStatusSchema, z.null()]),
+  "toStatus": HandoverStatusSchema,
+  "note": z.string().nullable(),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type HandoverItemEvent = z.infer<typeof HandoverItemEventSchema>;
+
+export const HandoverItemDetailSchema = z.object({
+  "item": HandoverItemSchema,
+  "events": z.array(HandoverItemEventSchema),
+});
+export type HandoverItemDetail = z.infer<typeof HandoverItemDetailSchema>;
+
+export const HandoverPackSchema = z.object({
+  "items": z.array(HandoverItemSchema),
+  "summary": HandoverSummarySchema,
+  "readyToIssue": z.boolean(),
+  "flags": z.array(HandoverFlagSchema),
+  "issues": z.array(HandoverIssueSchema),
+});
+export type HandoverPack = z.infer<typeof HandoverPackSchema>;
+
+export const HandoverTemplateResultSchema = z.object({
+  "added": z.number().int(),
+});
+export type HandoverTemplateResult = z.infer<typeof HandoverTemplateResultSchema>;
+
+export const HandoverTransitionRequestSchema = z.object({
+  "action": z.enum(["request", "receive", "approve", "reject", "markNotApplicable", "reopen"]),
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export type HandoverTransitionRequest = z.infer<typeof HandoverTransitionRequestSchema>;
+
 export const HazardPatternSchema = z.object({
   "category": z.string(),
   "label": z.string(),
@@ -6295,6 +6447,13 @@ export const InvitePackageRequestSchema = z.object({
   "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type InvitePackageRequest = z.infer<typeof InvitePackageRequestSchema>;
+
+export const IssueHandoverPackRequestSchema = z.object({
+  "recipientName": z.string().min(1).max(200),
+  "note": z.string().max(2000).nullable().optional(),
+  "acknowledgeIncomplete": z.boolean().optional(),
+}).strict();
+export type IssueHandoverPackRequest = z.infer<typeof IssueHandoverPackRequestSchema>;
 
 export const IssueMeetingRequestSchema = z.object({
   "recipients": z.array(z.object({
@@ -11152,6 +11311,18 @@ export const UpdateGeotechInvestigationRequestSchema = z.object({
   "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateGeotechInvestigationRequest = z.infer<typeof UpdateGeotechInvestigationRequestSchema>;
+
+export const UpdateHandoverItemRequestSchema = z.object({
+  "category": HandoverCategorySchema.optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(4000).nullable().optional(),
+  "required": z.boolean().optional(),
+  "responsibleCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueOn": z.string().date().nullable().optional(),
+  "note": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(10).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateHandoverItemRequest = z.infer<typeof UpdateHandoverItemRequestSchema>;
 
 export const UpdateIncidentActionRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),

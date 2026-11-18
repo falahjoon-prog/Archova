@@ -3630,6 +3630,49 @@ export const TransitionPermitParams = z.object({
   "permitId": z.string().regex(new RegExp("^pmt_[0-9A-Za-z]{26}$")),
 });
 export const TransitionPermitBody = s.PermitTransitionRequestSchema;
+export const GetHandoverPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateHandoverItemBody = s.CreateHandoverItemRequestSchema;
+export const ApplyHandoverTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHandoverFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHandoverExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const IssueHandoverPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const IssueHandoverPackBody = s.IssueHandoverPackRequestSchema;
+export const GetHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateHandoverItemBody = s.UpdateHandoverItemRequestSchema;
+export const TransitionHandoverItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "handoverItemId": z.string().regex(new RegExp("^hoi_[0-9A-Za-z]{26}$")),
+});
+export const TransitionHandoverItemBody = s.HandoverTransitionRequestSchema;
 export const ListContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12410,6 +12453,114 @@ export const operations = {
     params: TransitionPermitParams,
     query: null,
     body: TransitionPermitBody,
+  },
+  getHandoverPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverPackParams,
+    query: null,
+    body: null,
+  },
+  createHandoverItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateHandoverItemParams,
+    query: null,
+    body: CreateHandoverItemBody,
+  },
+  applyHandoverTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/template',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: null,
+    params: ApplyHandoverTemplateParams,
+    query: null,
+    body: null,
+  },
+  listHandoverFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/flags',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: ListHandoverFlagsParams,
+    query: null,
+    body: null,
+  },
+  getHandoverExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/export',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverExportParams,
+    query: null,
+    body: null,
+  },
+  issueHandoverPack: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/issues',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: IssueHandoverPackParams,
+    query: null,
+    body: IssueHandoverPackBody,
+  },
+  getHandoverItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.read",
+    internal: false,
+    contentType: null,
+    params: GetHandoverItemParams,
+    query: null,
+    body: null,
+  },
+  updateHandoverItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateHandoverItemParams,
+    query: null,
+    body: UpdateHandoverItemBody,
+  },
+  transitionHandoverItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition',
+    module: "handover",
+    auth: "required",
+    permission: "handover.items.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionHandoverItemParams,
+    query: null,
+    body: TransitionHandoverItemBody,
   },
   listContracts: {
     method: 'GET',

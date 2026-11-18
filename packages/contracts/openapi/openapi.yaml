@@ -44,6 +44,7 @@ tags:
   - name: insurance
   - name: safety
   - name: permits
+  - name: handover
   - name: geotech
   - name: estimating
   - name: integrations
@@ -15011,6 +15012,193 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PermitDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHandoverPack
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: The close-out checklist for a project with its progress, Nova's flags and what has been issued to the client.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverPack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Add an item to the checklist. It is numbered HND-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateHandoverItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/template:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: applyHandoverTemplate
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Add the standard Australian close-out list. Items already on the checklist (by title) are skipped, so it is safe to repeat.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverTemplateResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listHandoverFlags
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: "Nova's rule-based flags for the close-out (no model): overdue items, nobody responsible, waiting for approval, open defects, empty warranty register, no occupation certificate."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHandoverExport
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: The client copy of the close-out pack, an index of every item with the files that back it, ready to print or save as CSV.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: issueHandoverPack
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Record that the pack went to the client, keeping a frozen copy of the checklist. Needs `acknowledgeIncomplete` when required items are not yet complete.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueHandoverPackRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverIssue' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/HandoverItemId'
+    get:
+      operationId: getHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: A checklist item with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Edit an item's details or attach files.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateHandoverItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/HandoverItemId'
+    post:
+      operationId: transitionHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: request, receive (needs a file), approve, reject (needs a note), markNotApplicable (needs a note) or reopen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HandoverTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18982,6 +19170,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^pmt_[0-9A-Za-z]{26}$' }
+    HandoverItemId:
+      name: handoverItemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^hoi_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -37899,6 +38092,254 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PermitFlag' }
+    HandoverCategory:
+      type: string
+      enum:
+        [as_built, om_manual, warranty, certificate, defect_signoff, training, keys_access, other]
+    HandoverStatus:
+      type: string
+      enum: [outstanding, requested, received, approved, not_applicable]
+    HandoverState:
+      type: string
+      description: The stored status, or overdue when an unfinished item is past its due date in the project's own calendar day.
+      enum: [outstanding, requested, received, approved, not_applicable, overdue]
+    HandoverItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          category,
+          title,
+          description,
+          required,
+          status,
+          state,
+          responsibleCompanyId,
+          dueOn,
+          receivedOn,
+          approvedOn,
+          approvedBy,
+          note,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        required: { type: boolean }
+        status: { $ref: '#/components/schemas/HandoverStatus' }
+        state: { $ref: '#/components/schemas/HandoverState' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        dueOn: { type: [string, 'null'], format: date }
+        receivedOn: { type: [string, 'null'], format: date }
+        approvedOn: { type: [string, 'null'], format: date }
+        approvedBy: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    HandoverItemEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { oneOf: [{ $ref: '#/components/schemas/HandoverStatus' }, { type: 'null' }] }
+        toStatus: { $ref: '#/components/schemas/HandoverStatus' }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    HandoverItemDetail:
+      type: object
+      required: [item, events]
+      properties:
+        item: { $ref: '#/components/schemas/HandoverItem' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverItemEvent' }
+    HandoverCategorySummary:
+      type: object
+      required: [category, total, complete, requiredOutstanding]
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        total: { type: integer }
+        complete: { type: integer }
+        requiredOutstanding: { type: integer }
+    HandoverSummary:
+      type: object
+      required:
+        [
+          total,
+          required,
+          requiredComplete,
+          complete,
+          received,
+          overdue,
+          percentComplete,
+          byCategory,
+        ]
+      properties:
+        total: { type: integer }
+        required: { type: integer }
+        requiredComplete: { type: integer }
+        complete: { type: integer }
+        received: { type: integer, description: Received and waiting for approval. }
+        overdue: { type: integer }
+        percentComplete:
+          { type: integer, minimum: 0, maximum: 100, description: Over the required items. }
+        byCategory:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverCategorySummary' }
+    HandoverFlag:
+      type: object
+      required: [kind, severity, title, detail, itemId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [
+              empty_checklist,
+              overdue,
+              no_responsible,
+              awaiting_approval,
+              open_defects,
+              warranty_register_empty,
+              no_occupation_certificate,
+            ]
+        severity: { type: string, enum: [info, warn, high] }
+        title: { type: string }
+        detail: { type: string }
+        itemId: { type: [string, 'null'] }
+    HandoverFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverFlag' }
+    HandoverIssue:
+      type: object
+      required: [id, projectId, recipientName, note, incompleteCount, issuedBy, issuedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        recipientName: { type: string }
+        note: { type: [string, 'null'] }
+        incompleteCount:
+          { type: integer, description: Required items that were not complete when it was issued. }
+        issuedBy: { type: [string, 'null'] }
+        issuedAt: { type: string, format: date-time }
+    HandoverPack:
+      type: object
+      required: [items, summary, readyToIssue, flags, issues]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverItem' }
+        summary: { $ref: '#/components/schemas/HandoverSummary' }
+        readyToIssue:
+          { type: boolean, description: Every required item is approved or not applicable. }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverFlag' }
+        issues:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverIssue' }
+    HandoverExportFile:
+      type: object
+      required: [id, filename, sizeBytes]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        sizeBytes: { type: integer }
+    HandoverExportItem:
+      type: object
+      required: [numberLabel, category, title, required, status, files]
+      properties:
+        numberLabel: { type: string }
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string }
+        required: { type: boolean }
+        status: { $ref: '#/components/schemas/HandoverStatus' }
+        files:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverExportFile' }
+    HandoverExport:
+      type: object
+      required: [projectName, generatedAt, summary, items]
+      properties:
+        projectName: { type: string }
+        generatedAt: { type: string, format: date-time }
+        summary: { $ref: '#/components/schemas/HandoverSummary' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverExportItem' }
+    HandoverTemplateResult:
+      type: object
+      required: [added]
+      properties:
+        added: { type: integer }
+    CreateHandoverItemRequest:
+      type: object
+      additionalProperties: false
+      required: [category, title]
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        required: { type: boolean }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        dueOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdateHandoverItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        required: { type: boolean }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        dueOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    HandoverTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          { type: string, enum: [request, receive, approve, reject, markNotApplicable, reopen] }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    IssueHandoverPackRequest:
+      type: object
+      additionalProperties: false
+      required: [recipientName]
+      properties:
+        recipientName: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        acknowledgeIncomplete: { type: boolean }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]

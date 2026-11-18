@@ -10897,6 +10897,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The close-out checklist for a project with its progress, Nova's flags and what has been issued to the client. */
+        get: operations["getHandoverPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an item to the checklist. It is numbered HND-0001 per project. */
+        post: operations["createHandoverItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add the standard Australian close-out list. Items already on the checklist (by title) are skipped, so it is safe to repeat. */
+        post: operations["applyHandoverTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags for the close-out (no model): overdue items, nobody responsible, waiting for approval, open defects, empty warranty register, no occupation certificate. */
+        get: operations["listHandoverFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The client copy of the close-out pack, an index of every item with the files that back it, ready to print or save as CSV. */
+        get: operations["getHandoverExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the pack went to the client, keeping a frozen copy of the checklist. Needs `acknowledgeIncomplete` when required items are not yet complete. */
+        post: operations["issueHandoverPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        /** A checklist item with its history. */
+        get: operations["getHandoverItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an item's details or attach files. */
+        patch: operations["updateHandoverItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** request, receive (needs a file), approve, reject (needs a note), markNotApplicable (needs a note) or reopen. */
+        post: operations["transitionHandoverItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts": {
         parameters: {
             query?: never;
@@ -25506,6 +25669,160 @@ export interface components {
             data: components["schemas"]["PermitFlag"][];
         };
         /** @enum {string} */
+        HandoverCategory: "as_built" | "om_manual" | "warranty" | "certificate" | "defect_signoff" | "training" | "keys_access" | "other";
+        /** @enum {string} */
+        HandoverStatus: "outstanding" | "requested" | "received" | "approved" | "not_applicable";
+        /**
+         * @description The stored status, or overdue when an unfinished item is past its due date in the project's own calendar day.
+         * @enum {string}
+         */
+        HandoverState: "outstanding" | "requested" | "received" | "approved" | "not_applicable" | "overdue";
+        HandoverItem: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            description: string | null;
+            required: boolean;
+            status: components["schemas"]["HandoverStatus"];
+            state: components["schemas"]["HandoverState"];
+            responsibleCompanyId: string | null;
+            /** Format: date */
+            dueOn: string | null;
+            /** Format: date */
+            receivedOn: string | null;
+            /** Format: date */
+            approvedOn: string | null;
+            approvedBy: string | null;
+            note: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        HandoverItemEvent: {
+            id: string;
+            action: string;
+            fromStatus: components["schemas"]["HandoverStatus"] | null;
+            toStatus: components["schemas"]["HandoverStatus"];
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        HandoverItemDetail: {
+            item: components["schemas"]["HandoverItem"];
+            events: components["schemas"]["HandoverItemEvent"][];
+        };
+        HandoverCategorySummary: {
+            category: components["schemas"]["HandoverCategory"];
+            total: number;
+            complete: number;
+            requiredOutstanding: number;
+        };
+        HandoverSummary: {
+            total: number;
+            required: number;
+            requiredComplete: number;
+            complete: number;
+            /** @description Received and waiting for approval. */
+            received: number;
+            overdue: number;
+            /** @description Over the required items. */
+            percentComplete: number;
+            byCategory: components["schemas"]["HandoverCategorySummary"][];
+        };
+        HandoverFlag: {
+            /** @enum {string} */
+            kind: "empty_checklist" | "overdue" | "no_responsible" | "awaiting_approval" | "open_defects" | "warranty_register_empty" | "no_occupation_certificate";
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            title: string;
+            detail: string;
+            itemId: string | null;
+        };
+        HandoverFlagList: {
+            data: components["schemas"]["HandoverFlag"][];
+        };
+        HandoverIssue: {
+            id: string;
+            projectId: string;
+            recipientName: string;
+            note: string | null;
+            /** @description Required items that were not complete when it was issued. */
+            incompleteCount: number;
+            issuedBy: string | null;
+            /** Format: date-time */
+            issuedAt: string;
+        };
+        HandoverPack: {
+            items: components["schemas"]["HandoverItem"][];
+            summary: components["schemas"]["HandoverSummary"];
+            /** @description Every required item is approved or not applicable. */
+            readyToIssue: boolean;
+            flags: components["schemas"]["HandoverFlag"][];
+            issues: components["schemas"]["HandoverIssue"][];
+        };
+        HandoverExportFile: {
+            id: string;
+            filename: string;
+            sizeBytes: number;
+        };
+        HandoverExportItem: {
+            numberLabel: string;
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            required: boolean;
+            status: components["schemas"]["HandoverStatus"];
+            files: components["schemas"]["HandoverExportFile"][];
+        };
+        HandoverExport: {
+            projectName: string;
+            /** Format: date-time */
+            generatedAt: string;
+            summary: components["schemas"]["HandoverSummary"];
+            items: components["schemas"]["HandoverExportItem"][];
+        };
+        HandoverTemplateResult: {
+            added: number;
+        };
+        CreateHandoverItemRequest: {
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            description?: string | null;
+            required?: boolean;
+            responsibleCompanyId?: string | null;
+            /** Format: date */
+            dueOn?: string | null;
+            note?: string | null;
+            fileIds?: string[];
+        };
+        UpdateHandoverItemRequest: {
+            category?: components["schemas"]["HandoverCategory"];
+            title?: string;
+            description?: string | null;
+            required?: boolean;
+            responsibleCompanyId?: string | null;
+            /** Format: date */
+            dueOn?: string | null;
+            note?: string | null;
+            fileIds?: string[];
+        };
+        HandoverTransitionRequest: {
+            /** @enum {string} */
+            action: "request" | "receive" | "approve" | "reject" | "markNotApplicable" | "reopen";
+            note?: string | null;
+        };
+        IssueHandoverPackRequest: {
+            recipientName: string;
+            note?: string | null;
+            acknowledgeIncomplete?: boolean;
+        };
+        /** @enum {string} */
         SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
         /** @enum {string} */
         SwmsAction: "markReviewed" | "accept" | "reject" | "reopen";
@@ -25967,6 +26284,7 @@ export interface components {
         GeotechTestId: string;
         GeotechEarthworksId: string;
         PermitId: string;
+        HandoverItemId: string;
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
@@ -44158,6 +44476,255 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermitDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHandoverPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createHandoverItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHandoverItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    applyHandoverTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverTemplateResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHandoverFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHandoverExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    issueHandoverPack: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueHandoverPackRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverIssue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHandoverItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateHandoverItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHandoverItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionHandoverItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandoverTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
                 };
             };
             default: components["responses"]["Problem"];
