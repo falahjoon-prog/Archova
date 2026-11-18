@@ -4,6 +4,7 @@ import { assistAnswerSuite, assistPlanSuite } from './suites/assist';
 import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
+import { contractSovSuite } from './suites/contract-sov';
 import { defectTagSuite } from './suites/defect-tag';
 import { budgetReviewSuite } from './suites/budget-review';
 import { diarySummarySuite } from './suites/diary-summary';
@@ -64,6 +65,7 @@ export const SUITES: readonly AnySuite[] = [
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,
+  contractSovSuite,
   takeoffDetectSuite,
   assistPlanSuite,
   assistAnswerSuite,

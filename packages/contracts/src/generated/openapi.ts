@@ -3320,6 +3320,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova to propose a contract's schedule of values from its PDF.
+         * @description For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+         *     contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+         *     and the printed row it came from, and is shown only when code found that row on the page and the amount is
+         *     printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+         *     blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+         *     against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+         *     saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+         *     by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+         */
+        post: operations["draftContractSov"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
         parameters: {
             query?: never;
@@ -4306,6 +4336,79 @@ export interface paths {
          *     still being built or if it failed; 410 once it has expired.
          */
         post: operations["createDataExportDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The approval workflows this organisation has set up. */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Set up an approval chain for a kind of record.
+         * @description Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+         *     minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+         *     workflow per kind of record: activating a second one is refused with 409.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows/{workflowId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a workflow. Variations already going through it carry on. */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a workflow, or switch it on or off.
+         * @description Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+         */
+        patch: operations["updateWorkflow"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a variation is in its approval chain.
+         * @description `run` is null when no workflow applied to the variation.
+         */
+        get: operations["getVariationWorkflow"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -14559,6 +14662,77 @@ export interface components {
             /** @description Why a failed export failed */
             error: string | null;
         };
+        WorkflowStep: {
+            name: string;
+            /** @description Any one of these people can approve the step. */
+            approverUserIds: string[];
+        };
+        Workflow: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            /** @description Decimal dollars. The chain applies from this amount up; null means every variation. */
+            minAmount: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowList: {
+            data: components["schemas"]["Workflow"][];
+        };
+        CreateWorkflowRequest: {
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            minAmount?: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @default true */
+            active: boolean;
+        };
+        UpdateWorkflowRequest: {
+            name?: string;
+            minAmount?: string | null;
+            steps?: components["schemas"]["WorkflowStep"][];
+            active?: boolean;
+        };
+        WorkflowRunDecision: {
+            userId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        WorkflowRunStep: {
+            name: string;
+            approverUserIds: string[];
+            /** @enum {string} */
+            state: "waiting" | "current" | "approved" | "rejected";
+            decision: components["schemas"]["WorkflowRunDecision"] | null;
+        };
+        WorkflowRun: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            subjectId: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "cancelled";
+            /** @description Zero-based index of the step waiting on a decision. */
+            currentStep: number | null;
+            steps: components["schemas"]["WorkflowRunStep"][];
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        VariationWorkflow: {
+            run: components["schemas"]["WorkflowRun"] | null;
+        };
         DataExportList: {
             data: components["schemas"]["DataExport"][];
         };
@@ -16677,6 +16851,39 @@ export interface components {
             unreadPages: number[];
             /** @description Part of the contract was left out (too long to read in one go). */
             truncated: boolean;
+        };
+        NovaContractSovDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read, so the list may miss lines on them. */
+            unreadPages: number[];
+            /** @description Part of the document was left out (too long to read in one go). */
+            truncated: boolean;
+            lines: {
+                /** @description Blank when the document prints no code for the line. */
+                code: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                source: {
+                    page: number;
+                    quote: string;
+                };
+            }[];
+            /** @enum {string} */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            /** @description The total the document prints, when code found it on a page. */
+            statedTotalExGst: components["schemas"]["FinancialsMoney"] | null;
+            linesTotalExGst: components["schemas"]["FinancialsMoney"];
+            contractValueExGst: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string} */
+            totalCheck: "matches" | "differs" | "no_value";
+            /** @description Lines total less the contract value, signed; null when no value was entered. */
+            difference: string | null;
+            /** @description Lines left out because their words or amount were not on the page. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "items_dropped" | "total_differs" | "no_lines")[];
         };
         NovaContractReview: {
             /** Format: date-time */
@@ -25482,6 +25689,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        WorkflowId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -30787,6 +30995,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftContractSov: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    /** @description The contract value ex GST the person has entered, to check the lines against. */
+                    contractValue?: components["schemas"]["FinancialsMoney"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The proposed lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractSovDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     compareContracts: {
         parameters: {
             query?: never;
@@ -31976,6 +32216,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataExportDownload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getVariationWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationWorkflow"];
                 };
             };
             default: components["responses"]["Problem"];

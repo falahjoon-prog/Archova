@@ -1061,6 +1061,14 @@ export const AskContractParams = z.object({
 export const AskContractBody = z.object({
   "question": z.string().min(3).max(500),
 }).strict();
+export const DraftContractSovParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftContractSovBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractValue": z.union([s.FinancialsMoneySchema, z.null()]).optional(),
+}).strict();
 export const CompareContractsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1313,6 +1321,27 @@ export const GetDataExportParams = z.object({
 export const CreateDataExportDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const ListWorkflowsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkflowBody = s.CreateWorkflowRequestSchema;
+export const UpdateWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWorkflowBody = s.UpdateWorkflowRequestSchema;
+export const DeleteWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "workflowId": z.string().regex(new RegExp("^wfl_[0-9A-Za-z]{26}$")),
+});
+export const GetVariationWorkflowParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -6864,6 +6893,18 @@ export const operations = {
     query: null,
     body: AskContractBody,
   },
+  draftContractSov: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "financials.contracts.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DraftContractSovParams,
+    query: null,
+    body: DraftContractSovBody,
+  },
   compareContracts: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares',
@@ -7391,6 +7432,66 @@ export const operations = {
     rateLimit: 30,
     contentType: null,
     params: CreateDataExportDownloadParams,
+    query: null,
+    body: null,
+  },
+  listWorkflows: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: ListWorkflowsParams,
+    query: null,
+    body: null,
+  },
+  createWorkflow: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/workflows',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWorkflowParams,
+    query: null,
+    body: CreateWorkflowBody,
+  },
+  updateWorkflow: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWorkflowParams,
+    query: null,
+    body: UpdateWorkflowBody,
+  },
+  deleteWorkflow: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/workflows/{workflowId}',
+    module: "platform",
+    auth: "required",
+    permission: "workflows.definitions.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteWorkflowParams,
+    query: null,
+    body: null,
+  },
+  getVariationWorkflow: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetVariationWorkflowParams,
     query: null,
     body: null,
   },

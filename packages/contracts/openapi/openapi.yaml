@@ -62,6 +62,7 @@ tags:
   - name: reporting
   - name: search
   - name: data-export
+  - name: workflows
 paths:
   /v1/auth/signup:
     post:
@@ -4416,6 +4417,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftContractSov
+      tags: [ai]
+      x-module: ai
+      x-permission: financials.contracts.manage
+      summary: Ask Nova to propose a contract's schedule of values from its PDF.
+      description: |
+        For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+        contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+        and the printed row it came from, and is shown only when code found that row on the page and the amount is
+        printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+        blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+        against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+        saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+        by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { $ref: '#/components/schemas/FileRef' }
+                contractValue:
+                  description: The contract value ex GST the person has entered, to check the lines against.
+                  oneOf:
+                    - { $ref: '#/components/schemas/FinancialsMoney' }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: The proposed lines
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractSovDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5633,6 +5675,95 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DataExportDownload' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWorkflows
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: The approval workflows this organisation has set up.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Set up an approval chain for a kind of record.
+      description: |
+        Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+        minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+        workflow per kind of record: activating a second one is refused with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkflowRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/workflows/{workflowId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WorkflowId'
+    patch:
+      operationId: updateWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Change a workflow, or switch it on or off.
+      description: Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkflowRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteWorkflow
+      tags: [workflows]
+      x-module: platform
+      x-permission: workflows.definitions.manage
+      summary: Remove a workflow. Variations already going through it carry on.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    get:
+      operationId: getVariationWorkflow
+      tags: [workflows]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Where a variation is in its approval chain.
+      description: '`run` is null when no workflow applied to the variation.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationWorkflow' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -18964,6 +19095,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    WorkflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^wfl_[0-9A-Za-z]{26}$' }
     DataExportId:
       name: exportId
       in: path
@@ -20559,6 +20695,113 @@ components:
             missing from storage); each is listed in the manifest with the reason.,
           }
         error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    WorkflowStep:
+      type: object
+      required: [name, approverUserIds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        approverUserIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string }
+          description: Any one of these people can approve the step.
+    Workflow:
+      type: object
+      required: [id, subjectType, name, minAmount, steps, active, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string }
+        minAmount:
+          type: [string, 'null']
+          description: Decimal dollars. The chain applies from this amount up; null means every variation.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkflowList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Workflow' }
+    CreateWorkflowRequest:
+      type: object
+      required: [subjectType, name, steps]
+      properties:
+        subjectType: { type: string, enum: [financials.variation] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean, default: true }
+    UpdateWorkflowRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minAmount: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WorkflowStep' }
+        active: { type: boolean }
+    WorkflowRunDecision:
+      type: object
+      required: [userId, decision, note, decidedAt]
+      properties:
+        userId: { type: string }
+        decision: { type: string, enum: [approved, rejected] }
+        note: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+    WorkflowRunStep:
+      type: object
+      required: [name, approverUserIds, state, decision]
+      properties:
+        name: { type: string }
+        approverUserIds:
+          type: array
+          items: { type: string }
+        state: { type: string, enum: [waiting, current, approved, rejected] }
+        decision:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRunDecision' }
+            - { type: 'null' }
+    WorkflowRun:
+      type: object
+      required:
+        [id, subjectType, subjectId, status, currentStep, steps, startedBy, createdAt, finishedAt]
+      properties:
+        id: { type: string }
+        subjectType: { type: string, enum: [financials.variation] }
+        subjectId: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, cancelled] }
+        currentStep:
+          {
+            type: [integer, 'null'],
+            description: Zero-based index of the step waiting on a decision.,
+          }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowRunStep' }
+        startedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    VariationWorkflow:
+      type: object
+      required: [run]
+      properties:
+        run:
+          oneOf:
+            - { $ref: '#/components/schemas/WorkflowRun' }
+            - { type: 'null' }
     DataExportList:
       type: object
       required: [data]
@@ -23833,6 +24076,78 @@ components:
         truncated:
           type: boolean
           description: Part of the contract was left out (too long to read in one go).
+    NovaContractSovDraft:
+      type: object
+      required:
+        - runId
+        - fileName
+        - pageCount
+        - unreadPages
+        - truncated
+        - lines
+        - prices
+        - statedTotalExGst
+        - linesTotalExGst
+        - contractValueExGst
+        - totalCheck
+        - difference
+        - dropped
+        - warnings
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        fileName: { type: string }
+        pageCount: { type: integer, minimum: 1 }
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read, so the list may miss lines on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          type: boolean
+          description: Part of the document was left out (too long to read in one go).
+        lines:
+          type: array
+          items:
+            type: object
+            required: [code, description, amount, source]
+            properties:
+              code:
+                { type: string, description: Blank when the document prints no code for the line. }
+              description: { type: string }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              source:
+                type: object
+                required: [page, quote]
+                properties:
+                  page: { type: integer, minimum: 1 }
+                  quote: { type: string }
+        prices:
+          type: string
+          enum: [exclude_gst, include_gst, unclear]
+        statedTotalExGst:
+          description: The total the document prints, when code found it on a page.
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        linesTotalExGst: { $ref: '#/components/schemas/FinancialsMoney' }
+        contractValueExGst:
+          oneOf:
+            - { $ref: '#/components/schemas/FinancialsMoney' }
+            - { type: 'null' }
+        totalCheck:
+          type: string
+          enum: [matches, differs, no_value]
+        difference:
+          description: Lines total less the contract value, signed; null when no value was entered.
+          type: [string, 'null']
+        dropped:
+          type: integer
+          minimum: 0
+          description: Lines left out because their words or amount were not on the page.
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [prices_include_gst, items_dropped, total_differs, no_lines]
     NovaContractReview:
       type: object
       required:
