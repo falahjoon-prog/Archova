@@ -144,6 +144,16 @@ export function useNegotiate(packageId: string) {
   });
 }
 
+/** Nova levelling every confirmed bid of the package. Nothing is saved, so no cache is touched. */
+export function useLevelBids(packageId: string) {
+  const quotesSource = useQuotesSource();
+  const { projectId, timezone } = useCurrentProject();
+  return useMutation({
+    mutationFn: (v: { question?: string }) =>
+      quotesSource.levelBids(projectId, packageId, { ...v, today: todayIn(timezone) }),
+  });
+}
+
 /** Nova listening: a short recording in, the words out for the person to read and edit. Nothing is kept. */
 export function useListen() {
   const quotesSource = useQuotesSource();

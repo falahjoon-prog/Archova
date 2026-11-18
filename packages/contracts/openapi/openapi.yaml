@@ -4602,6 +4602,49 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: levelBidsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.quotes.review
+      summary: Nova levels the confirmed bids of a tender package and suggests who to take forward (EST-AC6).
+      description: |
+        Code puts every confirmed bid on the package's scope schedule, works out what each gap would cost (the median
+        of what at least two other bids charge for that line), each bid's normalised total and its rank. Nova then
+        explains the gaps, exclusions and risks, suggests where a bid's unmatched lines belong on the schedule and says
+        which bid she would take forward, or none when the bids can't be separated. Code removes any bid, scope line or
+        unmatched line that doesn't exist and any figure the bids don't hold (`notes` says what it removed), and adds
+        renewing the validity as a condition when the recommended bid's has passed. Bids are anonymous ("Bid A"):
+        she is never shown a company, contact, internal note or the estimator's allowances. The server keeps no
+        conversation; pass `history` from the last answer with the next question. Nothing is saved, sent, matched or
+        awarded. She is an AI assistant, not a licensed agent (`disclaimer`). Costs one Nova credit. Builder staff with
+        `estimating.quotes.review` only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [packageId]
+              properties:
+                packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/NegotiationTurn' }
+      responses:
+        '200':
+          description: Nova's levelling
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidLevelling' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -24178,6 +24221,114 @@ components:
         counterExGst: { type: [string, 'null'] }
         counterReason: { type: string }
         draftMessage: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
+        disclaimer: { type: string }
+    BidLevelling:
+      type: object
+      required:
+        [
+          runId,
+          summary,
+          medianNormalisedExGst,
+          bids,
+          mappings,
+          gaps,
+          risks,
+          recommendation,
+          notes,
+          history,
+          disclaimer,
+        ]
+      properties:
+        runId: { type: string }
+        summary: { type: string }
+        medianNormalisedExGst:
+          {
+            type: [string, 'null'],
+            description: Median of the normalised totals; null under three bids.,
+          }
+        bids:
+          type: array
+          description: Worked out by code, best normalised price first by `rank`.
+          items:
+            type: object
+            required:
+              [
+                label,
+                quoteId,
+                totalExGst,
+                normalisedExGst,
+                rank,
+                validityExpired,
+                provisionalExGst,
+                gaps,
+              ]
+            properties:
+              label:
+                {
+                  type: string,
+                  description: 'Bid A, Bid B, ... in the order the quotes were received.',
+                }
+              quoteId: { type: string }
+              totalExGst: { type: string }
+              normalisedExGst:
+                {
+                  type: string,
+                  description: The total plus an allowance for each scope line the bid leaves out.,
+                }
+              rank: { type: integer, minimum: 1 }
+              validityExpired: { type: boolean }
+              provisionalExGst: { type: string }
+              gaps:
+                type: array
+                items:
+                  type: object
+                  required: [scopeKey, reason, allowanceExGst]
+                  properties:
+                    scopeKey: { type: string }
+                    reason: { type: string, enum: [excluded, unpriced] }
+                    allowanceExGst: { type: [string, 'null'] }
+        mappings:
+          type: array
+          description: Suggested homes on the scope schedule for lines a bid priced outside it; for the estimator to confirm.
+          items:
+            type: object
+            required: [bid, quoteId, ref, description, amountExGst, scopeKey, reason]
+            properties:
+              bid: { type: string }
+              quoteId: { type: string }
+              ref: { type: string }
+              description: { type: string }
+              amountExGst: { type: string }
+              scopeKey: { type: string }
+              reason: { type: string }
+        gaps:
+          type: array
+          items:
+            type: object
+            required: [bid, scopeKey, text]
+            properties:
+              bid: { type: string }
+              scopeKey: { type: [string, 'null'] }
+              text: { type: string }
+        risks:
+          type: array
+          items:
+            type: object
+            required: [bid, text]
+            properties:
+              bid: { type: string }
+              text: { type: string }
+        recommendation:
+          type: object
+          required: [bid, quoteId, reasoning, conditions, isLowestNormalised]
+          properties:
+            bid: { type: [string, 'null'] }
+            quoteId: { type: [string, 'null'] }
+            reasoning: { type: string }
+            conditions: { type: array, items: { type: string } }
+            isLowestNormalised: { type: [boolean, 'null'] }
         notes: { type: array, items: { type: string } }
         history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
         disclaimer: { type: string }

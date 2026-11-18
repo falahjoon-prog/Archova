@@ -56,6 +56,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.read': 1.5,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
+  // Nova: levelling every bid of a tender package at once (all bids in, one structured read out); two negotiation turns worth. Priya to confirm.
+  'bid.level': 1,
   // Nova: one turn of discussion on a slow cost code's labor productivity; same size as a quote negotiation turn. Priya to confirm.
   'labor.productivity': 0.5,
   // Nova: a short announcement drafted from rough notes at the fast tier; half a credit like other short drafts. Priya to confirm.

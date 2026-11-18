@@ -39,6 +39,8 @@ import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createBidLevelService } from './application/bid-levelling';
+import type { BidsForLevelling } from './domain/bid-levelling';
 import { createLaborProductivityService, type LaborFacts } from './application/labor-productivity';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
@@ -290,6 +292,12 @@ export function createAiModule(
       packageId: string,
       quoteId: string,
     ) => Promise<QuoteForNegotiation>;
+    /** estimating.api.bidsForLevelling: every confirmed bid of a package on its scope schedule, anonymous labels, no company (Nova). */
+    bidsForLevelling: (
+      scope: TenantScope,
+      projectId: string,
+      packageId: string,
+    ) => Promise<BidsForLevelling>;
     /** financials.api.budgetReviewFacts: the code-found budget findings and totals, margin never included (Nova). */
     budgetReviewFacts: (scope: TenantScope, projectId: string) => Promise<BudgetForReview>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
@@ -483,6 +491,12 @@ export function createAiModule(
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
   });
+  const bidLevelling = createBidLevelService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    bids: deps.bidsForLevelling,
+  });
   const announcementDrafts = createAnnouncementDraftService({
     database: services.database,
     gateway,
@@ -570,6 +584,7 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      bidLevelling,
       laborProductivity,
       announcementDrafts,
       budgetReviews,
@@ -628,6 +643,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova: level every confirmed bid of a tender package, explain the gaps, suggest who to take forward; nothing is saved or awarded. */
+      levelBids: bidLevelling.level,
       /** Nova on the project budget: what the checks mean and what to do about them; nothing is changed. */
       reviewBudget: budgetReviews.review,
       /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */

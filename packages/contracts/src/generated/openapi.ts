@@ -3437,6 +3437,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova levels the confirmed bids of a tender package and suggests who to take forward (EST-AC6).
+         * @description Code puts every confirmed bid on the package's scope schedule, works out what each gap would cost (the median
+         *     of what at least two other bids charge for that line), each bid's normalised total and its rank. Nova then
+         *     explains the gaps, exclusions and risks, suggests where a bid's unmatched lines belong on the schedule and says
+         *     which bid she would take forward, or none when the bids can't be separated. Code removes any bid, scope line or
+         *     unmatched line that doesn't exist and any figure the bids don't hold (`notes` says what it removed), and adds
+         *     renewing the validity as a condition when the recommended bid's has passed. Bids are anonymous ("Bid A"):
+         *     she is never shown a company, contact, internal note or the estimator's allowances. The server keeps no
+         *     conversation; pass `history` from the last answer with the next question. Nothing is saved, sent, matched or
+         *     awarded. She is an AI assistant, not a licensed agent (`disclaimer`). Costs one Nova credit. Builder staff with
+         *     `estimating.quotes.review` only.
+         */
+        post: operations["levelBidsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews": {
         parameters: {
             query?: never;
@@ -16955,6 +16987,59 @@ export interface components {
             counterExGst: string | null;
             counterReason: string;
             draftMessage: string | null;
+            notes: string[];
+            history: components["schemas"]["NegotiationTurn"][];
+            disclaimer: string;
+        };
+        BidLevelling: {
+            runId: string;
+            summary: string;
+            /** @description Median of the normalised totals; null under three bids. */
+            medianNormalisedExGst: string | null;
+            /** @description Worked out by code, best normalised price first by `rank`. */
+            bids: {
+                /** @description Bid A, Bid B, ... in the order the quotes were received. */
+                label: string;
+                quoteId: string;
+                totalExGst: string;
+                /** @description The total plus an allowance for each scope line the bid leaves out. */
+                normalisedExGst: string;
+                rank: number;
+                validityExpired: boolean;
+                provisionalExGst: string;
+                gaps: {
+                    scopeKey: string;
+                    /** @enum {string} */
+                    reason: "excluded" | "unpriced";
+                    allowanceExGst: string | null;
+                }[];
+            }[];
+            /** @description Suggested homes on the scope schedule for lines a bid priced outside it; for the estimator to confirm. */
+            mappings: {
+                bid: string;
+                quoteId: string;
+                ref: string;
+                description: string;
+                amountExGst: string;
+                scopeKey: string;
+                reason: string;
+            }[];
+            gaps: {
+                bid: string;
+                scopeKey: string | null;
+                text: string;
+            }[];
+            risks: {
+                bid: string;
+                text: string;
+            }[];
+            recommendation: {
+                bid: string | null;
+                quoteId: string | null;
+                reasoning: string;
+                conditions: string[];
+                isLowestNormalised: boolean | null;
+            };
             notes: string[];
             history: components["schemas"]["NegotiationTurn"][];
             disclaimer: string;
@@ -31405,6 +31490,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuoteNegotiationAdvice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    levelBidsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    question?: string;
+                    history?: components["schemas"]["NegotiationTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's levelling */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidLevelling"];
                 };
             };
             default: components["responses"]["Problem"];

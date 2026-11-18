@@ -681,6 +681,61 @@ export const BidBoardSchema = z.object({
 });
 export type BidBoard = z.infer<typeof BidBoardSchema>;
 
+export const NegotiationTurnSchema = z.object({
+  "role": z.enum(["estimator", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict();
+export type NegotiationTurn = z.infer<typeof NegotiationTurnSchema>;
+
+export const BidLevellingSchema = z.object({
+  "runId": z.string(),
+  "summary": z.string(),
+  "medianNormalisedExGst": z.string().nullable(),
+  "bids": z.array(z.object({
+  "label": z.string(),
+  "quoteId": z.string(),
+  "totalExGst": z.string(),
+  "normalisedExGst": z.string(),
+  "rank": z.number().int().min(1),
+  "validityExpired": z.boolean(),
+  "provisionalExGst": z.string(),
+  "gaps": z.array(z.object({
+  "scopeKey": z.string(),
+  "reason": z.enum(["excluded", "unpriced"]),
+  "allowanceExGst": z.string().nullable(),
+})),
+})),
+  "mappings": z.array(z.object({
+  "bid": z.string(),
+  "quoteId": z.string(),
+  "ref": z.string(),
+  "description": z.string(),
+  "amountExGst": z.string(),
+  "scopeKey": z.string(),
+  "reason": z.string(),
+})),
+  "gaps": z.array(z.object({
+  "bid": z.string(),
+  "scopeKey": z.string().nullable(),
+  "text": z.string(),
+})),
+  "risks": z.array(z.object({
+  "bid": z.string(),
+  "text": z.string(),
+})),
+  "recommendation": z.object({
+  "bid": z.string().nullable(),
+  "quoteId": z.string().nullable(),
+  "reasoning": z.string(),
+  "conditions": z.array(z.string()),
+  "isLowestNormalised": z.boolean().nullable(),
+}),
+  "notes": z.array(z.string()),
+  "history": z.array(NegotiationTurnSchema),
+  "disclaimer": z.string(),
+});
+export type BidLevelling = z.infer<typeof BidLevellingSchema>;
+
 export const BidderListSchema = z.object({
   "id": z.string(),
   "name": z.string(),
@@ -6830,12 +6885,6 @@ export const NccReferenceSchema = z.object({
   "signedOn": z.string().date(),
 });
 export type NccReference = z.infer<typeof NccReferenceSchema>;
-
-export const NegotiationTurnSchema = z.object({
-  "role": z.enum(["estimator", "nova"]),
-  "text": z.string().min(1).max(1500),
-}).strict();
-export type NegotiationTurn = z.infer<typeof NegotiationTurnSchema>;
 
 export const NotificationSchema = z.object({
   "id": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
