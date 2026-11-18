@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { HelpService } from '../application/help';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { VoiceLogService } from '../application/voice-log';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
 import type { AssistService } from '../application/assist';
@@ -27,6 +28,7 @@ import type { SpeechService } from '../application/speech';
 import type { BudgetReviewService } from '../application/budget-review';
 import type { AnnouncementDraftService } from '../application/announcement-draft';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
+import type { BidLevelService } from '../application/bid-levelling';
 import type { LaborProductivityService } from '../application/labor-productivity';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
@@ -311,6 +313,7 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  bidLevelling: BidLevelService,
   laborProductivity: LaborProductivityService,
   announcementDrafts: AnnouncementDraftService,
   budgetReviews: BudgetReviewService,
@@ -320,6 +323,7 @@ export function aiRoutes(
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
+  voiceLog: VoiceLogService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
   assist: AssistService,
@@ -739,6 +743,47 @@ export function aiRoutes(
         },
       };
     },
+    levelBidsWithNova: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const r = await bidLevelling.level(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          packageId,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          summary: r.summary,
+          medianNormalisedExGst: r.medianNormalisedExGst,
+          bids: r.bids.map((b) => ({
+            label: b.label,
+            quoteId: encodeId('quote', b.quoteId),
+            totalExGst: b.totalExGst,
+            normalisedExGst: b.normalisedExGst,
+            rank: b.rank,
+            validityExpired: b.validityExpired,
+            provisionalExGst: b.provisionalExGst,
+            gaps: b.gaps,
+          })),
+          mappings: r.mappings.map((m) => ({ ...m, quoteId: encodeId('quote', m.quoteId) })),
+          gaps: r.gaps,
+          risks: r.risks,
+          recommendation: {
+            ...r.recommendation,
+            quoteId: r.recommendation.quoteId ? encodeId('quote', r.recommendation.quoteId) : null,
+          },
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
     draftAnnouncementWithNova: async (input) => {
       const r = await announcementDrafts.draft(
         requireTenant(input),
@@ -991,6 +1036,15 @@ export function aiRoutes(
         projectUuid(input.params.projectId),
         meetingId,
         { notes: input.body.notes },
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    parseVoiceLogWithNova: async (input) => {
+      const row = await voiceLog.parse(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        input.params.date,
+        { transcript: input.body.transcript },
       );
       return { status: 200, body: toSuggestionDto(row) };
     },

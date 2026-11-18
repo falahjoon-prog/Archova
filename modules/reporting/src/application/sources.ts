@@ -21,7 +21,7 @@ interface SourceRows {
 
 /** What `reporting` needs from the tool modules; each narrows to what the caller may read on that project. */
 export interface ReportingDeps {
-  platform: Pick<PlatformApi, 'listProjects'>;
+  platform: Pick<PlatformApi, 'listProjects' | 'getProject'>;
   /** Waste, carbon, monitoring and permit-condition counts per project (`environment`); restricted unless readable. */
   environment: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<ProjectSustainability>;

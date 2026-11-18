@@ -1,6 +1,7 @@
 import type { ProblemCode } from '@archova/contracts';
-import { decodeId, type IdKind } from '@archova/domain';
+import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
+  ACCESS_LINK_SESSION_MS,
   AppError,
   defineRoutes,
   etag,
@@ -11,6 +12,13 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { OwnerPortalService } from '../application/ownerportal';
+import { PORTAL_LINK_COOKIE, type ShareService } from '../application/share';
+
+const LINK_HEADERS = {
+  'referrer-policy': 'no-referrer',
+  'x-robots-tag': 'noindex, nofollow',
+  'cache-control': 'no-store',
+};
 
 const id = (kind: IdKind, value: string, code: ProblemCode) => {
   const uuid = decodeId(kind, value);
@@ -19,7 +27,11 @@ const id = (kind: IdKind, value: string, code: ProblemCode) => {
 };
 const project = (p: { projectId: string }) => id('project', p.projectId, 'project.not_found');
 
-export function ownerPortalRoutes(database: Database, svc: OwnerPortalService) {
+export function ownerPortalRoutes(
+  database: Database,
+  svc: OwnerPortalService,
+  share: ShareService,
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -36,7 +48,72 @@ export function ownerPortalRoutes(database: Database, svc: OwnerPortalService) {
   const itemId = (p: { itemId: string }) =>
     id('ownerCapitalItem', p.itemId, 'ownerportal.item_not_found');
 
+  const facts = (input: { ip: string; userAgent: string | null; requestId: string }) => ({
+    ip: input.ip,
+    userAgent: input.userAgent,
+    requestId: input.requestId,
+  });
+
   return defineRoutes({
+    listOwnerShareLinks: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => share.listLinks(s, project(input.params))),
+    }),
+    createOwnerShareLink: async (input) => {
+      const p = project(input.params);
+      const issued = await tx(input, (s) => share.issue(s, p, input.body));
+      // Emailed after the link is saved, so a failed send leaves a link the builder can still copy.
+      const emailed = await tx(input, (s) => share.deliver(s, p, issued));
+      const [row] = (await read(input, (s) => share.listLinks(s, p))).data.filter(
+        (l) => l.id === encodeId('accessLink', issued.link.id),
+      );
+      return { status: 201, body: { link: row!, url: issued.url, emailed } };
+    },
+    revokeOwnerShareLink: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        share.revoke(
+          s,
+          project(input.params),
+          id('accessLink', input.params.linkId, 'access_link.not_found'),
+        ),
+      ),
+    }),
+    listOwnerSharedPhotos: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => share.listPhotos(s, project(input.params))),
+    }),
+    addOwnerSharedPhoto: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => share.addPhoto(s, project(input.params), input.body)),
+    }),
+    removeOwnerSharedPhoto: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        share.removePhoto(s, project(input.params), input.params.fileId),
+      ),
+    }),
+    openOwnerPortalAccess: async (input) => {
+      const r = await share.open(input.body.token, facts(input));
+      return {
+        status: 200,
+        body: r.body,
+        headers: LINK_HEADERS,
+        setCookies: [
+          {
+            name: PORTAL_LINK_COOKIE,
+            value: r.cookie,
+            httpOnly: true,
+            maxAgeSeconds: Math.floor(ACCESS_LINK_SESSION_MS / 1000),
+          },
+        ],
+      };
+    },
+    getOwnerPortalAccess: async (input) => ({
+      status: 200,
+      body: await share.view(input.cookies[PORTAL_LINK_COOKIE], facts(input)),
+      headers: LINK_HEADERS,
+    }),
     listOwnerProgressUpdates: async (input) => ({
       status: 200,
       body: await read(input, (s) => svc.listUpdates(s, project(input.params))),

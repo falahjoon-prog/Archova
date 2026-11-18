@@ -43,8 +43,27 @@ export const allocations = plantSchema.table('allocations', {
   endsOn: date('ends_on').notNull(),
   note: text('note'),
   status: text('status').$type<'active' | 'cancelled'>().notNull().default('active'),
+  postedThrough: date('posted_through'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const costPostings = plantSchema.table('cost_postings', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  allocationId: uuid('allocation_id')
+    .notNull()
+    .references(() => allocations.id),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+  projectId: uuid('project_id').notNull(),
+  fromOn: date('from_on').notNull(),
+  toOn: date('to_on').notNull(),
+  days: integer('days').notNull(),
+  amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+  directCostId: uuid('direct_cost_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const maintenancePlans = plantSchema.table('maintenance_plans', {

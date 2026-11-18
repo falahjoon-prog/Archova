@@ -27,6 +27,7 @@ export const toAllocationDto = (x: { row: AllocationRow; estimatedCostCents: num
   endsOn: x.row.endsOn,
   note: x.row.note,
   status: x.row.status,
+  postedThrough: x.row.postedThrough,
   estimatedCostCents: x.estimatedCostCents,
 });
 
@@ -59,7 +60,9 @@ export const toFlagDto = (f: PlantFlag) => ({
   assetId: encodeId('plantAsset', f.assetId),
   subjectId: f.subjectId
     ? encodeId(
-        f.code === 'double_booking' || f.code === 'booked_while_unavailable'
+        f.code === 'double_booking' ||
+          f.code === 'booked_while_unavailable' ||
+          f.code === 'hire_not_costed'
           ? 'plantAllocation'
           : 'plantPlan',
         f.subjectId,

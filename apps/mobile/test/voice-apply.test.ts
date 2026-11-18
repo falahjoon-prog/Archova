@@ -6,6 +6,7 @@ import { nodeSqlDriver } from './support/node-sql';
 
 vi.mock('../features/diary/screens/DiaryScreen', () => ({}));
 vi.mock('../features/voice/screens/VoiceScreen', () => ({}));
+vi.mock('../features/voice/screens/VoiceLogScreen', () => ({}));
 
 const P = 'prj_a';
 const D = '2026-11-05' as const;

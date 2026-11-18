@@ -31,6 +31,8 @@ export const SUGGESTION_TASKS: Readonly<Record<string, SuggestionTask>> = {
   'diary.weekly': { permission: 'diary.entries.write', audience: 'creator' },
   // F7: the notes are the asker's until they add the items they want; whoever may write the minutes decides it.
   'minutes.extract': { permission: 'meetings.meetings.write', audience: 'creator' },
+  // Voice log: the dictation is the speaker's own until they save the records they keep.
+  'voice.log': { permission: 'diary.entries.write', audience: 'creator' },
   // F5, F3: the person who asked for the tag or draft decides it; the photo, note or markup is theirs until they raise it.
   'defect.tag': { permission: 'defects.defects.create', audience: 'creator' },
   'rfi.draft': { permission: 'rfis.rfis.create', audience: 'creator' },
