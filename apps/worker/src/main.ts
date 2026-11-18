@@ -37,6 +37,7 @@ import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
+import { warrantyExpiry } from './jobs/warranty-expiry';
 import { walletRetention } from './jobs/wallet-retention';
 import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
@@ -128,6 +129,7 @@ async function main() {
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
     walletRetention(),
+    warrantyExpiry,
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

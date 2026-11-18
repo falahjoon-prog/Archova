@@ -1,6 +1,7 @@
 import type { components } from '@archova/contracts/openapi';
 
 type S = components['schemas'];
+export type DbpInsights = S['DbpInsights'];
 export type Portfolio = S['Portfolio'];
 export type PortfolioProject = S['PortfolioProject'];
 export type PortfolioTool = S['PortfolioTool'];

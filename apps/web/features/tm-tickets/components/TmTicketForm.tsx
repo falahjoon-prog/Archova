@@ -31,6 +31,8 @@ export function TmTicketForm({ onCreated }: { onCreated: (id: string) => void })
   const [location, setLocation] = useState('');
   const [contractor, setContractor] = useState('');
   const [instructedBy, setInstructedBy] = useState('');
+  const [reference, setReference] = useState('');
+  const [notes, setNotes] = useState('');
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([blankLine()]);
   const [fromNova, setFromNova] = useState(false);
@@ -82,6 +84,8 @@ export function TmTicketForm({ onCreated }: { onCreated: (id: string) => void })
         ...(location.trim() ? { location: location.trim() } : {}),
         ...(contractor.trim() ? { contractor: contractor.trim() } : {}),
         ...(instructedBy.trim() ? { instructedBy: instructedBy.trim() } : {}),
+        ...(reference.trim() ? { reference: reference.trim() } : {}),
+        ...(notes.trim() ? { notes: notes.trim() } : {}),
         ...(fromNova ? { origin: 'nova' as const } : {}),
         lines: lines.map(({ key: _key, ...l }) => ({
           ...l,
@@ -98,6 +102,8 @@ export function TmTicketForm({ onCreated }: { onCreated: (id: string) => void })
           setLocation('');
           setContractor('');
           setInstructedBy('');
+          setReference('');
+          setNotes('');
           setLines([blankLine()]);
           setFromNova(false);
           onCreated(t.id);
@@ -137,9 +143,14 @@ export function TmTicketForm({ onCreated }: { onCreated: (id: string) => void })
             onChange={(e) => setContractor(e.target.value)}
           />
           <TextField
-            label="Instructed by"
+            label="Ordered by"
             value={instructedBy}
             onChange={(e) => setInstructedBy(e.target.value)}
+          />
+          <TextField
+            label="Reference #"
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
           />
         </div>
         <Textarea
@@ -147,6 +158,7 @@ export function TmTicketForm({ onCreated }: { onCreated: (id: string) => void })
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className="row-actions">
           <Button variant="secondary" onClick={draftFromDay} disabled={suggest.isPending}>
             {suggest.isPending ? 'Drafting…' : 'Draft from this day with Nova'}

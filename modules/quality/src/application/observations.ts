@@ -17,6 +17,7 @@ import {
   type ObservationType,
   type ObservationViewer,
 } from '../domain/observation';
+import type { Classification, ContributingCondition, TradeCategory } from '../domain/dbp';
 import { inspectionLabel } from '../domain/inspection';
 import { observationDraft } from '../domain/item-activity';
 import {
@@ -42,6 +43,9 @@ export interface ObservationFields {
   description?: string;
   location?: string | null;
   priority?: Priority;
+  tradeCategory?: TradeCategory | null;
+  classification?: Classification | null;
+  contributingCondition?: ContributingCondition | null;
   assigneeCompanyId?: string | null;
   dueDate?: string | null;
   swmsId?: string | null;
@@ -233,6 +237,9 @@ export function createObservationService(deps: QualityDeps) {
         description: input.description.trim(),
         location: input.location ?? null,
         priority: input.priority ?? 'medium',
+        tradeCategory: input.tradeCategory ?? null,
+        classification: input.classification ?? null,
+        contributingCondition: input.contributingCondition ?? null,
         assigneeCompanyId: input.assigneeCompanyId ?? null,
         raisedByCompanyId: v.companyId,
         dueDate: input.dueDate ?? null,
@@ -400,6 +407,11 @@ export function createObservationService(deps: QualityDeps) {
         ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
         ...(patch.location !== undefined ? { location: patch.location } : {}),
         ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+        ...(patch.tradeCategory !== undefined ? { tradeCategory: patch.tradeCategory } : {}),
+        ...(patch.classification !== undefined ? { classification: patch.classification } : {}),
+        ...(patch.contributingCondition !== undefined
+          ? { contributingCondition: patch.contributingCondition }
+          : {}),
         ...(patch.assigneeCompanyId !== undefined
           ? { assigneeCompanyId: patch.assigneeCompanyId }
           : {}),

@@ -27,6 +27,7 @@ import { locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { RelatedItemsPanel } from '@/features/links';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
 import { READY_NEEDS_PHOTO } from '../data/source';
 import { useDefect, useDefectMutations, useDefectsSource } from '../hooks/useDefects';
@@ -298,6 +299,17 @@ function DefectView({ d }: { d: Defect }) {
                   { label: 'Trade', value: d.trade || '—' },
                   { label: 'Punch item manager', value: personOrDash(d.managerUserId) },
                   { label: 'Final approver', value: personOrDash(d.finalApproverUserId) },
+                  ...(d.approverDelegateUserId
+                    ? [
+                        {
+                          label: 'Stand-in',
+                          value: `${dir.personName(d.approverDelegateUserId)}${d.approverDelegateFrom || d.approverDelegateUntil ? `, ${d.approverDelegateFrom ?? 'now'} to ${d.approverDelegateUntil ?? 'further notice'}` : ''}`,
+                        },
+                      ]
+                    : []),
+                  ...(d.requireCloseEvidence
+                    ? [{ label: 'To close', value: 'A note or photo is required' }]
+                    : []),
                   {
                     label: 'Assignees',
                     value: d.assigneeUserIds.length
@@ -335,13 +347,14 @@ function DefectView({ d }: { d: Defect }) {
               <p className="u-muted u-m-0">No photos.</p>
             )}
           </Card>
+          {live ? <RelatedItemsPanel type="defect" id={d.id} /> : null}
         </div>
         <Card title="History">
           <ActivityTimeline
             label="Defect history"
             entries={d.events.map((e) => ({
               id: e.id,
-              actor: e.by,
+              actor: e.onBehalfOf ? `${e.by} (for ${e.onBehalfOf})` : e.by,
               action: e.fromStatus
                 ? `moved it to ${STATUS_LABELS[e.toStatus]}`
                 : 'raised the defect',

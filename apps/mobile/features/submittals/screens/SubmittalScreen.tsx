@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
 import { openOrgFile } from '../../../lib/files/open-file';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { attemptOrQueue } from '../../../lib/actions/attempt';
+import { PendingActions, StateMessage, useCurrentOrg, useDeviceData } from '../../../shared';
 import { getSubmittal, respondToStep, type ReviewAnswer } from '../commands';
 import { ANSWER_TEXT, statusLabel, typeLabel, waitingStep } from '../format';
 
@@ -22,6 +23,7 @@ export function SubmittalScreen({
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const [comments, setComments] = useState('');
+  const device = useDeviceData();
   const key = ['submittals', orgId, projectId, 'detail', submittalId];
   const detail = useQuery({
     queryKey: key,
@@ -30,7 +32,17 @@ export function SubmittalScreen({
   });
   const respond = useMutation({
     mutationFn: (a: { stepId: string; response: ReviewAnswer }) =>
-      respondToStep(api, { orgId: orgId!, projectId }, { submittalId, ...a, comments }),
+      attemptOrQueue(
+        device.status === 'ready' ? device.data.actions : null,
+        {
+          projectId,
+          kind: 'submittal.respond',
+          targetId: submittalId,
+          payload: { ...a, comments: comments.trim() },
+        },
+        () => respondToStep(api, { orgId: orgId!, projectId }, { submittalId, ...a, comments }),
+        () => device.status === 'ready' && device.data.requestSync('connectivity'),
+      ),
     onSuccess: () => {
       setComments('');
       void qc.invalidateQueries({ queryKey: ['submittals', orgId, projectId] });
@@ -106,6 +118,10 @@ export function SubmittalScreen({
             />
           ))}
         </>
+      ) : null}
+      <PendingActions targetId={submittalId} />
+      {respond.data === 'queued' ? (
+        <StateMessage message="No signal. Your response is saved on this phone and will be sent when you are online." />
       ) : null}
       {waiting ? (
         <View style={{ gap: t.space[2] }}>

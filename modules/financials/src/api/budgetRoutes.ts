@@ -93,6 +93,16 @@ const toSnapshotDto = (r: BudgetSnapshotRow) => ({
   totals: snapshotTotals(r.lines),
 });
 
+const forecastDto = (r: Awaited<ReturnType<BudgetService['forecast']>>) => ({
+  hasBudget: r.hasBudget,
+  months: r.months,
+  lines: r.lines.map(({ line: l, ...x }) => ({
+    ...x,
+    lineId: encodeId('budgetLine', l.id),
+    description: l.description,
+  })),
+});
+
 export function budgetRoutes(database: Database, budget: BudgetService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -277,6 +287,23 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
             project(input.params),
             ref('budgetSnapshot', input.params.snapshotId, 'snapshotId'),
           ),
+        ),
+      ),
+    }),
+    getBudgetForecast: async (input) => ({
+      status: 200,
+      body: forecastDto(await read(input, (s) => budget.forecast(s, project(input.params)))),
+    }),
+    saveBudgetForecast: async (input) => ({
+      status: 200,
+      body: forecastDto(
+        await tx(input, (s) =>
+          budget.saveForecast(s, project(input.params), {
+            lines: input.body.lines.map((l) => ({
+              lineId: ref('budgetLine', l.lineId, 'lines.lineId'),
+              entries: l.entries,
+            })),
+          }),
         ),
       ),
     }),

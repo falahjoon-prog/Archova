@@ -107,3 +107,32 @@ describe('reopen and the final approver', () => {
     expect(defectApproverRule({}, 'close', 'b')).toBe(true);
   });
 });
+
+describe('stand-in approver and close evidence', () => {
+  const d = {
+    finalApproverUserId: 'boss',
+    approverDelegateUserId: 'deputy',
+    approverDelegateFrom: '2026-11-10',
+    approverDelegateUntil: '2026-11-14',
+  };
+  it('lets the stand-in act only inside their dates', () => {
+    expect(defectApproverRule(d, 'close', 'deputy', '2026-11-09')).toBe(false);
+    expect(defectApproverRule(d, 'close', 'deputy', '2026-11-10')).toBe(true);
+    expect(defectApproverRule(d, 'reopen', 'deputy', '2026-11-14')).toBe(true);
+    expect(defectApproverRule(d, 'close', 'deputy', '2026-11-15')).toBe(false);
+    expect(defectApproverRule(d, 'close', 'boss', '2026-11-09')).toBe(true);
+    expect(defectApproverRule(d, 'close', 'deputy')).toBe(false);
+  });
+
+  it('needs a note or photo to close when the defect asks for evidence', () => {
+    const base = {
+      status: 'ready_for_review' as const,
+      action: 'close' as const,
+      actor: 'builder' as const,
+      requireCloseEvidence: true,
+    };
+    expect(defectTransition(base)).toEqual({ ok: false, code: 'defect.evidence_required' });
+    expect(defectTransition({ ...base, reason: 'Re-grouted' })).toEqual({ ok: true, to: 'closed' });
+    expect(defectTransition({ ...base, photoCount: 1 })).toEqual({ ok: true, to: 'closed' });
+  });
+});

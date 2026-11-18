@@ -76,6 +76,8 @@ export interface TmTicketInput {
   location?: string;
   contractor?: string;
   instructedBy?: string;
+  reference?: string;
+  notes?: string;
   origin?: 'manual' | 'nova';
   lines: TmLineWithSource[];
 }
@@ -262,6 +264,8 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         location: input.location?.trim() || null,
         contractor: input.contractor?.trim() || null,
         instructedBy: input.instructedBy?.trim() || null,
+        reference: input.reference?.trim() || null,
+        notes: input.notes?.trim() || null,
         origin: input.origin ?? 'manual',
         total: fromCents(totalCents(rows)),
         createdBy: scope.ctx.userId,
@@ -316,6 +320,15 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
         location: input.location?.trim() || null,
         contractor: input.contractor?.trim() || null,
         instructedBy: input.instructedBy?.trim() || null,
+        reference: input.reference?.trim() || null,
+        notes: input.notes?.trim() || null,
+        // Any edit sends the ticket back to the start of the review.
+        reviewStage: 'in_progress',
+        readyAt: null,
+        readyBy: null,
+        verifiedAt: null,
+        verifiedBy: null,
+        verifyNote: null,
         total: fromCents(totalCents(rows)),
         version: t.version + 1,
       })
@@ -373,6 +386,11 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
       throw new AppError(
         'financials.tm_ticket.bad_state',
         `A ${t.status} ticket cannot be signed.`,
+      );
+    if (t.status === 'draft' && t.reviewStage !== 'field_verified')
+      throw new AppError(
+        'financials.tm_ticket.bad_state',
+        'Mark the ticket ready for review and have it field verified before it is signed.',
       );
     const lines = await linesOf(scope, id);
     if (lines.length === 0 || toCents(t.total) <= 0)
@@ -670,6 +688,81 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     return runChecks({ workDate: t.workDate, lines, signoffs, day, diaryEntryExists });
   }
 
+  /**
+   * Moves a draft ticket through the review: in progress -> ready for review -> field verified (or back to in
+   * progress). A different person must field-verify than the one who marked it ready, and a note is needed while
+   * Nova still flags hours that differ from the timesheet or equipment log.
+   */
+  async function setStage(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { stage: 'in_progress' | 'ready_for_review' | 'field_verified'; note?: string },
+  ) {
+    await need(scope, 'financials.tm_tickets.manage', projectId);
+    await lockProject(scope, projectId);
+    const t = await ticketRow(scope, projectId, id, true);
+    if (t.status !== 'draft')
+      throw new AppError(
+        'financials.tm_ticket.bad_state',
+        'Only a ticket that has not been signed can be reviewed.',
+      );
+    const bad = (message: string) => new AppError('financials.tm_ticket.bad_state', message);
+    const patch: Partial<typeof tmTickets.$inferInsert> = {};
+    if (input.stage === 'in_progress') {
+      Object.assign(patch, {
+        reviewStage: 'in_progress',
+        readyAt: null,
+        readyBy: null,
+        verifiedAt: null,
+        verifiedBy: null,
+        verifyNote: null,
+      });
+    } else if (input.stage === 'ready_for_review') {
+      if (t.reviewStage !== 'in_progress') throw bad('This ticket is already past in progress.');
+      const lines = await linesOf(scope, id);
+      if (lines.length === 0 || toCents(t.total) <= 0)
+        throw bad('Add at least one priced line before marking the ticket ready for review.');
+      Object.assign(patch, {
+        reviewStage: 'ready_for_review',
+        readyAt: now(),
+        readyBy: scope.ctx.userId,
+      });
+    } else {
+      if (t.reviewStage !== 'ready_for_review')
+        throw bad('Mark the ticket ready for review before it is field verified.');
+      if (t.readyBy === scope.ctx.userId)
+        throw new AppError(
+          'financials.tm_ticket.bad_state',
+          'A different person must field verify the ticket than the one who marked it ready.',
+        );
+      const findings = await checks(scope, projectId, id);
+      const hoursDiffer = findings.some(
+        (f) => f.code === 'labour_hours_differ' || f.code === 'equipment_hours_differ',
+      );
+      const note = input.note?.trim();
+      if (hoursDiffer && !note)
+        throw new AppError(
+          'validation_failed',
+          'Nova flags hours that differ from the timesheet or equipment log. Add a note saying why they are right.',
+          [{ path: 'note', message: 'Required' }],
+        );
+      Object.assign(patch, {
+        reviewStage: 'field_verified',
+        verifiedAt: now(),
+        verifiedBy: scope.ctx.userId,
+        verifyNote: note || null,
+      });
+    }
+    const [updated] = await scope.tx
+      .update(tmTickets)
+      .set({ ...patch, version: t.version + 1 })
+      .where(and(eq(tmTickets.id, id), eq(tmTickets.version, t.version)))
+      .returning();
+    if (!updated) throw new AppError('conflict', 'This ticket just changed. Reload and try again.');
+    return detail(scope, updated);
+  }
+
   async function directCostIds(scope: TenantScope, projectId: string, id: string) {
     await need(scope, 'financials.tm_tickets.read', projectId);
     await ticketRow(scope, projectId, id);
@@ -690,6 +783,7 @@ export function createTmTicketsService(deps: TmTicketsDeps) {
     convertTicket,
     suggest,
     checks,
+    setStage,
     directCostIds,
   };
 }

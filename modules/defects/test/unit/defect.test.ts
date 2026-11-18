@@ -125,3 +125,36 @@ describe('punch list roles', () => {
     expect(canSeeDefect(defect('open'), other)).toBe(false);
   });
 });
+
+describe('stand-in approver', () => {
+  const ready = {
+    status: 'ready_for_review' as const,
+    assigneeCompanyId: 'sparky',
+    finalApproverUserId: 'u9',
+    approverDelegateUserId: 'u8',
+    approverDelegateFrom: '2026-11-10',
+    approverDelegateUntil: '2026-11-14',
+  };
+  const deputy = { userId: 'u8', companyId: 'client', isInternal: false };
+
+  it('gives the stand-in the builder side only inside their dates', () => {
+    expect(actorsFor(ready, deputy, '2026-11-12')).toEqual(['builder']);
+    expect(actorsFor(ready, deputy, '2026-11-20')).toEqual([]);
+    expect(resolveTransition(ready, deputy, { action: 'close' }, '2026-11-12')).toEqual({
+      ok: true,
+      to: 'closed',
+    });
+    expect(resolveTransition(ready, deputy, { action: 'close' }, '2026-11-20').ok).toBe(false);
+  });
+
+  it('applies the evidence rule from the defect', () => {
+    const d = { ...ready, requireCloseEvidence: true };
+    expect(resolveTransition(d, deputy, { action: 'close' }, '2026-11-12')).toEqual({
+      ok: false,
+      code: 'defect.evidence_required',
+    });
+    expect(
+      resolveTransition(d, deputy, { action: 'close', reason: 'checked on site' }, '2026-11-12').ok,
+    ).toBe(true);
+  });
+});

@@ -161,6 +161,9 @@ importers:
       '@archova/mod-environment':
         specifier: workspace:*
         version: link:../../modules/environment
+      '@archova/mod-esign':
+        specifier: workspace:*
+        version: link:../../modules/esign
       '@archova/mod-estimating':
         specifier: workspace:*
         version: link:../../modules/estimating
@@ -179,6 +182,9 @@ importers:
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-links':
+        specifier: workspace:*
+        version: link:../../modules/links
       '@archova/mod-meetings':
         specifier: workspace:*
         version: link:../../modules/meetings
@@ -957,6 +963,9 @@ importers:
       '@archova/mod-access':
         specifier: workspace:*
         version: link:../access
+      '@archova/mod-documents':
+        specifier: workspace:*
+        version: link:../documents
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files
@@ -1305,6 +1314,55 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
+  modules/esign:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
   modules/estimating:
     dependencies:
       '@archova/contracts':
@@ -1492,6 +1550,49 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
+  modules/geotech:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
   modules/identity:
     dependencies:
       '@archova/contracts':
@@ -1598,6 +1699,89 @@ importers:
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/links:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/logistics:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
@@ -1868,6 +2052,49 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
   modules/precon:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@archova/time':
+        specifier: workspace:*
+        version: link:../../packages/time
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/prefab:
     dependencies:
       '@archova/contracts':
         specifier: workspace:*
@@ -2453,6 +2680,9 @@ importers:
 
   packages/compose:
     dependencies:
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@archova/kernel':
         specifier: workspace:*
         version: link:../kernel
@@ -2495,6 +2725,9 @@ importers:
       '@archova/mod-environment':
         specifier: workspace:*
         version: link:../../modules/environment
+      '@archova/mod-esign':
+        specifier: workspace:*
+        version: link:../../modules/esign
       '@archova/mod-estimating':
         specifier: workspace:*
         version: link:../../modules/estimating
@@ -2507,6 +2740,9 @@ importers:
       '@archova/mod-financials':
         specifier: workspace:*
         version: link:../../modules/financials
+      '@archova/mod-geotech':
+        specifier: workspace:*
+        version: link:../../modules/geotech
       '@archova/mod-identity':
         specifier: workspace:*
         version: link:../../modules/identity
@@ -2516,6 +2752,12 @@ importers:
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-links':
+        specifier: workspace:*
+        version: link:../../modules/links
+      '@archova/mod-logistics':
+        specifier: workspace:*
+        version: link:../../modules/logistics
       '@archova/mod-meetings':
         specifier: workspace:*
         version: link:../../modules/meetings
@@ -2537,6 +2779,9 @@ importers:
       '@archova/mod-precon':
         specifier: workspace:*
         version: link:../../modules/precon
+      '@archova/mod-prefab':
+        specifier: workspace:*
+        version: link:../../modules/prefab
       '@archova/mod-quality':
         specifier: workspace:*
         version: link:../../modules/quality

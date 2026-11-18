@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
 import { deviceTimeZone } from '../../../lib/capture/capture';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { attemptOrQueue } from '../../../lib/actions/attempt';
+import { PendingActions, StateMessage, useCurrentOrg, useDeviceData } from '../../../shared';
 import { localDateOf } from '@archova/time';
 import {
   approveTimesheet,
@@ -28,6 +29,9 @@ export function TimesheetScreen({
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const [reason, setReason] = useState('');
+  const device = useDeviceData();
+  const queue = device.status === 'ready' ? device.data.actions : null;
+  const wake = () => device.status === 'ready' && device.data.requestSync('connectivity');
   const [rejecting, setRejecting] = useState(false);
   const target = orgId ? { orgId, projectId } : null;
   const sheet = useQuery({
@@ -59,18 +63,30 @@ export function TimesheetScreen({
     setReason('');
     void qc.invalidateQueries({ queryKey: ['timesheets', orgId, projectId] });
   };
+  const act = (
+    kind: 'timesheet.submit' | 'timesheet.approve' | 'timesheet.reject',
+    online: () => Promise<unknown>,
+  ) =>
+    attemptOrQueue(
+      queue,
+      { projectId, kind, targetId: timesheetId, payload: { reason: reason.trim() } },
+      online,
+      wake,
+    );
   const submit = useMutation({
-    mutationFn: () => submitTimesheet(api, target!, timesheetId),
+    mutationFn: () => act('timesheet.submit', () => submitTimesheet(api, target!, timesheetId)),
     onSuccess: done,
   });
   const approve = useMutation({
-    mutationFn: () => approveTimesheet(api, target!, timesheetId),
+    mutationFn: () => act('timesheet.approve', () => approveTimesheet(api, target!, timesheetId)),
     onSuccess: done,
   });
   const reject = useMutation({
-    mutationFn: () => rejectTimesheet(api, target!, timesheetId, reason),
+    mutationFn: () =>
+      act('timesheet.reject', () => rejectTimesheet(api, target!, timesheetId, reason)),
     onSuccess: done,
   });
+  const queued = [submit, approve, reject].some((m) => m.data === 'queued');
 
   if (!orgId) {
     return (
@@ -149,6 +165,10 @@ export function TimesheetScreen({
             </Text>
           ))}
         </View>
+      ) : null}
+      <PendingActions targetId={timesheetId} />
+      {queued ? (
+        <StateMessage message="No signal. Saved on this phone and will be sent when you are online." />
       ) : null}
       {s.status === 'draft' || s.status === 'rejected' ? (
         <Button

@@ -79,6 +79,8 @@ export interface DefectTransitionInput {
   photoCount?: number;
   /** Project setting: ready for review needs at least one photo (DEF-AC5, on by default). */
   requirePhotoForReady?: boolean;
+  /** The defect asks for a close note or photo as evidence (set per item). */
+  requireCloseEvidence?: boolean;
 }
 
 export type DefectTransitionResult =
@@ -89,7 +91,8 @@ export type DefectTransitionResult =
         | 'defect.invalid_transition'
         | 'defect.not_allowed'
         | 'defect.reason_required'
-        | 'defect.photo_required';
+        | 'defect.photo_required'
+        | 'defect.evidence_required';
     };
 
 export function defectTransition(input: DefectTransitionInput): DefectTransitionResult {
@@ -104,6 +107,14 @@ export function defectTransition(input: DefectTransitionInput): DefectTransition
     (input.photoCount ?? 0) < 1
   ) {
     return { ok: false, code: 'defect.photo_required' };
+  }
+  if (
+    input.action === 'close' &&
+    input.requireCloseEvidence &&
+    !input.reason?.trim() &&
+    (input.photoCount ?? 0) < 1
+  ) {
+    return { ok: false, code: 'defect.evidence_required' };
   }
   return { ok: true, to: rule.to };
 }
@@ -138,18 +149,40 @@ export function defectLabel(number: number | null | undefined): string {
     : 'D-local';
 }
 
-/** Actions only the named final approver may take once a defect has one. */
+/** Actions only the named final approver (or their stand-in) may take once a defect has one. */
 export const FINAL_APPROVER_ACTIONS: readonly DefectAction[] = ['close', 'reject', 'reopen'];
 
+/** The approver's stand-in for a date range (inclusive, project-local dates), set while the approver is away. */
+export interface ApproverDelegation {
+  approverDelegateUserId?: string | null;
+  approverDelegateFrom?: string | null;
+  approverDelegateUntil?: string | null;
+}
+
+/** True when `userId` is the named stand-in and `today` (a project-local YYYY-MM-DD) is inside their dates. */
+export function isActiveDelegate(
+  defect: ApproverDelegation,
+  userId: string,
+  today?: string | null,
+): boolean {
+  if (!today || !defect.approverDelegateUserId || defect.approverDelegateUserId !== userId)
+    return false;
+  const from = defect.approverDelegateFrom;
+  const until = defect.approverDelegateUntil;
+  return (!from || from <= today) && (!until || today <= until);
+}
+
 /**
- * With a final approver named, only that person closes, rejects or reopens the defect; without one, any builder
- * with the permission may. Returns true when `userId` may take `action`.
+ * With a final approver named, only that person, or their stand-in while the delegation is active, closes,
+ * rejects or reopens the defect; without one, any builder with the permission may. True when `userId` may take
+ * `action`.
  */
 export function defectApproverRule(
-  defect: { finalApproverUserId?: string | null },
+  defect: { finalApproverUserId?: string | null } & ApproverDelegation,
   action: DefectAction,
   userId: string,
+  today?: string | null,
 ): boolean {
   if (!defect.finalApproverUserId || !FINAL_APPROVER_ACTIONS.includes(action)) return true;
-  return defect.finalApproverUserId === userId;
+  return defect.finalApproverUserId === userId || isActiveDelegate(defect, userId, today);
 }

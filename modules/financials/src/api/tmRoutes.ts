@@ -42,6 +42,10 @@ const toTicketDto = (t: TmTicketRow) => ({
   location: t.location,
   contractor: t.contractor,
   instructedBy: t.instructedBy,
+  reference: t.reference,
+  notes: t.notes,
+  reviewStage: t.reviewStage,
+  verifyNote: t.verifyNote,
   origin: t.origin,
   status: t.status,
   total: t.total,
@@ -94,6 +98,8 @@ const toInput = (b: {
   location?: string;
   contractor?: string;
   instructedBy?: string;
+  reference?: string;
+  notes?: string;
   origin?: 'manual' | 'nova';
   lines: LineBody[];
 }) => ({
@@ -103,6 +109,8 @@ const toInput = (b: {
   ...(b.location ? { location: b.location } : {}),
   ...(b.contractor ? { contractor: b.contractor } : {}),
   ...(b.instructedBy ? { instructedBy: b.instructedBy } : {}),
+  ...(b.reference ? { reference: b.reference } : {}),
+  ...(b.notes ? { notes: b.notes } : {}),
   ...(b.origin ? { origin: b.origin } : {}),
   lines: b.lines.map((l, i) => {
     if (!isMoney(l.rate))
@@ -185,6 +193,17 @@ export function tmTicketRoutes(database: Database, tm: TmTicketsService) {
               : {}),
             ip: input.ip ?? undefined,
             userAgent: input.userAgent ?? undefined,
+          }),
+        ),
+      ),
+    }),
+    reviewTmTicket: async (input) => ({
+      status: 200,
+      body: toDetail(
+        await tx(input, (s) =>
+          tm.setStage(s, project(input.params), ticketId(input.params), {
+            stage: input.body.stage,
+            ...(input.body.note ? { note: input.body.note } : {}),
           }),
         ),
       ),

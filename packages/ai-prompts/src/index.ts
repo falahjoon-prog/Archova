@@ -28,6 +28,7 @@ export * from './contract-review/prompt';
 export * from './contract-review/ask';
 export * from './contract-review/compare';
 export * from './takeoff-detect/prompt';
+export * from './assist/prompt';
 export * from './labor-productivity/prompt';
 export * from './announcement-draft/prompt';
 export * from './capture-scan/prompt';

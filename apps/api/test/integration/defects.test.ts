@@ -486,3 +486,60 @@ describe('Punch list roles', () => {
     expect(close.json().code).toBe('defect.not_allowed');
   });
 });
+
+describe('Stand-in approver and close evidence', () => {
+  it('requires evidence to close when asked, and records who a stand-in acted for', async () => {
+    const s = await setup();
+    const made = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Loose handrail',
+      assigneeCompanyId: s.subCo.companyId,
+      finalApproverUserId: s.other.userId,
+      approverDelegateUserId: s.pm.userId,
+      requireCloseEvidence: true,
+      pin: s.pin,
+    });
+    expect(made.statusCode).toBe(201);
+    const d = made.json().defect;
+    expect(d).toMatchObject({
+      approverDelegateUserId: s.pm.userId,
+      requireCloseEvidence: true,
+    });
+    const issued = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'issue' },
+      { 'if-match': etagOf(made) },
+    );
+    const noEvidence = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(noEvidence.statusCode).toBe(422);
+    expect(noEvidence.json().code).toBe('defect.evidence_required');
+    const closed = await s.pm.browser.post(
+      `${s.base}/defects/${d.id}/transition`,
+      { action: 'close', reason: 'Checked and tightened' },
+      { 'if-match': etagOf(issued) },
+    );
+    expect(closed.statusCode).toBe(200);
+    expect(closed.json().events.at(-1)).toMatchObject({
+      action: 'close',
+      actorId: s.pm.userId,
+      onBehalfOf: s.other.userId,
+    });
+  });
+
+  it('refuses a stand-in whose dates run backwards', async () => {
+    const s = await setup();
+    const res = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Cracked sill',
+      assigneeCompanyId: s.subCo.companyId,
+      finalApproverUserId: s.pm.userId,
+      approverDelegateUserId: s.sub.userId,
+      approverDelegateFrom: '2030-02-01',
+      approverDelegateUntil: '2030-01-01',
+      pin: s.pin,
+    });
+    expect(res.statusCode).toBe(422);
+  });
+});

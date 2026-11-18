@@ -8,8 +8,10 @@ import {
   type SyncCommand,
   type SyncSource,
 } from '@archova/kernel';
+import { createActionPlanService } from './application/action-plans';
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
+import { createDbpSources } from './application/dbpSources';
 import { createObservationService } from './application/observations';
 import { createObservationTypeService } from './application/observation-types';
 import type { QualityDeps } from './application/shared';
@@ -242,11 +244,20 @@ export function syncPieces(inspections: InspectionService) {
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {
   const inspections = createInspectionService(deps);
   const observations = createObservationService(deps);
+  const actionPlans = createActionPlanService(deps);
   const observationTypes = createObservationTypeService(deps);
   return {
     definition: defineModule({ name: 'quality', permissions: QUALITY_PERMISSIONS }),
-    routes: qualityRoutes(services.database, inspections, observations, observationTypes),
+    routes: qualityRoutes(
+      services.database,
+      inspections,
+      observations,
+      actionPlans,
+      observationTypes,
+    ),
     api: {
+      /** Per-project rows for the DBP Act insights view in `reporting`. */
+      dbp: createDbpSources(deps),
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
       /** Portfolio dashboard (`reporting`): open and overdue counts of observations and inspections per project. */
