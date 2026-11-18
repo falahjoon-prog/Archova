@@ -57,4 +57,17 @@ describe('plan entitlements', () => {
     const unlicensedOnEnterprise = routeModules.filter((m) => !enterprise.has(m));
     expect(unlicensedOnEnterprise).toEqual([]);
   });
+
+  it('never shrinks a plan: each version keeps every module of the one before it', async () => {
+    const rows = (await t.adminDb.db.execute(
+      sql`select plan_code, version, modules from billing.plan_versions order by plan_code, version`,
+    )) as unknown as Array<{ plan_code: string; version: number; modules: string[] }>;
+    const prev = new Map<string, string[]>();
+    for (const r of rows) {
+      const before = prev.get(r.plan_code);
+      if (before)
+        expect(r.modules, `${r.plan_code} v${r.version}`).toEqual(expect.arrayContaining(before));
+      prev.set(r.plan_code, r.modules);
+    }
+  });
 });

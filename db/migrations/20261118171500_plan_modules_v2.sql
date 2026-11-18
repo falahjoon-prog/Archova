@@ -1,5 +1,7 @@
 -- Composed from modules/billing/db/migrations/20261118171500_plan_modules_v2.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Plan version 2: lists the modules that shipped after the founding catalogue (plant, environment, geotech, ...).
+-- Approval: plan-to-module mapping pending explicit confirmation by John/Priya (record name and date here before merge).
+-- Published directly by migration, so published_by is empty.
 -- Before this, no published plan version named them, so their routes returned 403 entitlement-required for every
 -- company on a paid plan. Each plan's live version is retired and replaced by a new published version with its
 -- modules plus the additions below; companies pick it up on their next request (entitlements read the live version).
