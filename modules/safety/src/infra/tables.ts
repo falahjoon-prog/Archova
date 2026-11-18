@@ -18,6 +18,7 @@ import type {
   Severity,
 } from '../domain/incident';
 import type { SwmsContent, SwmsStatus } from '../domain/swms';
+import type { TalkStatus, TopicCategory } from '../domain/toolbox';
 
 export const safetySchema = pgSchema('safety');
 
@@ -164,4 +165,58 @@ export const incidentEvents = safetySchema.table('incident_events', {
   note: text('note'),
   actorId: uuid('actor_id'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const toolboxTopics = safetySchema.table('toolbox_topics', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  title: text('title').notNull(),
+  talkingPoints: text('talking_points').notNull().default(''),
+  category: text('category').$type<TopicCategory>().notNull().default('general'),
+  hrcwCategory: text('hrcw_category'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const toolboxTalks = safetySchema.table('toolbox_talks', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  topicId: uuid('topic_id'),
+  title: text('title').notNull(),
+  heldAt: timestamp('held_at', { withTimezone: true }).notNull(),
+  location: text('location'),
+  presenterName: text('presenter_name').notNull(),
+  notes: text('notes'),
+  status: text('status').$type<TalkStatus>().notNull().default('open'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedBy: uuid('closed_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const toolboxAttendees = safetySchema.table('toolbox_attendees', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  talkId: uuid('talk_id').notNull(),
+  personName: text('person_name').notNull(),
+  companyId: uuid('company_id'),
+  userId: uuid('user_id'),
+  signedAt: timestamp('signed_at', { withTimezone: true }),
+  signatureFileId: uuid('signature_file_id'),
+  signatureSha256: text('signature_sha256'),
+  signedBy: uuid('signed_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
 });

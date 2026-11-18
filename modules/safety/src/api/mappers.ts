@@ -6,11 +6,18 @@ import type {
   IncidentDetail,
   Swms,
   SwmsDetail,
+  ToolboxAttendee,
+  ToolboxSuggestion,
+  ToolboxTalk,
+  ToolboxTalkDetail,
+  ToolboxTopic,
 } from '@archova/contracts';
 import { incidentLabel } from '../domain/incident';
 import type { IncidentService } from '../application/incidents';
 import { swmsLabel, type HrcwCategory } from '../domain/swms';
 import type { SwmsService, SwmsView } from '../application/swms';
+import { toolboxLabel, type TopicSuggestion } from '../domain/toolbox';
+import type { AttendeeView, TalkRow, ToolboxService, TopicRow } from '../application/toolbox';
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
@@ -187,4 +194,70 @@ export const toIncidentSyncDto = (
   immediateActions: r.immediateActions,
   people: people.map((p) => ({ personName: p.personName, role: p.role, injury: p.injury })),
   photoCount,
+});
+
+export const toTopicDto = (t: TopicRow & { lastHeldAt: Date | null }): ToolboxTopic => ({
+  id: encodeId('toolboxTopic', t.id),
+  projectId: encodeId('project', t.projectId),
+  title: t.title,
+  talkingPoints: t.talkingPoints,
+  category: t.category,
+  hrcwCategory: t.hrcwCategory,
+  isActive: t.isActive,
+  lastHeldAt: isoOrNull(t.lastHeldAt),
+  version: t.version,
+});
+
+export const toTalkDto = (
+  t: TalkRow & { attendeeCount: number; signedCount: number },
+): ToolboxTalk => ({
+  id: encodeId('toolboxTalk', t.id),
+  projectId: encodeId('project', t.projectId),
+  number: t.number,
+  numberLabel: toolboxLabel(t.number),
+  topicId: t.topicId ? encodeId('toolboxTopic', t.topicId) : null,
+  title: t.title,
+  heldAt: t.heldAt.toISOString(),
+  location: t.location,
+  presenterName: t.presenterName,
+  notes: t.notes,
+  status: t.status,
+  closedAt: isoOrNull(t.closedAt),
+  attendeeCount: t.attendeeCount,
+  signedCount: t.signedCount,
+  createdBy: userOrNull(t.createdBy),
+  createdAt: t.createdAt.toISOString(),
+  version: t.version,
+});
+
+const toAttendeeDto = (a: AttendeeView): ToolboxAttendee => ({
+  id: encodeId('toolboxAttendee', a.id),
+  personName: a.personName,
+  companyId: a.companyId ? encodeId('company', a.companyId) : null,
+  userId: userOrNull(a.userId),
+  signedAt: isoOrNull(a.signedAt),
+  signatureFileId: a.signatureFileId ? encodeId('file', a.signatureFileId) : null,
+  repeatFlags: a.repeatFlags,
+});
+
+export const toTalkDetail = (
+  d: Awaited<ReturnType<ToolboxService['detail']>>,
+): ToolboxTalkDetail => ({
+  talk: toTalkDto({
+    ...d.talk,
+    attendeeCount: d.attendees.length,
+    signedCount: d.attendees.filter((a) => a.signedAt).length,
+  }),
+  topic: d.topic ? toTopicDto({ ...d.topic, lastHeldAt: null }) : null,
+  attendees: d.attendees.map(toAttendeeDto),
+  closeBlockers: d.closeBlockers,
+  canEdit: d.canEdit,
+});
+
+export const toSuggestionDto = (s: TopicSuggestion): ToolboxSuggestion => ({
+  reason: s.reason,
+  topicId: s.topicId ? encodeId('toolboxTopic', s.topicId) : null,
+  title: s.title,
+  because: s.because,
+  hrcwCategory: s.hrcwCategory,
 });

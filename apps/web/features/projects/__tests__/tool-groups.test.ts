@@ -21,15 +21,21 @@ describe('projectToolGroups', () => {
       'Delay register',
       'Programme',
       'Attendance',
+      'Deliveries',
+      'Prefab',
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
       'Contracts',
       'Payment claims',
+      'T&M tickets',
       'Budget',
       'Owner portal',
       'Tender packages',
@@ -53,6 +59,7 @@ describe('projectToolGroups', () => {
       'Specifications',
       'Transmittals',
       'Defects',
+      'Warranty',
       'Tender packages',
       'Estimates',
       'Cost library',
@@ -70,8 +77,19 @@ describe('projectToolGroups', () => {
       toolLevels: { defects: 'read' },
     });
     expect(groups.filter((g) => g.id).map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
-      ['Quality & safety', ['Defects']],
+      ['Quality & safety', ['Defects', 'Warranty']],
       ['Estimating', ['Tender packages', 'Estimates', 'Cost library']],
     ]);
+  });
+
+  it('adds a quick-add link only where the caller can create', () => {
+    const items = projectToolGroups('acme', 'prj_1', {
+      orgRole: null,
+      toolLevels: { documents: 'read', defects: 'standard', rfis: 'read' },
+    }).flatMap((g) => g.items);
+    const href = (label: string) => items.find((i) => i.label === label)?.createHref;
+    expect(href('Defects')).toBe('/acme/projects/prj_1/defects/new');
+    expect(href('RFIs')).toBeUndefined();
+    expect(href('Transmittals')).toBeUndefined();
   });
 });

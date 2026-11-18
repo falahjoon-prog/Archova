@@ -31,7 +31,11 @@ export const toRfiDto = (r: RfiView): Rfi => {
       isBallInCourt: a.isBallInCourt,
       respondedAt: isoOrNull(a.respondedAt),
     })),
-    ballInCourt: { side: ball.side, userIds: ball.userIds.map(user) },
+    ballInCourt: {
+      side: ball.side,
+      userIds: ball.userIds.map(user),
+      since: ball.side ? isoOrNull(r.ballSince) : null,
+    },
     distributionUserIds: r.distributionUserIds.map(user),
     distributionCompanyIds: r.distributionCompanyIds.map((c) => encodeId('company', c)),
     dueDate: r.dueDate,

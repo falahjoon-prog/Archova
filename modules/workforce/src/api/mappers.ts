@@ -1,4 +1,6 @@
 import { encodeId } from '@archova/domain';
+import type { BadgeView } from '../application/badge';
+import type { WorkerClearance } from '../application/clearance';
 import type {
   AttendanceEntry,
   AttendanceSession,
@@ -6,8 +8,10 @@ import type {
   EligibilityCheck,
   Gate,
   RollCall,
+  SafetyBadge,
   SignInResult,
   Worker,
+  WorkerClearance as WorkerClearanceDto,
 } from '@archova/contracts';
 import type {
   CheckRow,
@@ -165,5 +169,40 @@ export function toRollCallDto(call: RollCallRow, marks: MarkRow[]): RollCall {
       unmarked: out.filter((p) => p.status === 'unmarked').length,
     },
     people: out,
+  };
+}
+
+export function toSafetyBadgeDto(b: BadgeView): SafetyBadge {
+  const id = encodeId('worker', b.worker.id);
+  return {
+    workerId: id,
+    fullName: b.worker.fullName,
+    companyName: b.companyName,
+    status: b.worker.status,
+    qrValue: `archova:badge:${id}`,
+    photoUrl: b.photo?.url ?? null,
+    emergencyContact: b.worker.emergencyContact,
+    credentials: b.credentials,
+    inductions: b.inductions.map((i) => ({
+      title: i.title,
+      completedAt: i.completedAt.toISOString(),
+      expiresOn: i.expiresOn,
+    })),
+  };
+}
+
+export function toWorkerClearanceDto(c: WorkerClearance): WorkerClearanceDto {
+  return {
+    workerId: encodeId('worker', c.worker.id),
+    fullName: c.worker.fullName,
+    kind: c.worker.kind,
+    companyName: c.companyName,
+    photoUrl: c.photo?.url ?? null,
+    siteId: c.siteId ? encodeId('workforceSite', c.siteId) : null,
+    localDate: c.localDate,
+    checkedAt: c.checkedAt.toISOString(),
+    result: c.result,
+    checks: c.checks,
+    flag: c.flag,
   };
 }

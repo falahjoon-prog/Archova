@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-
 import {
   DEFECT_ACTIONS,
   defectLabel,
+  isActiveDelegate,
   hasDefectLocation,
   uuidv7,
   type DefectAction,
@@ -17,6 +18,7 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
@@ -28,11 +30,11 @@ import {
   resolveTransition,
   type DefectViewer,
 } from '../domain/defect';
-import { defects, events } from '../infra/tables';
+import { defects, events, warrantyItems } from '../infra/tables';
 
 export type DefectRow = typeof defects.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
-export type DefectView = DefectRow & { isOverdue: boolean };
+export type DefectView = DefectRow & { isOverdue: boolean; localToday: string };
 
 export interface DefectsDeps {
   access: AccessService;
@@ -51,8 +53,24 @@ export interface DefectFields {
   stage?: DefectStage;
   assigneeCompanyId?: string | null;
   assigneeUserId?: string | null;
+  /** All assignees (people in the assigned company). When given it wins over `assigneeUserId`. */
+  assigneeUserIds?: string[];
+  /** Punch Item Manager: runs the item on the builder's side. */
+  managerUserId?: string | null;
+  /** Final Approver: the one person who closes, rejects or reopens it. */
+  finalApproverUserId?: string | null;
+  /** Notified of changes but not assigned. */
+  distributionUserIds?: string[];
+  /** A stand-in for the final approver between two project-local dates (inclusive). */
+  approverDelegateUserId?: string | null;
+  approverDelegateFrom?: string | null;
+  approverDelegateUntil?: string | null;
+  /** Closing needs a note or photo as evidence. */
+  requireCloseEvidence?: boolean;
   dueDate?: string | null;
   pin?: { drawingRevisionId: string; x: number; y: number };
+  /** The warranty item a liability-period claim is against; null clears it. */
+  warrantyItemId?: string | null;
 }
 
 export interface TransitionInput {
@@ -84,6 +102,7 @@ export function createDefectService(deps: DefectsDeps) {
 
   const view = (r: DefectRow, localToday: string): DefectView => ({
     ...r,
+    localToday,
     isOverdue:
       (r.status === 'open' || r.status === 'disputed') &&
       r.dueDate !== null &&
@@ -98,8 +117,10 @@ export function createDefectService(deps: DefectsDeps) {
       ? sql`(${defects.createdBy} = ${v.userId} or ${defects.raisedByCompanyId} = ${company})`
       : sql`${defects.createdBy} = ${v.userId}`;
     const assigned = company ? sql`${defects.assigneeCompanyId} = ${company}` : sql`false`;
+    const named = sql`(${defects.managerUserId} = ${v.userId} or ${defects.finalApproverUserId} = ${v.userId} or ${defects.approverDelegateUserId} = ${v.userId}
+             or ${v.userId}::uuid = any(${defects.assigneeUserIds}) or ${v.userId}::uuid = any(${defects.distributionUserIds}))`;
     return sql`((${defects.status} = 'draft' and ${defects.createdBy} = ${v.userId})
-             or (${defects.status} <> 'draft' and (${raised} or ${assigned})))`;
+             or (${defects.status} <> 'draft' and (${raised} or ${assigned} or ${named})))`;
   }
 
   async function list(
@@ -113,6 +134,7 @@ export function createDefectService(deps: DefectsDeps) {
       trade?: string;
       overdue?: boolean;
       drawingRevisionId?: string;
+      warrantyItemId?: string;
       q?: string;
       limit: number;
       cursor?: string;
@@ -132,6 +154,7 @@ export function createDefectService(deps: DefectsDeps) {
     if (opts.trade) conditions.push(eq(defects.trade, opts.trade));
     if (opts.drawingRevisionId)
       conditions.push(eq(defects.drawingRevisionId, opts.drawingRevisionId));
+    if (opts.warrantyItemId) conditions.push(eq(defects.warrantyItemId, opts.warrantyItemId));
     const late = sql`${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date`;
     if (opts.overdue === true) conditions.push(late);
     if (opts.overdue === false) conditions.push(sql`not coalesce(${late}, false)`);
@@ -229,6 +252,15 @@ export function createDefectService(deps: DefectsDeps) {
       );
   }
 
+  /** A named role holder (manager, approver, distribution member) must be on the project, any company. */
+  async function checkMember(scope: TenantScope, projectId: string, userId: string, path: string) {
+    const m = await deps.platform.getProjectMembership(scope, projectId, userId);
+    if (!m)
+      throw new AppError('defect.assignee_not_on_project', 'The person must be on the project.', [
+        { path, message: 'Not a member of the project' },
+      ]);
+  }
+
   /** Resolves a drawing pin to its revision and sheet; a draft revision is not a place yet. */
   async function resolvePin(
     scope: TenantScope,
@@ -253,7 +285,13 @@ export function createDefectService(deps: DefectsDeps) {
   async function recordEvent(
     scope: TenantScope,
     row: DefectRow,
-    e: { action: string; from: DefectStatus | null; note?: string | null; fileIds?: string[] },
+    e: {
+      action: string;
+      from: DefectStatus | null;
+      note?: string | null;
+      fileIds?: string[];
+      onBehalfOf?: string | null;
+    },
   ) {
     await scope.tx.insert(events).values({
       id: uuidv7(),
@@ -266,8 +304,22 @@ export function createDefectService(deps: DefectsDeps) {
       note: e.note ?? null,
       fileIds: e.fileIds ?? [],
       actorId: scope.ctx.userId,
+      onBehalfOf: e.onBehalfOf ?? null,
       at: now(),
     });
+  }
+
+  /** Everyone named on the item except the actor: manager, approver, assignees and the distribution list. */
+  function notifyList(r: DefectRow, actorId: string): string[] {
+    const all = new Set<string>([
+      ...(r.managerUserId ? [r.managerUserId] : []),
+      ...(r.finalApproverUserId ? [r.finalApproverUserId] : []),
+      ...(r.approverDelegateUserId ? [r.approverDelegateUserId] : []),
+      ...r.assigneeUserIds,
+      ...r.distributionUserIds,
+    ]);
+    all.delete(actorId);
+    return [...all];
   }
 
   async function changed(scope: TenantScope, r: DefectRow) {
@@ -299,11 +351,81 @@ export function createDefectService(deps: DefectsDeps) {
       if (f.assigneeCompanyId) await checkAssigneeCompany(scope, projectId, f.assigneeCompanyId);
       v.assigneeCompanyId = f.assigneeCompanyId;
       // A new company drops the old company's person unless the caller names one.
-      if (f.assigneeUserId === undefined) v.assigneeUserId = null;
+      if (f.assigneeUserId === undefined && f.assigneeUserIds === undefined) {
+        v.assigneeUserId = null;
+        v.assigneeUserIds = [];
+      }
     }
-    if (f.assigneeUserId !== undefined) v.assigneeUserId = f.assigneeUserId;
+    // `assigneeUserId` is the first of `assigneeUserIds`; the two are always written together.
+    if (f.assigneeUserIds !== undefined) {
+      v.assigneeUserIds = [...new Set(f.assigneeUserIds)];
+      v.assigneeUserId = v.assigneeUserIds[0] ?? null;
+    } else if (f.assigneeUserId !== undefined) {
+      v.assigneeUserId = f.assigneeUserId;
+      v.assigneeUserIds = f.assigneeUserId ? [f.assigneeUserId] : [];
+    }
+    if (f.managerUserId !== undefined) {
+      if (f.managerUserId) await checkMember(scope, projectId, f.managerUserId, 'managerUserId');
+      v.managerUserId = f.managerUserId;
+    }
+    if (f.finalApproverUserId !== undefined) {
+      if (f.finalApproverUserId)
+        await checkMember(scope, projectId, f.finalApproverUserId, 'finalApproverUserId');
+      v.finalApproverUserId = f.finalApproverUserId;
+    }
+    if (f.approverDelegateUserId !== undefined) {
+      if (f.approverDelegateUserId)
+        await checkMember(scope, projectId, f.approverDelegateUserId, 'approverDelegateUserId');
+      v.approverDelegateUserId = f.approverDelegateUserId;
+      // Clearing the stand-in clears their dates unless the caller sends new ones.
+      if (!f.approverDelegateUserId) {
+        v.approverDelegateFrom = f.approverDelegateFrom ?? null;
+        v.approverDelegateUntil = f.approverDelegateUntil ?? null;
+      }
+    }
+    if (f.approverDelegateUserId !== null) {
+      if (f.approverDelegateFrom !== undefined) v.approverDelegateFrom = f.approverDelegateFrom;
+      if (f.approverDelegateUntil !== undefined) v.approverDelegateUntil = f.approverDelegateUntil;
+    }
+    if (f.requireCloseEvidence !== undefined) v.requireCloseEvidence = f.requireCloseEvidence;
+    if (f.distributionUserIds !== undefined) {
+      const ids = [...new Set(f.distributionUserIds)];
+      for (const [i, id] of ids.entries())
+        await checkMember(scope, projectId, id, `distributionUserIds/${i}`);
+      v.distributionUserIds = ids;
+    }
     if (f.pin) Object.assign(v, await resolvePin(scope, projectId, f.pin));
+    if (f.warrantyItemId !== undefined) {
+      if (f.warrantyItemId) {
+        const [item] = await scope.tx
+          .select({ id: warrantyItems.id })
+          .from(warrantyItems)
+          .where(
+            and(
+              eq(warrantyItems.id, f.warrantyItemId),
+              eq(warrantyItems.projectId, projectId),
+              isNull(warrantyItems.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (!item)
+          throw new AppError(
+            'warranty.item_not_on_project',
+            'Pick a warranty item on this project.',
+            [{ path: 'warrantyItemId', message: 'Not a warranty item on the project' }],
+          );
+      }
+      v.warrantyItemId = f.warrantyItemId;
+    }
     return v;
+  }
+
+  /** The stand-in's dates must run forwards. */
+  function checkDelegateDates(from: string | null | undefined, until: string | null | undefined) {
+    if (from && until && from > until)
+      throw new AppError('validation_failed', 'The stand-in dates must run forwards.', [
+        { path: 'approverDelegateUntil', message: 'Must be on or after the start date' },
+      ]);
   }
 
   async function create(
@@ -314,17 +436,13 @@ export function createDefectService(deps: DefectsDeps) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
     const values = await fieldValues(scope, projectId, input);
+    checkDelegateDates(values.approverDelegateFrom, values.approverDelegateUntil);
     if (!hasDefectLocation({ sheetId: values.sheetId, pinX: values.pinX, pinY: values.pinY }))
       throw new AppError('defect.location_required', 'Pin the defect on a drawing.', [
         { path: 'pin', message: 'A drawing pin is required' },
       ]);
-    if (values.assigneeUserId)
-      await checkAssigneeUser(
-        scope,
-        projectId,
-        values.assigneeUserId,
-        values.assigneeCompanyId ?? null,
-      );
+    for (const u of values.assigneeUserIds ?? [])
+      await checkAssigneeUser(scope, projectId, u, values.assigneeCompanyId ?? null);
     // A phone raising a defect offline picked its id already; the same id is what it pulls back.
     const id = input.id ?? uuidv7();
     const number = await nextNumber(scope, projectId, 'defect');
@@ -385,10 +503,16 @@ export function createDefectService(deps: DefectsDeps) {
       throw new AppError('access.denied', "You can't change this defect.");
     if (defect.version !== expectedVersion) throw versionConflict();
     const values = await fieldValues(scope, projectId, patch);
+    checkDelegateDates(
+      'approverDelegateFrom' in values ? values.approverDelegateFrom : defect.approverDelegateFrom,
+      'approverDelegateUntil' in values
+        ? values.approverDelegateUntil
+        : defect.approverDelegateUntil,
+    );
     const company =
       'assigneeCompanyId' in values ? (values.assigneeCompanyId ?? null) : defect.assigneeCompanyId;
-    if (values.assigneeUserId)
-      await checkAssigneeUser(scope, projectId, values.assigneeUserId, company);
+    for (const u of values.assigneeUserIds ?? [])
+      await checkAssigneeUser(scope, projectId, u, company);
     // An issued defect always has a company to fix it.
     if (defect.status !== 'draft' && company === null)
       throw new AppError('defect.incomplete', 'An issued defect needs an assigned company.', [
@@ -419,6 +543,8 @@ export function createDefectService(deps: DefectsDeps) {
         ...(patch.assigneeCompanyId !== undefined
           ? { assigneeCompanyId: [defect.assigneeCompanyId, row.assigneeCompanyId] }
           : {}),
+        // Who to tell: the people on the item other than the one who changed it.
+        notify: notifyList(row, scope.ctx.userId),
       },
     });
     return detail(scope, projectId, defectId);
@@ -443,24 +569,34 @@ export function createDefectService(deps: DefectsDeps) {
     // Photos the phone attached one by one before this step (`attachPhoto`) count as its "after" evidence.
     const attachedAfter =
       input.action === 'markReadyForReview' ? await attachedPhotos(scope, defectId, 'after') : 0;
-    const result = resolveTransition(defect, v, {
-      action: input.action,
-      reason: input.reason ?? null,
-      photoCount: fileIds.length + attachedAfter,
-    });
+    const localToday = await today(scope, projectId);
+    const result = resolveTransition(
+      defect,
+      v,
+      {
+        action: input.action,
+        reason: input.reason ?? null,
+        photoCount: fileIds.length + attachedAfter,
+      },
+      localToday,
+    );
     if (!result.ok) {
       const messages: Record<typeof result.code, string> = {
         'defect.invalid_transition': `A defect that is ${defect.status} can't be ${verb(input.action)}.`,
-        'defect.not_allowed': `You can't ${input.action} this defect.`,
+        'defect.not_allowed':
+          defect.finalApproverUserId && ['close', 'reject', 'reopen'].includes(input.action)
+            ? 'Only the final approver can do that.'
+            : `You can't ${input.action} this defect.`,
         'defect.reason_required': 'Give a reason.',
         'defect.photo_required': 'Attach an "after" photo before marking it ready.',
+        'defect.evidence_required': 'Add a note or a photo as evidence before closing.',
       };
       throw new AppError(
         result.code,
         messages[result.code],
         result.code === 'defect.reason_required'
           ? [{ path: 'reason', message: 'Required' }]
-          : result.code === 'defect.photo_required'
+          : result.code === 'defect.photo_required' || result.code === 'defect.evidence_required'
             ? [{ path: 'fileIds', message: 'At least one photo is required' }]
             : undefined,
         { status: defect.status },
@@ -484,6 +620,11 @@ export function createDefectService(deps: DefectsDeps) {
       values.closedBy = scope.ctx.userId;
     }
     if (input.action === 'reject') values.readyForReviewAt = null;
+    if (input.action === 'reopen') {
+      values.readyForReviewAt = null;
+      values.closedAt = null;
+      values.closedBy = null;
+    }
     if (input.action === 'reassign') {
       if (!input.assigneeCompanyId)
         throw new AppError('validation_failed', 'Name the company that takes it now.', [
@@ -507,6 +648,14 @@ export function createDefectService(deps: DefectsDeps) {
         ? `${input.lateNote}${input.reason ? `. The sender wrote: ${input.reason}` : ''}`
         : (input.reason ?? null),
       fileIds,
+      // A stand-in acting for the named approver: the history says whose call it was.
+      onBehalfOf:
+        defect.finalApproverUserId &&
+        defect.finalApproverUserId !== scope.ctx.userId &&
+        ['close', 'reject', 'reopen'].includes(input.action) &&
+        isActiveDelegate(defect, scope.ctx.userId, localToday)
+          ? defect.finalApproverUserId
+          : null,
     });
     await changed(scope, row);
     scope.events.add({
@@ -520,6 +669,7 @@ export function createDefectService(deps: DefectsDeps) {
         from: defect.status,
         to: row.status,
         assigneeCompanyId: row.assigneeCompanyId,
+        notify: notifyList(row, scope.ctx.userId),
         photoCount: fileIds.length,
       },
     });
@@ -669,7 +819,7 @@ export function createDefectService(deps: DefectsDeps) {
   /** Portfolio dashboard (`reporting`): defects the caller can see that are still open, and those past their due date. */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const date = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -683,10 +833,16 @@ export function createDefectService(deps: DefectsDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${defects.status} in ('open', 'disputed') and ${defects.dueDate} >= ${date}::date and ${defects.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(defects)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): defects the caller can see, one flat row each. `state` open = not yet closed. */
@@ -800,7 +956,38 @@ export function createDefectService(deps: DefectsDeps) {
     return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
   }
 
+  /** Global search (`search`): the defects the caller can see that match the words, newest first. */
+  /** Related items (`links`): headline details of the defects among `ids` the caller may see. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return [];
+    const { rows } = await visibleAmong(scope, projectId, ids);
+    return rows.map((r) => ({
+      id: r.id,
+      ref: defectLabel(r.number),
+      title: r.title,
+      status: r.status as string,
+    }));
+  }
+
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
+    linkSummaries,
     list,
     create,
     detail,
@@ -834,6 +1021,8 @@ function verb(action: DefectAction): string {
       return 'reassigned';
     case 'void':
       return 'voided';
+    case 'reopen':
+      return 'reopened';
   }
 }
 

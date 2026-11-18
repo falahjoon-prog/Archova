@@ -10,8 +10,15 @@ import {
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-identity';
 import type { AccountDeletionService } from '../application/account-deletion';
+import {
+  DASHBOARD_WIDGETS,
+  type BrandingService,
+  type BrandingView,
+} from '../application/branding';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
+import type { CompanyContactService } from '../application/company-contacts';
+import type { LocationService } from '../application/locations';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
@@ -19,9 +26,11 @@ import {
   toCompanyDto,
   toKeyDateChangeDto,
   toKeyDatesDto,
+  toProjectLocationDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
+  toCompanyContactDto,
   toProjectMemberDto,
 } from './mappers';
 
@@ -46,10 +55,13 @@ export interface PlatformRouteDeps {
   database: Database;
   identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
+  branding: BrandingService;
   projects: ProjectService;
   keyDates: KeyDateService;
+  locations: LocationService;
   companies: CompanyService;
   members: MemberService;
+  companyContacts: CompanyContactService;
   accountDeletion: AccountDeletionService;
 }
 
@@ -68,12 +80,27 @@ const projectUuid = (id: string) => {
   return uuid;
 };
 
+const locationUuid = (id: string) => {
+  const uuid = decodeId('projectLocation', id);
+  if (!uuid) throw new AppError('project_location.not_found');
+  return uuid;
+};
+
 const decodeRef = (kind: 'company' | 'permissionTemplate', id: string) => {
   const uuid = decodeId(kind, id);
   if (!uuid)
     throw new AppError(kind === 'company' ? 'company.not_found' : 'permission_template.not_found');
   return uuid;
 };
+
+const toBrandingDto = (b: BrandingView) => ({
+  logoFileId: b.logoFileId ? encodeId('file', b.logoFileId) : null,
+  accentColor: b.accentColor,
+  dashboardWidgets: b.dashboardWidgets,
+  dashboardLayout: b.dashboardLayout,
+  availableWidgets: DASHBOARD_WIDGETS.map((w) => ({ ...w })),
+  version: b.version,
+});
 
 export function platformRoutes(d: PlatformRouteDeps) {
   const ro = { readOnly: true } as const;
@@ -126,6 +153,33 @@ export function platformRoutes(d: PlatformRouteDeps) {
     getOrg: async (input) => {
       const org = await d.database.withTenantTx(requireTenant(input), (s) => d.orgs.getOrg(s), ro);
       return { status: 200, body: toOrgDto(org), headers: { etag: etag(org.version) } };
+    },
+    getOrgBranding: async (input) => {
+      const t = requireTenant(input);
+      if (t.principalType !== 'member') throw new AppError('access.denied');
+      const b = await d.database.withTenantTx(t, (s) => d.branding.get(s), ro);
+      return { status: 200, body: toBrandingDto(b) };
+    },
+    updateOrgBranding: async (input) => {
+      const t = requireOrgAdmin(input);
+      const body = input.body;
+      const logo = body.logoFileId === undefined ? undefined : body.logoFileId;
+      const logoUuid = logo ? decodeId('file', logo) : logo;
+      if (logo && !logoUuid)
+        throw new AppError('validation_failed', 'Upload a logo first.', [
+          { path: 'logoFileId', message: 'Not a file' },
+        ]);
+      const b = await d.database.withTenantTx(t, (s) =>
+        d.branding.update(s, {
+          ...(logoUuid !== undefined ? { logoFileId: logoUuid } : {}),
+          ...(body.accentColor !== undefined ? { accentColor: body.accentColor } : {}),
+          ...(body.dashboardWidgets !== undefined
+            ? { dashboardWidgets: body.dashboardWidgets }
+            : {}),
+          ...(body.dashboardLayout !== undefined ? { dashboardLayout: body.dashboardLayout } : {}),
+        }),
+      );
+      return { status: 200, body: toBrandingDto(b) };
     },
     getSupportAccess: async (input) => {
       const t = requireOrgAdmin(input);
@@ -239,11 +293,58 @@ export function platformRoutes(d: PlatformRouteDeps) {
       const names = new Map([...users].map(([uid, u]) => [uid, u.name]));
       return { status: 200, body: { data: rows.map((r) => toKeyDateChangeDto(r, names)) } };
     },
+    listProjectLocations: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.locations.list(s, id),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toProjectLocationDto) } };
+    },
+    createProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.create(s, id, input.body),
+      );
+      return {
+        status: 201,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    updateProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.update(s, id, locationId, expected, input.body),
+      );
+      return {
+        status: 200,
+        body: toProjectLocationDto(row),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    deleteProjectLocation: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const locationId = locationUuid(input.params.locationId);
+      await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.locations.remove(s, id, locationId),
+      );
+      return { status: 204 };
+    },
     listProjectMembers: async (input) => {
       const id = projectUuid(input.params.projectId);
       const page = await d.database.withTenantTx(
         requireTenant(input),
-        (s) => d.members.list(s, id, input.query),
+        (s) =>
+          d.members.list(s, id, {
+            ...input.query,
+            companyId: input.query.companyId
+              ? decodeRef('company', input.query.companyId)
+              : undefined,
+          }),
         ro,
       );
       return {
@@ -262,6 +363,15 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.members.add(s, id, body),
       );
       return { status: 201, body: toProjectMemberDto(row) };
+    },
+    updateProjectMember: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const memberId = decodeId('projectMember', input.params.memberId);
+      if (!memberId) throw new AppError('project_member.not_found');
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.members.update(s, id, memberId, input.body),
+      );
+      return { status: 200, body: toProjectMemberDto(row) };
     },
     removeProjectMember: async (input) => {
       const id = projectUuid(input.params.projectId);
@@ -282,6 +392,46 @@ export function platformRoutes(d: PlatformRouteDeps) {
         status: 200,
         body: { data: page.data.map(toCompanyDto), nextCursor: page.nextCursor },
       };
+    },
+    listCompanyContacts: async (input) => {
+      const page = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) =>
+          d.companyContacts.list(s, {
+            ...input.query,
+            companyId: input.query.companyId
+              ? decodeRef('company', input.query.companyId)
+              : undefined,
+          }),
+        ro,
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toCompanyContactDto), nextCursor: page.nextCursor },
+      };
+    },
+    createCompanyContact: async (input) => {
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.companyContacts.create(s, {
+          ...input.body,
+          companyId: decodeRef('company', input.body.companyId),
+        }),
+      );
+      return { status: 201, body: toCompanyContactDto(row) };
+    },
+    updateCompanyContact: async (input) => {
+      const id = decodeId('companyContact', input.params.contactId);
+      if (!id) throw new AppError('company_contact.not_found');
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.companyContacts.update(s, id, input.body),
+      );
+      return { status: 200, body: toCompanyContactDto(row) };
+    },
+    deleteCompanyContact: async (input) => {
+      const id = decodeId('companyContact', input.params.contactId);
+      if (!id) throw new AppError('company_contact.not_found');
+      await d.database.withTenantTx(requireTenant(input), (s) => d.companyContacts.remove(s, id));
+      return { status: 204 };
     },
     createCompany: async (input) => {
       const row = await d.database.withTenantTx(requireTenant(input), (s) =>

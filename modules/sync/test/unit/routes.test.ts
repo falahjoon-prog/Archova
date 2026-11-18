@@ -12,6 +12,7 @@ describe('sync routes', () => {
     });
     expect(Object.keys(routes).sort()).toEqual([
       'acceptLateSubmission',
+      'endDrainGrants',
       'listLateSubmissions',
       'rejectLateSubmission',
       'syncPull',

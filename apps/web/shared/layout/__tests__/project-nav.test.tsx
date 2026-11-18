@@ -49,3 +49,60 @@ describe('ProjectNav groups', () => {
     );
   });
 });
+
+describe('ProjectNav favourites', () => {
+  const withHome: ProjectNavGroup[] = [
+    { items: [{ href: '/p', label: 'Project home', icon: DocumentsIcon, exact: true }] },
+    ...groups,
+  ];
+  beforeEach(() => window.localStorage.clear());
+
+  it('stars a tool, pins it in a Starred group and remembers it per user', () => {
+    const { unmount } = render(
+      <ProjectNav projectName="P" groups={withHome} favouritesScope="u1" />,
+    );
+    expect(screen.queryByRole('button', { name: 'Star Project home' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Star RFIs' }));
+    expect(screen.getByText('Starred')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unstar RFIs' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    // Pinned, not duplicated.
+    expect(screen.getAllByRole('link', { name: /RFIs/ })).toHaveLength(1);
+    unmount();
+    render(<ProjectNav projectName="P" groups={withHome} favouritesScope="u1" />);
+    expect(screen.getByText('Starred')).toBeTruthy();
+    unmount();
+  });
+
+  it('shows no stars without a user', () => {
+    render(<ProjectNav projectName="P" groups={withHome} />);
+    expect(screen.queryByRole('button', { name: /^Star / })).toBeNull();
+  });
+});
+
+describe('ProjectNav quick-add', () => {
+  it('shows a plus link to the create form for tools that have one', () => {
+    render(
+      <ProjectNav
+        projectName="P"
+        groups={[
+          {
+            items: [
+              {
+                href: '/p/rfis',
+                label: 'RFIs',
+                icon: RfisIcon,
+                createHref: '/p/rfis/new',
+                createLabel: 'New RFI',
+              },
+              { href: '/p/drawings', label: 'Drawings', icon: DrawingsIcon },
+            ],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'New RFI' }).getAttribute('href')).toBe('/p/rfis/new');
+    expect(screen.queryByRole('link', { name: /^New Drawings/ })).toBeNull();
+  });
+});
