@@ -182,6 +182,13 @@ export function defectsRoutes(database: Database, defects: DefectService) {
         ),
       );
     },
+    completeDefectPart: async (input) =>
+      ok(
+        200,
+        await tx(input, (s) =>
+          defects.completePart(s, project(input.params), defectId(input.params)),
+        ),
+      ),
     transitionDefect: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       const b = input.body;
