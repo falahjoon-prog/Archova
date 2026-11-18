@@ -1,4 +1,4 @@
--- Composed from modules/documents/db/migrations/20261107090000_documents_tracking_recycle_bin.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/documents/db/migrations/20261118080000_documents_tracking_recycle_bin.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- documents: tracked documents ("Items You Are Tracking") and who moved a document to the recycle bin.
 -- `deleted_at` already exists; the bin lists documents where it is set, restore clears it.
 
