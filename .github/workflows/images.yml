@@ -41,6 +41,7 @@ jobs:
       id-token: write
     strategy:
       fail-fast: false
+      max-parallel: 2 # the self-hosted PC has limited RAM
       matrix:
         target: [api, web, worker, ai-worker, migrate]
     env:
@@ -48,8 +49,10 @@ jobs:
       TAG: ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}', github.event.number, github.event.pull_request.head.sha) || github.sha }}
     steps:
       - uses: actions/checkout@v4
+      # Emulated arm64 builds only when the image is really pushed (AWS Graviton); otherwise build natively so four
+      # self-hosted runners are not each running a 20+ minute QEMU build on one PC.
       - uses: docker/setup-qemu-action@v3
-        if: runner.arch != 'ARM64'
+        if: env.PUSH == 'true' && runner.arch != 'ARM64'
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
@@ -58,7 +61,7 @@ jobs:
         with:
           context: .
           target: ${{ matrix.target }}
-          platforms: linux/arm64
+          platforms: ${{ env.PUSH == 'true' && 'linux/arm64' || (runner.arch == 'ARM64' && 'linux/arm64' || 'linux/amd64') }}
           load: true
           tags: archova/${{ matrix.target }}:${{ env.TAG }}
           cache-from: type=gha,scope=${{ matrix.target }}
