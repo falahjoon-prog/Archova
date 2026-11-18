@@ -2,14 +2,40 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { encodeId, uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, recordRetentionBatch, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
+import type { PlatformApi } from '@archova/mod-platform';
+import { localDateOf } from '@archova/time';
 import { fromCents, toCents } from '../domain/money';
-import { budgetLines, commitmentLines, commitments } from '../infra/tables';
+import {
+  summariseInvoices,
+  type InvoiceClaimInput,
+  type InvoiceSummary,
+} from '../domain/commitment-invoices';
+import {
+  buildPaymentApplication,
+  type ApplicationItemInfo,
+  type PaymentApplication,
+} from '../domain/payment-application';
+import { renderPaymentApplicationPdf, type PdfOptions } from '../domain/payment-application-pdf';
+import {
+  budgetLines,
+  commitmentLines,
+  commitments,
+  contracts,
+  costCodes,
+  paymentClaimLines,
+  paymentClaims,
+  paymentSchedules,
+  sovItems,
+  payments,
+  variations,
+} from '../infra/tables';
 
 export type CommitmentRow = typeof commitments.$inferSelect;
 export type CommitmentLineRow = typeof commitmentLines.$inferSelect;
 
 export interface CommitmentsDeps {
   access: AccessService;
+  platform: Pick<PlatformApi, 'getProject'>;
   now?: () => Date;
 }
 
@@ -154,6 +180,22 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
     return r ?? null;
   }
 
+  /** For `logistics`: the purchase orders on a project, so a delivery can name the order it fulfils. No permission check; the caller has its own. */
+  async function purchaseOrderRef(scope: TenantScope, projectId: string, id: string) {
+    const [r] = await scope.tx
+      .select({
+        id: commitments.id,
+        number: commitments.number,
+        title: commitments.title,
+        kind: commitments.kind,
+        vendorCompanyId: commitments.vendorCompanyId,
+      })
+      .from(commitments)
+      .where(and(eq(commitments.id, id), eq(commitments.projectId, projectId)))
+      .limit(1);
+    return r && r.kind === 'purchase_order' ? r : null;
+  }
+
   async function listCommitments(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.commitments.read', projectId);
     return scope.tx
@@ -271,24 +313,318 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
     return { commitment: updated, lines };
   }
 
-  /** For `logistics`: the purchase orders on a project, so a delivery can name the order it fulfils. No permission check; the caller has its own. */
-  async function purchaseOrderRef(scope: TenantScope, projectId: string, id: string) {
-    const [r] = await scope.tx
-      .select({
-        id: commitments.id,
-        number: commitments.number,
-        title: commitments.title,
-        kind: commitments.kind,
-        vendorCompanyId: commitments.vendorCompanyId,
-      })
-      .from(commitments)
-      .where(and(eq(commitments.id, id), eq(commitments.projectId, projectId)))
+  /**
+   * Link a subcontract commitment to the contract its payment claims are made on (or clear the link with `null`).
+   * The Invoices tab is a view over that contract's claims, so the contract must be a subcontract on the same
+   * project, not already linked elsewhere, and (when both name one) with the commitment's vendor as its payee.
+   */
+  async function linkContract(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    contractId: string | null,
+  ) {
+    await need(scope, 'financials.commitments.manage', projectId);
+    const c = await row(scope, projectId, id);
+    if (c.kind !== 'subcontract')
+      throw new AppError(
+        'financials.commitment.not_subcontract',
+        'Only a subcontract has payment claims.',
+      );
+    if (c.status === 'void' || c.status === 'rejected')
+      throw new AppError(
+        'financials.commitment.bad_state',
+        `A commitment that is ${c.status} can't be linked to a contract.`,
+      );
+    if (contractId) {
+      const [k] = await scope.tx
+        .select()
+        .from(contracts)
+        .where(and(eq(contracts.id, contractId), eq(contracts.projectId, projectId)))
+        .limit(1);
+      if (!k) throw new AppError('financials.contract.not_found');
+      if (k.kind !== 'subcontract')
+        throw new AppError(
+          'financials.commitment.contract_kind',
+          'Link a subcontract, not the head contract.',
+        );
+      if (c.vendorCompanyId && k.payeeCompanyId && c.vendorCompanyId !== k.payeeCompanyId)
+        throw new AppError(
+          'financials.commitment.contract_company',
+          "The contract's payee is not this commitment's vendor.",
+        );
+      const [taken] = await scope.tx
+        .select({ id: commitments.id })
+        .from(commitments)
+        .where(eq(commitments.contractId, contractId))
+        .limit(1);
+      if (taken && taken.id !== id)
+        throw new AppError(
+          'financials.commitment.contract_taken',
+          'That contract is already linked to another commitment.',
+        );
+    }
+    const [updated] = await scope.tx
+      .update(commitments)
+      .set({ contractId, version: c.version + 1 })
+      .where(and(eq(commitments.id, id), eq(commitments.version, c.version)))
+      .returning();
+    if (!updated)
+      throw new AppError('conflict', 'This commitment just changed. Reload and try again.');
+    scope.events.add({
+      type: 'financials.commitment.contract_linked.v1',
+      projectId,
+      entityType: 'commitment',
+      entityId: id,
+      entityVersion: updated.version,
+      data: { commitmentId: id, contractId },
+    });
+    return { commitment: updated, lines: await linesOf(scope, id) };
+  }
+
+  /**
+   * The Invoices tab: the linked contract's claims with the contract sum, retainage, payments and what is left.
+   * Builder staff holding both commitments.read and claims.read. `linked: false` when no contract is linked yet.
+   */
+  async function invoicesFor(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+  ): Promise<{ linked: boolean; contractId: string | null; summary: InvoiceSummary | null }> {
+    await need(scope, 'financials.commitments.read', projectId);
+    await need(scope, 'financials.claims.read', projectId);
+    const c = await row(scope, projectId, id);
+    if (!c.contractId) return { linked: false, contractId: null, summary: null };
+    const [k] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, c.contractId))
       .limit(1);
-    return r && r.kind === 'purchase_order' ? r : null;
+    if (!k) return { linked: false, contractId: null, summary: null };
+    const claimRows = await scope.tx
+      .select()
+      .from(paymentClaims)
+      .where(eq(paymentClaims.contractId, k.id))
+      .orderBy(asc(paymentClaims.number));
+    const claimIds = claimRows.map((r) => r.id);
+    const schedules = claimIds.length
+      ? await scope.tx
+          .select({ claimId: paymentSchedules.claimId, amount: paymentSchedules.scheduledAmount })
+          .from(paymentSchedules)
+          .where(inArray(paymentSchedules.claimId, claimIds))
+      : [];
+    const paidRows = claimIds.length
+      ? await scope.tx
+          .select({
+            claimId: payments.claimId,
+            paid: sql<string>`coalesce(sum(${payments.amount}), 0)`,
+          })
+          .from(payments)
+          .where(inArray(payments.claimId, claimIds))
+          .groupBy(payments.claimId)
+      : [];
+    const approved = await scope.tx
+      .select({ amount: variations.amount })
+      .from(variations)
+      .where(and(eq(variations.contractId, k.id), eq(variations.status, 'approved')));
+    const sched = new Map(schedules.map((s) => [s.claimId, s.amount]));
+    const paid = new Map(paidRows.map((p) => [p.claimId, p.paid]));
+    const claims: InvoiceClaimInput[] = claimRows.map((r) => ({
+      id: r.id,
+      number: r.number,
+      periodEnd: r.periodEnd,
+      receivedAt: r.receivedAt,
+      status: r.status,
+      claimedGross: r.claimedGross,
+      lessPrevious: r.lessPrevious,
+      retention: r.retention,
+      claimedNet: r.claimedNet,
+      scheduledAmount: sched.get(r.id) ?? null,
+      paid: fromCents(toCents(paid.get(r.id) ?? '0')),
+      paymentDueOn: r.paymentDueOn,
+    }));
+    return {
+      linked: true,
+      contractId: k.id,
+      summary: summariseInvoices({
+        originalValue: k.originalValue,
+        approvedVariations: approved.map((a) => a.amount),
+        claims,
+      }),
+    };
+  }
+
+  /**
+   * One invoice (payment claim) as a payment application: schedule-of-values breakdown, totals and Nova's proofread
+   * (code, not a model). Same rules as the Invoices tab, and the claim must be on the commitment's linked contract.
+   */
+  async function invoiceDetail(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    claimId: string,
+  ): Promise<{ application: PaymentApplication; commitmentTitle: string }> {
+    await need(scope, 'financials.commitments.read', projectId);
+    await need(scope, 'financials.claims.read', projectId);
+    const c = await row(scope, projectId, id);
+    const notFound = () => new AppError('financials.claim.not_found');
+    if (!c.contractId) throw notFound();
+    const [claim] = await scope.tx
+      .select()
+      .from(paymentClaims)
+      .where(
+        and(
+          eq(paymentClaims.id, claimId),
+          eq(paymentClaims.contractId, c.contractId),
+          eq(paymentClaims.projectId, projectId),
+        ),
+      )
+      .limit(1);
+    if (!claim) throw notFound();
+    const [k] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, c.contractId))
+      .limit(1);
+    if (!k) throw notFound();
+    const lines = await scope.tx
+      .select()
+      .from(paymentClaimLines)
+      .where(eq(paymentClaimLines.claimId, claimId));
+    const [priorClaim] = await scope.tx
+      .select()
+      .from(paymentClaims)
+      .where(
+        and(
+          eq(paymentClaims.contractId, k.id),
+          sql`${paymentClaims.number} < ${claim.number}`,
+          sql`${paymentClaims.status} <> 'withdrawn'`,
+        ),
+      )
+      .orderBy(desc(paymentClaims.number))
+      .limit(1);
+    const priorLines = priorClaim
+      ? await scope.tx
+          .select()
+          .from(paymentClaimLines)
+          .where(eq(paymentClaimLines.claimId, priorClaim.id))
+      : [];
+    const sov = await scope.tx.select().from(sovItems).where(eq(sovItems.contractId, k.id));
+    const vars = await scope.tx.select().from(variations).where(eq(variations.contractId, k.id));
+    const items = new Map<string, ApplicationItemInfo>();
+    const codeIds = sov.flatMap((i) => (i.costCodeId ? [i.costCodeId] : []));
+    const codes = codeIds.length
+      ? await scope.tx
+          .select({ id: costCodes.id, code: costCodes.code })
+          .from(costCodes)
+          .where(inArray(costCodes.id, codeIds))
+      : [];
+    const codeOf = new Map(codes.map((c) => [c.id, c.code]));
+    for (const i of sov)
+      items.set(i.id, {
+        code: i.code,
+        description: i.description,
+        value: i.value,
+        kind: 'sov',
+        costCode: i.costCodeId ? (codeOf.get(i.costCodeId) ?? null) : null,
+      });
+    for (const v of vars)
+      items.set(v.id, {
+        code: `V${v.number}`,
+        description: v.title,
+        value: v.amount,
+        kind: 'variation',
+      });
+    const [sched] = await scope.tx
+      .select({ amount: paymentSchedules.scheduledAmount })
+      .from(paymentSchedules)
+      .where(eq(paymentSchedules.claimId, claimId))
+      .limit(1);
+    const [paidRow] = await scope.tx
+      .select({ paid: sql<string>`coalesce(sum(${payments.amount}), 0)` })
+      .from(payments)
+      .where(eq(payments.claimId, claimId));
+    const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
+    const application = buildPaymentApplication({
+      contract: {
+        number: k.number,
+        title: k.title,
+        retentionPct: k.retentionPct,
+        retentionCapPct: k.retentionCapPct,
+        originalValue: k.originalValue,
+      },
+      items,
+      approvedVariations: vars
+        .filter((v) => v.status === 'approved')
+        .map((v) => ({
+          amount: v.amount,
+          decidedOn: v.decidedAt ? v.decidedAt.toISOString().slice(0, 10) : null,
+        })),
+      claim: {
+        id: claim.id,
+        number: claim.number,
+        periodEnd: claim.periodEnd,
+        receivedAt: claim.receivedAt,
+        status: claim.status,
+        claimedGross: claim.claimedGross,
+        lessPrevious: claim.lessPrevious,
+        retention: claim.retention,
+        claimedNet: claim.claimedNet,
+        gst: claim.gst,
+        claimedTotal: claim.claimedTotal,
+        paymentDueOn: claim.paymentDueOn,
+        scheduleDueOn: claim.scheduleDueOn,
+        scheduledAmount: sched?.amount ?? null,
+        paid: fromCents(toCents(paidRow?.paid ?? '0')),
+      },
+      lines: lines.map((l) => ({
+        sovItemId: l.sovItemId,
+        variationId: l.variationId,
+        previous: l.previous,
+        thisClaim: l.thisClaim,
+        toDate: l.toDate,
+      })),
+      prior: priorClaim
+        ? {
+            number: priorClaim.number,
+            periodEnd: priorClaim.periodEnd,
+            claimedGross: priorClaim.claimedGross,
+            lessPrevious: priorClaim.lessPrevious,
+            lines: priorLines.map((l) => ({
+              sovItemId: l.sovItemId,
+              variationId: l.variationId,
+              toDate: l.toDate,
+            })),
+          }
+        : null,
+      today,
+    });
+    return { application, commitmentTitle: c.title };
+  }
+
+  /** The payment application as a PDF, with the sections, columns, paper and notes the person chose. */
+  async function invoicePdf(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    claimId: string,
+    options: PdfOptions,
+  ) {
+    const { application, commitmentTitle } = await invoiceDetail(scope, projectId, id, claimId);
+    const bytes = await renderPaymentApplicationPdf(application, options, { commitmentTitle });
+    return {
+      filename: `payment-application-${application.claimNumber}.pdf`,
+      contentType: 'application/pdf' as const,
+      dataBase64: Buffer.from(bytes).toString('base64'),
+    };
   }
 
   return {
     purchaseOrderRef,
+    linkContract,
+    invoicesFor,
+    invoiceDetail,
+    invoicePdf,
     createCommitment,
     commitmentForQuote,
     listCommitments,

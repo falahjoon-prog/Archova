@@ -4,6 +4,7 @@ import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { AppError, defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createContractPlaybookService } from './application/contract-playbook';
 import { createContractReviewService } from './application/contract-review';
+import { createContractSovService } from './application/contract-sov';
 import { createAdminService } from './application/admin';
 import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
@@ -469,6 +470,12 @@ export function createAiModule(
     readFile: deps.readFile,
     orgTimeZone: deps.orgTimeZone,
   });
+  const contractSov = createContractSovService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const quoteNegotiations = createQuoteNegotiateService({
     database: services.database,
     gateway,
@@ -566,6 +573,7 @@ export function createAiModule(
       budgetReviews,
       contractPlaybooks,
       contractReviews,
+      contractSov,
       speech,
       takeoffDetect,
       minutesExtract,

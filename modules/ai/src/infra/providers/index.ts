@@ -21,6 +21,7 @@ import { heuristicLaborProductivity } from '../../eval/suites/labor-productivity
 import { heuristicAnnouncementDraft } from '../../eval/suites/announcement-draft';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
 import { heuristicContractAsk } from '../../eval/suites/contract-ask';
+import { heuristicContractSov } from '../../eval/suites/contract-sov';
 import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
@@ -71,6 +72,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'contract.review': heuristicContractReview,
   'contract.ask': heuristicContractAsk,
   'contract.compare': heuristicContractCompare,
+  'contract.sov': heuristicContractSov,
   'takeoff.detect': heuristicTakeoffDetect,
 };
 

@@ -17,6 +17,7 @@ import {
 } from '../application/branding';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
+import type { CompanyContactService } from '../application/company-contacts';
 import type { LocationService } from '../application/locations';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
@@ -29,6 +30,7 @@ import {
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
+  toCompanyContactDto,
   toProjectMemberDto,
 } from './mappers';
 
@@ -59,6 +61,7 @@ export interface PlatformRouteDeps {
   locations: LocationService;
   companies: CompanyService;
   members: MemberService;
+  companyContacts: CompanyContactService;
   accountDeletion: AccountDeletionService;
 }
 
@@ -335,7 +338,13 @@ export function platformRoutes(d: PlatformRouteDeps) {
       const id = projectUuid(input.params.projectId);
       const page = await d.database.withTenantTx(
         requireTenant(input),
-        (s) => d.members.list(s, id, input.query),
+        (s) =>
+          d.members.list(s, id, {
+            ...input.query,
+            companyId: input.query.companyId
+              ? decodeRef('company', input.query.companyId)
+              : undefined,
+          }),
         ro,
       );
       return {
@@ -354,6 +363,15 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.members.add(s, id, body),
       );
       return { status: 201, body: toProjectMemberDto(row) };
+    },
+    updateProjectMember: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const memberId = decodeId('projectMember', input.params.memberId);
+      if (!memberId) throw new AppError('project_member.not_found');
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.members.update(s, id, memberId, input.body),
+      );
+      return { status: 200, body: toProjectMemberDto(row) };
     },
     removeProjectMember: async (input) => {
       const id = projectUuid(input.params.projectId);
@@ -374,6 +392,46 @@ export function platformRoutes(d: PlatformRouteDeps) {
         status: 200,
         body: { data: page.data.map(toCompanyDto), nextCursor: page.nextCursor },
       };
+    },
+    listCompanyContacts: async (input) => {
+      const page = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) =>
+          d.companyContacts.list(s, {
+            ...input.query,
+            companyId: input.query.companyId
+              ? decodeRef('company', input.query.companyId)
+              : undefined,
+          }),
+        ro,
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toCompanyContactDto), nextCursor: page.nextCursor },
+      };
+    },
+    createCompanyContact: async (input) => {
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.companyContacts.create(s, {
+          ...input.body,
+          companyId: decodeRef('company', input.body.companyId),
+        }),
+      );
+      return { status: 201, body: toCompanyContactDto(row) };
+    },
+    updateCompanyContact: async (input) => {
+      const id = decodeId('companyContact', input.params.contactId);
+      if (!id) throw new AppError('company_contact.not_found');
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.companyContacts.update(s, id, input.body),
+      );
+      return { status: 200, body: toCompanyContactDto(row) };
+    },
+    deleteCompanyContact: async (input) => {
+      const id = decodeId('companyContact', input.params.contactId);
+      if (!id) throw new AppError('company_contact.not_found');
+      await d.database.withTenantTx(requireTenant(input), (s) => d.companyContacts.remove(s, id));
+      return { status: 204 };
     },
     createCompany: async (input) => {
       const row = await d.database.withTenantTx(requireTenant(input), (s) =>

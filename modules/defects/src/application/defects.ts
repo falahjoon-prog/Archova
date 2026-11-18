@@ -22,7 +22,7 @@ import {
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import { createNotifications } from '@archova/mod-notifications';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
@@ -41,7 +41,7 @@ export interface DefectsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   now?: () => Date;
 }
 
@@ -273,13 +273,27 @@ export function createDefectService(deps: DefectsDeps) {
     return { drawingRevisionId: rev.id, sheetId: rev.sheetId, pinX: pin.x, pinY: pin.y };
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'punch_list', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -608,7 +622,7 @@ export function createDefectService(deps: DefectsDeps) {
       );
     }
     if (defect.version !== expectedVersion) throw versionConflict();
-    await checkFiles(scope, projectId, fileIds);
+    await checkFiles(scope, projectId, fileIds, { kind: 'defect', id: defectId });
 
     const at = now();
     const values: Partial<typeof defects.$inferInsert> = { status: result.to };
@@ -795,7 +809,7 @@ export function createDefectService(deps: DefectsDeps) {
       )
       .limit(1);
     if (have) return { version: defect.version };
-    await checkFiles(scope, projectId, [fileId]);
+    await checkFiles(scope, projectId, [fileId], { kind: 'defect', id: defectId });
     const [row] = await scope.tx.select().from(defects).where(eq(defects.id, defectId));
     await recordEvent(scope, row!, {
       action: 'photo',
@@ -1038,6 +1052,19 @@ export function createDefectService(deps: DefectsDeps) {
   }
 
   /** Global search (`search`): the defects the caller can see that match the words, newest first. */
+  /** Related items (`links`): headline details of the defects among `ids` the caller may see. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return [];
+    const { rows } = await visibleAmong(scope, projectId, ids);
+    return rows.map((r) => ({
+      id: r.id,
+      ref: defectLabel(r.number),
+      title: r.title,
+      status: r.status as string,
+    }));
+  }
+
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
       return { restricted: true, hits: [] as SearchHit[] };
@@ -1055,6 +1082,7 @@ export function createDefectService(deps: DefectsDeps) {
 
   return {
     searchHits,
+    linkSummaries,
     list,
     create,
     detail,
