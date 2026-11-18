@@ -20,10 +20,23 @@ export interface ProjectDocument {
   status: DocumentStatus;
   currentRev: string;
   currentRevisionId: string;
+  createdAt: string;
   updatedAt: string;
   /** Who added the current revision, when known by name. */
   updatedBy: string | null;
+  /** On the signed-in person's own "Items You Are Tracking" list. */
+  tracked: boolean;
+  /** Set on documents in the recycle bin. */
+  deletedAt: string | null;
+  /** For the delete's If-Match. */
+  version: number;
 }
+
+/** The sidebar shortcuts: everything, the last week's new documents, or what the person tracks. */
+export type DocumentsView = 'all' | 'week' | 'tracked';
+
+/** "New documents this week" looks back this far. */
+export const NEW_DOCUMENTS_DAYS = 7;
 
 export interface DocumentRevision {
   id: string;

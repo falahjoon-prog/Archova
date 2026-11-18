@@ -1,0 +1,4 @@
+{
+  "extends": "@archova/config-ts/node.json",
+  "include": ["src", "test"]
+}
