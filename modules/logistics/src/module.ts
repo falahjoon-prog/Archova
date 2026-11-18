@@ -19,6 +19,7 @@ export function createLogisticsModule(
   return {
     definition: defineModule({ name: 'logistics', permissions: LOGISTICS_PERMISSIONS }),
     routes: logisticsRoutes(services.database, service),
+    api: { deliveryRef: service.deliveryRef },
   };
 }
 

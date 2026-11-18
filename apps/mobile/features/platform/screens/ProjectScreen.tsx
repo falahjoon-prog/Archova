@@ -111,6 +111,16 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.tenders(projectId))}
       />
       <ListItem
+        title="Permits"
+        subtitle="Approvals, expiry dates and renewals"
+        onPress={() => router.push(mobileRoutes.permits(projectId))}
+      />
+      <ListItem
+        title="Environment"
+        subtitle="Compliance conditions, waste and carbon"
+        onPress={() => router.push(mobileRoutes.environment(projectId))}
+      />
+      <ListItem
         title="Owner portal"
         subtitle="Progress, approvals and the capital plan"
         onPress={() => router.push(mobileRoutes.ownerPortal(projectId))}
