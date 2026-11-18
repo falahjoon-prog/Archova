@@ -92,6 +92,12 @@ export function prefabRoutes(database: Database, svc: PrefabService) {
         ),
       ),
     }),
+    draftPrefabDelivery: async (input) => ({
+      status: 200,
+      body: toUnitDto(
+        await tx(input, (s) => svc.draftDelivery(s, project(input.params), unit(input.params))),
+      ),
+    }),
     addPrefabCheck: async (input) => ({
       status: 201,
       body: toCheckDto(

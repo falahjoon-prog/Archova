@@ -23,12 +23,14 @@ import {
   ImportsIcon,
   DefectsIcon,
   WarrantyIcon,
+  HandoverIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
   BudgetIcon,
   DelaysIcon,
   DiaryIcon,
+  PhotosIcon,
   DocumentsIcon,
   TransmittalsIcon,
   DrawingsIcon,
@@ -43,6 +45,7 @@ import {
   type LucideIcon,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -184,10 +187,20 @@ export function projectToolGroups(
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('coordination') && {
+      href: webRoutes.risks(orgSlug, projectId),
+      label: 'Risk register',
+      icon: AlertTriangle,
+    },
     canRead('defects') && {
       href: webRoutes.warranty(orgSlug, projectId),
       label: 'Warranty',
       icon: WarrantyIcon,
+    },
+    canCreate('documents') && {
+      href: webRoutes.handover(orgSlug, projectId),
+      label: 'Handover',
+      icon: HandoverIcon,
     },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
@@ -228,6 +241,11 @@ export function projectToolGroups(
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.photos(orgSlug, projectId),
+      label: 'Photos',
+      icon: PhotosIcon,
     },
     canRead('workforce') && {
       href: webRoutes.deliveries(orgSlug, projectId),
@@ -419,7 +437,14 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
+    tools: [
+      'Contracts',
+      'Payment claims',
+      'T&M tickets',
+      'Budget',
+      'Risk register',
+      'Owner portal',
+    ],
   },
   {
     id: 'estimating',

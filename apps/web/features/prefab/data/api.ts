@@ -59,6 +59,13 @@ export function createPrefabApi(orgId: string) {
         }),
       );
     },
+    async draftDelivery(projectId: string, unitId: string): Promise<Unit> {
+      return unwrap(
+        await api.POST(`${P}/units/{unitId}/draft-delivery`, {
+          params: { path: withUnit(projectId, unitId) },
+        }),
+      );
+    },
     async recordCheck(
       projectId: string,
       unitId: string,

@@ -192,6 +192,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
     },
     api: {
       /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
+      /** Handover pack (`handover`): how many warranty items the project has registered. */
+      warrantySummary: warranty.summary,
       openNear: service.openNear,
       /** Meeting agenda (`meetings`): open defects the caller can see, grouped by trade. */
       openForMeeting: service.openForMeeting,

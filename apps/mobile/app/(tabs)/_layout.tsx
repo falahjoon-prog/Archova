@@ -1,6 +1,8 @@
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useTheme } from '@archova/ui-native';
 import { AskNovaButton } from '../../features/assistant';
+import { PendingSyncBadge } from '../../shared';
 
 // Bottom tabs per design 03 §5 / mobile 01 §1.2: Home, Drawings, Capture (centre), Tools, Me.
 const TABS = [
@@ -28,7 +30,12 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: t.font.size.sm },
         tabBarIconStyle: { display: 'none' },
         // Ask Nova is one tap away on every tab (X27).
-        headerRight: () => <AskNovaButton />,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <PendingSyncBadge />
+            <AskNovaButton />
+          </View>
+        ),
       }}
     >
       {TABS.map((tab) => (

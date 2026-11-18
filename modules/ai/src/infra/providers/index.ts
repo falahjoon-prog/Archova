@@ -20,12 +20,15 @@ import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retr
 import { heuristicLaborProductivity } from '../../eval/suites/labor-productivity';
 import { heuristicAnnouncementDraft } from '../../eval/suites/announcement-draft';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicBidLevel } from '../../eval/suites/bid-levelling';
 import { heuristicContractAsk } from '../../eval/suites/contract-ask';
+import { heuristicContractSov } from '../../eval/suites/contract-sov';
 import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
 import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
+import { heuristicVoiceLog } from '../../eval/suites/voice-log';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { heuristicSwmsDraft } from '../../eval/suites/swms-draft';
@@ -55,6 +58,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'diary.weekly': heuristicDiaryWeekly,
   'help.explain': heuristicHelpExplain,
   'minutes.extract': heuristicMeetingMinutes,
+  'voice.log': heuristicVoiceLog,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,
   'swms.draft': heuristicSwmsDraft,
@@ -66,11 +70,13 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
+  'bid.level': heuristicBidLevel,
   'labor.productivity': heuristicLaborProductivity,
   'announcement.draft': heuristicAnnouncementDraft,
   'contract.review': heuristicContractReview,
   'contract.ask': heuristicContractAsk,
   'contract.compare': heuristicContractCompare,
+  'contract.sov': heuristicContractSov,
   'takeoff.detect': heuristicTakeoffDetect,
 };
 

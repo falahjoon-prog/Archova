@@ -29,6 +29,7 @@
     "infra:linode-corefile": "tsx tools/infra/linode-corefile.ts",
     "infra:linode-host-files": "tsx tools/infra/linode-host-files.ts",
     "demo:seed": "tsx tools/demo-seed/seed.ts",
+    "demo:check": "tsx tools/demo-seed/check-empty.ts",
     "site:local": "pnpm --filter @archova/site local",
     "admin:local": "node tools/admin-local.mjs"
   },
