@@ -4,12 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { mobileRoutes } from '@archova/routes';
 import { Button, ListItem, Screen } from '@archova/ui-native';
 import { queries } from '../../../lib/api';
-import { StateMessage, useSession } from '../../../shared';
+import { StateMessage, useCurrentOrg, useSession } from '../../../shared';
 
 export function MeScreen() {
   const router = useRouter();
   const { signOut } = useSession();
   const me = useQuery(queries.me());
+  const { projectId } = useCurrentOrg();
   const [signingOut, setSigningOut] = useState(false);
 
   async function onSignOut() {
@@ -34,6 +35,16 @@ export function MeScreen() {
       ) : (
         <ListItem title={me.data.user.name} subtitle={me.data.user.email} testID="me-profile" />
       )}
+      <ListItem
+        title="Safety ID badge"
+        subtitle={
+          projectId
+            ? 'Your photo, QR code, emergency contact and site cards'
+            : 'Choose a project on the Home tab to see your badge'
+        }
+        {...(projectId ? { onPress: () => router.push(mobileRoutes.safetyBadge(projectId)) } : {})}
+        testID="safety-badge-link"
+      />
       <ListItem
         title="Offline data"
         subtitle="Projects on this device and changes needing attention"

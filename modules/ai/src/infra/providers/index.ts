@@ -2,11 +2,14 @@
 // everywhere else, so tests and local runs never call a real model (and need no AWS credentials).
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
+import { heuristicAssistAnswer, heuristicAssistPlan } from '../../eval/suites/assist';
 import { heuristicBudgetReview } from '../../eval/suites/budget-review';
 import { heuristicDefectTag } from '../../eval/suites/defect-tag';
+import { heuristicCaptureScan } from '../../eval/suites/capture-scan';
 import { heuristicHazardScan } from '../../eval/suites/hazard-scan';
 import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
+import { heuristicHelpExplain } from '../../eval/suites/help-explain';
 import { heuristicDiaryWeekly } from '../../eval/suites/diary-weekly';
 import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicDrawingCompareVisual } from '../../eval/suites/drawing-compare-visual';
@@ -15,13 +18,17 @@ import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { heuristicLaborProductivity } from '../../eval/suites/labor-productivity';
+import { heuristicAnnouncementDraft } from '../../eval/suites/announcement-draft';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicBidLevel } from '../../eval/suites/bid-levelling';
 import { heuristicContractAsk } from '../../eval/suites/contract-ask';
+import { heuristicContractSov } from '../../eval/suites/contract-sov';
 import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
 import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
+import { heuristicVoiceLog } from '../../eval/suites/voice-log';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { heuristicSwmsDraft } from '../../eval/suites/swms-draft';
@@ -45,9 +52,13 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.translate': fakeTranslate,
   'translation.check': fakeTranslationCheck,
   'budget.review': heuristicBudgetReview,
+  'assist.plan': heuristicAssistPlan,
+  'assist.answer': heuristicAssistAnswer,
   'diary.summary': heuristicDiarySummary,
   'diary.weekly': heuristicDiaryWeekly,
+  'help.explain': heuristicHelpExplain,
   'minutes.extract': heuristicMeetingMinutes,
+  'voice.log': heuristicVoiceLog,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,
   'swms.draft': heuristicSwmsDraft,
@@ -55,13 +66,17 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'drawing.compare_visual': heuristicDrawingCompareVisual,
   'defect.tag': heuristicDefectTag,
   'safety.hazard_scan': heuristicHazardScan,
+  'coordination.capture_scan': heuristicCaptureScan,
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
+  'bid.level': heuristicBidLevel,
   'labor.productivity': heuristicLaborProductivity,
+  'announcement.draft': heuristicAnnouncementDraft,
   'contract.review': heuristicContractReview,
   'contract.ask': heuristicContractAsk,
   'contract.compare': heuristicContractCompare,
+  'contract.sov': heuristicContractSov,
   'takeoff.detect': heuristicTakeoffDetect,
 };
 

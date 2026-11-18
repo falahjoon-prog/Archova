@@ -1,6 +1,7 @@
 import { encodeId } from '@archova/domain';
 import type {
   Document,
+  DocumentRegisterRow,
   DocumentRevision,
   DrawingRevision,
   DrawingSet,
@@ -12,6 +13,7 @@ import type {
   Transmittal,
   TransmittalRecipient,
 } from '@archova/contracts';
+import type { RegisterRow } from '../domain/distribution';
 import type { DocumentWithCurrent } from '../application/documents';
 import type { RevisionView } from '../application/drawings';
 import type { SheetGeometryRow } from '../application/geometry';
@@ -38,6 +40,7 @@ export const toFolderDto = (f: typeof folders.$inferSelect): Folder => ({
   projectId: encodeId('project', f.projectId),
   parentId: f.parentId ? encodeId('folder', f.parentId) : null,
   name: f.name,
+  createdAt: iso(f.createdAt),
   isPrivate: f.isPrivate,
   allowedUserIds: f.allowedUserIds.map((x) => encodeId('user', x)),
   allowedCompanyIds: f.allowedCompanyIds.map((x) => encodeId('company', x)),
@@ -71,6 +74,8 @@ export const toDocumentDto = (d: DocumentWithCurrent): Document => ({
   currentRevision: d.current ? toDocumentRevisionDto(d.current) : null,
   createdAt: iso(d.createdAt),
   updatedAt: iso(d.updatedAt),
+  ...(d.deletedAt ? { deletedAt: iso(d.deletedAt) } : {}),
+  ...(d.tracked !== undefined ? { tracked: d.tracked } : {}),
   version: d.version,
 });
 
@@ -220,4 +225,32 @@ export const toSpecSectionDto = (s: typeof specSections.$inferSelect) => ({
   pageFrom: s.pageFrom,
   pageTo: s.pageTo,
   revision: s.revision,
+});
+
+export const toRegisterRowDto = (r: RegisterRow): DocumentRegisterRow => ({
+  kind: r.kind,
+  id: encodeId(r.kind === 'drawing' ? 'drawingSheet' : 'document', r.key),
+  number: r.number,
+  title: r.title,
+  discipline: r.discipline,
+  currentRevisionId: r.currentRevisionId
+    ? encodeId(r.kind === 'drawing' ? 'drawingRevision' : 'revision', r.currentRevisionId)
+    : null,
+  currentRev: r.currentRev,
+  recipients: r.recipients.map((x) => ({
+    email: x.email,
+    name: x.name,
+    companyId: companyOrNull(x.companyId),
+    role: x.role,
+    status: x.status,
+    rev: x.rev,
+    revisionId: encodeId(r.kind === 'drawing' ? 'drawingRevision' : 'revision', x.revisionId),
+    transmittalId: encodeId('transmittal', x.transmittalId),
+    transmittalNumber: x.transmittalNumber,
+    sentAt: iso(x.sentAt),
+    openedAt: isoOrNull(x.openedAt),
+    downloadedAt: isoOrNull(x.downloadedAt),
+    acknowledgedAt: isoOrNull(x.acknowledgedAt),
+  })),
+  flags: r.flags,
 });

@@ -147,6 +147,37 @@ describe('DataTable', () => {
     expect(firstCells()).toEqual(['RFI-010', 'RFI-002', 'RFI-001']);
   });
 
+  it('groups rows under a heading each, in the order given, sorting inside each group', async () => {
+    const user = userEvent.setup();
+    const grouped = [
+      { id: 'a', number: 'RFI-002', due: '2026-10-09' },
+      { id: 'b', number: 'RFI-010', due: '2026-10-03' },
+      { id: 'c', number: 'RFI-001', due: '2026-10-20' },
+    ];
+    const { container } = render(
+      <DataTable
+        caption="RFIs"
+        columns={columns}
+        rows={grouped}
+        getRowId={(r) => r.id}
+        groupBy={{
+          key: (r) => (r.number === 'RFI-001' ? 'late' : 'early'),
+          label: (k, rs) => `${k} · ${rs.length}`,
+          order: ['early', 'late'],
+        }}
+      />,
+    );
+    const headings = () =>
+      [...container.querySelectorAll('tr.ac-table__group th')].map((h) => h.textContent);
+    expect(headings()).toEqual(['early · 2', 'late · 1']);
+    await user.click(screen.getByRole('button', { name: 'Number' }));
+    expect(screen.getAllByRole('rowheader').map((c) => c.textContent)).toEqual([
+      'RFI-002',
+      'RFI-010',
+      'RFI-001',
+    ]);
+  });
+
   it('shows the empty state in the body', () => {
     render(
       <DataTable

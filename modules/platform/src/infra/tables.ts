@@ -12,7 +12,14 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { Address } from '@archova/contracts';
-import type { AuState, CompanyType, OrgKind, ProjectPhase, ProjectStatus } from '@archova/domain';
+import type {
+  AuState,
+  CompanyType,
+  LocationKind,
+  OrgKind,
+  ProjectPhase,
+  ProjectStatus,
+} from '@archova/domain';
 import type { OrgRole } from '@archova/domain/permissions';
 
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -74,6 +81,20 @@ export const companies = platform.table('companies', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
+/** People at a company who have no login (a supplier's office line, an accounts contact). */
+export const companyContacts = platform.table('company_contacts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  companyId: uuid('company_id').notNull(),
+  name: text('name').notNull(),
+  email: citext('email'),
+  phone: text('phone'),
+  jobTitle: text('job_title'),
+  notes: text('notes'),
+  ...audit,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
 export const projects = platform.table('projects', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -81,6 +102,9 @@ export const projects = platform.table('projects', {
   number: text('number'),
   status: text('status').$type<ProjectStatus>().notNull(),
   phase: text('phase').$type<ProjectPhase>(),
+  heroFileId: uuid('hero_file_id'),
+  statusTitle: text('status_title'),
+  statusDoc: jsonb('status_doc').$type<unknown>(),
   address: jsonb('address').$type<Address>(),
   state: text('state').$type<AuState>(),
   timezone: text('timezone').notNull(),
@@ -110,6 +134,10 @@ export const projectMembers = platform.table('project_members', {
   /** How access ended (X38): only an ordinary removal lets the person's phone send its queued work. */
   removalKind: text('removal_kind').$type<'ordinary' | 'for_cause' | 'wipe_now'>(),
   removalReason: text('removal_reason'),
+  /** Directory details a project admin keeps for the person (not their sign-in profile). */
+  phone: text('phone'),
+  jobTitle: text('job_title'),
+  trade: text('trade'),
   /** Counts how many times this person has been given access to the project; a re-add starts a new one. */
   accessEpisode: integer('access_episode').notNull().default(1),
   ...audit,
@@ -151,4 +179,23 @@ export const keyDateChanges = platform.table('key_date_changes', {
   note: text('note'),
   changedBy: uuid('changed_by'),
   changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Project locations: pinned points with an address and a site-access note. */
+export const projectLocations = platform.table('project_locations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  kind: text('kind').$type<LocationKind>().notNull(),
+  address: text('address'),
+  lat: doublePrecision('lat'),
+  lng: doublePrecision('lng'),
+  accessNote: text('access_note'),
+  contactName: text('contact_name'),
+  contactPhone: text('contact_phone'),
+  usedFor: text('used_for').array().notNull().default([]),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...audit,
 });

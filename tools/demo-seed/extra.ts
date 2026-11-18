@@ -455,6 +455,196 @@ const INDUCTION_SECTIONS = [
   ],
 ] as const;
 
+// Fully written inductions for the first three projects: every section has several blocks and the quiz is at the
+// limit of 15 questions, so they are ready to publish, take as a worker, or leave as the reference for Nova to build
+// others against. Each question is [section, question, options, answerIndex, critical].
+const FULL_SECTIONS: Array<[(typeof INDUCTION_SECTIONS)[number][0], string, string[]]> = [
+  [
+    'who_and_access',
+    'Who is on site and how to get in',
+    [
+      'The principal contractor is Harbour Line Constructions. The site manager and the site safety representative are named on the board at the front gate.',
+      'Everyone signs in at the gate with the site QR code on arrival and signs out on leaving, every day. Visitors must be escorted by an inducted person at all times.',
+      'Deliveries are booked in advance with the site office and enter through the delivery gate only. Pedestrians use the marked green walkways, never the plant route.',
+    ],
+  ],
+  [
+    'layout_and_amenities',
+    'Site layout and amenities',
+    [
+      'The site office, lunch shed, toilets and drinking water are at the front of the site, next to the gate. Smoking and vaping are allowed only in the marked area.',
+      'Walkways are marked in green and plant routes in red. Storage and the concrete washout bay are at the rear. Keep walkways clear of materials and leads.',
+    ],
+  ],
+  [
+    'emergencies_and_first_aid',
+    'Emergencies and first aid',
+    [
+      'On the alarm, stop work, make your area safe and go to the muster point at the front gate. Do not return until the site manager gives the all clear.',
+      'First aid kits are in the site office and the lunch shed. Qualified first aiders are named on the board. For a life threatening emergency, call 000 first, then the site manager.',
+      'Know where your nearest fire extinguisher is. Only use one if it is safe to do so and you are trained. Report every use.',
+    ],
+  ],
+  [
+    'site_hazards',
+    'Site hazards',
+    [
+      'The main hazards are work at height, open excavations, moving plant, falling objects, live electrical services and manual handling.',
+      'Edge protection, barriers and covers must never be removed without the supervisor. If you find one missing or damaged, stop and report it.',
+      'Stay out of exclusion zones under crane lifts and around operating plant. Make eye contact with the operator before you cross a plant route.',
+    ],
+  ],
+  [
+    'high_risk_work_and_permits',
+    'High risk work and permits',
+    [
+      'A current SWMS is required before any high risk construction work starts. You must read it, understand it and sign it.',
+      'A permit is needed for hot works, confined spaces, work near live services and excavation. The permit is issued by the site manager for one shift and must be displayed at the work area.',
+      'High risk work licences must be current and carried on you. Do not start work if your licence is not on site.',
+    ],
+  ],
+  [
+    'ppe',
+    'PPE',
+    [
+      'Hard hat, high visibility clothing, safety boots and safety glasses are mandatory at all times on site. Gloves and hearing protection are required for the tasks that need them.',
+      'Check your PPE before every shift. Damaged or out of date PPE must be replaced before you start. Sun protection is required outdoors.',
+    ],
+  ],
+  [
+    'site_rules',
+    'Site rules',
+    [
+      'No alcohol or illegal drugs on site, and no one under their influence is allowed to work. Random testing applies.',
+      'Photography is for work records only. Do not post photos of the site, other workers or drawings on social media.',
+      'Keep your work area clean. Put waste in the correct bin and wash tools only in the washout bay.',
+    ],
+  ],
+  [
+    'incident_reporting',
+    'Incident reporting',
+    [
+      'Report every injury, near miss, hazard and property damage to your supervisor straight away, however small. Reporting a near miss is how we stop the next injury.',
+      'Do not move anything after a serious incident unless it is needed to help someone. The site manager notifies the regulator where a notifiable incident occurs.',
+    ],
+  ],
+  [
+    'consultation',
+    'Consultation',
+    [
+      'You have the right to raise a safety concern without being penalised. Speak to your supervisor, the site safety representative or the site manager.',
+      'A safety meeting is held every month and a toolbox talk every week. Attendance is recorded and your questions are welcome.',
+    ],
+  ],
+];
+
+const FULL_QUIZ: Array<
+  [(typeof INDUCTION_SECTIONS)[number][0], string, [string, string, string], boolean]
+> = [
+  [
+    'who_and_access',
+    'When must you sign in and out?',
+    [
+      'Every day, on arrival and on leaving',
+      'Only on your first day',
+      'Only if the supervisor asks',
+    ],
+    true,
+  ],
+  [
+    'who_and_access',
+    'A visitor arrives at the gate. What happens?',
+    [
+      'They are escorted by an inducted person at all times',
+      'They walk around alone',
+      'They wait in the plant yard',
+    ],
+    false,
+  ],
+  [
+    'layout_and_amenities',
+    'What colour are the pedestrian walkways?',
+    ['Green', 'Red', 'Blue'],
+    false,
+  ],
+  [
+    'emergencies_and_first_aid',
+    'Where is the muster point?',
+    ['The front gate', 'Level 2', 'The roof'],
+    true,
+  ],
+  [
+    'emergencies_and_first_aid',
+    'What do you do first in a life threatening emergency?',
+    ['Call 000', 'Finish the task', 'Take photos'],
+    true,
+  ],
+  [
+    'site_hazards',
+    'You find edge protection missing. What do you do?',
+    ['Stop and report it to the supervisor', 'Work carefully around it', 'Remove the rest of it'],
+    true,
+  ],
+  [
+    'site_hazards',
+    'Where must you not stand during a crane lift?',
+    ['Under the load or in the exclusion zone', 'Behind the barrier', 'In the site office'],
+    false,
+  ],
+  [
+    'high_risk_work_and_permits',
+    'What is needed before high risk work starts?',
+    [
+      'A current SWMS you have read and signed',
+      'A verbal OK from a friend',
+      'Nothing if the task is quick',
+    ],
+    true,
+  ],
+  [
+    'high_risk_work_and_permits',
+    'Which job needs a permit?',
+    ['Hot works', 'Sweeping the floor', 'Writing a timesheet'],
+    false,
+  ],
+  [
+    'ppe',
+    'Which PPE is mandatory at all times on site?',
+    ['Hard hat, hi-vis, safety boots and safety glasses', 'Sunglasses only', 'Boots only'],
+    false,
+  ],
+  [
+    'ppe',
+    'Your safety glasses are scratched and hard to see through. What do you do?',
+    ['Replace them before you continue', 'Keep working', 'Take them off'],
+    false,
+  ],
+  [
+    'site_rules',
+    'Which of these is allowed on site?',
+    ['Photos for work records only', 'Alcohol at lunch', 'Posting site photos online'],
+    false,
+  ],
+  [
+    'incident_reporting',
+    'When do you report a near miss?',
+    ['Straight away, to your supervisor', 'At the end of the month', 'Never, nothing happened'],
+    true,
+  ],
+  [
+    'consultation',
+    'Can you raise a safety concern without being penalised?',
+    ['Yes', 'No', 'Only if the manager is on site'],
+    false,
+  ],
+  [
+    'consultation',
+    'How often is a toolbox talk held?',
+    ['Every week', 'Once a year', 'Only after an accident'],
+    false,
+  ],
+];
+
 const HEAD = ['Head contract', 'head'] as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -645,6 +835,340 @@ export async function seedExtra(ctx: ExtraContext) {
       }
     }
     return `${drawings} projects got drawings, ${books} got a specification book`;
+  });
+
+  // Estimating: the org-wide cost library, then two estimates on the primary project.
+  await step('cost library', async () => {
+    const have = new Set(
+      (await s.ok<{ data: Array<{ code: string }> }>('GET', `${org}/cost-items`)).data.map(
+        (c) => c.code,
+      ),
+    );
+    const items = [
+      ['CON-001', 'Concrete N32 supply and place', 'm3', 'Concrete', 'material', '285.00'],
+      ['CON-002', 'Reinforcement bar supply and fix', 't', 'Concrete', 'material', '2450.00'],
+      ['CON-003', 'Formwork to slabs and beams', 'm2', 'Concrete', 'labour', '78.00'],
+      [
+        'STL-001',
+        'Structural steel fabrication and erect',
+        't',
+        'Structural steel',
+        'subcontract',
+        '6200.00',
+      ],
+      ['BRK-001', 'Facework brickwork, laid', 'm2', 'Masonry', 'labour', '165.00'],
+      ['CRP-001', 'Carpenter, hourly rate', 'hr', 'Carpentry', 'labour', '92.00'],
+      ['CRP-002', 'Timber stud framing', 'm2', 'Carpentry', 'material', '58.00'],
+      ['ELE-001', 'Electrician, hourly rate', 'hr', 'Electrical', 'labour', '105.00'],
+      ['ELE-002', 'Power point, supply and install', 'ea', 'Electrical', 'subcontract', '165.00'],
+      ['PLM-001', 'Plumber, hourly rate', 'hr', 'Plumbing', 'labour', '102.00'],
+      ['PLM-002', 'Hydraulic rough-in per fixture', 'ea', 'Plumbing', 'subcontract', '740.00'],
+      [
+        'PLS-001',
+        'Plasterboard lining, set and paint ready',
+        'm2',
+        'Plastering',
+        'subcontract',
+        '46.00',
+      ],
+      ['PNT-001', 'Internal paint, three coats', 'm2', 'Painting', 'subcontract', '24.50'],
+      ['TIL-001', 'Floor tiling, supply and lay', 'm2', 'Tiling', 'subcontract', '135.00'],
+      ['EXC-001', 'Bulk excavation and cart away', 'm3', 'Earthworks', 'plant', '48.00'],
+      ['PLT-001', 'Scissor lift hire', 'day', 'Plant hire', 'plant', '310.00'],
+    ] as const;
+    let added = 0;
+    for (const [code, description, unit, trade, category, rate] of items) {
+      if (have.has(code)) continue;
+      await s.ok('POST', `${org}/cost-items`, {
+        code,
+        description,
+        unit,
+        trade,
+        category,
+        rate: { rate, region: 'NSW', effectiveFrom: day(-60), note: 'Sample rate' },
+      });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('estimates', async () => {
+    const list = await s.ok<{ data: Array<{ name: string }> }>('GET', `${pp}/estimates`);
+    if (list.data.length >= 2) return 'already there';
+    const costItems = (
+      await s.ok<{ data: Array<{ id: string; code: string; description: string; unit: string }> }>(
+        'GET',
+        `${org}/cost-items`,
+      )
+    ).data;
+    const pick = (code: string) => costItems.find((c) => c.code === code);
+    const specs = [
+      {
+        name: 'Stage 1 structure budget estimate',
+        sections: [
+          ['Earthworks', [['EXC-001', '420']]],
+          [
+            'Concrete',
+            [
+              ['CON-001', '260'],
+              ['CON-002', '34'],
+              ['CON-003', '1850'],
+            ],
+          ],
+          ['Steel', [['STL-001', '22']]],
+        ],
+      },
+      {
+        name: 'Fit-out estimate, levels 1 and 2',
+        sections: [
+          [
+            'Linings and paint',
+            [
+              ['PLS-001', '2400'],
+              ['PNT-001', '3100'],
+            ],
+          ],
+          [
+            'Services',
+            [
+              ['ELE-002', '96'],
+              ['PLM-002', '18'],
+            ],
+          ],
+          ['Finishes', [['TIL-001', '380']]],
+        ],
+      },
+    ] as const;
+    let added = 0;
+    for (const spec of specs) {
+      if (list.data.some((e) => e.name === spec.name)) continue;
+      const est = await s.ok<{ id: string }>('POST', `${pp}/estimates`, {
+        name: spec.name,
+        baseDate: day(-14),
+        region: 'NSW',
+        contingencyPct: '5',
+        marginPct: '8',
+        marginBasis: 'markup',
+        gstPct: '10',
+      });
+      const estId = est.id;
+      for (const [title, lines] of spec.sections) {
+        const sec = await s.ok<{
+          lines: Array<{ id: string; kind: string; description: string }>;
+        }>('POST', `${pp}/estimates/${estId}/lines`, { kind: 'section', description: title });
+        const secId = [...sec.lines]
+          .reverse()
+          .find((l) => l.kind === 'section' && l.description === title)?.id;
+        for (const [code, qty] of lines) {
+          const ci = pick(code);
+          if (!ci) continue;
+          await s.ok('POST', `${pp}/estimates/${estId}/lines`, {
+            kind: 'item',
+            parentId: secId ?? null,
+            description: ci.description,
+            costItemId: ci.id,
+            quantity: qty,
+            unit: ci.unit,
+          });
+        }
+      }
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('site diary', async () => {
+    const have = await count(`${pp}/diary`);
+    if (have >= 8) return 'already there';
+    const notes = [
+      [
+        'Fine, 22C',
+        'Dry, good access',
+        'Formwork to level 1 slab continued. Rebar inspection booked for Thursday.',
+      ],
+      [
+        'Overcast, 19C',
+        'Dry',
+        'Concrete pour to level 1 slab, 62m3 placed, no issues. Pump on site 6am to 1pm.',
+      ],
+      [
+        'Showers in the afternoon, 18C',
+        'Wet underfoot after 2pm',
+        'Wet weather stopped external works at 2pm. Internal framing carried on.',
+      ],
+      [
+        'Fine, 24C',
+        'Dry',
+        'Steel erection started, first six columns landed. Crane inspection certificate sighted.',
+      ],
+      [
+        'Fine, windy, 21C',
+        'Dry, strong gusts',
+        'Crane stood down 10am to 12pm because of wind over 40km/h.',
+      ],
+      [
+        'Fine, 23C',
+        'Dry',
+        'Hydraulic rough-in began on ground floor. Electrical conduit running to risers.',
+      ],
+      [
+        'Rain all day, 16C',
+        'Wet, site muddy',
+        'Site closed from 9am for wet weather. Drainage and sediment controls checked.',
+      ],
+      [
+        'Fine, 20C',
+        'Drying out',
+        'Site reopened after rain. Pump-out of excavation, then brickwork resumed.',
+      ],
+      [
+        'Fine, 25C',
+        'Dry',
+        'Council inspector attended for footings. Passed with one note on cover.',
+      ],
+      ['Fine, 22C', 'Dry', 'Toolbox talk on working at heights. All trades on site inducted.'],
+    ] as const;
+    let added = 0;
+    for (let i = 0; i < notes.length; i++) {
+      const d = day(-(notes.length - i));
+      const wd = new Date(`${d}T00:00:00Z`).getUTCDay();
+      if (wd === 0 || wd === 6) continue;
+      const [weatherNotes, siteConditions, text] = notes[i]!;
+      await s.ok('PUT', `${pp}/diary/${d}`, { weatherNotes, siteConditions, notes: text });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  await step('inspection templates and inspections', async () => {
+    const templates = await s.ok<{
+      data: Array<{ id: string; name: string; published?: boolean }>;
+    }>('GET', `${pp}/inspection-templates`);
+    let tpl = templates.data.find((t) => t.published);
+    if (!tpl) {
+      const created = await s.ok<{ template: { id: string } }>(
+        'POST',
+        `${pp}/inspection-templates`,
+        {
+          name: 'Pre-pour slab inspection',
+          type: 'itp',
+          items: [
+            {
+              section: 'Formwork',
+              prompt: 'Formwork is clean, braced and to the drawn dimensions',
+              responseType: 'pass_fail_na',
+              required: true,
+              createsDefectOnFail: true,
+            },
+            {
+              section: 'Formwork',
+              prompt: 'Penetrations and cast-in items are in place',
+              responseType: 'pass_fail_na',
+              required: true,
+            },
+            {
+              section: 'Reinforcement',
+              prompt: 'Bar size and spacing match structural drawings',
+              responseType: 'pass_fail_na',
+              required: true,
+              createsDefectOnFail: true,
+            },
+            {
+              section: 'Reinforcement',
+              prompt: 'Cover to reinforcement (mm)',
+              responseType: 'number',
+              required: true,
+            },
+            {
+              section: 'Sign-off',
+              prompt: 'Engineer notified and hold point released',
+              responseType: 'yes_no',
+              required: true,
+            },
+            { section: 'Sign-off', prompt: 'Notes', responseType: 'text', required: false },
+          ],
+        },
+      );
+      await s.ok(
+        'POST',
+        `${pp}/inspection-templates/${created.template.id}/publish`,
+        {},
+        { 'if-match': s.etag ?? '' },
+      );
+      tpl = { id: created.template.id, name: 'Pre-pour slab inspection', published: true };
+    }
+    const have = await count(`${pp}/inspections`);
+    const sample = [
+      ['Level 1 slab, grid A to D', -3],
+      ['Level 1 slab, grid E to H', 1],
+      ['Ground floor slab, east wing', 5],
+    ] as const;
+    let added = 0;
+    for (const [location, offset] of sample.slice(have)) {
+      await s.ok('POST', `${pp}/inspections`, {
+        templateId: tpl.id,
+        title: `Pre-pour inspection: ${location}`,
+        location,
+        scheduledFor: day(offset),
+      });
+      added++;
+    }
+    return `${added} inspections added`;
+  });
+
+  await step('coordination issues', async () => {
+    const issues = [
+      [
+        'Duct clashes with beam at gridline C4',
+        'high',
+        'Level 1 ceiling void',
+        'Supply air duct passes through the transfer beam. Needs a sleeve or reroute.',
+      ],
+      [
+        'Sprinkler main conflicts with cable tray',
+        'medium',
+        'Level 1 corridor',
+        'Cable tray and sprinkler main share the same 150mm zone above the ceiling.',
+      ],
+      [
+        'Riser too small for hydraulic stack',
+        'critical',
+        'Core, levels 1 to 3',
+        'Hydraulic stack and fire hydrant riser do not fit in the 450mm shaft as drawn.',
+      ],
+      [
+        'Door swing clashes with handrail',
+        'low',
+        'Stair 2, level 1 landing',
+        'Door opens into the handrail return. Move the door or shorten the handrail.',
+      ],
+      [
+        'Slab penetration missing for plumbing',
+        'medium',
+        'Ground floor, bathrooms',
+        'Four floor wastes shown on the hydraulic plan have no slab penetrations on the structural drawing.',
+      ],
+      [
+        'Façade bracket interferes with services',
+        'medium',
+        'East facade, level 2',
+        'Façade support bracket sits where the electrical conduit is run.',
+      ],
+    ] as const;
+    return topUp(
+      `${pp}/coordination-issues`,
+      async (i) => {
+        const [title, priority, location, description] = issues[i % issues.length]!;
+        await s.ok('POST', `${pp}/coordination-issues`, {
+          title,
+          priority,
+          location,
+          description,
+          dueDate: day(7 + i * 3),
+        });
+      },
+      issues.length,
+    );
   });
 
   // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register
@@ -1267,7 +1791,7 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${note}; ${ids.length} activities`;
   });
 
-  // A project has one induction, so the ten are spread over the ten projects.
+  // A project has one induction, so the ten are spread over the ten projects; the first three are the full ones.
   await step('inductions', async () => {
     let added = 0;
     const all = (await s.ok<{ data: Array<{ id: string }> }>('GET', `${org}/projects`)).data;
@@ -1275,6 +1799,8 @@ export async function seedExtra(ctx: ExtraContext) {
       const ip = `${org}/projects/${project.id}`;
       if ((await count(`${ip}/inductions`)) > 0) continue;
       added++;
+      // The first three are fully written and published; the rest are short but complete.
+      const full = i < 3;
       const title = INDUCTIONS[i % INDUCTIONS.length]!;
       const ind = await s.ok<{ id?: string; induction?: { id: string } }>(
         'POST',
@@ -1292,22 +1818,42 @@ export async function seedExtra(ctx: ExtraContext) {
         `${ip}/inductions/${id}/draft`,
         {
           content: {
-            sections: INDUCTION_SECTIONS.map(([key, title, body]) => ({
-              key,
-              title,
-              blocks: text(`${body} Sample data only.`),
-            })),
-            quiz: INDUCTION_SECTIONS.map(([key, title], q) => ({
-              section: key,
-              question: `Which is correct for "${title}"?`,
-              options: [
-                'Follow the induction and ask if unsure',
-                'Ignore it',
-                'Leave it to the next shift',
-              ],
-              answerIndex: 0,
-              critical: q === 2,
-            })),
+            sections: full
+              ? FULL_SECTIONS.map(([key, title, bodies]) => ({
+                  key,
+                  title,
+                  blocks: bodies.map((body) => ({
+                    type: 'text',
+                    body: `${body} Sample data only.`,
+                  })),
+                }))
+              : INDUCTION_SECTIONS.map(([key, title, body]) => ({
+                  key,
+                  title,
+                  blocks: text(`${body} Sample data only.`),
+                })),
+            quiz: full
+              ? FULL_QUIZ.map(([section, question, options, critical], q) => {
+                  // The right answer is written first; rotate it so it isn't always option A.
+                  const at = q % 3;
+                  const rotated = [
+                    ...options.slice(1, at + 1),
+                    options[0],
+                    ...options.slice(at + 1),
+                  ];
+                  return { section, question, options: rotated, answerIndex: at, critical };
+                })
+              : INDUCTION_SECTIONS.map(([key, title], q) => ({
+                  section: key,
+                  question: `Which is correct for "${title}"?`,
+                  options: [
+                    'Follow the induction and ask if unsure',
+                    'Ignore it',
+                    'Leave it to the next shift',
+                  ],
+                  answerIndex: 0,
+                  critical: q === 2,
+                })),
             passMark: 80,
           },
         },
@@ -1344,4 +1890,87 @@ export async function seedExtra(ctx: ExtraContext) {
       });
     }),
   );
+}
+
+// Plant and equipment: a small fleet, a few allocations on the demo projects and service schedules (one overdue, so
+// Nova has something to flag). Skipped when the register already has machines.
+export async function seedPlant(ctx: ExtraContext) {
+  const { s, org } = ctx;
+  const active = ctx.projects.filter((p) => p.status === 'active');
+  const primary = active[0];
+  if (!primary) return;
+  const today = localDateOf(new Date(), primary.timezone);
+  const day = (n: number): LocalDate => addDays(today, n);
+  await step('plant and equipment', async () => {
+    const have = await s.ok<{ data: unknown[] }>('GET', `${org}/plant/assets`);
+    if (have.data.length > 0) return 'existing';
+    const fleet = [
+      ['EX-001', '20t excavator', 'excavator', 'owned', 'Komatsu', 'PC210LC-11', 98000],
+      ['CR-001', 'Tower crane', 'crane', 'hired', 'Liebherr', '132 EC-H', 185000],
+      ['SL-001', 'Scissor lift 12m', 'access_platform', 'hired', 'JLG', '4045R', 21000],
+      ['TH-001', 'Telehandler 4t', 'loader', 'owned', 'Manitou', 'MT 1440', 42000],
+      ['GN-001', '60 kVA generator', 'generator', 'owned', 'Cummins', 'C60D5', 14500],
+    ] as const;
+    const ids: string[] = [];
+    for (const [assetNumber, name, category, ownership, make, model, rate] of fleet) {
+      const a = await s.ok<{ id: string }>('POST', `${org}/plant/assets`, {
+        name,
+        assetNumber,
+        category,
+        ownership,
+        make,
+        model,
+        dailyRateCents: rate,
+        ...(ownership === 'hired' ? { supplier: 'Coates Hire' } : {}),
+      });
+      ids.push(a.id);
+    }
+    const second = active[1] ?? primary;
+    const alloc = (i: number, projectId: string, from: number, to: number, note: string) =>
+      s.ok('POST', `${org}/plant/assets/${ids[i]}/allocations`, {
+        projectId,
+        startsOn: day(from),
+        endsOn: day(to),
+        note,
+      });
+    await alloc(0, primary.id, -5, 14, 'Bulk excavation');
+    await alloc(1, primary.id, 0, 60, 'Core and slab lifts');
+    await alloc(2, second.id, 3, 10, 'Facade fit-off');
+    await alloc(3, second.id, -2, 20, 'Material handling');
+    // Service schedules: one overdue, one due soon, one certificate, one recurring and completed.
+    const plan = (i: number, body: Record<string, unknown>) =>
+      s.ok<{ id: string }>('POST', `${org}/plant/assets/${ids[i]}/maintenance-plans`, body);
+    await plan(0, {
+      title: '500 hour service',
+      kind: 'service',
+      intervalDays: 90,
+      nextDueOn: day(-6),
+      responsible: 'Workshop',
+    });
+    await plan(1, {
+      title: 'Crane annual certification',
+      kind: 'certification',
+      nextDueOn: day(21),
+    });
+    await plan(2, {
+      title: 'Pre-hire inspection',
+      kind: 'inspection',
+      intervalDays: 30,
+      nextDueOn: day(9),
+    });
+    const done = await plan(3, {
+      title: '250 hour service',
+      kind: 'service',
+      intervalDays: 60,
+      nextDueOn: day(-1),
+      responsible: 'Workshop',
+    });
+    await s.ok('POST', `${org}/plant/maintenance-plans/${done.id}/complete`, {
+      doneOn: day(-1),
+      performedBy: 'Hunter Plant Services',
+      note: 'Oil, filters and hydraulic check. No faults.',
+      costCents: 64000,
+    });
+    return '5 machines, 4 allocations, 4 plans';
+  });
 }

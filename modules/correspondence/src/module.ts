@@ -11,6 +11,8 @@ export function createCorrespondenceModule(services: KernelServices, deps: Corre
     api: {
       /** Global search (`search`): correspondence the caller can see that matches some words. */
       searchHits: service.searchHits,
+      /** Related items (`links`): correspondence the caller can see among some ids. */
+      linkSummaries: service.linkSummaries,
     },
   };
 }

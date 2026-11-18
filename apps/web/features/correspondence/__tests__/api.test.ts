@@ -29,6 +29,8 @@ const item = (over: Partial<CorrespondenceItem> = {}): CorrespondenceItem => ({
   sentInTime: null,
   fileIds: [],
   related: [],
+  isPrivate: false,
+  fieldValues: {},
   sentAt: null,
   sentBy: null,
   contentHash: null,
@@ -43,6 +45,7 @@ const item = (over: Partial<CorrespondenceItem> = {}): CorrespondenceItem => ({
 const detail = (over: Partial<CorrespondenceItem> = {}): CorrespondenceDetail => ({
   item: item(over),
   responses: [],
+  canManageAccess: false,
 });
 
 beforeEach(() => fake.reset());

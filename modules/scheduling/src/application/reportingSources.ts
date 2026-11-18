@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-import { localDateOf } from '@archova/time';
+import { addDays, localDateOf } from '@archova/time';
 import type { TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -54,13 +54,24 @@ export function createReportingSources(deps: ReportingSourcesDeps) {
 
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await allowed(scope, projectId)))
-      return { restricted: true, open: 0, overdue: 0, notStarted: 0, completed: 0, lateDays: 0 };
+      return {
+        restricted: true,
+        open: 0,
+        overdue: 0,
+        dueSoon: 0,
+        notStarted: 0,
+        completed: 0,
+        lateDays: 0,
+      };
     const { today, acts } = await load(scope, projectId);
     const open = acts.filter((a) => a.pctComplete < 100);
     return {
       restricted: false,
       open: open.length,
       overdue: open.filter((a) => isLate(a, today)).length,
+      dueSoon: open.filter(
+        (a) => !isLate(a, today) && a.finish >= today && a.finish <= addDays(today, 7),
+      ).length,
       notStarted: acts.filter((a) => a.pctComplete === 0).length,
       completed: acts.filter((a) => a.pctComplete >= 100).length,
       lateDays: open.reduce((n, a) => n + daysLate(a, today), 0),

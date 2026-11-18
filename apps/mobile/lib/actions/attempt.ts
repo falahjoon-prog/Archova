@@ -1,0 +1,45 @@
+// Try an action online; if there is no signal, keep it on the phone to be sent later.
+import { uuidv7 } from '@archova/domain';
+import { isOfflineError, type ActionKind, type ActionQueue } from './action-queue';
+
+export type AttemptOutcome = 'sent' | 'queued';
+
+export async function attemptOrQueue(
+  queue: Pick<ActionQueue, 'enqueue'> | null,
+  action: {
+    /** Reuse as the idempotency key when the action is replayed, so a lost reply cannot answer twice. */
+    id?: string;
+    projectId: string;
+    kind: ActionKind;
+    targetId: string;
+    payload: Record<string, unknown>;
+  },
+  online: () => Promise<unknown>,
+  onQueued?: () => void,
+): Promise<AttemptOutcome> {
+  try {
+    await online();
+    return 'sent';
+  } catch (e) {
+    // Only a request that never got an answer is queued; a refusal from the server is the person's to see now.
+    if (!queue || !isOfflineError(e)) throw e;
+    await queue.enqueue({ id: uuidv7(), ...action });
+    onQueued?.();
+    return 'queued';
+  }
+}
+
+export const ACTION_TEXT: Record<ActionKind, string> = {
+  'submittal.respond': 'Submittal response',
+  'rfi.respond': 'RFI response',
+  'timesheet.submit': 'Submit timesheet',
+  'timesheet.approve': 'Approve timesheet',
+  'timesheet.reject': 'Reject timesheet',
+  'delivery.checkIn': 'Delivery check-in',
+  'swms.acknowledge': 'SWMS acknowledgement',
+  'swms.transition': 'SWMS review',
+  'permit.startRenewal': 'Permit renewal',
+  'environment.startCondition': 'Start condition',
+  'toolbox.addAttendee': 'Toolbox talk attendee',
+  'toolbox.transition': 'Toolbox talk',
+};

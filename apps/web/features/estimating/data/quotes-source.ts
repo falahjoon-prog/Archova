@@ -11,6 +11,7 @@ import {
   type NegotiateAnswer,
   type NegotiateTopic,
 } from '../lib/negotiate';
+import { previewBidLevel, type BidLevelAnswer } from '../lib/bid-level';
 import { allowanceKey, comparableQuotes, levelQuotes, lowestQuoteId } from '../lib/levelling';
 import type { PackageAction, Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
 
@@ -341,6 +342,12 @@ export interface QuotesSource {
       today: string;
     },
   ): Promise<NegotiateAnswer>;
+  /** Nova levelling every confirmed bid of the package (`POST …/ai/bid-levellings`); nothing is saved, matched or awarded. */
+  levelBids(
+    projectId: string,
+    packageId: string,
+    input: { question?: string; today: string },
+  ): Promise<BidLevelAnswer>;
   /** Nova listening (`POST …/ai/speech-transcriptions`): a short recording turned into text, not kept. */
   listen(projectId: string, clip: Blob): Promise<string>;
 }
@@ -386,6 +393,24 @@ export const quotesSource: QuotesSource & {
         topic: input.question ? topicFromQuestion(input.question) : input.topic,
       }),
     );
+  },
+
+  /** Preview of `POST …/ai/bid-levellings`: every confirmed bid on the schedule; nothing is saved or awarded. */
+  async levelBids(
+    projectId: string,
+    packageId: string,
+    input: { question?: string; today: string },
+  ): Promise<BidLevelAnswer> {
+    const pkg = findPackage(projectId, packageId);
+    const quotes = comparableQuotes(
+      stores.get(projectId).quotes.filter((q) => q.packageId === packageId),
+    );
+    if (!quotes.length) problem(422, 'validation', 'There are no confirmed bids to level yet.');
+    const { rows } = levelQuotes(pkg, quotes, input.today);
+    const expired = new Set(
+      quotes.filter((q) => q.validUntil !== null && q.validUntil < input.today).map((q) => q.id),
+    );
+    return delay(previewBidLevel({ quotes, rows, expired }));
   },
 
   /** Preview of Nova listening: the preview store has no speech service, so it hears a stand-in question. */

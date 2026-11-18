@@ -3,7 +3,7 @@ import { encodeId, uuidv7 } from '@archova/domain';
 import { daysBetween, localDateOf, zonedParts, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   COMPANY_SCOPED_KINDS,
@@ -59,7 +59,14 @@ export const MAX_RANGE_DAYS = 93;
 export interface DiaryDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyExists' | 'projectCompanies'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
+  /** Days with logged site activity (workforce), read at request time. Absent: no gap flags. */
+  siteActivityDays?: (
+    scope: TenantScope,
+    projectId: string,
+    from: LocalDate,
+    to: LocalDate,
+  ) => Promise<Map<LocalDate, string[]>>;
   now?: () => Date;
 }
 
@@ -346,13 +353,27 @@ export function createDiaryService(deps: DiaryDeps) {
           ]);
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach photos uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'daily_log', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -522,6 +543,43 @@ export function createDiaryService(deps: DiaryDeps) {
       totals: totals.get(r.id) ?? emptyTotals(),
       lateAfter: lateCutoff(r.date, timezone),
     }));
+  }
+
+  /**
+   * Days in the range that had site activity but no filed daily log (rule-based, no model; Nova shows it).
+   * A day counts as filed once submitted; a day still in draft or with no entry is a gap. Today is skipped
+   * because the day is not over. Readers limited to their own company see nothing: the flag would leak
+   * other companies' attendance.
+   */
+  async function gaps(scope: TenantScope, projectId: string, from: LocalDate, to: LocalDate) {
+    const span = daysBetween(from, to);
+    if (span < 0)
+      throw new AppError('validation_failed', '`to` must be on or after `from`.', [
+        { path: 'to', message: 'Before from' },
+      ]);
+    if (span + 1 > MAX_RANGE_DAYS)
+      throw new AppError(
+        'diary.range_too_long',
+        `Ask for at most ${MAX_RANGE_DAYS} days at a time.`,
+      );
+    const v = await viewer(scope, projectId);
+    if (v.scopedCompanyId || !deps.siteActivityDays) return [];
+    const { today } = await projectInfo(scope, projectId);
+    const activity = await deps.siteActivityDays(scope, projectId, from, to);
+    if (activity.size === 0) return [];
+    const rows = await scope.tx
+      .select({ date: entries.date, status: entries.status })
+      .from(entries)
+      .where(and(eq(entries.projectId, projectId), gte(entries.date, from), lte(entries.date, to)));
+    const statusOf = new Map(rows.map((r) => [r.date as string, r.status as DiaryStatus]));
+    return [...activity.entries()]
+      .filter(([date]) => date < today)
+      .flatMap(([date, sources]) => {
+        const status = statusOf.get(date);
+        if (status && status !== 'draft') return [];
+        return [{ date, state: status ? ('draft' as const) : ('missing' as const), sources }];
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
   }
 
   async function detail(
@@ -1216,6 +1274,7 @@ export function createDiaryService(deps: DiaryDeps) {
 
   return {
     list,
+    gaps,
     detail,
     applyAttendanceTotals,
     visibleAmong,

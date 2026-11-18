@@ -46,7 +46,8 @@ export type CommandError =
   | 'defect.invalid_transition'
   | 'defect.not_allowed'
   | 'defect.reason_required'
-  | 'defect.photo_required';
+  | 'defect.photo_required'
+  | 'defect.evidence_required';
 
 export type CommandResult<T> = { ok: true; value: T } | { ok: false; code: CommandError };
 

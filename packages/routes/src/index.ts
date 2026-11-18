@@ -13,13 +13,17 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  bookmarks: (orgSlug: string) => `/${enc(orgSlug)}/bookmarks`,
   /** Global search; `q` pre-fills the box. */
   search: (orgSlug: string, q?: string) =>
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
+  dbpInsights: (orgSlug: string) => `/${enc(orgSlug)}/dbp-insights`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
+  auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
+  plant: (orgSlug: string) => `/${enc(orgSlug)}/plant`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,
@@ -31,6 +35,7 @@ export const webRoutes = {
   plan: (orgSlug: string) => `/${enc(orgSlug)}/settings/plan`,
   permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
+  branding: (orgSlug: string) => `/${enc(orgSlug)}/settings/branding`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   dataExport: (orgSlug: string) => `/${enc(orgSlug)}/settings/data-export`,
@@ -45,6 +50,9 @@ export const webRoutes = {
   /** The 3D viewer for the project's IFC models, with clash checking. */
   coordinationModels: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/coordination/models`,
+  /** 360 tours embedded by share link, with Ask Nova on a still from a tour. */
+  coordinationCaptures: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/coordination/captures`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
@@ -54,6 +62,9 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/transmittals/new`,
   transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>
     `${p(orgSlug, projectId)}/transmittals/${enc(transmittalId)}`,
+  /** Who was sent which revision of each drawing and document, and what still needs acknowledging. */
+  documentRegister: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/document-register`,
   rfis: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis`,
   newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
   rfi: (orgSlug: string, projectId: string, rfiId: string) =>
@@ -62,6 +73,7 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  announcements: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/announcements`,
   conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
@@ -87,11 +99,20 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   budget: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/budget`,
   commitments: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/commitments`,
+  commitment: (orgSlug: string, projectId: string, commitmentId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}`,
+  tmTickets: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/tm-tickets`,
+  commitmentInvoice: (orgSlug: string, projectId: string, commitmentId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}/invoices/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  risks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/risks`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
+  warranty: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/warranty`,
+  warrantyItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/warranty/${enc(itemId)}`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
   inductions: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/inductions`,
@@ -100,11 +121,17 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  photos: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/photos`,
   safetySignals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/safety-signals`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
     `${p(orgSlug, projectId)}/incidents${incidentId ? `?id=${enc(incidentId)}` : ''}`,
+  toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
+    `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
+  permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
+  geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
+  insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
@@ -116,6 +143,9 @@ export const webRoutes = {
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
+  actionPlans: (orgSlug: string, projectId: string, planId?: string) =>
+    `${p(orgSlug, projectId)}/action-plans${planId ? `?id=${enc(planId)}` : ''}`,
+  environment: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/environment`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/workers`,
@@ -123,12 +153,16 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
   attendanceRoster: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/roster`,
+  deliveries: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/deliveries`,
+  prefab: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/prefab`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/timesheets`,
   attendanceCheckIn: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/check-in`,
+  attendanceClearance: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/clearance`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>
@@ -161,6 +195,8 @@ export const mobileRoutes = {
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
   voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
+  /** Dictate the whole day; Nova splits it into diary notes, delays, safety observations and tasks to review. */
+  voiceLog: (projectId: string) => `/project/${enc(projectId)}/voice-log`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,
@@ -181,7 +217,35 @@ export const mobileRoutes = {
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
+  permits: (projectId: string) => `/project/${enc(projectId)}/permits`,
+  permit: (projectId: string, permitId: string) =>
+    `/project/${enc(projectId)}/permits/${enc(permitId)}`,
+  environment: (projectId: string) => `/project/${enc(projectId)}/environment`,
+  documents: (projectId: string) => `/project/${enc(projectId)}/documents`,
+  document: (projectId: string, documentId: string) =>
+    `/project/${enc(projectId)}/documents/${enc(documentId)}`,
+  specifications: (projectId: string) => `/project/${enc(projectId)}/specifications`,
+  specBook: (projectId: string, bookId: string) =>
+    `/project/${enc(projectId)}/specifications/${enc(bookId)}`,
+  submittals: (projectId: string) => `/project/${enc(projectId)}/submittals`,
+  submittal: (projectId: string, submittalId: string) =>
+    `/project/${enc(projectId)}/submittals/${enc(submittalId)}`,
+  rfis: (projectId: string) => `/project/${enc(projectId)}/rfis`,
+  rfi: (projectId: string, rfiId: string) => `/project/${enc(projectId)}/rfis/${enc(rfiId)}`,
+  toolboxTalks: (projectId: string) => `/project/${enc(projectId)}/toolbox`,
+  toolboxTalk: (projectId: string, talkId: string) =>
+    `/project/${enc(projectId)}/toolbox/${enc(talkId)}`,
+  swmsRegister: (projectId: string) => `/project/${enc(projectId)}/swms`,
+  swms: (projectId: string, swmsId: string) => `/project/${enc(projectId)}/swms/${enc(swmsId)}`,
+  timesheets: (projectId: string) => `/project/${enc(projectId)}/timesheets`,
+  timesheet: (projectId: string, timesheetId: string) =>
+    `/project/${enc(projectId)}/timesheets/${enc(timesheetId)}`,
+  crews: (projectId: string) => `/project/${enc(projectId)}/crews`,
+  equipment: (projectId: string) => `/project/${enc(projectId)}/equipment`,
+  deliveries: (projectId: string) => `/project/${enc(projectId)}/deliveries`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
+  /** My digital Safety ID badge for a project. */
+  safetyBadge: (projectId: string) => `/project/${enc(projectId)}/badge`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (
     projectId: string,

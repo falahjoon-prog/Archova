@@ -801,7 +801,7 @@ export function createSubmittalService(deps: SubmittalsDeps) {
    */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const date = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -815,10 +815,16 @@ export function createSubmittalService(deps: SubmittalsDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${submittals.requiredOnSite} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${submittals.requiredOnSite} >= ${date}::date and ${submittals.requiredOnSite} <= ${date}::date + 7))::int`,
       })
       .from(submittals)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): submittals the caller can see, one flat row each. `state` open = with the reviewers. */
@@ -874,6 +880,30 @@ export function createSubmittalService(deps: SubmittalsDeps) {
   }
 
   /** Global search (`search`): the submittals the caller can see that match the words. */
+  /** Related items (`links`): headline details of the submittals among `ids` the caller may see, by the rule `list` uses. */
+  async function linkSummaries(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      inArray(submittals.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: submittals.id,
+        ref: submittals.numberLabel,
+        title: submittals.title,
+        status: submittals.status,
+      })
+      .from(submittals)
+      .where(and(...conditions));
+    return rows.map((r) => ({ id: r.id, ref: r.ref, title: r.title, status: r.status as string }));
+  }
+
   async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
     if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
       return { restricted: true, hits: [] as SearchHit[] };
@@ -891,6 +921,7 @@ export function createSubmittalService(deps: SubmittalsDeps) {
 
   return {
     searchHits,
+    linkSummaries,
     list,
     detail,
     create,

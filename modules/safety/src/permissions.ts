@@ -12,4 +12,8 @@ export const SAFETY_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'safety.incidents.report', scope: 'project', tool: 'inspections', level: 'standard' },
   { key: 'safety.incidents.manage', scope: 'project', tool: 'inspections', level: 'admin' },
   { key: 'safety.incidents.view_medical', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Toolbox talks: anyone on site runs a talk and signs; the builder's admin keeps the topic library and reopens a talk.
+  { key: 'safety.toolbox.read', scope: 'project', tool: 'inspections', level: 'read' },
+  { key: 'safety.toolbox.run', scope: 'project', tool: 'inspections', level: 'standard' },
+  { key: 'safety.toolbox.manage', scope: 'project', tool: 'inspections', level: 'admin' },
 ];
