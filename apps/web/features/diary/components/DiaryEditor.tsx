@@ -53,7 +53,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
     set(key, (value[key] as Array<{ id: string }>).filter((l) => l.id !== id) as never);
 
   return (
-    <div className="stack diary-sections">
+    <div className="diary-sections">
       <Section id="diary-weather" title="Weather">
         {weather ? (
           <WeatherSummary weather={weather} />
@@ -260,6 +260,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
 
       <Section
         id="diary-delays"
+        list
         title="Delays"
         summary={value.delays.length ? `${value.delays.length}` : undefined}
       >
@@ -331,6 +332,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
 
       <Section
         id="diary-plant"
+        list
         title="Plant"
         summary={value.plant.length ? `${value.plant.length}` : undefined}
       >
@@ -387,6 +389,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
 
       <Section
         id="diary-deliveries"
+        list
         title="Deliveries"
         summary={value.deliveries.length ? `${value.deliveries.length}` : undefined}
       >
@@ -432,6 +435,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
 
       <Section
         id="diary-visitors"
+        list
         title="Visitors"
         summary={value.visitors.length ? `${value.visitors.length}` : undefined}
       >
@@ -517,15 +521,18 @@ function Section({
   id,
   title,
   summary,
+  list,
   children,
 }: {
   id: string;
   title: string;
   summary?: string | undefined;
+  /** A list of lines: sits half width while empty, so four empty lists don't stack as four tall cards. */
+  list?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details id={id} className="diary-section" open>
+    <details id={id} className={list ? 'diary-section diary-section--list' : 'diary-section'} open>
       <summary className="diary-section__summary">
         <h2 className="diary-section__title">{title}</h2>
         {summary ? <span className="u-caption">{summary}</span> : null}

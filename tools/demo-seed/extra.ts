@@ -2,6 +2,8 @@
 // uses. Runs after the base seed (seed.ts). Every step tops its list up to ten and skips when it is already
 // there, so re-runs don't duplicate; a step that fails logs a warning and the rest carry on. Sample data only.
 import { addDays, type LocalDate, localDateOf } from '@archova/time';
+import { makePdf } from './pdf';
+import { DEMO_MODELS } from './ifc';
 import { Session } from './session';
 
 export interface Api {
@@ -31,6 +33,18 @@ export interface ExtraContext {
   /** The app origin and the demo password, for signing up the sample colleagues. */
   origin: string;
   password: string;
+  /** Uploads a PDF for a project (seed.ts), returning the file id. */
+  upload: (
+    projectId: string,
+    module: string,
+    filename: string,
+    bytes: Uint8Array,
+    mime?: string,
+  ) => Promise<string>;
+  /** The drawing sheets to give a project that has none. */
+  sheets: Array<{ number: string; title: string; discipline: string }>;
+  /** The documents to give a project that has none. */
+  documents: ReadonlyArray<{ folder: string; title: string; docNumber: string; docType: string }>;
 }
 
 const TARGET = 10;
@@ -441,6 +455,196 @@ const INDUCTION_SECTIONS = [
   ],
 ] as const;
 
+// Fully written inductions for the first three projects: every section has several blocks and the quiz is at the
+// limit of 15 questions, so they are ready to publish, take as a worker, or leave as the reference for Nova to build
+// others against. Each question is [section, question, options, answerIndex, critical].
+const FULL_SECTIONS: Array<[(typeof INDUCTION_SECTIONS)[number][0], string, string[]]> = [
+  [
+    'who_and_access',
+    'Who is on site and how to get in',
+    [
+      'The principal contractor is Harbour Line Constructions. The site manager and the site safety representative are named on the board at the front gate.',
+      'Everyone signs in at the gate with the site QR code on arrival and signs out on leaving, every day. Visitors must be escorted by an inducted person at all times.',
+      'Deliveries are booked in advance with the site office and enter through the delivery gate only. Pedestrians use the marked green walkways, never the plant route.',
+    ],
+  ],
+  [
+    'layout_and_amenities',
+    'Site layout and amenities',
+    [
+      'The site office, lunch shed, toilets and drinking water are at the front of the site, next to the gate. Smoking and vaping are allowed only in the marked area.',
+      'Walkways are marked in green and plant routes in red. Storage and the concrete washout bay are at the rear. Keep walkways clear of materials and leads.',
+    ],
+  ],
+  [
+    'emergencies_and_first_aid',
+    'Emergencies and first aid',
+    [
+      'On the alarm, stop work, make your area safe and go to the muster point at the front gate. Do not return until the site manager gives the all clear.',
+      'First aid kits are in the site office and the lunch shed. Qualified first aiders are named on the board. For a life threatening emergency, call 000 first, then the site manager.',
+      'Know where your nearest fire extinguisher is. Only use one if it is safe to do so and you are trained. Report every use.',
+    ],
+  ],
+  [
+    'site_hazards',
+    'Site hazards',
+    [
+      'The main hazards are work at height, open excavations, moving plant, falling objects, live electrical services and manual handling.',
+      'Edge protection, barriers and covers must never be removed without the supervisor. If you find one missing or damaged, stop and report it.',
+      'Stay out of exclusion zones under crane lifts and around operating plant. Make eye contact with the operator before you cross a plant route.',
+    ],
+  ],
+  [
+    'high_risk_work_and_permits',
+    'High risk work and permits',
+    [
+      'A current SWMS is required before any high risk construction work starts. You must read it, understand it and sign it.',
+      'A permit is needed for hot works, confined spaces, work near live services and excavation. The permit is issued by the site manager for one shift and must be displayed at the work area.',
+      'High risk work licences must be current and carried on you. Do not start work if your licence is not on site.',
+    ],
+  ],
+  [
+    'ppe',
+    'PPE',
+    [
+      'Hard hat, high visibility clothing, safety boots and safety glasses are mandatory at all times on site. Gloves and hearing protection are required for the tasks that need them.',
+      'Check your PPE before every shift. Damaged or out of date PPE must be replaced before you start. Sun protection is required outdoors.',
+    ],
+  ],
+  [
+    'site_rules',
+    'Site rules',
+    [
+      'No alcohol or illegal drugs on site, and no one under their influence is allowed to work. Random testing applies.',
+      'Photography is for work records only. Do not post photos of the site, other workers or drawings on social media.',
+      'Keep your work area clean. Put waste in the correct bin and wash tools only in the washout bay.',
+    ],
+  ],
+  [
+    'incident_reporting',
+    'Incident reporting',
+    [
+      'Report every injury, near miss, hazard and property damage to your supervisor straight away, however small. Reporting a near miss is how we stop the next injury.',
+      'Do not move anything after a serious incident unless it is needed to help someone. The site manager notifies the regulator where a notifiable incident occurs.',
+    ],
+  ],
+  [
+    'consultation',
+    'Consultation',
+    [
+      'You have the right to raise a safety concern without being penalised. Speak to your supervisor, the site safety representative or the site manager.',
+      'A safety meeting is held every month and a toolbox talk every week. Attendance is recorded and your questions are welcome.',
+    ],
+  ],
+];
+
+const FULL_QUIZ: Array<
+  [(typeof INDUCTION_SECTIONS)[number][0], string, [string, string, string], boolean]
+> = [
+  [
+    'who_and_access',
+    'When must you sign in and out?',
+    [
+      'Every day, on arrival and on leaving',
+      'Only on your first day',
+      'Only if the supervisor asks',
+    ],
+    true,
+  ],
+  [
+    'who_and_access',
+    'A visitor arrives at the gate. What happens?',
+    [
+      'They are escorted by an inducted person at all times',
+      'They walk around alone',
+      'They wait in the plant yard',
+    ],
+    false,
+  ],
+  [
+    'layout_and_amenities',
+    'What colour are the pedestrian walkways?',
+    ['Green', 'Red', 'Blue'],
+    false,
+  ],
+  [
+    'emergencies_and_first_aid',
+    'Where is the muster point?',
+    ['The front gate', 'Level 2', 'The roof'],
+    true,
+  ],
+  [
+    'emergencies_and_first_aid',
+    'What do you do first in a life threatening emergency?',
+    ['Call 000', 'Finish the task', 'Take photos'],
+    true,
+  ],
+  [
+    'site_hazards',
+    'You find edge protection missing. What do you do?',
+    ['Stop and report it to the supervisor', 'Work carefully around it', 'Remove the rest of it'],
+    true,
+  ],
+  [
+    'site_hazards',
+    'Where must you not stand during a crane lift?',
+    ['Under the load or in the exclusion zone', 'Behind the barrier', 'In the site office'],
+    false,
+  ],
+  [
+    'high_risk_work_and_permits',
+    'What is needed before high risk work starts?',
+    [
+      'A current SWMS you have read and signed',
+      'A verbal OK from a friend',
+      'Nothing if the task is quick',
+    ],
+    true,
+  ],
+  [
+    'high_risk_work_and_permits',
+    'Which job needs a permit?',
+    ['Hot works', 'Sweeping the floor', 'Writing a timesheet'],
+    false,
+  ],
+  [
+    'ppe',
+    'Which PPE is mandatory at all times on site?',
+    ['Hard hat, hi-vis, safety boots and safety glasses', 'Sunglasses only', 'Boots only'],
+    false,
+  ],
+  [
+    'ppe',
+    'Your safety glasses are scratched and hard to see through. What do you do?',
+    ['Replace them before you continue', 'Keep working', 'Take them off'],
+    false,
+  ],
+  [
+    'site_rules',
+    'Which of these is allowed on site?',
+    ['Photos for work records only', 'Alcohol at lunch', 'Posting site photos online'],
+    false,
+  ],
+  [
+    'incident_reporting',
+    'When do you report a near miss?',
+    ['Straight away, to your supervisor', 'At the end of the month', 'Never, nothing happened'],
+    true,
+  ],
+  [
+    'consultation',
+    'Can you raise a safety concern without being penalised?',
+    ['Yes', 'No', 'Only if the manager is on site'],
+    false,
+  ],
+  [
+    'consultation',
+    'How often is a toolbox talk held?',
+    ['Every week', 'Once a year', 'Only after an accident'],
+    false,
+  ],
+];
+
 const HEAD = ['Head contract', 'head'] as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -469,6 +673,45 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${Math.max(target - have, 0)} added, ${Math.min(have, target)} existing`;
   };
 
+  // Three small IFC models and two clashes between them, so the 3D viewer has something to open. Skipped when the
+  // project already has models, so a re-run adds nothing.
+  await step('BIM models and coordination issues', async () => {
+    if ((await count(`${pp}/bim-models`)) > 0) return 'existing';
+    const specs = [
+      ['Architectural', 'architectural', 'architectural.ifc', DEMO_MODELS.architectural],
+      ['Mechanical services', 'mechanical', 'mechanical.ifc', DEMO_MODELS.mechanical],
+      ['Structure', 'structural', 'structural.ifc', DEMO_MODELS.structural],
+    ] as const;
+    const ids: string[] = [];
+    for (const [name, discipline, file, bytes] of specs) {
+      const fileId = await ctx.upload(primary.id, 'bim', file, bytes, 'model/ifc');
+      const m = await s.ok<{ id: string }>('POST', `${pp}/bim-models`, {
+        name,
+        discipline,
+        versionLabel: 'Rev A',
+        fileId,
+      });
+      ids.push(m.id);
+    }
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Supply duct D-01 passes through wall W-01',
+      description:
+        'The duct has no penetration in the wall. Confirm a sleeve and fire stopping with the architect.',
+      priority: 'high',
+      modelId: ids[1],
+      elementGuids: ['0DEMOMECHDUCT000000001', '0DEMOARCHWALL000000001'],
+      location: 'Level 1, grid A',
+    });
+    await s.ok('POST', `${pp}/coordination-issues`, {
+      title: 'Beam B-12 clashes with return duct D-02',
+      priority: 'medium',
+      modelId: ids[2],
+      elementGuids: ['0DEMOSTRUBEAM000000001', '0DEMOMECHDUCT000000002'],
+      location: 'Level 1, mid span',
+    });
+    return '3 models, 2 issues';
+  });
+
   await step('companies', async () => {
     const existing = await s.ok<{ data: Array<{ name: string }> }>('GET', `${org}/companies`);
     const names = new Set(existing.data.map((c) => c.name));
@@ -480,6 +723,310 @@ export async function seedExtra(ctx: ExtraContext) {
         type: c.type,
         trades: [...c.trades],
         email: `office@${c.name.toLowerCase().replace(/[^a-z]+/g, '')}.example.com`,
+      });
+      added++;
+    }
+    return `${added} added`;
+  });
+
+  // Drawings and specification books on every project that has none (the base seed only covers its own three
+  // projects, so the extra ones, or a project from an earlier partial run, would show empty registers).
+  await step('drawings and specifications on every project', async () => {
+    const all = (
+      await s.ok<{
+        data: Array<{
+          id: string;
+          name: string;
+          number?: string;
+          status: string;
+          startDate?: string;
+        }>;
+      }>('GET', `${org}/projects`)
+    ).data;
+    let drawings = 0;
+    let books = 0;
+    for (const p of all) {
+      const base = `${org}/projects/${p.id}`;
+      const date = p.startDate ?? day(-120);
+      const sheetList = await s.ok<{ data?: unknown[] }>('GET', `${base}/drawings`);
+      if (!sheetList.data?.length) {
+        const set = await s.ok<{ id: string }>('POST', `${base}/drawing-sets`, {
+          name: p.status === 'tender' ? 'Tender Issue' : 'Issued for Construction',
+          issuedDate: date,
+          receivedDate: date,
+        });
+        for (const sh of ctx.sheets) {
+          const fileId = await ctx.upload(
+            p.id,
+            'drawings',
+            `${sh.number}.pdf`,
+            makePdf({ project: p.name, number: sh.number, title: sh.title, rev: 'A' }),
+          );
+          await s.ok('POST', `${base}/drawing-sets/${set.id}/revisions`, {
+            sheetNumber: sh.number,
+            title: sh.title,
+            discipline: sh.discipline,
+            rev: 'A',
+            issuedFor: p.status === 'tender' ? 'for_tender' : 'for_construction',
+            fileId,
+            drawingDate: date,
+          });
+        }
+        await s.ok('POST', `${base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
+        drawings++;
+      }
+      const docList = await s.ok<{ data?: unknown[] }>('GET', `${base}/documents`);
+      if (!docList.data?.length) {
+        const folders = new Map<string, string>();
+        for (const name of new Set(ctx.documents.map((d) => d.folder))) {
+          const f = await s.ok<{ id: string }>('POST', `${base}/folders`, { name });
+          folders.set(name, f.id);
+        }
+        for (const d of ctx.documents) {
+          const fileId = await ctx.upload(
+            p.id,
+            'documents',
+            `${d.docNumber}.pdf`,
+            makePdf({ project: p.name, number: d.docNumber, title: d.title, rev: '1' }),
+          );
+          await s.ok('POST', `${base}/documents`, {
+            folderId: folders.get(d.folder),
+            title: d.title,
+            docNumber: d.docNumber,
+            docType: d.docType,
+            status: 'approved',
+            revision: { rev: '1', fileId, issuedFor: 'Construction', issuedDate: date },
+          });
+        }
+      }
+      const bookList = await s.ok<{ data?: unknown[] }>('GET', `${base}/spec-books`);
+      if (!bookList.data?.length) {
+        const sections = [
+          ['01 10 00', 'Preliminaries and General Requirements', 'Division 01 General', 1, 12],
+          ['03 30 00', 'Cast-in-place Concrete', 'Division 03 Concrete', 13, 30],
+          ['05 12 00', 'Structural Steel Framing', 'Division 05 Metals', 31, 44],
+          ['07 21 00', 'Thermal Insulation', 'Division 07 Thermal and Moisture', 45, 52],
+          ['08 11 00', 'Doors and Frames', 'Division 08 Openings', 53, 64],
+          ['09 29 00', 'Plasterboard Linings', 'Division 09 Finishes', 65, 78],
+          ['21 13 00', 'Fire Sprinkler Systems', 'Division 21 Fire Suppression', 79, 90],
+          ['22 00 00', 'Hydraulic Services', 'Division 22 Plumbing', 91, 106],
+          ['26 05 00', 'Electrical Services', 'Division 26 Electrical', 107, 125],
+        ] as const;
+        const created = await s.ok<{ book: { id: string } }>('POST', `${base}/spec-books`, {
+          name: `${p.name} Specification`,
+          issuedDate: date,
+        });
+        await s.ok(
+          'PUT',
+          `${base}/spec-books/${created.book.id}/sections`,
+          {
+            sections: sections.map(([sectionNumber, title, division, pageFrom, pageTo]) => ({
+              sectionNumber,
+              title,
+              division,
+              pageFrom,
+              pageTo,
+              revision: 'A',
+            })),
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+        books++;
+      }
+    }
+    return `${drawings} projects got drawings, ${books} got a specification book`;
+  });
+
+  // Subcontractor prequalification (flag subcontractor_prequalification): one published form, then a register
+  // with a mix of qualified, expiring (within 30 days), pending and not-qualified companies.
+  await step('prequalification', async () => {
+    const flagOn = await s.call('GET', `${org}/prequal-templates`);
+    if (flagOn.status === 404) return 'flag is off, skipped';
+    if (flagOn.status >= 300) throw new Error(`prequal-templates -> ${flagOn.status}`);
+    const templates = (
+      flagOn.json as { data: Array<{ id: string; name: string; published: boolean }> }
+    ).data;
+    let template = templates.find(
+      (t) => t.name === 'Subcontractor prequalification' && t.published,
+    );
+    if (!template) {
+      const q = (
+        id: string,
+        section: string,
+        prompt: string,
+        type: 'yes_no' | 'number' | 'text',
+        extra: Record<string, unknown> = {},
+      ) => ({
+        id,
+        section,
+        prompt,
+        type,
+        options: [],
+        required: true,
+        expect: null,
+        points: 0,
+        critical: false,
+        ...extra,
+      });
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequal-templates`, {
+        name: 'Subcontractor prequalification',
+        validityMonths: 12,
+        questions: [
+          q('abn', 'Company', 'Do you hold a current ABN and GST registration?', 'yes_no', {
+            expect: 'yes',
+            points: 10,
+          }),
+          q('licence', 'Company', 'Do you hold the contractor licence for your trade?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q(
+            'insurance',
+            'Insurance',
+            'Is public liability cover current for at least $20M?',
+            'yes_no',
+            {
+              expect: 'yes',
+              points: 20,
+              critical: true,
+            },
+          ),
+          q('wc', 'Insurance', 'Is workers compensation insurance current?', 'yes_no', {
+            expect: 'yes',
+            points: 20,
+            critical: true,
+          }),
+          q('ltifr', 'Safety', 'Lost-time injuries in the last 12 months', 'number', {
+            points: 10,
+          }),
+          q('swms', 'Safety', 'Do you prepare a SWMS for every high-risk task?', 'yes_no', {
+            expect: 'yes',
+            points: 15,
+          }),
+          q('refs', 'Experience', 'Name two recent projects of similar size', 'text', {
+            required: false,
+            points: 5,
+          }),
+        ],
+      });
+      await s.ok(
+        'POST',
+        `${org}/prequal-templates/${created.id}/publish`,
+        {},
+        { 'if-match': s.etag ?? '' },
+      );
+      template = { id: created.id, name: 'Subcontractor prequalification', published: true };
+    }
+    const have = new Set(
+      (
+        await s.ok<{ data: Array<{ companyId: { id?: string } | string }> }>(
+          'GET',
+          `${org}/prequalifications`,
+        )
+      ).data.map((p) => (typeof p.companyId === 'string' ? p.companyId : p.companyId.id)),
+    );
+    const companies = (
+      await s.ok<{ data: Array<{ id: string; name: string; type: string; trades: string[] }> }>(
+        'GET',
+        `${org}/companies`,
+      )
+    ).data.filter((c) => c.type === 'subcontractor');
+    const good = { abn: true, licence: true, insurance: true, wc: true, ltifr: 0, swms: true };
+    // The outcome per company, in order: qualified, expiring soon, pending, then a rejected one.
+    const plan = [
+      { to: 'approved', expires: day(240), answers: good },
+      { to: 'approved', expires: day(11), answers: { ...good, ltifr: 1 } },
+      { to: 'approved', expires: day(26), answers: good },
+      { to: 'approved', expires: day(170), answers: { ...good, ltifr: 2 } },
+      { to: 'submitted', answers: good },
+      { to: 'submitted', answers: { ...good, wc: false } },
+      { to: 'draft', answers: { abn: true, licence: true } },
+      { to: 'rejected', answers: { ...good, insurance: false, swms: false } },
+    ] as const;
+    let added = 0;
+    for (const c of companies) {
+      const step = plan[added];
+      if (!step) break;
+      if (have.has(c.id)) continue;
+      const created = await s.ok<{ id: string }>('POST', `${org}/prequalifications`, {
+        companyId: c.id,
+        templateId: template.id,
+        trades: c.trades.slice(0, 3),
+      });
+      const at = `${org}/prequalifications/${created.id}`;
+      await s.ok('PATCH', at, { answers: step.answers }, { 'if-match': s.etag ?? '' });
+      added++;
+      if (step.to === 'draft') continue;
+      await s.ok('POST', `${at}/submit`, {}, { 'if-match': s.etag ?? '' });
+      if (step.to === 'submitted') continue;
+      if (step.to === 'rejected')
+        await s.ok(
+          'POST',
+          `${at}/reject`,
+          {
+            note: 'Public liability cover is below the required limit. Resubmit with a current certificate.',
+          },
+          { 'if-match': s.etag ?? '' },
+        );
+      else
+        await s.ok(
+          'POST',
+          `${at}/approve`,
+          { note: 'Approved after document check.', expiresOn: step.expires },
+          { 'if-match': s.etag ?? '' },
+        );
+    }
+    return `${added} added`;
+  });
+
+  // Subcontractor compliance wallet (flag subcontractor_wallet): the demo builder's own insurance and licences,
+  // self-declared so no files are needed.
+  await step('compliance wallet', async () => {
+    const r = await s.call('GET', `${org}/compliance-documents`);
+    if (r.status === 404) return 'flag is off, skipped';
+    if (r.status >= 300) throw new Error(`compliance-documents -> ${r.status}`);
+    const existing = new Set(
+      (r.json as { data: Array<{ title: string }> }).data.map((d) => d.title),
+    );
+    const docs = [
+      {
+        itemType: 'public_liability',
+        title: 'Public liability $20M',
+        insurer: 'Southern Mutual',
+        limitCents: 2_000_000_000,
+        number: 'PL-884201',
+        expiresOn: day(180),
+      },
+      {
+        itemType: 'workers_comp',
+        title: 'Workers compensation',
+        insurer: 'icare',
+        number: 'WC-553917',
+        expiresOn: day(20),
+      },
+      {
+        itemType: 'contract_works',
+        title: 'Contract works',
+        insurer: 'Southern Mutual',
+        number: 'CW-120554',
+        expiresOn: day(300),
+      },
+      {
+        itemType: 'contractor_licence',
+        title: 'NSW builder licence',
+        issuingState: 'NSW',
+        number: '771203C',
+        expiresOn: day(400),
+      },
+    ] as const;
+    let added = 0;
+    for (const d of docs) {
+      if (existing.has(d.title)) continue;
+      await s.ok('POST', `${org}/compliance-documents`, {
+        ...d,
+        startsOn: day(-180),
+        selfDeclared: true,
       });
       added++;
     }
@@ -910,7 +1457,7 @@ export async function seedExtra(ctx: ExtraContext) {
     return `${note}; ${ids.length} activities`;
   });
 
-  // A project has one induction, so the ten are spread over the ten projects.
+  // A project has one induction, so the ten are spread over the ten projects; the first three are the full ones.
   await step('inductions', async () => {
     let added = 0;
     const all = (await s.ok<{ data: Array<{ id: string }> }>('GET', `${org}/projects`)).data;
@@ -918,6 +1465,8 @@ export async function seedExtra(ctx: ExtraContext) {
       const ip = `${org}/projects/${project.id}`;
       if ((await count(`${ip}/inductions`)) > 0) continue;
       added++;
+      // The first three are fully written and published; the rest are short but complete.
+      const full = i < 3;
       const title = INDUCTIONS[i % INDUCTIONS.length]!;
       const ind = await s.ok<{ id?: string; induction?: { id: string } }>(
         'POST',
@@ -935,22 +1484,42 @@ export async function seedExtra(ctx: ExtraContext) {
         `${ip}/inductions/${id}/draft`,
         {
           content: {
-            sections: INDUCTION_SECTIONS.map(([key, title, body]) => ({
-              key,
-              title,
-              blocks: text(`${body} Sample data only.`),
-            })),
-            quiz: INDUCTION_SECTIONS.map(([key, title], q) => ({
-              section: key,
-              question: `Which is correct for "${title}"?`,
-              options: [
-                'Follow the induction and ask if unsure',
-                'Ignore it',
-                'Leave it to the next shift',
-              ],
-              answerIndex: 0,
-              critical: q === 2,
-            })),
+            sections: full
+              ? FULL_SECTIONS.map(([key, title, bodies]) => ({
+                  key,
+                  title,
+                  blocks: bodies.map((body) => ({
+                    type: 'text',
+                    body: `${body} Sample data only.`,
+                  })),
+                }))
+              : INDUCTION_SECTIONS.map(([key, title, body]) => ({
+                  key,
+                  title,
+                  blocks: text(`${body} Sample data only.`),
+                })),
+            quiz: full
+              ? FULL_QUIZ.map(([section, question, options, critical], q) => {
+                  // The right answer is written first; rotate it so it isn't always option A.
+                  const at = q % 3;
+                  const rotated = [
+                    ...options.slice(1, at + 1),
+                    options[0],
+                    ...options.slice(at + 1),
+                  ];
+                  return { section, question, options: rotated, answerIndex: at, critical };
+                })
+              : INDUCTION_SECTIONS.map(([key, title], q) => ({
+                  section: key,
+                  question: `Which is correct for "${title}"?`,
+                  options: [
+                    'Follow the induction and ask if unsure',
+                    'Ignore it',
+                    'Leave it to the next shift',
+                  ],
+                  answerIndex: 0,
+                  critical: q === 2,
+                })),
             passMark: 80,
           },
         },

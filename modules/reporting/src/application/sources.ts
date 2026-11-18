@@ -1,7 +1,12 @@
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
+import type { DbpInspection, DbpObservation } from '../domain/dbp';
+import type { ProjectSustainability } from '../domain/sustainability';
 import {
   PROJECT_LIMIT,
+  type BudgetSummary,
+  type IncidentCounts,
+  type ProgrammeCounts,
   type ReportSource,
   type SourceRow,
   type ToolCounts,
@@ -16,12 +21,36 @@ interface SourceRows {
 /** What `reporting` needs from the tool modules; each narrows to what the caller may read on that project. */
 export interface ReportingDeps {
   platform: Pick<PlatformApi, 'listProjects'>;
+  /** Waste, carbon, monitoring and permit-condition counts per project (`environment`); restricted unless readable. */
+  environment: {
+    portfolioSummary(scope: TenantScope, projectId: string): Promise<ProjectSustainability>;
+  };
   rfis: Tool;
   defects: Tool;
   submittals: Tool;
   claims: Tool;
   variations: Tool;
-  incidents: Tool;
+  incidents: Tool<IncidentCounts>;
+  /** Counts only for the dashboard: neither is a report-builder source yet. */
+  observations: CountsOnly;
+  inspections: CountsOnly;
+  programme: Tool<ProgrammeCounts>;
+  /** Inspection and observation rows for the DBP Act insights view (`quality`); restricted unless the caller may read them. */
+  quality: {
+    dbpRows(
+      scope: TenantScope,
+      projectId: string,
+    ): Promise<{
+      restricted: boolean;
+      truncated: boolean;
+      inspections: readonly DbpInspection[];
+      observations: readonly DbpObservation[];
+    }>;
+  };
+  /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
+  budget: {
+    portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
+  };
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {
     can(
@@ -85,8 +114,10 @@ export interface ReportingDeps {
   };
 }
 
-interface Tool {
-  portfolioCounts(scope: TenantScope, projectId: string): Promise<ToolCounts>;
+type CountsOnly = Pick<Tool, 'portfolioCounts'>;
+
+interface Tool<C extends ToolCounts = ToolCounts> {
+  portfolioCounts(scope: TenantScope, projectId: string): Promise<C>;
   reportRows(
     scope: TenantScope,
     projectId: string,
@@ -101,6 +132,10 @@ export interface ProjectRef {
   name: string;
   number: string | null;
   status: string;
+  phase: string | null;
+  /** The Australian state the site is in, used to group the safety streaks by region. */
+  state: string | null;
+  siteLocation: { lat: number; lng: number } | null;
 }
 
 /** The projects the caller can see, in name order, up to the limit; `truncated` when there were more. */
@@ -123,7 +158,16 @@ export async function visibleProjects(
         truncated = true;
         break;
       }
-      out.push({ id: p.id, name: p.name, number: p.number, status: p.status });
+      out.push({
+        id: p.id,
+        name: p.name,
+        number: p.number,
+        status: p.status,
+        phase: p.phase ?? null,
+        state: p.state ?? null,
+        siteLocation:
+          p.siteLat !== null && p.siteLng !== null ? { lat: p.siteLat, lng: p.siteLng } : null,
+      });
     }
     if (truncated || !page.nextCursor) break;
     cursor = page.nextCursor;

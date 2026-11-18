@@ -2,7 +2,7 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
-import { localDateOf } from '@archova/time';
+import { localDateOf, type LocalDate } from '@archova/time';
 import type { NumberVault } from '../domain/number-vault';
 import {
   checkNumber,
@@ -454,7 +454,48 @@ export function createWalletService(deps: { files: InductionDeps['files']; vault
     return { counts, items };
   }
 
-  return { list, listAlerts, create, update, sight, readinessSummary };
+  /**
+   * Licences held in the wallet that have expired or expire within the warning period, for the permits register's
+   * Nova flags. The holder's name and the licence title only: no number, no files. Not checked against a register.
+   */
+  async function lapsedLicences(scope: TenantScope, day: string) {
+    const rows = await scope.tx
+      .select({
+        itemType: complianceDocuments.itemType,
+        title: complianceDocuments.title,
+        holderName: complianceDocuments.holderName,
+        expiresOn: complianceDocuments.expiresOn,
+      })
+      .from(complianceDocuments)
+      .where(
+        and(
+          eq(complianceDocuments.orgId, scope.ctx.orgId),
+          isNull(complianceDocuments.archivedAt),
+          inArray(complianceDocuments.itemType, [
+            'trade_licence',
+            'contractor_licence',
+            'hrw_licence',
+          ]),
+        ),
+      )
+      .orderBy(sql`${complianceDocuments.expiresOn} asc nulls last`);
+    return rows.flatMap((r) => {
+      const state = expiryState(r.expiresOn, day as LocalDate);
+      return state === 'expired' || state === 'expiring'
+        ? [
+            {
+              title: r.title,
+              holder: r.holderName,
+              itemType: r.itemType,
+              expiresOn: r.expiresOn!,
+              state,
+            },
+          ]
+        : [];
+    });
+  }
+
+  return { list, listAlerts, create, update, sight, readinessSummary, lapsedLicences };
 }
 
 export type WalletService = ReturnType<typeof createWalletService>;

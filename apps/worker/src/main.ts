@@ -14,9 +14,13 @@ import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
+import { inviteeReminders } from './jobs/invitee-reminders';
 import { trustReminders } from './jobs/trust-reminders';
+import { correspondenceEmails } from './jobs/correspondence-emails';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
+import { permitNotices } from './jobs/permit-notices';
+import { coverNotices } from './jobs/cover-notices';
 import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
@@ -33,6 +37,7 @@ import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
+import { warrantyExpiry } from './jobs/warranty-expiry';
 import { walletRetention } from './jobs/wallet-retention';
 import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
@@ -114,12 +119,17 @@ async function main() {
     templateBackfill,
     meetingReminders,
     bidReminders,
+    inviteeReminders(emailSender, config.email.appBaseUrl),
     trustReminders,
     incidentActionNotices,
+    permitNotices,
+    coverNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
+    correspondenceEmails(emailSender, config.email.appBaseUrl),
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
     walletRetention(),
+    warrantyExpiry,
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

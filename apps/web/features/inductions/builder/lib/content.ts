@@ -6,6 +6,7 @@ import type {
   InductionSectionKey,
   Induction,
 } from './types';
+import { animationProblems } from './animation';
 import { SECTION_LABELS } from './types';
 
 export const emptyContent = (): InductionContent => ({ sections: [], quiz: [], passMark: 80 });
@@ -61,6 +62,7 @@ export function contentProblems(c: InductionContent): string[] {
     s.blocks.forEach((b) => {
       if (b.type === 'text' && !b.body.trim())
         out.push(`${s.title || `Section ${i + 1}`} has an empty text block.`);
+      if (b.type === 'animation') out.push(...animationProblems(b, s.title || `Section ${i + 1}`));
     });
   });
   c.quiz.forEach((q, i) => {

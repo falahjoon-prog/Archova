@@ -22,6 +22,8 @@ export interface PackageInvite {
   invitedAt: string;
   /** When the invite email last went out; null if it has not (draft package, no contact email, or a failed send). */
   deliveredAt?: string | null;
+  /** When the last reminder email went out, if any. */
+  lastRemindedAt?: string | null;
 }
 
 export interface Award {

@@ -1,7 +1,9 @@
 'use client';
 
 import { Button, Select, StatusPill, TextField, Textarea } from '@archova/ui';
+import { newAnimationBlock } from '../lib/animation';
 import { blockSummary, sectionHasContent } from '../lib/content';
+import { AnimationEditor } from './AnimationEditor';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -74,6 +76,19 @@ export function SectionEditor({
             maxLength={20000}
             onChange={(e) => setBlock(i, { type: 'text', body: e.target.value })}
           />
+        ) : block.type === 'animation' ? (
+          <div key={i} className="induction-block induction-block--animation">
+            <AnimationEditor block={block} onChange={(next) => setBlock(i, next)} />
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={() =>
+                onChange({ ...section, blocks: section.blocks.filter((_, n) => n !== i) })
+              }
+            >
+              Remove animation
+            </Button>
+          </div>
         ) : (
           <div key={i} className="induction-block">
             <span>{blockSummary(block)}</span>
@@ -98,6 +113,13 @@ export function SectionEditor({
           }
         >
           Add text
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onChange({ ...section, blocks: [...section.blocks, newAnimationBlock()] })}
+        >
+          Add animation
         </Button>
         <Button
           variant="secondary"

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Sparkles } from 'lucide-react';
+import { NovaMark } from '../icons/NovaMark';
 
 /** Shared label / hint / error frame for form controls. `describedBy` is computed by the caller. */
 export function Field({
@@ -28,7 +28,7 @@ export function Field({
         {label}
         {aiFilled ? (
           <span className="ac-field__ai">
-            <Sparkles size={12} strokeWidth={2} aria-hidden="true" />
+            <NovaMark size={12} />
             Drafted by Nova
           </span>
         ) : null}

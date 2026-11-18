@@ -35,6 +35,27 @@ describe('RfiListScreen', () => {
     expect(within(rfi4).getByText('(5 business days)')).toBeTruthy();
   });
 
+  it('shows the register columns and lets Nova flag a ball held too long', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiListScreen />);
+    await screen.findByRole('link', { name: 'RFI-003' });
+    for (const name of [
+      'Responsible contractor',
+      'Received from',
+      'Date initiated',
+      'RFI manager',
+      'Assignee',
+      'Ball in court',
+    ])
+      expect(screen.getByRole('columnheader', { name: new RegExp(name) })).toBeTruthy();
+    const row3 = screen.getByRole('link', { name: 'RFI-003' }).closest('tr')!;
+    expect(within(row3).getByText(/Waiting \d+ business days/)).toBeTruthy();
+    const row4 = screen.getByRole('link', { name: 'RFI-004' }).closest('tr')!;
+    expect(within(row4).queryByText(/Waiting \d+ business days/)).toBeNull();
+    await user.click(screen.getByLabelText('Ball held 5+ days'));
+    expect(nav.search).toBe('stale=1');
+  });
+
   it('keeps filters in the URL', async () => {
     const user = userEvent.setup();
     renderInProject(<RfiListScreen />);
@@ -71,6 +92,22 @@ describe('RfiNewScreen', () => {
       (screen.getByRole('textbox', { name: /^Question/ }) as HTMLTextAreaElement).value,
     ).toMatch(/Please confirm/);
     expect(screen.queryByText('Drafted RFI')).toBeNull();
+  });
+
+  it('creates a draft RFI straight from a Nova draft, without submitting it (F3)', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiNewScreen />);
+    await enterText(
+      user,
+      await screen.findByLabelText('What did you find on site?'),
+      'Slab edge at grid C is 20 mm proud.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Draft with Nova' }));
+    expect(await screen.findByText('Drafted RFI')).toBeTruthy();
+    expect(nav.pushed).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Create draft RFI' }));
+    await waitFor(() => expect(nav.pushed).toHaveLength(1));
+    expect(nav.pushed[0]).toMatch(/^\/acme\/projects\/prj_test\/rfis\/rfi_/);
   });
 
   it('defaults the due date to 5 business days and blocks submit until required fields are set', async () => {

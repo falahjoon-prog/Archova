@@ -12,13 +12,18 @@ import {
 import type { SwmsFields, SwmsService } from '../application/swms';
 import type { SwmsContent } from '../domain/swms';
 import type { ActionInput, IncidentFields, IncidentService } from '../application/incidents';
+import type { AttendeeInput, ToolboxService } from '../application/toolbox';
 import {
   toActionDto,
   toActionFromSource,
   toIncidentDetail,
   toIncidentListDto,
   toSwmsDetail,
+  toSuggestionDto,
   toSwmsDto,
+  toTalkDetail,
+  toTalkDto,
+  toTopicDto,
 } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
@@ -131,7 +136,21 @@ function actionFields(b: ActionBody): ActionInput {
   return out;
 }
 
-export function safetyRoutes(database: Database, swms: SwmsService, incidents: IncidentService) {
+const attendeeInputs = (
+  list: { personName: string; companyId?: string | null; userId?: string | null }[],
+): AttendeeInput[] =>
+  list.map((p, i) => ({
+    personName: p.personName,
+    companyId: p.companyId ? ref('company', p.companyId, `attendees.${i}.companyId`) : null,
+    userId: p.userId ? ref('user', p.userId, `attendees.${i}.userId`) : null,
+  }));
+
+export function safetyRoutes(
+  database: Database,
+  swms: SwmsService,
+  incidents: IncidentService,
+  toolbox: ToolboxService,
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -163,7 +182,210 @@ export function safetyRoutes(database: Database, swms: SwmsService, incidents: I
     headers: { etag: etag(d.incident.version) },
   });
 
+  const talkId = (p: { talkId: string }) => {
+    const id = decodeId('toolboxTalk', p.talkId);
+    if (!id) throw new AppError('toolbox.not_found');
+    return id;
+  };
+  const attendeeId = (p: { attendeeId: string }) => {
+    const id = decodeId('toolboxAttendee', p.attendeeId);
+    if (!id) throw new AppError('toolbox.attendee_not_found');
+    return id;
+  };
+  const talkOk = (status: number, d: Awaited<ReturnType<ToolboxService['detail']>>) => ({
+    status,
+    body: toTalkDetail(d),
+    headers: { etag: etag(d.talk.version) },
+  });
+
   return defineRoutes({
+    listToolboxTopics: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            toolbox.listTopics(s, project(input.params), {
+              includeInactive: input.query.includeInactive === 'true',
+            }),
+          )
+        ).map(toTopicDto),
+      },
+    }),
+    createToolboxTopic: async (input) => {
+      const b = input.body;
+      const t = await tx(input, (s) =>
+        toolbox.createTopic(s, project(input.params), {
+          title: b.title,
+          ...(b.talkingPoints !== undefined ? { talkingPoints: b.talkingPoints } : {}),
+          ...(b.category ? { category: b.category } : {}),
+          ...(b.hrcwCategory !== undefined ? { hrcwCategory: b.hrcwCategory } : {}),
+        }),
+      );
+      return { status: 201, body: toTopicDto(t), headers: { etag: etag(t.version) } };
+    },
+    updateToolboxTopic: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const topicId = decodeId('toolboxTopic', input.params.topicId);
+      if (!topicId) throw new AppError('toolbox.topic_not_found');
+      const b = input.body;
+      const t = await tx(input, (s) =>
+        toolbox.updateTopic(s, project(input.params), topicId, expected, {
+          ...(b.title !== undefined ? { title: b.title } : {}),
+          ...(b.talkingPoints !== undefined ? { talkingPoints: b.talkingPoints } : {}),
+          ...(b.category ? { category: b.category } : {}),
+          ...(b.hrcwCategory !== undefined ? { hrcwCategory: b.hrcwCategory } : {}),
+          ...(b.isActive !== undefined ? { isActive: b.isActive } : {}),
+        }),
+      );
+      return { status: 200, body: toTopicDto(t), headers: { etag: etag(t.version) } };
+    },
+    listToolboxTalks: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        toolbox.list(s, project(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.topicId ? { topicId: ref('toolboxTopic', q.topicId, 'topicId') } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toTalkDto), nextCursor: page.nextCursor },
+      };
+    },
+    suggestToolboxTopics: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => toolbox.suggestions(s, project(input.params)))).map(
+          toSuggestionDto,
+        ),
+      },
+    }),
+    createToolboxTalk: async (input) => {
+      const b = input.body;
+      return talkOk(
+        201,
+        await tx(input, (s) =>
+          toolbox.create(s, project(input.params), {
+            title: b.title,
+            heldAt: new Date(b.heldAt),
+            presenterName: b.presenterName,
+            ...(b.topicId ? { topicId: ref('toolboxTopic', b.topicId, 'topicId') } : {}),
+            ...(b.location !== undefined ? { location: b.location } : {}),
+            ...(b.notes !== undefined ? { notes: b.notes } : {}),
+            ...(b.attendees ? { attendees: attendeeInputs(b.attendees) } : {}),
+          }),
+        ),
+      );
+    },
+    getToolboxTalk: async (input) =>
+      talkOk(
+        200,
+        await read(input, (s) => toolbox.detail(s, project(input.params), talkId(input.params))),
+      ),
+    updateToolboxTalk: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      return talkOk(
+        200,
+        await tx(input, (s) =>
+          toolbox.update(s, project(input.params), talkId(input.params), expected, {
+            ...(b.title !== undefined ? { title: b.title } : {}),
+            ...(b.topicId !== undefined
+              ? { topicId: b.topicId === null ? null : ref('toolboxTopic', b.topicId, 'topicId') }
+              : {}),
+            ...(b.heldAt !== undefined ? { heldAt: new Date(b.heldAt) } : {}),
+            ...(b.location !== undefined ? { location: b.location } : {}),
+            ...(b.presenterName !== undefined ? { presenterName: b.presenterName } : {}),
+            ...(b.notes !== undefined ? { notes: b.notes } : {}),
+          }),
+        ),
+      );
+    },
+    deleteToolboxTalk: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) =>
+        toolbox.remove(s, project(input.params), talkId(input.params), expected),
+      );
+      return { status: 204 };
+    },
+    transitionToolboxTalk: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return talkOk(
+        200,
+        await tx(input, (s) =>
+          toolbox.transition(
+            s,
+            project(input.params),
+            talkId(input.params),
+            expected,
+            input.body.action,
+          ),
+        ),
+      );
+    },
+    addToolboxAttendees: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return talkOk(
+        201,
+        await tx(input, (s) =>
+          toolbox.addAttendees(
+            s,
+            project(input.params),
+            talkId(input.params),
+            expected,
+            attendeeInputs(input.body.attendees),
+          ),
+        ),
+      );
+    },
+    removeToolboxAttendee: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return talkOk(
+        200,
+        await tx(input, (s) =>
+          toolbox.removeAttendee(
+            s,
+            project(input.params),
+            talkId(input.params),
+            expected,
+            attendeeId(input.params),
+          ),
+        ),
+      );
+    },
+    signToolboxAttendee: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return talkOk(
+        200,
+        await tx(input, (s) =>
+          toolbox.sign(
+            s,
+            project(input.params),
+            talkId(input.params),
+            expected,
+            attendeeId(input.params),
+            ref('file', input.body.signatureFileId, 'signatureFileId'),
+          ),
+        ),
+      );
+    },
+    clearToolboxSignature: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return talkOk(
+        200,
+        await tx(input, (s) =>
+          toolbox.clearSignature(
+            s,
+            project(input.params),
+            talkId(input.params),
+            expected,
+            attendeeId(input.params),
+          ),
+        ),
+      );
+    },
     listIncidentActionsFromSource: async (input) => {
       const type = input.query.sourceType;
       const rows = await read(input, (s) =>

@@ -176,7 +176,11 @@ export function ModelViewerScreen() {
         <EmptyState
           icon={CoordinationIcon}
           title="No model files yet"
-          description="Register an IFC file under Models on the issues page, then open it here."
+          description={
+            (models.data ?? []).length > 0
+              ? 'None of the registered models has an IFC file attached. Register a model again with its .ifc file under Models on the issues page.'
+              : 'Open the issues page, choose Register a model under Models and attach an .ifc file. It will then appear here to open in 3D.'
+          }
           action={
             <Link className={buttonClassName('primary')} href={back}>
               Go to models

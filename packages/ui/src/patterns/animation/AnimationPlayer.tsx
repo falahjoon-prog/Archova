@@ -113,6 +113,7 @@ export function SceneFrame({
           <div
             key={el.id}
             className={`ac-anim__el ac-anim__el--${el.kind}`}
+            data-element-id={el.id}
             data-selected={selectedId === el.id ? 'true' : undefined}
             style={style}
             onPointerDown={onSelect ? () => onSelect(el.id) : undefined}

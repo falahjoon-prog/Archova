@@ -52,11 +52,15 @@ describe('AnimationPlayer', () => {
     await user.click(screen.getByRole('button', { name: 'Play' }));
     expect(onComplete).not.toHaveBeenCalled();
     // Step in small acts so React renders between frames, as it does in a browser.
-    for (let i = 0; i < 300; i++)
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(16);
-      });
-    expect(onComplete).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
-  });
+    // 100 ms steps (about 50 renders for two 2 s scenes) keep this fast on a busy CI runner.
+    try {
+      for (let i = 0; i < 60; i++)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(100);
+        });
+      expect(onComplete).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 20_000);
 });

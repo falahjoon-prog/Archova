@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   attention,
+  budgetTotals,
+  budgetView,
   normaliseColumns,
   normaliseConfig,
   orderPortfolio,
@@ -10,14 +12,29 @@ import {
   type ResultRow,
 } from '../../src/domain/report';
 
-const tool = (open: number, overdue: number, restricted = false) => ({ restricted, open, overdue });
+const tool = (open: number, overdue: number, restricted = false) => ({
+  restricted,
+  open,
+  overdue,
+  dueSoon: 0,
+});
 const counts = (r: [number, number], d: [number, number], s: [number, number]): ProjectCounts => ({
   rfis: tool(...r),
   defects: tool(...d),
   submittals: tool(...s),
   claims: tool(0, 0),
   variations: tool(0, 0),
-  incidents: tool(0, 0),
+  incidents: {
+    ...tool(0, 0),
+    lastInjuryOn: null,
+    lastIncidentOn: null,
+    daysSinceInjury: null,
+    daysSinceIncident: null,
+    last12Months: 0,
+  },
+  observations: tool(0, 0),
+  inspections: tool(0, 0),
+  programme: { ...tool(0, 0), notStarted: 0, completed: 0, lateDays: 0 },
 });
 
 describe('columns and config', () => {
@@ -106,6 +123,58 @@ describe('claims and variations in the portfolio', () => {
       claimsOverdue: 2,
       variationsOpen: 4,
       variationsOverdue: 0,
+    });
+  });
+});
+
+describe('budget against forecast', () => {
+  const b = (revised: number, forecast: number, over = 0) => ({
+    restricted: false,
+    hasBudget: true,
+    revisedCents: revised,
+    forecastFinalCents: forecast,
+    spentCents: 0,
+    varianceCents: revised - forecast,
+    overBudgetCodes: over,
+    monthly: [{ month: '2026-09', spentCents: 12_345 }],
+  });
+  const none = { ...b(0, 0), hasBudget: false };
+  const locked = { ...b(900_000, 100), restricted: true };
+
+  it('shows decimal strings, negative when over budget', () => {
+    expect(budgetView(b(1_000_050, 1_200_000, 2))).toEqual({
+      restricted: false,
+      hasBudget: true,
+      revised: '10000.50',
+      forecastFinal: '12000.00',
+      spent: '0.00',
+      variance: '-1999.50',
+      overBudgetCodes: 2,
+      monthly: [{ month: '2026-09', spent: '123.45' }],
+    });
+  });
+
+  it('shows no figures for a restricted project or one without a budget', () => {
+    expect(budgetView(locked)).toMatchObject({
+      restricted: true,
+      revised: '0.00',
+      variance: '0.00',
+    });
+    expect(budgetView(none)).toMatchObject({
+      hasBudget: false,
+      revised: '0.00',
+      overBudgetCodes: 0,
+      monthly: [],
+    });
+  });
+
+  it('totals only the budgets the caller can see', () => {
+    expect(budgetTotals([b(100_000, 80_000), b(50_000, 70_000), none, locked])).toEqual({
+      budgetProjects: 2,
+      projectsOverBudget: 1,
+      budgetRevised: '1500.00',
+      budgetForecastFinal: '1500.00',
+      budgetVariance: '0.00',
     });
   });
 });

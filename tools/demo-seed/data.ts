@@ -65,7 +65,7 @@ const ARCH: Sheet[] = [
   { number: 'H-101', title: 'Hydraulic Services Ground Floor', discipline: 'H' },
 ];
 
-const DOCS = [
+export const DOCS = [
   {
     folder: 'Contracts',
     title: 'Head Contract AS 4000 (sample)',

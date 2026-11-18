@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
-import { StatusPill } from '@archova/ui';
+import { Card, StatusPill } from '@archova/ui';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActionsFromSource } from '../hooks/useIncidents';
@@ -31,22 +31,23 @@ export function LinkedIncidentActions({
       <p className="u-muted">No incident corrective actions were raised from this.</p>
     ) : null;
   return (
-    <section aria-labelledby="linked-incident-actions" className="stack">
-      <h2 id="linked-incident-actions">Corrective actions from incidents</h2>
-      <ul>
-        {rows.map((r) => (
-          <li key={r.action.id}>
-            <Link href={webRoutes.incidents(org.orgSlug, project.projectId, r.incidentId)}>
-              {r.incidentNumberLabel}
-            </Link>{' '}
-            {r.action.title}{' '}
-            <StatusPill tone={CORRECTIVE_TONE[r.action.status]}>
-              {CORRECTIVE_LABELS[r.action.status]}
-            </StatusPill>
-            {r.action.isOverdue ? <StatusPill tone="danger">Overdue</StatusPill> : null}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Card title="Corrective actions from incidents">
+      <div className="stack">
+        <ul>
+          {rows.map((r) => (
+            <li key={r.action.id}>
+              <Link href={webRoutes.incidents(org.orgSlug, project.projectId, r.incidentId)}>
+                {r.incidentNumberLabel}
+              </Link>{' '}
+              {r.action.title}{' '}
+              <StatusPill tone={CORRECTIVE_TONE[r.action.status]}>
+                {CORRECTIVE_LABELS[r.action.status]}
+              </StatusPill>
+              {r.action.isOverdue ? <StatusPill tone="danger">Overdue</StatusPill> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
   );
 }

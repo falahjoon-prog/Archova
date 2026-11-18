@@ -12,7 +12,11 @@ mkdirSync(data, { recursive: true });
 const secretFile = join(data, '.secret');
 if (!existsSync(secretFile))
   writeFileSync(secretFile, randomBytes(32).toString('hex'), { mode: 0o600 });
-const env = { ...process.env, SITE_PAYLOAD_SECRET: readFileSync(secretFile, 'utf8').trim() };
+const env = {
+  SITE_APP_URL: 'http://demo.localhost:3007',
+  ...process.env,
+  SITE_PAYLOAD_SECRET: readFileSync(secretFile, 'utf8').trim(),
+};
 
 const run = (cmd, args, extra = {}) => {
   const r = spawnSync(cmd, args, {

@@ -33,6 +33,10 @@ const ALLOWED_BY_AREA: Readonly<Record<(typeof AREAS)[number], readonly string[]
     'getKeyDates',
     'updateKeyDates',
     'listKeyDateChanges',
+    'listProjectLocations',
+    'createProjectLocation',
+    'updateProjectLocation',
+    'deleteProjectLocation',
   ],
   directory: ['listCompanies', 'createCompany', 'listProjectMembers'],
   documents: [

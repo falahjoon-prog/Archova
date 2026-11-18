@@ -34,3 +34,20 @@ export function totalsOf(lines: LineAmounts[]) {
     forecastToComplete: sum((l) => l.forecastToComplete),
   };
 }
+
+export interface SnapshotAmounts {
+  original: string;
+  approvedChanges: string;
+  revised: string;
+}
+
+/** Totals over frozen snapshot lines. */
+export function snapshotTotals(lines: SnapshotAmounts[]) {
+  const sum = (pick: (l: SnapshotAmounts) => string) =>
+    fromCents(lines.reduce((n, l) => n + signedCents(pick(l)), 0));
+  return {
+    original: sum((l) => l.original),
+    approvedChanges: sum((l) => l.approvedChanges),
+    revised: sum((l) => l.revised),
+  };
+}

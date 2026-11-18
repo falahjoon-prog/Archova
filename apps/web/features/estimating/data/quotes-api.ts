@@ -90,6 +90,7 @@ export function createQuotesApi(orgId: string): QuotesSource {
       status: i.status,
       invitedAt: i.invitedAt,
       deliveredAt: i.deliveredAt,
+      lastRemindedAt: i.lastRemindedAt,
     })),
     allowances: Object.fromEntries(Object.entries(p.allowances).map(([k, v]) => [k, toCents(v)])),
     award: p.award

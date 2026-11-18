@@ -11,4 +11,7 @@ export const QUALITY_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'quality.observations.read', scope: 'project', tool: 'inspections', level: 'read' },
   { key: 'quality.observations.create', scope: 'project', tool: 'inspections', level: 'standard' },
   { key: 'quality.observations.close', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Action plans: the assigned company reads its plans and marks its steps done; the builder shapes the plans.
+  { key: 'quality.action_plans.read', scope: 'project', tool: 'inspections', level: 'read' },
+  { key: 'quality.action_plans.manage', scope: 'project', tool: 'inspections', level: 'standard' },
 ];

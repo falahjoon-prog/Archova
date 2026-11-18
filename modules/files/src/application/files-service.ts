@@ -1,6 +1,6 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, like, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import type { CreateUploadRequest } from '@archova/contracts';
+import { CaptureSchema, type Capture, type CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fileObjects, uploadSessions } from '../infra/tables';
@@ -27,6 +27,9 @@ const FILE_STATUS = {
   unscannable: 'failed',
   pending: 'scanning',
 } as const satisfies Record<ScanVerdict, FileRow['status']>;
+
+/** Modules whose images show in the project photo gallery. Safety, workforce and other restricted records are left out. */
+export const PHOTO_MODULES = ['photos', 'diary', 'defects', 'quality', 'rfis'] as const;
 
 /** No scan result after this long fails closed (security-licensing/09 §4). */
 const SCAN_TIMEOUT_MS = 15 * 60_000;
@@ -354,7 +357,113 @@ export function createFilesService({
     return { file: f, bytes };
   }
 
-  return { createUpload, complete, get, downloadUrl, readBytes };
+  /**
+   * The newest ready photos on a project, for the project home gallery. Only modules whose photos are meant for the
+   * whole project team feed it (`PHOTO_MODULES`); incident and induction photos stay inside their own records.
+   * Newest by capture time, falling back to upload time. Each photo comes with a short-lived download link.
+   */
+  async function listProjectPhotos(scope: TenantScope, projectId: string, limit: number) {
+    await authorise(scope, projectId, 'read');
+    const rows = await scope.tx
+      .select()
+      .from(fileObjects)
+      .where(
+        and(
+          eq(fileObjects.projectId, projectId),
+          eq(fileObjects.status, 'ready'),
+          like(fileObjects.mime, 'image/%'),
+          inArray(fileObjects.module, [...PHOTO_MODULES]),
+          isNull(fileObjects.deletedAt),
+        ),
+      )
+      .orderBy(desc(sql`coalesce(${fileObjects.takenAt}, ${fileObjects.createdAt})`))
+      .limit(Math.min(Math.max(limit, 1), 30));
+    return Promise.all(
+      rows.map(async (f) => ({
+        file: f,
+        url: await store.presignGet(f.storageKey, {
+          contentDisposition: contentDisposition(f.filename),
+          expiresInS: DOWNLOAD_URL_TTL_S,
+        }),
+        expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000),
+      })),
+    );
+  }
+
+  /**
+   * `photos.create` from a phone (mobile 03 §3.1): the photo's file has uploaded, and this says it is a site photo of
+   * this project. It checks the file is the caller's own stored, scanned photo for that project, then fills in only the
+   * capture details the upload did not already carry (what the phone reported at upload wins). Sending it again
+   * changes nothing.
+   */
+  async function registerPhoto(
+    scope: TenantScope,
+    input: { projectId: string; fileId: string; capture?: unknown },
+  ): Promise<FileRow> {
+    await authorise(scope, input.projectId, 'upload', 'photos');
+    const parsed =
+      input.capture === undefined || input.capture === null
+        ? null
+        : CaptureSchema.safeParse(input.capture);
+    if (parsed && !parsed.success)
+      throw new AppError('validation_failed', 'The photo details are not valid.', [
+        { path: 'payload/capture', message: 'Expected when and where it was taken' },
+      ]);
+    const capture: Capture | null = parsed?.success ? parsed.data : null;
+
+    const [f] = await scope.tx
+      .select()
+      .from(fileObjects)
+      .where(
+        and(
+          eq(fileObjects.id, input.fileId),
+          eq(fileObjects.projectId, input.projectId),
+          eq(fileObjects.module, 'photos'),
+          isNull(fileObjects.deletedAt),
+        ),
+      )
+      .for('update')
+      .limit(1);
+    // Someone else's photo, another project's, or another kind of file all look the same: not found.
+    if (!f || f.createdBy !== scope.ctx.userId) throw new AppError('file.not_found');
+    assertFileReady(f);
+    if (!f.mime.startsWith('image/'))
+      throw new AppError('validation_failed', 'A photo has to be an image.', [
+        { path: 'payload/fileId', message: 'Not an image' },
+      ]);
+    if (!capture) return f;
+
+    const tz = capture.timeZone
+      ? await resolveTimeZone(scope.tx, capture.timeZone, 'capture.timeZone')
+      : null;
+    const sent = captureToRow(capture, tz);
+    const gaps: Partial<typeof fileObjects.$inferInsert> = {};
+    if (f.takenAt === null && sent.takenAt) {
+      gaps.takenAt = sent.takenAt;
+      gaps.takenTz = sent.takenTz;
+    }
+    if (f.captureLat === null && sent.captureLat !== null) {
+      gaps.captureLat = sent.captureLat;
+      gaps.captureLng = sent.captureLng;
+      gaps.captureAccuracyM = sent.captureAccuracyM;
+      gaps.captureHeadingDeg = sent.captureHeadingDeg;
+      gaps.captureSource = sent.captureSource;
+    }
+    if (Object.keys(gaps).length === 0) return f;
+    const [updated] = await scope.tx
+      .update(fileObjects)
+      .set({
+        ...gaps,
+        updatedAt: new Date(),
+        updatedBy: scope.ctx.userId,
+        version: sql`${fileObjects.version} + 1`,
+      })
+      .where(and(eq(fileObjects.orgId, f.orgId), eq(fileObjects.id, f.id)))
+      .returning();
+    return updated!;
+  }
+
+  return { createUpload, complete, get, downloadUrl, readBytes, listProjectPhotos, registerPhoto };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

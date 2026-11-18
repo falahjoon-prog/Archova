@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
+  Card,
   Button,
   Checkbox,
   PageHeader,
@@ -12,6 +13,7 @@ import {
   TextField,
   Textarea,
 } from '@archova/ui';
+import { Save } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -127,125 +129,129 @@ export function TransmittalNewScreen() {
           save();
         }}
       >
-        <section className="ac-card stack" aria-labelledby="tx-details">
-          <h2 id="tx-details" className="panel-heading">
-            Details
-          </h2>
-          <TextField
-            label="Subject"
-            value={subject}
-            maxLength={300}
-            onChange={(e) => setSubject(e.target.value)}
-            error={touched ? errors.subject : undefined}
-          />
-          <div className="form-row">
-            <Select
-              label="Purpose"
-              value={purpose}
-              options={PURPOSES.map((v) => ({ value: v, label: PURPOSE_LABELS[v] }))}
-              onChange={(e) => setPurpose(e.target.value as TransmittalPurpose)}
-            />
-            <TextField
-              label="Response due"
-              type="date"
-              value={responseDue}
-              onChange={(e) => setResponseDue(e.target.value)}
-              hint="Optional"
-            />
-          </div>
-          <Textarea
-            label="Message"
-            rows={3}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            hint="Optional. It appears on the cover sheet and in the email."
-          />
-        </section>
-
-        <section className="ac-card stack" aria-labelledby="tx-people">
-          <h2 id="tx-people" className="panel-heading">
-            Who it goes to
-          </h2>
-          <Textarea
-            label="To"
-            rows={2}
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            hint="Email addresses, separated by commas or new lines. People without an Archova account get a personal link."
-            error={touched ? errors.to : undefined}
-          />
-          <Textarea
-            label="Cc"
-            rows={2}
-            value={cc}
-            onChange={(e) => setCc(e.target.value)}
-            hint="Optional"
-            error={touched ? errors.cc : undefined}
-          />
-        </section>
-
-        <section className="ac-card stack" aria-labelledby="tx-items">
-          <h2 id="tx-items" className="panel-heading">
-            What you are sending
-          </h2>
-          {touched && errors.items ? <p className="ac-field__error">{errors.items}</p> : null}
-          {availableDisciplines.length ? (
-            <fieldset className="check-group">
-              <legend className="ac-field__label">Current set for a discipline</legend>
-              {availableDisciplines.map((d) => (
-                <Checkbox
-                  key={d}
-                  label={`Discipline ${d}`}
-                  hint="Every current sheet"
-                  checked={disciplines.has(d)}
-                  onChange={(e) =>
-                    setDisciplines((s) => {
-                      const next = new Set(s);
-                      if (e.target.checked) next.add(d);
-                      else next.delete(d);
-                      return next;
-                    })
-                  }
+        <div className="two-col">
+          <Card title="Details">
+            <div className="stack">
+              <TextField
+                label="Subject"
+                value={subject}
+                maxLength={300}
+                onChange={(e) => setSubject(e.target.value)}
+                error={touched ? errors.subject : undefined}
+              />
+              <div className="form-row">
+                <Select
+                  label="Purpose"
+                  value={purpose}
+                  options={PURPOSES.map((v) => ({ value: v, label: PURPOSE_LABELS[v] }))}
+                  onChange={(e) => setPurpose(e.target.value as TransmittalPurpose)}
                 />
-              ))}
-            </fieldset>
-          ) : null}
-          <fieldset className="check-group">
-            <legend className="ac-field__label">Drawings</legend>
-            {sendable.isPending ? <SkeletonRows rows={3} label="Loading drawings…" /> : null}
-            <ErrorAlert error={sendable.error} title="We couldn't load drawings and documents" />
-            {sheets.map((s) => (
-              <SendableCheck
-                key={s.revisionId}
-                item={s}
-                checked={picked.has(key(s))}
-                onToggle={toggle}
+                <TextField
+                  label="Response due"
+                  type="date"
+                  value={responseDue}
+                  onChange={(e) => setResponseDue(e.target.value)}
+                  hint="Optional"
+                />
+              </div>
+              <Textarea
+                label="Message"
+                rows={3}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                hint="Optional. It appears on the cover sheet and in the email."
               />
-            ))}
-            {!sendable.isPending && sheets.length === 0 ? (
-              <p className="u-caption">No drawings published yet.</p>
-            ) : null}
-          </fieldset>
-          <fieldset className="check-group">
-            <legend className="ac-field__label">Documents</legend>
-            {docs.map((d) => (
-              <SendableCheck
-                key={d.revisionId}
-                item={d}
-                checked={picked.has(key(d))}
-                onToggle={toggle}
+            </div>
+          </Card>
+
+          <Card title="Who it goes to">
+            <div className="stack">
+              <Textarea
+                label="To"
+                rows={3}
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                hint="Email addresses, separated by commas or new lines. People without an Archova account get a personal link."
+                error={touched ? errors.to : undefined}
               />
-            ))}
-            {!sendable.isPending && docs.length === 0 ? (
-              <p className="u-caption">No documents yet.</p>
+              <Textarea
+                label="Cc"
+                rows={2}
+                value={cc}
+                onChange={(e) => setCc(e.target.value)}
+                hint="Optional"
+                error={touched ? errors.cc : undefined}
+              />
+            </div>
+          </Card>
+        </div>
+
+        <Card title="What you are sending">
+          <div className="stack">
+            {touched && errors.items ? <p className="ac-field__error">{errors.items}</p> : null}
+            {availableDisciplines.length ? (
+              <fieldset className="check-group">
+                <legend className="ac-field__label">Current set for a discipline</legend>
+                {availableDisciplines.map((d) => (
+                  <Checkbox
+                    key={d}
+                    label={`Discipline ${d}`}
+                    hint="Every current sheet"
+                    checked={disciplines.has(d)}
+                    onChange={(e) =>
+                      setDisciplines((s) => {
+                        const next = new Set(s);
+                        if (e.target.checked) next.add(d);
+                        else next.delete(d);
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </fieldset>
             ) : null}
-          </fieldset>
-        </section>
+            <div className="two-col">
+              <fieldset className="check-group">
+                <legend className="ac-field__label">Drawings</legend>
+                {sendable.isPending ? <SkeletonRows rows={3} label="Loading drawings…" /> : null}
+                <ErrorAlert
+                  error={sendable.error}
+                  title="We couldn't load drawings and documents"
+                />
+                {sheets.map((s) => (
+                  <SendableCheck
+                    key={s.revisionId}
+                    item={s}
+                    checked={picked.has(key(s))}
+                    onToggle={toggle}
+                  />
+                ))}
+                {!sendable.isPending && sheets.length === 0 ? (
+                  <p className="u-caption">No drawings published yet.</p>
+                ) : null}
+              </fieldset>
+              <fieldset className="check-group">
+                <legend className="ac-field__label">Documents</legend>
+                {docs.map((d) => (
+                  <SendableCheck
+                    key={d.revisionId}
+                    item={d}
+                    checked={picked.has(key(d))}
+                    onToggle={toggle}
+                  />
+                ))}
+                {!sendable.isPending && docs.length === 0 ? (
+                  <p className="u-caption">No documents yet.</p>
+                ) : null}
+              </fieldset>
+            </div>
+          </div>
+        </Card>
 
         <ErrorAlert error={create.error} title="We couldn't save the transmittal" />
         <div className="row-actions">
           <Button type="submit" loading={create.isPending}>
-            Save draft
+            <Save size={16} aria-hidden="true" /> Save draft
           </Button>
           <Link className="link" href={webRoutes.transmittals(org.orgSlug, project.projectId)}>
             Cancel
