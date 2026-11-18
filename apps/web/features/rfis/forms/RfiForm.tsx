@@ -70,7 +70,7 @@ export interface RfiFormProps {
 /**
  * New RFI and draft editing (F1.4 step 1–2). Submit needs subject, question, assignee and due date (RFI-AC2);
  * a draft only needs a subject. Nova can improve the question and look for similar RFIs; neither changes the form
- * until the user accepts (P6), and Nova never submits.
+ * until the user accepts (P6), and Nova never submits; "Create draft RFI" saves a draft only, after the person clicks it.
  */
 export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiFormProps) {
   const dir = useProjectDirectory();
@@ -90,6 +90,22 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
   const markupRevision = sheets.options.find((o) => o.sheetId === markupSheet)?.revisionId;
   const markups = useMarkupPicker(project.projectId, markupRevision);
   const [draft, setDraft] = useState<NovaRfiDraft | null>(null);
+
+  const withDraft = (prev: RfiInput, d: NovaRfiDraft): RfiInput => ({
+    ...prev,
+    subject: d.subject,
+    question: d.question,
+    drawing: d.drawing
+      ? {
+          sheetId:
+            sheets.options.find((o) => o.revisionId === d.drawing!.revisionId)?.sheetId ?? '',
+          revisionId: d.drawing.revisionId,
+          label: d.drawing.label,
+          pin: { x: d.drawing.x, y: d.drawing.y },
+        }
+      : prev.drawing,
+    nova: { suggestionId: d.suggestionId, subject: d.subject, question: d.question },
+  });
 
   const set = <K extends keyof RfiInput>(key: K, value: RfiInput[K]) =>
     setV((prev) => ({ ...prev, [key]: value }));
@@ -207,32 +223,29 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
                     type="button"
                     size="sm"
                     onClick={() => {
-                      setV((prev) => ({
-                        ...prev,
-                        subject: draft.subject,
-                        question: draft.question,
-                        drawing: draft.drawing
-                          ? {
-                              sheetId:
-                                sheets.options.find(
-                                  (o) => o.revisionId === draft.drawing!.revisionId,
-                                )?.sheetId ?? '',
-                              revisionId: draft.drawing.revisionId,
-                              label: draft.drawing.label,
-                              pin: { x: draft.drawing.x, y: draft.drawing.y },
-                            }
-                          : prev.drawing,
-                        nova: {
-                          suggestionId: draft.suggestionId,
-                          subject: draft.subject,
-                          question: draft.question,
-                        },
-                      }));
+                      setV(withDraft(v, draft));
                       setQuestionFromNova(true);
                       setDraft(null);
                     }}
                   >
                     Use this draft
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      // The person's click is the confirmation. This saves a draft RFI (no number, nobody
+                      // notified); sending stays a separate step.
+                      const next = withDraft(v, draft);
+                      setV(next);
+                      setErrors({});
+                      setDraft(null);
+                      onSaveDraft(next);
+                    }}
+                  >
+                    Create draft RFI
                   </Button>
                   <Button
                     type="button"

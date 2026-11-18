@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm';
-import { decodeId, encodeId, uuidv7, type IdKind } from '@archova/domain';
+import { decodeId, encodeId, parseCaptureLink, uuidv7, type IdKind } from '@archova/domain';
 import type {
   AddCoordinationCommentRequest,
   BimModel,
@@ -8,20 +8,25 @@ import type {
   CoordinationIssueDetail,
   CreateBimModelRequest,
   CreateCoordinationIssueRequest,
+  CreateSiteCaptureRequest,
+  SiteCapture,
+  UpdateSiteCaptureRequest,
   UpdateCoordinationIssueRequest,
 } from '@archova/contracts';
 import { AppError, nextNumber, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
+import type { DocumentsApi } from '@archova/mod-documents';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { RfisApi } from '@archova/mod-rfis';
 import { canMove, cleanGuids } from '../domain/issues';
-import { issueComments, issues, models, type IssueStatus } from '../infra/tables';
+import { issueComments, issues, models, siteCaptures, type IssueStatus } from '../infra/tables';
 
 export interface BimDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  documents: Pick<DocumentsApi, 'getDrawingRevision'>;
   rfis: Pick<RfisApi, 'summariesByIds'>;
   now?: () => Date;
 }
@@ -29,6 +34,7 @@ export interface BimDeps {
 type ModelRow = typeof models.$inferSelect;
 type IssueRow = typeof issues.$inferSelect;
 type CommentRow = typeof issueComments.$inferSelect;
+type CaptureRow = typeof siteCaptures.$inferSelect;
 
 const iso = (d: Date) => d.toISOString();
 const orNull = (kind: IdKind, id: string | null) => (id ? encodeId(kind, id) : null);
@@ -68,6 +74,16 @@ export const issueDto = (i: IssueRow, commentCount: number): CoordinationIssue =
   elementGuids: i.elementGuids,
   location: i.location,
   rfiId: orNull('rfi', i.rfiId),
+  pin:
+    i.drawingRevisionId && i.pinX !== null && i.pinY !== null
+      ? {
+          drawingRevisionId: encodeId('drawingRevision', i.drawingRevisionId),
+          x: i.pinX,
+          y: i.pinY,
+        }
+      : null,
+  sheetId: orNull('drawingSheet', i.sheetId),
+  snapshotFileId: orNull('file', i.snapshotFileId),
   resolvedAt: i.resolvedAt ? iso(i.resolvedAt) : null,
   commentCount,
   version: i.version,
@@ -80,6 +96,22 @@ const commentDto = (c: CommentRow): CoordinationComment => ({
   authorId: encodeId('user', c.authorId),
   body: c.body,
   createdAt: iso(c.createdAt),
+});
+
+export const captureDto = (c: CaptureRow): SiteCapture => ({
+  id: encodeId('siteCapture', c.id),
+  projectId: encodeId('project', c.projectId),
+  title: c.title,
+  provider: c.provider,
+  url: c.url,
+  capturedOn: c.capturedOn,
+  area: c.area,
+  note: c.note,
+  rfiId: orNull('rfi', c.rfiId),
+  issueId: orNull('coordinationIssue', c.issueId),
+  version: c.version,
+  createdAt: iso(c.createdAt),
+  updatedAt: iso(c.updatedAt),
 });
 
 export function createBimService(deps: BimDeps) {
@@ -102,6 +134,24 @@ export function createBimService(deps: BimDeps) {
   async function requireRfi(scope: TenantScope, projectId: string, rfiId: string) {
     const found = await deps.rfis.summariesByIds(scope, projectId, [rfiId]);
     if (found.length === 0) throw invalid('rfiId', 'That RFI is not on this project.');
+  }
+
+  /** Resolves a drawing pin to its revision and sheet; a draft revision is not a place yet. */
+  async function resolvePin(
+    scope: TenantScope,
+    projectId: string,
+    pin: { drawingRevisionId: string; x: number; y: number },
+  ) {
+    const revisionId = ref('drawingRevision', pin.drawingRevisionId, 'pin/drawingRevisionId');
+    const rev = await deps.documents.getDrawingRevision(scope, projectId, revisionId);
+    if (rev.status === 'draft') throw new AppError('drawing_revision.not_found');
+    return { drawingRevisionId: rev.id, sheetId: rev.sheetId, pinX: pin.x, pinY: pin.y };
+  }
+
+  async function checkSnapshot(scope: TenantScope, projectId: string, fileId: string) {
+    const f = await deps.files.getFile(scope, ref('file', fileId, 'snapshotFileId'));
+    if (f.projectId !== projectId)
+      throw invalid('snapshotFileId', 'That file belongs to another project.');
   }
 
   // ---- models ------------------------------------------------------------------------------------------
@@ -202,12 +252,19 @@ export function createBimService(deps: BimDeps) {
   async function listIssues(
     scope: TenantScope,
     projectId: string,
-    q: { status?: IssueStatus; modelId?: string; q?: string },
+    q: { status?: IssueStatus; modelId?: string; drawingRevisionId?: string; q?: string },
   ) {
     await requireProject(scope, projectId);
     const where: SQL[] = [eq(issues.projectId, projectId), isNull(issues.deletedAt)];
     if (q.status) where.push(eq(issues.status, q.status));
     if (q.modelId) where.push(eq(issues.modelId, ref('bimModel', q.modelId, 'modelId')));
+    if (q.drawingRevisionId)
+      where.push(
+        eq(
+          issues.drawingRevisionId,
+          ref('drawingRevision', q.drawingRevisionId, 'drawingRevisionId'),
+        ),
+      );
     if (q.q) {
       const text = `%${escapeLike(q.q.trim())}%`;
       const match = or(ilike(issues.title, text), ilike(issues.location, text));
@@ -252,6 +309,8 @@ export function createBimService(deps: BimDeps) {
     if (modelId) await modelInProject(scope, projectId, modelId);
     const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
     if (rfiId) await requireRfi(scope, projectId, rfiId);
+    const pin = input.pin ? await resolvePin(scope, projectId, input.pin) : null;
+    if (input.snapshotFileId) await checkSnapshot(scope, projectId, input.snapshotFileId);
     const number = await nextNumber(scope, projectId, 'bim:issue');
     const id = uuidv7();
     const [row] = await scope.tx
@@ -270,6 +329,10 @@ export function createBimService(deps: BimDeps) {
         elementGuids: cleanGuids(input.elementGuids ?? []),
         location: input.location?.trim() ?? '',
         rfiId,
+        ...(pin ?? {}),
+        snapshotFileId: input.snapshotFileId
+          ? ref('file', input.snapshotFileId, 'snapshotFileId')
+          : null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -317,6 +380,20 @@ export function createBimService(deps: BimDeps) {
       const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
       if (rfiId) await requireRfi(scope, projectId, rfiId);
       set.rfiId = rfiId;
+    }
+    if (input.pin !== undefined) {
+      if (input.pin === null) {
+        set.drawingRevisionId = null;
+        set.sheetId = null;
+        set.pinX = null;
+        set.pinY = null;
+      } else Object.assign(set, await resolvePin(scope, projectId, input.pin));
+    }
+    if (input.snapshotFileId !== undefined) {
+      if (input.snapshotFileId) await checkSnapshot(scope, projectId, input.snapshotFileId);
+      set.snapshotFileId = input.snapshotFileId
+        ? ref('file', input.snapshotFileId, 'snapshotFileId')
+        : null;
     }
     if (input.status !== undefined && input.status !== row.status) {
       if (!canMove(row.status, input.status))
@@ -370,7 +447,167 @@ export function createBimService(deps: BimDeps) {
     return detail(scope, row);
   }
 
-  return { listModels, createModel, listIssues, getIssue, createIssue, updateIssue, addComment };
+  // ---- site captures (360 tour links; no imagery is stored) -------------------------------------------
+
+  async function loadCapture(scope: TenantScope, projectId: string, captureId: string) {
+    const [row] = await scope.tx
+      .select()
+      .from(siteCaptures)
+      .where(
+        and(
+          eq(siteCaptures.id, captureId),
+          eq(siteCaptures.projectId, projectId),
+          isNull(siteCaptures.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new AppError('bim.capture_not_found');
+    return row;
+  }
+
+  const linkOrThrow = (raw: string) => {
+    const link = parseCaptureLink(raw);
+    if (!link)
+      throw invalid(
+        'url',
+        'Paste a share link from Matterport, Kuula or Ricoh Tours (it must start with https://).',
+      );
+    return link;
+  };
+
+  async function listCaptures(scope: TenantScope, projectId: string) {
+    await requireProject(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(siteCaptures)
+      .where(and(eq(siteCaptures.projectId, projectId), isNull(siteCaptures.deletedAt)))
+      .orderBy(desc(siteCaptures.capturedOn), desc(siteCaptures.createdAt))
+      .limit(500);
+    return { data: rows.map(captureDto) };
+  }
+
+  async function createCapture(
+    scope: TenantScope,
+    projectId: string,
+    input: CreateSiteCaptureRequest,
+  ) {
+    await requireProject(scope, projectId);
+    const title = input.title.trim();
+    if (!title) throw invalid('title', 'Give the capture a title.');
+    const link = linkOrThrow(input.url);
+    const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
+    if (rfiId) await requireRfi(scope, projectId, rfiId);
+    const issueId = input.issueId ? ref('coordinationIssue', input.issueId, 'issueId') : null;
+    if (issueId) await loadIssue(scope, projectId, issueId);
+    const id = uuidv7();
+    const [row] = await scope.tx
+      .insert(siteCaptures)
+      .values({
+        id,
+        orgId: scope.ctx.orgId,
+        projectId,
+        title,
+        provider: link.provider,
+        url: link.url,
+        capturedOn: input.capturedOn,
+        area: input.area?.trim() ?? '',
+        note: input.note?.trim() ?? '',
+        rfiId,
+        issueId,
+        createdBy: scope.ctx.userId,
+        updatedBy: scope.ctx.userId,
+      })
+      .returning();
+    scope.events.add({
+      type: 'bim.capture.added.v1',
+      projectId,
+      entityType: 'site_capture',
+      entityId: id,
+      entityVersion: 1,
+      data: { provider: link.provider, actorId: scope.ctx.userId },
+    });
+    return row!;
+  }
+
+  async function updateCapture(
+    scope: TenantScope,
+    projectId: string,
+    captureId: string,
+    expectedVersion: number,
+    input: UpdateSiteCaptureRequest,
+  ) {
+    await requireProject(scope, projectId);
+    const row = await loadCapture(scope, projectId, captureId);
+    if (row.version !== expectedVersion) throw versionConflict();
+    const set: Partial<typeof siteCaptures.$inferInsert> = {};
+    if (input.title !== undefined) {
+      const title = input.title.trim();
+      if (!title) throw invalid('title', 'Give the capture a title.');
+      set.title = title;
+    }
+    if (input.url !== undefined) {
+      const link = linkOrThrow(input.url);
+      set.url = link.url;
+      set.provider = link.provider;
+    }
+    if (input.capturedOn !== undefined) set.capturedOn = input.capturedOn;
+    if (input.area !== undefined) set.area = input.area.trim();
+    if (input.note !== undefined) set.note = input.note.trim();
+    if (input.rfiId !== undefined) {
+      const rfiId = input.rfiId ? ref('rfi', input.rfiId, 'rfiId') : null;
+      if (rfiId) await requireRfi(scope, projectId, rfiId);
+      set.rfiId = rfiId;
+    }
+    if (input.issueId !== undefined) {
+      const issueId = input.issueId ? ref('coordinationIssue', input.issueId, 'issueId') : null;
+      if (issueId) await loadIssue(scope, projectId, issueId);
+      set.issueId = issueId;
+    }
+    const [updated] = await scope.tx
+      .update(siteCaptures)
+      .set({ ...set, updatedBy: scope.ctx.userId, updatedAt: now(), version: row.version + 1 })
+      .where(and(eq(siteCaptures.id, row.id), eq(siteCaptures.version, expectedVersion)))
+      .returning();
+    if (!updated) throw versionConflict();
+    return updated;
+  }
+
+  async function deleteCapture(scope: TenantScope, projectId: string, captureId: string) {
+    await requireProject(scope, projectId);
+    const row = await loadCapture(scope, projectId, captureId);
+    const [done] = await scope.tx
+      .update(siteCaptures)
+      .set({
+        deletedAt: now(),
+        updatedBy: scope.ctx.userId,
+        updatedAt: now(),
+        version: row.version + 1,
+      })
+      .where(eq(siteCaptures.id, row.id))
+      .returning();
+    scope.events.add({
+      type: 'bim.capture.removed.v1',
+      projectId,
+      entityType: 'site_capture',
+      entityId: row.id,
+      entityVersion: done!.version,
+      data: { actorId: scope.ctx.userId },
+    });
+  }
+
+  return {
+    listModels,
+    createModel,
+    listIssues,
+    getIssue,
+    createIssue,
+    updateIssue,
+    addComment,
+    listCaptures,
+    createCapture,
+    updateCapture,
+    deleteCapture,
+  };
 }
 
 export type BimService = ReturnType<typeof createBimService>;

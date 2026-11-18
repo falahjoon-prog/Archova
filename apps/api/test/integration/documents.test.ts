@@ -117,6 +117,64 @@ describe('documents and folders (DOC-US9)', () => {
     expect(search.json().data.map((d: { id: string }) => d.id)).toEqual([doc.id]);
   });
 
+  it('tracks documents, filters new ones, and restores from the recycle bin', async () => {
+    const s = await setup();
+    const folder = (await s.owner.browser.post(`${s.base}/folders`, { name: 'Reports' })).json();
+    const file = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'r.pdf');
+    const doc = (
+      await s.owner.browser.post(`${s.base}/documents`, {
+        folderId: folder.id,
+        title: 'Acoustic report',
+        docNumber: 'RPT-9',
+        revision: { rev: 'A', fileId: file },
+      })
+    ).json().document;
+
+    const future = encodeURIComponent(new Date(Date.now() + 86_400_000).toISOString());
+    const past = encodeURIComponent(new Date(Date.now() - 86_400_000).toISOString());
+    const ids = async (qs: string) =>
+      (await s.owner.browser.get(`${s.base}/documents?${qs}`))
+        .json()
+        .data.map((d: { id: string }) => d.id);
+    expect(await ids(`createdSince=${past}`)).toEqual([doc.id]);
+    expect(await ids(`createdSince=${future}`)).toEqual([]);
+
+    expect(await ids('tracked=true')).toEqual([]);
+    expect((await s.owner.browser.put(`${s.base}/documents/${doc.id}/tracking`)).statusCode).toBe(
+      204,
+    );
+    expect((await s.owner.browser.put(`${s.base}/documents/${doc.id}/tracking`)).statusCode).toBe(
+      204,
+    );
+    expect(await ids('tracked=true')).toEqual([doc.id]);
+    expect(
+      (await s.owner.browser.get(`${s.base}/documents/${doc.id}`)).json().document.tracked,
+    ).toBe(true);
+    await s.owner.browser.del(`${s.base}/documents/${doc.id}/tracking`);
+    expect(await ids('tracked=true')).toEqual([]);
+
+    const version = (await s.owner.browser.get(`${s.base}/documents/${doc.id}`)).json().document
+      .version;
+    const stale = await s.owner.browser.del(`${s.base}/documents/${doc.id}`, {
+      'if-match': `"${version + 5}"`,
+    });
+    expect(stale.statusCode).toBe(412);
+    const del = await s.owner.browser.del(`${s.base}/documents/${doc.id}`, {
+      'if-match': `"${version}"`,
+    });
+    expect(del.statusCode).toBe(204);
+    expect(await ids('')).toEqual([]);
+    expect((await s.owner.browser.get(`${s.base}/documents/${doc.id}`)).statusCode).toBe(404);
+    const bin = (await s.owner.browser.get(`${s.base}/documents/bin`)).json();
+    expect(bin.data.map((d: { id: string }) => d.id)).toEqual([doc.id]);
+    expect(bin.data[0].deletedAt).toBeTruthy();
+
+    const restored = await s.owner.browser.post(`${s.base}/documents/${doc.id}/restore`, {});
+    expect(restored.statusCode).toBe(200);
+    expect(await ids('')).toEqual([doc.id]);
+    expect((await s.owner.browser.get(`${s.base}/documents/bin`)).json().data).toEqual([]);
+  });
+
   it('rejects files from another project', async () => {
     const s = await setup();
     const other = await createProject(s.owner.browser, s.org.id, { name: 'Other job' });

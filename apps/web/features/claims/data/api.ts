@@ -2,7 +2,8 @@
 
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
-import { api } from '@/shared/lib/api';
+import { api, ensureCsrfToken } from '@/shared/lib/api';
+import { uploadFile } from '@/shared/lib/uploads';
 
 type S = components['schemas'];
 export type Contract = S['Contract'];
@@ -33,7 +34,17 @@ export type RecordRetentionRelease = S['RecordRetentionReleaseRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
+export type SovDraft = S['NovaContractSovDraft'];
+export type SovDraftLine = SovDraft['lines'][number];
 export type RecordClaimStatement = S['RecordClaimStatementRequest'];
+export type OwnerInvoice = S['OwnerInvoice'];
+export type OwnerInvoiceDetail = S['OwnerInvoiceDetail'];
+export type OwnerInvoiceLine = S['OwnerInvoiceLine'];
+export type OwnerInvoiceCandidate = S['OwnerInvoiceCandidate'];
+export type OwnerInvoicePrefill = S['OwnerInvoicePrefill'];
+export type OwnerInvoiceFlag = S['OwnerInvoiceFlag'];
+export type OwnerInvoiceBackupItem = S['OwnerInvoiceBackupItem'];
+export type CreateOwnerInvoice = S['CreateOwnerInvoiceRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -56,6 +67,50 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts`, {
           params: { path: { orgId, projectId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async ownerInvoicePrefill(
+      projectId: string,
+      contractId: string,
+      periodEnd: string,
+    ): Promise<OwnerInvoicePrefill> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/owner-invoice-prefill`, {
+          params: { path: { orgId, projectId, contractId }, query: { periodEnd } },
+        }),
+      );
+    },
+    async ownerInvoices(projectId: string, contractId: string): Promise<OwnerInvoice[]> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/owner-invoices`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      ).data;
+    },
+    async createOwnerInvoice(
+      projectId: string,
+      contractId: string,
+      body: CreateOwnerInvoice,
+    ): Promise<OwnerInvoiceDetail> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/owner-invoices`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async ownerInvoice(projectId: string, ownerInvoiceId: string): Promise<OwnerInvoiceDetail> {
+      return unwrap(
+        await api.GET(`${P}/owner-invoices/{ownerInvoiceId}`, {
+          params: { path: { orgId, projectId, ownerInvoiceId } },
+        }),
+      );
+    },
+    async discardOwnerInvoice(projectId: string, ownerInvoiceId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${P}/owner-invoices/{ownerInvoiceId}`, {
+          params: { path: { orgId, projectId, ownerInvoiceId } },
         }),
       );
     },
@@ -222,6 +277,20 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts/{contractId}/claims`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    /** Uploads the PDF to the project (it is scanned for malware first), then asks Nova to propose schedule lines. Nothing is saved. */
+    async draftSov(
+      projectId: string,
+      input: { file: File; contractValue: string | null },
+    ): Promise<SovDraft> {
+      await ensureCsrfToken();
+      const stored = await uploadFile(orgId, { file: input.file, projectId, module: 'documents' });
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts', {
+          params: { path: { orgId, projectId } },
+          body: { fileId: stored.id, contractValue: input.contractValue },
         }),
       );
     },

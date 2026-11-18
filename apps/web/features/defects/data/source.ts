@@ -41,6 +41,14 @@ function seedDefect(
     locationId: null,
     drawing: null,
     assigneeUserId: null,
+    assigneeUserIds: [],
+    managerUserId: null,
+    finalApproverUserId: null,
+    distributionUserIds: [],
+    approverDelegateUserId: null,
+    approverDelegateFrom: null,
+    approverDelegateUntil: null,
+    requireCloseEvidence: false,
     dueDate: null,
     raisedBy: 'Luca Romano',
     raisedByCompanyId: 'cmp_builder',
@@ -54,6 +62,7 @@ function seedDefect(
         note: null,
         photoIds: [`${p.id}_p1`],
         by: 'Luca Romano',
+        onBehalfOf: null,
         at: at('2026-09-22'),
       },
     ],
@@ -102,6 +111,7 @@ function seed(): Store {
             note: null,
             photoIds: ['dft_0001_p1'],
             by: 'Luca Romano',
+            onBehalfOf: null,
             at: at('2026-09-22'),
           },
           {
@@ -111,6 +121,7 @@ function seed(): Store {
             note: 'Two coats applied.',
             photoIds: ['dft_0001_p2'],
             by: 'Coastline Painting',
+            onBehalfOf: null,
             at: at('2026-10-01'),
           },
         ],
@@ -162,6 +173,7 @@ function seed(): Store {
             note: null,
             photoIds: [],
             by: 'Luca Romano',
+            onBehalfOf: null,
             at: at('2026-09-20'),
           },
           {
@@ -171,6 +183,7 @@ function seed(): Store {
             note: 'Washer replaced.',
             photoIds: [],
             by: 'Bayside Hydraulics',
+            onBehalfOf: null,
             at: at('2026-09-23'),
           },
           {
@@ -180,6 +193,7 @@ function seed(): Store {
             note: null,
             photoIds: [],
             by: 'Luca Romano',
+            onBehalfOf: null,
             at: at('2026-09-24'),
           },
         ],
@@ -202,6 +216,7 @@ function seed(): Store {
             note: null,
             photoIds: [],
             by: 'Luca Romano',
+            onBehalfOf: null,
             at: at('2026-09-26'),
           },
           {
@@ -211,6 +226,7 @@ function seed(): Store {
             note: 'Crack is in the board, not the paint. Please send to the lining contractor.',
             photoIds: [],
             by: 'Coastline Painting',
+            onBehalfOf: null,
             at: at('2026-09-29'),
           },
         ],
@@ -271,6 +287,7 @@ function transition(
     note,
     photoIds,
     by: actor.name,
+    onBehalfOf: null,
     at: nowIso(),
   });
   d.status = to;
@@ -337,7 +354,15 @@ export const defectsSource: DefectsSource = {
       locationId: input.locationId,
       drawing: input.drawing,
       assigneeCompanyId: input.assigneeCompanyId!,
-      assigneeUserId: input.assigneeUserId,
+      assigneeUserId: input.assigneeUserIds[0] ?? input.assigneeUserId,
+      assigneeUserIds: input.assigneeUserIds,
+      managerUserId: input.managerUserId,
+      finalApproverUserId: input.finalApproverUserId,
+      distributionUserIds: input.distributionUserIds,
+      approverDelegateUserId: input.approverDelegateUserId,
+      approverDelegateFrom: input.approverDelegateFrom,
+      approverDelegateUntil: input.approverDelegateUntil,
+      requireCloseEvidence: input.requireCloseEvidence,
       dueDate: input.dueDate,
       raisedBy: actor.name,
       raisedByCompanyId: actor.companyId,
@@ -351,6 +376,7 @@ export const defectsSource: DefectsSource = {
           note: null,
           photoIds: photos.map((p) => p.id),
           by: actor.name,
+          onBehalfOf: null,
           at: nowIso(),
         },
       ],
@@ -431,7 +457,7 @@ export const defectsSource: DefectsSource = {
   async withReason(
     projectId: string,
     id: string,
-    action: 'reject' | 'dispute' | 'void',
+    action: 'reject' | 'dispute' | 'void' | 'reopen',
     reason: string,
     actor: Actor,
   ): Promise<Defect> {
@@ -439,9 +465,14 @@ export const defectsSource: DefectsSource = {
     ensure(d, action);
     if (!reason.trim()) problem(422, 'validation', 'Give a reason.');
     const to: DefectStatus =
-      action === 'reject' ? 'open' : action === 'dispute' ? 'disputed' : 'void';
+      action === 'reject' || action === 'reopen'
+        ? 'open'
+        : action === 'dispute'
+          ? 'disputed'
+          : 'void';
     transition(d, to, actor, reason.trim());
-    if (action === 'reject') d.readyForReviewAt = null;
+    if (action === 'reject' || action === 'reopen') d.readyForReviewAt = null;
+    if (action === 'reopen') d.closedAt = null;
     return delay(d);
   },
 
@@ -569,7 +600,7 @@ export interface DefectsSource {
   withReason(
     projectId: string,
     id: string,
-    action: 'reject' | 'dispute' | 'void',
+    action: 'reject' | 'dispute' | 'void' | 'reopen',
     reason: string,
     actor: Actor,
   ): Promise<Defect>;

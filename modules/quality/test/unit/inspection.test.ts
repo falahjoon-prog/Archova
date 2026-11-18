@@ -3,7 +3,9 @@ import {
   failedItems,
   isAnswered,
   missingRequired,
+  missingRequiredIn,
   responseProblem,
+  sectionSummaries,
   type ItemSpec,
   type ResponseState,
 } from '../../src/domain/inspection';
@@ -56,5 +58,36 @@ describe('completeness', () => {
   });
   it('treats a missing answer as unanswered', () => {
     expect(isAnswered(a, undefined)).toBe(false);
+  });
+});
+
+describe('date items and N/A overrides', () => {
+  it('accepts an ISO date only', () => {
+    const d = item({ responseType: 'date' });
+    expect(responseProblem(d, { value: '2026-11-07' })).toBeNull();
+    expect(responseProblem(d, { value: 'tomorrow' })).not.toBeNull();
+  });
+  it('lets any item be marked N/A', () => {
+    expect(responseProblem(item({ responseType: 'number' }), { result: 'na' })).toBeNull();
+    expect(responseProblem(item({ responseType: 'number' }), { result: 'fail' })).not.toBeNull();
+  });
+});
+
+describe('sectionSummaries', () => {
+  it('rolls up each section and ignores N/A sections when checking required items', () => {
+    const items = [
+      { ...item({ id: 'a' }), section: 'A' },
+      { ...item({ id: 'b', responseType: 'number' }), section: 'A' },
+      { ...item({ id: 'c' }), section: 'B' },
+    ];
+    const answers = new Map<string, ResponseState>([
+      ['a', { value: null, result: 'fail', fileIds: [] }],
+      ['b', { value: null, result: 'na', fileIds: [] }],
+    ]);
+    const out = sectionSummaries(items, answers, new Set(['B']));
+    expect(out.find((s) => s.section === 'A')).toMatchObject({ fail: 1, na: 1, unanswered: 0 });
+    expect(out.find((s) => s.section === 'B')).toMatchObject({ na: 1, unanswered: 0, isNa: true });
+    expect(missingRequiredIn(items, answers, new Set(['B']))).toHaveLength(0);
+    expect(missingRequiredIn(items, answers, new Set())).toHaveLength(1);
   });
 });

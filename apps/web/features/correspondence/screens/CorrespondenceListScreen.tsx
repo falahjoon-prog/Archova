@@ -15,11 +15,12 @@ import {
   buttonClassName,
   type DataTableColumn,
 } from '@archova/ui';
-import { CorrespondenceIcon, Plus } from '@archova/ui/icons';
+import { CorrespondenceIcon, FileText, Plus } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useProjectPermissions } from '@/features/projects';
 import { useUrlState } from '@/shared/hooks/useUrlState';
+import { CollapsibleGroup, useGroupState } from '@/shared/layout/CollapsibleGroup';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
@@ -36,6 +37,16 @@ import {
   type CorrespondenceItem,
   type CorrespondenceStatus,
 } from '../lib/types';
+
+function groupByType(items: CorrespondenceItem[]) {
+  const map = new Map<string, { typeId: string; name: string; items: CorrespondenceItem[] }>();
+  for (const i of items) {
+    const g = map.get(i.typeId) ?? { typeId: i.typeId, name: i.typeName, items: [] };
+    g.items.push(i);
+    map.set(i.typeId, g);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /** The correspondence register: notices, site instructions and letters, with the time-bar chip on drafts. */
 export function CorrespondenceListScreen() {
@@ -80,9 +91,21 @@ export function CorrespondenceListScreen() {
       id: 'subject',
       header: 'Subject',
       sortValue: (r) => r.subject,
-      cell: (r) => r.subject || '—',
+      cell: (r) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {r.subject || '—'}
+          {r.fileIds.length ? (
+            <FileText
+              size={16}
+              strokeWidth={1.5}
+              role="img"
+              aria-label="Has attachments"
+              className="u-muted"
+            />
+          ) : null}
+        </span>
+      ),
     },
-    { id: 'type', header: 'Type', sortValue: (r) => r.typeName, cell: (r) => r.typeName },
     {
       id: 'to',
       header: 'To',
@@ -131,6 +154,41 @@ export function CorrespondenceListScreen() {
       ),
     },
   ];
+
+  const groupState = useGroupState(`correspondence.${project.projectId}`);
+  const groups = groupByType(list.data ?? []);
+
+  const renderTable = (name: string, rows: CorrespondenceItem[]) => (
+    <DataTable
+      caption={name ? `${name} correspondence` : 'Correspondence register'}
+      columns={columns}
+      rows={rows}
+      getRowId={(r) => r.id}
+      defaultSort={{ columnId: 'number', direction: 'asc' }}
+      rowClassName={(r) =>
+        r.status === 'closed' || r.status === 'void' ? 'row--muted' : undefined
+      }
+      empty={
+        filtered ? (
+          <EmptyState
+            icon={CorrespondenceIcon}
+            title="Nothing matches these filters"
+            description="Clear a filter to see more."
+          />
+        ) : (
+          <EmptyState
+            icon={CorrespondenceIcon}
+            title="No correspondence yet"
+            description={
+              hasTypes
+                ? 'Start a notice from one of the types set up for your company.'
+                : 'An admin sets up the notice types first, starting from the Australian templates.'
+            }
+          />
+        )
+      }
+    />
+  );
 
   const hasTypes = (types.data?.length ?? 0) > 0;
   return (
@@ -184,35 +242,22 @@ export function CorrespondenceListScreen() {
       {list.isPending ? (
         <SkeletonRows label="Loading correspondence…" />
       ) : (
-        <DataTable
-          caption="Correspondence register"
-          columns={columns}
-          rows={list.data ?? []}
-          getRowId={(r) => r.id}
-          defaultSort={{ columnId: 'number', direction: 'asc' }}
-          rowClassName={(r) =>
-            r.status === 'closed' || r.status === 'void' ? 'row--muted' : undefined
-          }
-          empty={
-            filtered ? (
-              <EmptyState
-                icon={CorrespondenceIcon}
-                title="Nothing matches these filters"
-                description="Clear a filter to see more."
-              />
-            ) : (
-              <EmptyState
-                icon={CorrespondenceIcon}
-                title="No correspondence yet"
-                description={
-                  hasTypes
-                    ? 'Start a notice from one of the types set up for your company.'
-                    : 'An admin sets up the notice types first, starting from the Australian templates.'
-                }
-              />
-            )
-          }
-        />
+        <div className="stack">
+          {groups.length === 0 ? renderTable('', []) : null}
+          {groups.map((g) => (
+            <CollapsibleGroup
+              key={g.typeId}
+              variant="panel"
+              icon={CorrespondenceIcon}
+              label={g.name}
+              count={g.items.length}
+              open={groupState.isOpen(g.typeId)}
+              onToggle={() => groupState.toggle(g.typeId)}
+            >
+              {renderTable(g.name, g.items)}
+            </CollapsibleGroup>
+          ))}
+        </div>
       )}
       {isAdmin ? <TypeSetup /> : null}
     </div>

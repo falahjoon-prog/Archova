@@ -9,10 +9,11 @@ import {
   toPage,
   versionConflict,
   type TenantScope,
+  type SearchHit,
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   ballInCourt,
@@ -40,7 +41,7 @@ export interface RfisDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   now?: () => Date;
 }
 
@@ -418,13 +419,27 @@ export function createRfiService(deps: RfisDeps) {
     if (rev.status === 'draft') throw new AppError('drawing_revision.not_found');
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'rfis', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -548,6 +563,8 @@ export function createRfiService(deps: RfisDeps) {
     const values = fieldValues(patch);
     values.version = rfi.version + 1;
     values.updatedBy = scope.ctx.userId;
+    // Handing an open RFI to someone else restarts the wait.
+    if (patch.assigneeIds !== undefined && rfi.status === 'open') values.ballSince = now();
     const [row] = await scope.tx
       .update(rfis)
       .set(values)
@@ -590,7 +607,13 @@ export function createRfiService(deps: RfisDeps) {
         : and(eq(rfis.id, rfi.id), eq(rfis.version, expectedVersion));
     const [row] = await scope.tx
       .update(rfis)
-      .set({ ...values, version: rfi.version + 1, updatedBy: scope.ctx.userId })
+      .set({
+        // The ball changes hands whenever the RFI is sent, answered or reopened.
+        ...(values.status === 'open' || values.status === 'answered' ? { ballSince: now() } : {}),
+        ...values,
+        version: rfi.version + 1,
+        updatedBy: scope.ctx.userId,
+      })
       .where(where)
       .returning();
     if (!row) throw versionConflict();
@@ -777,6 +800,14 @@ export function createRfiService(deps: RfisDeps) {
         set: { shapes, updatedAt: now() },
       })
       .returning();
+    // Marked-up site photos belong to this RFI: link them so the Photos tool shows where they came from.
+    await deps.files.filePhoto(
+      scope,
+      projectId,
+      fileId,
+      { category: 'rfis', refKind: 'rfi', refId: rfiId },
+      'annotation',
+    );
     return row!;
   }
 
@@ -1157,7 +1188,7 @@ export function createRfiService(deps: RfisDeps) {
    */
   async function portfolioCounts(scope: TenantScope, projectId: string) {
     if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
-      return { restricted: true, open: 0, overdue: 0 };
+      return { restricted: true, open: 0, overdue: 0, dueSoon: 0 };
     const { date } = await today(scope, projectId);
     const v = await viewer(scope, projectId);
     const conditions: SQL[] = [
@@ -1171,10 +1202,16 @@ export function createRfiService(deps: RfisDeps) {
       .select({
         open: sql<number>`count(*)::int`,
         overdue: sql<number>`(count(*) filter (where ${rfis.dueDate} < ${date}::date))::int`,
+        dueSoon: sql<number>`(count(*) filter (where ${rfis.dueDate} >= ${date}::date and ${rfis.dueDate} <= ${date}::date + 7))::int`,
       })
       .from(rfis)
       .where(and(...conditions));
-    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+    return {
+      restricted: false,
+      open: row?.open ?? 0,
+      overdue: row?.overdue ?? 0,
+      dueSoon: row?.dueSoon ?? 0,
+    };
   }
 
   /** Report builder (`reporting`): RFIs the caller can see, one flat row each. `state` open = waiting for an answer. */
@@ -1226,7 +1263,24 @@ export function createRfiService(deps: RfisDeps) {
     };
   }
 
+  /** Global search (`search`): the RFIs the caller can see that match the words, newest first. */
+  async function searchHits(scope: TenantScope, projectId: string, q: string, limit: number) {
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { restricted: true, hits: [] as SearchHit[] };
+    const page = await list(scope, projectId, { q, limit });
+    return {
+      restricted: false,
+      hits: page.data.map<SearchHit>((r) => ({
+        id: r.id,
+        ref: r.number === null ? 'RFI' : formatRfiNumber(r.number),
+        title: r.subject,
+        status: r.status,
+      })),
+    };
+  }
+
   return {
+    searchHits,
     overdueForMeeting,
     portfolioCounts,
     reportRows,

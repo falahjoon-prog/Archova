@@ -3,7 +3,14 @@
 // `api.ts` is the same interface against the API; `useDocumentsSource` picks one (shared/lib/data-mode).
 
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
-import type { DocumentRevision, Folder, NewRevisionInput, ProjectDocument } from '../lib/types';
+import {
+  NEW_DOCUMENTS_DAYS,
+  type DocumentRevision,
+  type DocumentsView,
+  type Folder,
+  type NewRevisionInput,
+  type ProjectDocument,
+} from '../lib/types';
 
 interface Store {
   folders: Folder[];
@@ -52,8 +59,12 @@ function seed(): Store {
       status,
       currentRev: last[0],
       currentRevisionId: `${id}_r${revs.length - 1}`,
+      createdAt: `${revs[0]![1]}T02:00:00Z`,
       updatedAt: `${last[1]}T02:00:00Z`,
       updatedBy: 'Dana Okafor',
+      tracked: false,
+      deletedAt: null,
+      version: 1,
     });
   };
   const documents: ProjectDocument[] = [];
@@ -94,11 +105,47 @@ export const documentsSource = {
   async listFolders(projectId: string): Promise<Folder[]> {
     return delay(stores.get(projectId).folders);
   },
-  async listDocuments(projectId: string, folderId: string | null): Promise<ProjectDocument[]> {
+  async listDocuments(
+    projectId: string,
+    folderId: string | null,
+    view: DocumentsView = 'all',
+  ): Promise<ProjectDocument[]> {
+    const since = new Date(Date.now() - NEW_DOCUMENTS_DAYS * 86_400_000).toISOString();
     const docs = stores
       .get(projectId)
-      .documents.filter((d) => !folderId || d.folderId === folderId);
+      .documents.filter(
+        (d) =>
+          !d.deletedAt &&
+          (!folderId || d.folderId === folderId) &&
+          (view !== 'week' || d.createdAt >= since) &&
+          (view !== 'tracked' || d.tracked),
+      );
     return delay(docs.sort((a, b) => a.title.localeCompare(b.title)));
+  },
+  /** The recycle bin, most recently deleted first. */
+  async listBin(projectId: string): Promise<ProjectDocument[]> {
+    const docs = stores.get(projectId).documents.filter((d) => d.deletedAt);
+    return delay(docs.sort((a, b) => (b.deletedAt ?? '').localeCompare(a.deletedAt ?? '')));
+  },
+  async setTracked(projectId: string, documentId: string, tracked: boolean): Promise<void> {
+    const doc = stores.get(projectId).documents.find((d) => d.id === documentId && !d.deletedAt);
+    if (!doc) problem(404, 'not_found', "We couldn't find that document.");
+    doc.tracked = tracked;
+    return delay(undefined);
+  },
+  async deleteDocument(projectId: string, target: { id: string; version: number }): Promise<void> {
+    const doc = stores.get(projectId).documents.find((d) => d.id === target.id && !d.deletedAt);
+    if (!doc) problem(404, 'not_found', "We couldn't find that document.");
+    doc.deletedAt = nowIso();
+    doc.version += 1;
+    return delay(undefined);
+  },
+  async restoreDocument(projectId: string, documentId: string): Promise<ProjectDocument> {
+    const doc = stores.get(projectId).documents.find((d) => d.id === documentId && d.deletedAt);
+    if (!doc) problem(404, 'not_found', "We couldn't find that document.");
+    doc.deletedAt = null;
+    doc.version += 1;
+    return delay(doc);
   },
   async listRevisions(projectId: string, documentId: string): Promise<DocumentRevision[]> {
     return delay(

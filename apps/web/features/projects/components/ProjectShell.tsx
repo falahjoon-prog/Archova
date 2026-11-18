@@ -6,21 +6,30 @@ import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/p
 import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
+  DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
+  ActionPlansIcon,
   InspectionsIcon,
   SwmsIcon,
+  ToolboxIcon,
   IncidentsIcon,
+  PermitsIcon,
+  GeotechIcon,
+  InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
+  WarrantyIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
   BudgetIcon,
   DelaysIcon,
   DiaryIcon,
+  PhotosIcon,
   DocumentsIcon,
   TransmittalsIcon,
   DrawingsIcon,
@@ -35,6 +44,7 @@ import {
   type LucideIcon,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -82,7 +92,7 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         companyId: perms?.companyId ?? null,
       }}
     >
-      <ShellFrame projectName={p.name} groups={groups}>
+      <ShellFrame projectName={p.name} groups={groups} favouritesScope={org.user.id}>
         {children}
       </ShellFrame>
     </CurrentProjectProvider>
@@ -104,6 +114,11 @@ export function projectToolGroups(
     perms.orgRole === 'owner' ||
     perms.orgRole === 'admin' ||
     atLeast(perms.toolLevels[tool], 'read');
+  const canCreate = (tool: Tool) =>
+    !perms ||
+    perms.orgRole === 'owner' ||
+    perms.orgRole === 'admin' ||
+    atLeast(perms.toolLevels[tool], 'standard');
   const canAdmin = (tool: Tool) =>
     !perms ||
     perms.orgRole === 'owner' ||
@@ -166,6 +181,16 @@ export function projectToolGroups(
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('coordination') && {
+      href: webRoutes.risks(orgSlug, projectId),
+      label: 'Risk register',
+      icon: AlertTriangle,
+    },
+    canRead('defects') && {
+      href: webRoutes.warranty(orgSlug, projectId),
+      label: 'Warranty',
+      icon: WarrantyIcon,
+    },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
       label: 'Meetings',
@@ -186,15 +211,40 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('payment_claims') && {
+      href: webRoutes.tmTickets(orgSlug, projectId),
+      label: 'T&M tickets',
+      icon: ContractsIcon,
+    },
     canRead('budget') && {
       href: webRoutes.budget(orgSlug, projectId),
       label: 'Budget',
+      icon: BudgetIcon,
+    },
+    canRead('commitments') && {
+      href: webRoutes.commitments(orgSlug, projectId),
+      label: 'Commitments',
       icon: BudgetIcon,
     },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.photos(orgSlug, projectId),
+      label: 'Photos',
+      icon: PhotosIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.deliveries(orgSlug, projectId),
+      label: 'Deliveries',
+      icon: DeliveriesIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
     },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
@@ -207,14 +257,44 @@ export function projectToolGroups(
       icon: ObservationsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.actionPlans(orgSlug, projectId),
+      label: 'Action plans',
+      icon: ActionPlansIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.toolboxTalks(orgSlug, projectId),
+      label: 'Toolbox talks',
+      icon: ToolboxIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
+    },
+    canRead('environment') && {
+      href: webRoutes.environment(orgSlug, projectId),
+      label: 'Environment',
+      icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.permits(orgSlug, projectId),
+      label: 'Permits',
+      icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.insurance(orgSlug, projectId),
+      label: 'Insurance & bonds',
+      icon: InsuranceIcon,
     },
     canAdmin('inspections') && {
       href: webRoutes.safetySignals(orgSlug, projectId),
@@ -257,6 +337,20 @@ export function projectToolGroups(
   ];
   const byLabel = new Map<string, ProjectNavItem>();
   for (const item of [...core, ...estimating]) if (item) byLabel.set(item.label, item);
+  // Quick-add "+" for tools with a create form, only for callers who can create in that tool (design 03 §3).
+  const quickAdd: ReadonlyArray<[label: string, tool: Tool, noun: string, href: string]> = [
+    ['Transmittals', 'documents', 'transmittal', webRoutes.newTransmittal(orgSlug, projectId)],
+    ['RFIs', 'rfis', 'RFI', webRoutes.newRfi(orgSlug, projectId)],
+    ['Submittals', 'submittals', 'submittal', webRoutes.newSubmittal(orgSlug, projectId)],
+    ['Correspondence', 'correspondence', 'letter', webRoutes.newCorrespondence(orgSlug, projectId)],
+    ['Defects', 'defects', 'defect', webRoutes.newDefect(orgSlug, projectId)],
+    ['Contracts', 'payment_claims', 'contract', webRoutes.newContract(orgSlug, projectId)],
+  ];
+  for (const [label, tool, noun, href] of quickAdd) {
+    const item = byLabel.get(label);
+    if (item && canCreate(tool))
+      byLabel.set(label, { ...item, createHref: href, createLabel: `New ${noun}` });
+  }
   const categorised = TOOL_CATEGORIES.map(({ id, label, icon, tools }) => ({
     id,
     label,
@@ -301,7 +395,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',
@@ -309,9 +403,12 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     icon: InductionsIcon,
     tools: [
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
+      'Action plans',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
@@ -321,7 +418,14 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+    tools: [
+      'Contracts',
+      'Payment claims',
+      'T&M tickets',
+      'Budget',
+      'Risk register',
+      'Owner portal',
+    ],
   },
   {
     id: 'estimating',
@@ -343,10 +447,12 @@ const SIDEBAR_KEY = 'archova.sidebar.collapsed';
 function ShellFrame({
   projectName,
   groups,
+  favouritesScope,
   children,
 }: {
   projectName: string;
   groups: ProjectNavGroup[];
+  favouritesScope?: string;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -370,7 +476,7 @@ function ShellFrame({
   return (
     <div className="project-shell" data-collapsed={collapsed}>
       <div className="project-shell__side">
-        <ProjectNav projectName={projectName} groups={groups} />
+        <ProjectNav projectName={projectName} groups={groups} favouritesScope={favouritesScope} />
         <button
           type="button"
           className="project-shell__edge ac-focusable"

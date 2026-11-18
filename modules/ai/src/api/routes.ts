@@ -9,19 +9,25 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
+import type { HelpService } from '../application/help';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { AssistService } from '../application/assist';
 import type { ContractPlaybookService } from '../application/contract-playbook';
 import type {
   ContractReviewPayload,
   ContractReviewRow,
   ContractReviewService,
 } from '../application/contract-review';
+import type { ContractSovService } from '../application/contract-sov';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
+import type { BudgetReviewService } from '../application/budget-review';
+import type { AnnouncementDraftService } from '../application/announcement-draft';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
+import type { LaborProductivityService } from '../application/labor-productivity';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -42,6 +48,7 @@ import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answ
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { CaptureObservationView, CaptureScanService } from '../application/capture-scan';
 import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
@@ -244,6 +251,19 @@ const toSourceDto = (s: AnswerSource) => ({
   page: s.page,
 });
 
+const toCaptureObservationDto = (o: CaptureObservationView) => ({
+  id: encodeId('aiCaptureObservation', o.id),
+  fileId: encodeId('file', o.fileId),
+  category: o.category,
+  categoryLabel: o.categoryLabel,
+  observation: o.observation,
+  confidence: o.confidence,
+  status: o.status,
+  reviewNote: o.reviewNote,
+  reviewedAt: o.reviewedAt?.toISOString() ?? null,
+  createdAt: o.createdAt.toISOString(),
+});
+
 const toHazardSignalDto = (s: HazardSignalView) => ({
   id: encodeId('aiHazardSignal', s.id),
   fileId: encodeId('file', s.fileId),
@@ -291,13 +311,20 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  laborProductivity: LaborProductivityService,
+  announcementDrafts: AnnouncementDraftService,
+  budgetReviews: BudgetReviewService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
+  contractSov: ContractSovService,
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
+  assist: AssistService,
+  captureScans: CaptureScanService,
+  help: HelpService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -315,6 +342,30 @@ export function aiRoutes(
         admin.updateSettings(scope, expected, input.body),
       );
       return { status: 200, body: toSettingsDto(s), headers: { etag: etag(s.version) } };
+    },
+    askNovaForHelp: async (input) => {
+      const ctx = requireTenant(input);
+      const body = input.body;
+      const answer = await help.explain(ctx, {
+        question: body.question ?? null,
+        area: body.area ?? '',
+        error: body.error
+          ? {
+              status: body.error.status ?? null,
+              code: body.error.code ?? null,
+              message: body.error.message,
+            }
+          : null,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', answer.runId),
+          answer: answer.answer,
+          steps: answer.steps,
+          tools: answer.tools,
+        },
+      };
     },
     getAiUsage: async (input) => {
       const usage = await database.withTenantTx(
@@ -366,6 +417,30 @@ export function aiRoutes(
           closestMatches: a.closestMatches.map(toSourceDto),
           nccReferences: a.nccReferences,
           ...(a.nccReferences.length ? { nccNote: NCC_NOTE } : {}),
+        },
+      };
+    },
+    assistNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const b = input.body;
+      const a = await assist.ask(requireTenant(input), projectId, {
+        question: b.question,
+        context: b.context ?? {},
+        history: b.history ?? [],
+      });
+      return {
+        status: 200,
+        body: {
+          runId: a.runId ? encodeId('aiRun', a.runId) : null,
+          found: a.found,
+          answer: a.answer,
+          citations: a.citations.map((c) => ({
+            sourceType: c.type,
+            sourceId: c.id,
+            title: c.title,
+            quote: c.quote,
+          })),
+          lookups: a.lookups,
         },
       };
     },
@@ -614,6 +689,15 @@ export function aiRoutes(
         },
       };
     },
+    draftContractSov: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const d = await contractSov.draft(requireTenant(input), projectUuid(input.params.projectId), {
+        fileId,
+        contractValue: input.body.contractValue ?? null,
+      });
+      return { status: 200, body: { ...d, runId: encodeId('aiRun', d.runId) } };
+    },
     transcribeSpeech: async (input) => {
       const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
         audio: Buffer.from(input.body.audio, 'base64'),
@@ -649,6 +733,74 @@ export function aiRoutes(
           counterExGst: r.counterExGst,
           counterReason: r.counterReason,
           draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    draftAnnouncementWithNova: async (input) => {
+      const r = await announcementDrafts.draft(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          notes: input.body.notes,
+          ...(input.body.audience ? { audience: input.body.audience } : {}),
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          title: r.title,
+          body: r.body,
+          priority: r.priority,
+          notes: r.notes,
+        },
+      };
+    },
+    explainLaborProductivity: async (input) => {
+      const costCodeId = decodeId('costCode', input.body.costCodeId);
+      if (!costCodeId) throw new AppError('financials.cost_code.not_found');
+      const r = await laborProductivity.explain(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          costCodeId,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          causes: r.causes,
+          questions: r.questions,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    reviewBudgetWithNova: async (input) => {
+      const r = await budgetReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          reply: r.reply,
+          points: r.points,
+          options: r.options,
+          draftReason: r.draftReason,
           notes: r.notes,
           history: r.history,
           disclaimer: r.disclaimer,
@@ -753,6 +905,55 @@ export function aiRoutes(
         }),
       );
       return { status: 200, body: toHazardSignalDto(row) };
+    },
+    scanCaptureViewWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const stillFileId = decodeId('file', input.body.still.fileId);
+      if (!stillFileId) throw new AppError('file.not_found');
+      const r = await captureScans.scan(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        stillFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          scanId: encodeId('aiCaptureScan', r.scanId),
+          observations: r.observations.map(toCaptureObservationDto),
+          stillUnclear: r.stillUnclear,
+          dropped: r.dropped,
+          unsupportedNumbers: r.unsupportedNumbers,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    listCaptureObservations: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const fileId = input.query.fileId ? decodeId('file', input.query.fileId) : null;
+      if (input.query.fileId && !fileId) throw new AppError('file.not_found');
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) =>
+          captureScans.list(scope, projectId, {
+            limit: input.query.limit ?? 50,
+            ...(input.query.status ? { status: input.query.status } : {}),
+            ...(fileId ? { fileId } : {}),
+          }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toCaptureObservationDto) } };
+    },
+    reviewCaptureObservation: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const id = decodeId('aiCaptureObservation', input.params.observationId);
+      if (!id) throw new AppError('ai.capture_observation.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        captureScans.review(scope, projectId, id, {
+          decision: input.body.decision,
+          ...(input.body.note ? { note: input.body.note } : {}),
+        }),
+      );
+      return { status: 200, body: toCaptureObservationDto(row) };
     },
     getHazardPatterns: async (input) => {
       const projectId = projectUuid(input.params.projectId);

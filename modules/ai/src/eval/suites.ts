@@ -1,14 +1,19 @@
 // Registered eval suites, one per Nova task (ai/06 §2). Each feature PR adds its suite here.
 import type { EvalSuite } from './harness';
+import { assistAnswerSuite, assistPlanSuite } from './suites/assist';
 import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
+import { contractSovSuite } from './suites/contract-sov';
 import { defectTagSuite } from './suites/defect-tag';
+import { budgetReviewSuite } from './suites/budget-review';
 import { diarySummarySuite } from './suites/diary-summary';
 import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingCompareVisualSuite } from './suites/drawing-compare-visual';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { captureScanSuite } from './suites/capture-scan';
+import { helpExplainSuite } from './suites/help-explain';
 import { hazardScanSuite } from './suites/hazard-scan';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
@@ -16,6 +21,8 @@ import { inductionDraftSuite } from './suites/induction-draft';
 import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { laborProductivitySuite } from './suites/labor-productivity';
+import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
@@ -37,7 +44,9 @@ export const SUITES: readonly AnySuite[] = [
   inductionRefreshSuite,
   inductionAskSuite,
   translationSuite,
+  budgetReviewSuite,
   diarySummarySuite,
+  helpExplainSuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
   rfiDraftSuite,
@@ -47,11 +56,17 @@ export const SUITES: readonly AnySuite[] = [
   drawingCompareVisualSuite,
   defectTagSuite,
   hazardScanSuite,
+  captureScanSuite,
   importMappingSuite,
   quoteReadSuite,
   quoteNegotiateSuite,
+  laborProductivitySuite,
+  announcementDraftSuite,
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,
+  contractSovSuite,
   takeoffDetectSuite,
+  assistPlanSuite,
+  assistAnswerSuite,
 ];

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isSignedMoney, revisedOf, signedCents, totalsOf } from '../../src/domain/budget';
+import {
+  isSignedMoney,
+  revisedOf,
+  signedCents,
+  snapshotTotals,
+  totalsOf,
+} from '../../src/domain/budget';
 
 const line = (o: string, a: string, c = '0.00', x = '0.00', f = '0.00') => ({
   original: o,
@@ -31,5 +37,16 @@ describe('budget arithmetic', () => {
       revised: '0.25',
       committed: '0.15',
     });
+  });
+});
+
+describe('snapshot totals', () => {
+  it('adds frozen lines, including negative changes', () => {
+    expect(
+      snapshotTotals([
+        { original: '100.00', approvedChanges: '-10.50', revised: '89.50' },
+        { original: '50.25', approvedChanges: '0.00', revised: '50.25' },
+      ]),
+    ).toEqual({ original: '150.25', approvedChanges: '-10.50', revised: '139.75' });
   });
 });

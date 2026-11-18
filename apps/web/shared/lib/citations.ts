@@ -22,6 +22,17 @@ export function resolveCitation(citation: Citation, orgSlug: string, projectId: 
       return a ? { ...citation, href: webRoutes.defect(orgSlug, projectId, a) } : citation;
     case 'diary':
       return a ? { ...citation, href: webRoutes.diary(orgSlug, projectId, a) } : citation;
+    case 'module': {
+      // A lookup that covers a whole list (overdue RFIs, budget checks) links to that module's screen.
+      const to: Record<string, (o: string, p: string) => string> = {
+        rfis: webRoutes.rfis,
+        defects: webRoutes.defects,
+        budget: webRoutes.budget,
+        programme: webRoutes.programme,
+      };
+      const f = a ? to[a] : undefined;
+      return f ? { ...citation, href: f(orgSlug, projectId) } : citation;
+    }
     default:
       return citation;
   }

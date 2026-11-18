@@ -68,12 +68,31 @@ export interface RecordStatementInput {
 /** The only claim warning so far. It warns; it never suggests withholding (compliance/05 §6, lawyer question open). */
 export type ClaimWarning = 'subcontractor_statement_missing';
 
+import type { WorkflowsService } from '@archova/mod-workflows';
+import type { DayActivity } from './tmTickets';
+
 export interface FinancialsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyIdentity'>;
+  /** Approval chains the organisation configured (`workflows`). Without it every variation uses the single approver. */
+  workflows?: Pick<WorkflowsService, 'start' | 'decide' | 'cancel' | 'forSubject'>;
   now?: () => Date;
   /** Signs each sealed record. Without one, records are sealed by hash only (marked unsigned). */
   signer?: EvidenceSigner;
+  /** Worked minutes per cost code (workforce timesheets), for labor productivity. Read lazily at request time. */
+  timesheetMinutes: (
+    scope: TenantScope,
+    projectId: string,
+  ) => Promise<{ costCodeId: string | null; minutes: number }[]>;
+  /** The day's worked hours and equipment logs (workforce), for drafting T&M tickets. Read lazily at request time. */
+  dayActivity: (scope: TenantScope, projectId: string, date: string) => Promise<DayActivity>;
+  /** Whether the site diary has an entry on a date, for T&M ticket checks. Read lazily at request time. */
+  diaryEntryExists: (scope: TenantScope, projectId: string, date: string) => Promise<boolean>;
+  /** Files module lookup, for T&M sign-off evidence. */
+  getFile: (
+    scope: TenantScope,
+    fileId: string,
+  ) => Promise<{ projectId: string | null; status: string }>;
 }
 
 /** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */
@@ -1590,6 +1609,19 @@ export function createFinancialsService(deps: FinancialsDeps) {
         'Give the reason for rejecting this variation.',
         [{ path: 'note', message: 'Required when rejecting' }],
       );
+    // A configured approval chain takes over the decision: each step is someone's call, and only the last approval (or
+    // any rejection) moves the variation itself. Without a chain the single approver decides, as before.
+    if (decide && deps.workflows) {
+      const step = await deps.workflows.decide(scope, {
+        subjectType: 'financials.variation',
+        subjectId: variationId,
+        decision: to === 'approved' ? 'approved' : 'rejected',
+        note,
+      });
+      if (step?.outcome === 'advanced') return withClaimed(scope, row);
+    }
+    if (to === 'withdrawn' && deps.workflows)
+      await deps.workflows.cancel(scope, 'financials.variation', variationId);
     const at = now();
     const [updated] = await scope.tx
       .update(variations)
@@ -1613,7 +1645,24 @@ export function createFinancialsService(deps: FinancialsDeps) {
       entityVersion: updated.version,
       data: { variationId, contractId: row.contractId, number: row.number, amount: row.amount },
     });
+    if (to === 'submitted' && deps.workflows)
+      await deps.workflows.start(scope, {
+        projectId,
+        subjectType: 'financials.variation',
+        subjectId: variationId,
+        amount: row.amount,
+      });
     return withClaimed(scope, updated);
+  }
+
+  /** Where a variation is in its approval chain, or null when no chain applied. */
+  async function getVariationWorkflow(scope: TenantScope, projectId: string, variationId: string) {
+    const { variation } = await getVariation(scope, projectId, variationId);
+    if (!(await viewer(scope, projectId)).isInternal)
+      throw new AppError('financials.variation.not_found');
+    return deps.workflows
+      ? deps.workflows.forSubject(scope, 'financials.variation', variation.id)
+      : null;
   }
 
   /**
@@ -1755,6 +1804,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     listVariations,
     getVariation,
     moveVariation,
+    getVariationWorkflow,
     createContract,
     contractForQuote,
     listContracts,

@@ -34,6 +34,15 @@ export function useSheets(projectId: string, filters: DrawingFilters) {
   });
 }
 
+export function useDrawingSets(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const drawingsSource = useDrawingsSource();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'drawings', { sets: true }),
+    queryFn: () => drawingsSource.listSets(projectId),
+  });
+}
+
 export function useAllRevisions(projectId: string, enabled: boolean) {
   const { orgId } = useCurrentOrg();
   const drawingsSource = useDrawingsSource();

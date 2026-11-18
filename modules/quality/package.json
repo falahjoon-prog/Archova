@@ -16,6 +16,7 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
+    "@archova/mod-documents": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/time": "workspace:*",
