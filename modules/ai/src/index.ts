@@ -210,6 +210,8 @@ export function createAiModule(
     orgTimeZone: (scope: TenantScope) => Promise<string>;
     /** files.readFileBytes: the caller's read check applies. */
     readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
+    /** files.fileSafetyRisk: a confirmed hazard signal files its photo under Safety risk. */
+    fileSafetyRisk?: (scope: TenantScope, projectId: string, fileId: string) => Promise<unknown>;
     /** access.assert */
     assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
     /** access.can: like `assert`, but answers instead of throwing (who may see a suggestion). */
@@ -447,6 +449,7 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
     readFile: deps.readFile,
+    fileSafetyRisk: deps.fileSafetyRisk,
   });
   const importMappings = createImportMappingService({
     database: services.database,
