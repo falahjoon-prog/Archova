@@ -227,6 +227,8 @@ export const mobileRoutes = {
   timesheet: (projectId: string, timesheetId: string) =>
     `/project/${enc(projectId)}/timesheets/${enc(timesheetId)}`,
   crews: (projectId: string) => `/project/${enc(projectId)}/crews`,
+  equipment: (projectId: string) => `/project/${enc(projectId)}/equipment`,
+  deliveries: (projectId: string) => `/project/${enc(projectId)}/deliveries`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   /** My digital Safety ID badge for a project. */
   safetyBadge: (projectId: string) => `/project/${enc(projectId)}/badge`,
