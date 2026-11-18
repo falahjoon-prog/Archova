@@ -105,6 +105,24 @@ jobs:
         with:
           dockerfile: infra/envs/linode-pilot/host/signing-helper/Dockerfile
           failure-threshold: warning
+      - name: Ensure shellcheck and docker compose (self-hosted runners do not ship them)
+        working-directory: .
+        run: |
+          mkdir -p "$HOME/.local/bin"; echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if ! command -v shellcheck >/dev/null; then
+            v=v0.10.0
+            curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/$v/shellcheck-$v.linux.x86_64.tar.xz" | tar -xJ -C /tmp
+            install -m 0755 "/tmp/shellcheck-$v/shellcheck" "$HOME/.local/bin/shellcheck"
+          fi
+          if ! docker compose version >/dev/null 2>&1; then
+            v=v2.29.7; dir="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"; mkdir -p "$dir"
+            base="https://github.com/docker/compose/releases/download/$v"
+            curl -fsSL -o "$dir/docker-compose" "$base/docker-compose-linux-x86_64"
+            sum=$(curl -fsSL "$base/checksums.txt" | grep 'docker-compose-linux-x86_64$' | awk '{print $1}')
+            echo "$sum  $dir/docker-compose" | sha256sum -c -
+            chmod +x "$dir/docker-compose"
+          fi
+          shellcheck --version | head -2; docker compose version
       - name: shellcheck
         run: shellcheck backup/backup.sh ../../../../tools/infra/linode-deploy.sh ../../../../tools/infra/linode-cert.sh
       - name: Build the backup and signing-helper images
