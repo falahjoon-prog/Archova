@@ -792,7 +792,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancel an allocation, freeing the machine for those days. */
+        /**
+         * Cancel an allocation that has not started, or end one that is under way as of yesterday.
+         * @description A finished allocation can't be cancelled (`plant.bad_state`); its days stay on record and are posted to the budget.
+         */
         post: operations["cancelPlantAllocation"];
         delete?: never;
         options?: never;
@@ -16648,6 +16651,11 @@ export interface components {
             note: string | null;
             /** @enum {string} */
             status: "active" | "cancelled";
+            /**
+             * Format: date
+             * @description Last day whose hire cost has been posted to the project budget. Only hired machines with a rate and a cost code are posted.
+             */
+            postedThrough: string | null;
             /** @description Days in the allocation times the machine's daily rate. Null without a rate the caller may see. */
             estimatedCostCents: number | null;
         };
@@ -16739,7 +16747,7 @@ export interface components {
         };
         PlantFlag: {
             /** @enum {string} */
-            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "idle";
+            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "hire_not_costed" | "idle";
             /** @enum {string} */
             severity: "critical" | "warning" | "info";
             assetId: string;

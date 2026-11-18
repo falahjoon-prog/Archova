@@ -936,7 +936,8 @@ paths:
       tags: [plant]
       x-module: plant
       x-permission: plant.allocations.manage
-      summary: Cancel an allocation, freeing the machine for those days.
+      summary: Cancel an allocation that has not started, or end one that is under way as of yesterday.
+      description: A finished allocation can't be cancelled (`plant.bad_state`); its days stay on record and are posted to the budget.
       responses:
         '200':
           description: OK
@@ -23567,7 +23568,18 @@ components:
     PlantAllocation:
       type: object
       required:
-        [id, assetId, projectId, costCodeId, startsOn, endsOn, note, status, estimatedCostCents]
+        [
+          id,
+          assetId,
+          projectId,
+          costCodeId,
+          startsOn,
+          endsOn,
+          note,
+          status,
+          postedThrough,
+          estimatedCostCents,
+        ]
       properties:
         id: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
         assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
@@ -23577,6 +23589,10 @@ components:
         endsOn: { type: string, format: date }
         note: { type: [string, 'null'] }
         status: { type: string, enum: [active, cancelled] }
+        postedThrough:
+          type: [string, 'null']
+          format: date
+          description: Last day whose hire cost has been posted to the project budget. Only hired machines with a rate and a cost code are posted.
         estimatedCostCents:
           type: [integer, 'null']
           description: Days in the allocation times the machine's daily rate. Null without a rate the caller may see.
@@ -23707,6 +23723,7 @@ components:
               double_booking,
               booked_while_unavailable,
               service_during_booking,
+              hire_not_costed,
               idle,
             ]
         severity: { type: string, enum: [critical, warning, info] }

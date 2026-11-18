@@ -672,6 +672,12 @@ importers:
       '@archova/mod-permits':
         specifier: workspace:*
         version: link:../../modules/permits
+      '@archova/mod-plant':
+        specifier: workspace:*
+        version: link:../../modules/plant
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../../modules/platform
       '@archova/mod-safety':
         specifier: workspace:*
         version: link:../../modules/safety
@@ -13287,9 +13293,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 

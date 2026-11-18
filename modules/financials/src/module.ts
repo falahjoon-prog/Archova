@@ -9,6 +9,7 @@ import { createTmTicketsService } from './application/tmTickets';
 import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
 import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
+import { postPlantCost, costCodeBudgeted } from './application/plantCosts';
 import { createCommitmentsService } from './application/commitments';
 import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
@@ -112,6 +113,9 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       contractForQuote: service.contractForQuote,
       /** Retention-trust standing of a project's subcontracts, for the tender-readiness pack (`reporting`). */
       trustSummary: trust.trustSummary,
+      /** Plant hire posted to a project budget as a direct cost (`plant`, scheduled job). */
+      postPlantCost,
+      costCodeBudgeted,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
       /** Material delivery scheduling (`logistics`): look up a purchase order to link a delivery to. */

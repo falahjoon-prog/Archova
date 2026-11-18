@@ -545,7 +545,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
-  const plant = createPlantModule(services, { access: access.api });
+  const plant = createPlantModule(services, {
+    access: access.api,
+    postCost: financials.api.postPlantCost,
+    requireProject: platform.api.getProject,
+    costCodeBudgeted: financials.api.costCodeBudgeted,
+  });
 
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
