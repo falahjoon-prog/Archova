@@ -145,6 +145,7 @@ export const webRoutes = {
   attendanceRoster: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/roster`,
   deliveries: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/deliveries`,
+  prefab: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/prefab`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
   attendanceTimesheets: (orgSlug: string, projectId: string) =>

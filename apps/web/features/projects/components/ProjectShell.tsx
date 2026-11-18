@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
@@ -226,6 +227,11 @@ export function projectToolGroups(
       label: 'Deliveries',
       icon: DeliveriesIcon,
     },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
       label: 'Inspections',
@@ -365,7 +371,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',

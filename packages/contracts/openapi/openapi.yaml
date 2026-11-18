@@ -48,6 +48,7 @@ tags:
   - name: diary
   - name: workforce
   - name: logistics
+  - name: prefab
   - name: scheduling
   - name: meetings
   - name: ownerportal
@@ -16520,6 +16521,192 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPrefabUnits
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Prefabricated and modular units on the project, in install order.'
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PrefabUnitStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a unit built off site. It starts with the standard QA checklist for its kind unless told otherwise.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrefabUnitRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    get:
+      operationId: getPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'A unit with its QA checks and history.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnitDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Change a unit details, dates, install sequence, fabrication progress or delivery link.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrefabUnitRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: transitionPrefabUnit
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabUnit' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+    post:
+      operationId: addPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a QA check to a unit.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddPrefabCheckRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/checks/{checkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabUnitId'
+      - $ref: '#/components/parameters/PrefabCheckId'
+    patch:
+      operationId: recordPrefabCheck
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Record a check as passed, failed, not applicable or pending. A failed factory check puts a unit that is still being made on QA hold.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordPrefabCheckRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPrefabInsights
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Where the units stand, and what Nova flags by rule: late fabrication, QA holds, late shipping, unbooked deliveries, overdue installs, out-of-sequence installs.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/plan-dates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: planPrefabDates
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'Work back from an install date to when the unit must ship and when fabrication must start and finish.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrefabPlanDatesRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabDatePlan' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/logistics/resources:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17032,6 +17219,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    PrefabUnitId:
+      name: unitId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabCheckId:
+      name: checkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
     DeliveryId:
       name: deliveryId
       in: path
@@ -17567,6 +17764,308 @@ components:
         capacity: { type: integer, minimum: 1, maximum: 20 }
         active: { type: boolean }
         note: { type: string, maxLength: 1000 }
+    PrefabUnitKind:
+      type: string
+      enum:
+        [
+          bathroom_pod,
+          wall_panel,
+          floor_cassette,
+          volumetric_module,
+          roof_truss,
+          facade_panel,
+          services_riser,
+          other,
+        ]
+    PrefabUnitStatus:
+      type: string
+      enum:
+        [planned, in_fabrication, qa_hold, ready_to_ship, in_transit, on_site, installed, rejected]
+    PrefabUnit:
+      type: object
+      required:
+        [
+          id,
+          number,
+          code,
+          name,
+          kind,
+          factoryName,
+          supplierCompanyId,
+          location,
+          installSequence,
+          weightKg,
+          dimensions,
+          status,
+          progressPct,
+          fabStart,
+          fabDue,
+          shipDate,
+          installDate,
+          shippedAt,
+          deliveredAt,
+          installedAt,
+          statusReason,
+          deliveryId,
+          deliveryLabel,
+          notes,
+          qaTotal,
+          qaDone,
+          qaFailed,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: [string, 'null'] }
+        supplierCompanyId: { type: [string, 'null'] }
+        location: { type: [string, 'null'] }
+        installSequence: { type: [integer, 'null'] }
+        weightKg: { type: [integer, 'null'] }
+        dimensions: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/PrefabUnitStatus' }
+        progressPct: { type: integer }
+        fabStart: { type: [string, 'null'], format: date }
+        fabDue: { type: [string, 'null'], format: date }
+        shipDate: { type: [string, 'null'], format: date }
+        installDate: { type: [string, 'null'], format: date }
+        shippedAt: { type: [string, 'null'], format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+        installedAt: { type: [string, 'null'], format: date-time }
+        statusReason: { type: [string, 'null'] }
+        deliveryId: { type: [string, 'null'], pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        deliveryLabel: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        qaTotal: { type: integer }
+        qaDone: { type: integer }
+        qaFailed: { type: integer }
+        version: { type: integer }
+    PrefabUnitList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabUnit' }
+    PrefabCheck:
+      type: object
+      required: [id, stage, label, required, result, note, checkedAt]
+      properties:
+        id: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string }
+        required: { type: boolean }
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: [string, 'null'] }
+        checkedAt: { type: [string, 'null'], format: date-time }
+    PrefabEvent:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^pfe_[0-9A-Za-z]{26}$' }
+        kind: { type: string }
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PrefabUnitDetail:
+      type: object
+      required: [unit, checks, events]
+      properties:
+        unit: { $ref: '#/components/schemas/PrefabUnit' }
+        checks:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabCheck' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabEvent' }
+    CreatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, kind]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        standardChecks: { type: boolean }
+    UpdatePrefabUnitRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        factoryName: { type: string, maxLength: 200 }
+        supplierCompanyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        location: { type: string, maxLength: 200 }
+        installSequence: { type: integer, minimum: 1, maximum: 100000 }
+        weightKg: { type: integer, minimum: 1, maximum: 1000000 }
+        dimensions: { type: string, maxLength: 100 }
+        progressPct: { type: integer, minimum: 0, maximum: 100 }
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        deliveryId: { type: string, pattern: '^dlv_[0-9A-Za-z]{26}$' }
+        notes: { type: string, maxLength: 4000 }
+        clear:
+          type: array
+          description: Fields to empty (an install sequence, a date or the delivery link).
+          items:
+            {
+              type: string,
+              enum: [installSequence, fabStart, fabDue, shipDate, installDate, deliveryId],
+            }
+    PrefabTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          {
+            type: string,
+            enum: [start, hold, resume, ready, ship, deliver, install, reject, reopen],
+          }
+        reason: { type: string, maxLength: 1000, description: Required to hold or reject. }
+    AddPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, label]
+      properties:
+        stage: { type: string, enum: [factory, site] }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        required: { type: boolean }
+    RecordPrefabCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result: { type: string, enum: [pending, pass, fail, na] }
+        note: { type: string, maxLength: 1000, description: Required when a check fails. }
+    PrefabFlag:
+      type: object
+      required: [unitId, kind, severity, message, relatedUnitIds]
+      properties:
+        unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+        kind:
+          type: string
+          enum:
+            [
+              fab_late,
+              fab_not_started,
+              qa_hold,
+              ship_late,
+              delivery_not_booked,
+              install_overdue,
+              out_of_sequence,
+              dates_inconsistent,
+            ]
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        relatedUnitIds:
+          type: array
+          items: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabSummary:
+      type: object
+      required: [total, byStatus, installedPct, nextInstalls]
+      properties:
+        total: { type: integer }
+        byStatus:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              planned,
+              in_fabrication,
+              qa_hold,
+              ready_to_ship,
+              in_transit,
+              on_site,
+              installed,
+              rejected,
+            ]
+          properties:
+            planned: { type: integer }
+            in_fabrication: { type: integer }
+            qa_hold: { type: integer }
+            ready_to_ship: { type: integer }
+            in_transit: { type: integer }
+            on_site: { type: integer }
+            installed: { type: integer }
+            rejected: { type: integer }
+        installedPct: { type: integer }
+        nextInstalls:
+          type: array
+          items:
+            type: object
+            required: [unitId, code, installDate]
+            properties:
+              unitId: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+              code: { type: string }
+              installDate: { type: string, format: date }
+    PrefabInsights:
+      type: object
+      required: [asOf, today, summary, flags]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/PrefabSummary' }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabFlag' }
+    PrefabPlanDatesRequest:
+      type: object
+      additionalProperties: false
+      required: [installDate, kind]
+      properties:
+        installDate: { type: string, format: date }
+        kind: { $ref: '#/components/schemas/PrefabUnitKind' }
+        fabDays:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 120,
+            description: Working days in the factory. Defaults by kind.,
+          }
+        transitDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days from the factory gate to site.,
+          }
+        bufferDays:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 30,
+            description: Working days between arriving on site and install.,
+          }
+    PrefabDatePlan:
+      type: object
+      required:
+        [fabStart, fabDue, shipDate, deliveryDate, installDate, fabDays, transitDays, bufferDays]
+      properties:
+        fabStart: { type: string, format: date }
+        fabDue: { type: string, format: date }
+        shipDate: { type: string, format: date }
+        deliveryDate: { type: string, format: date }
+        installDate: { type: string, format: date }
+        fabDays: { type: integer }
+        transitDays: { type: integer }
+        bufferDays: { type: integer }
     DeliveryStatus:
       type: string
       enum: [scheduled, arrived, unloaded, delayed, missed, cancelled]

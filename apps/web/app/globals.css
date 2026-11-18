@@ -4503,3 +4503,98 @@ fieldset.worker-card > legend {
     grid-template-columns: 6rem 1fr;
   }
 }
+
+/* Prefab and modular board */
+.pfb-nova {
+  gap: var(--space-3);
+}
+.pfb-flags,
+.pfb-chips,
+.pfb-checks,
+.pfb-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pfb-chips {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.pfb-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.pfb-flag__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pfb-ask,
+.pfb-progress,
+.pfb-addcheck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.pfb-ask > :first-child,
+.pfb-progress > :first-child,
+.pfb-addcheck > :first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.pfb-ask > button,
+.pfb-progress > button,
+.pfb-addcheck > button {
+  margin-block-start: var(--space-6);
+}
+.pfb-plan {
+  display: flex;
+  align-items: flex-end;
+}
+.pfb-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-divider);
+}
+.pfb-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.pfb-facts dt {
+  color: var(--c-text-secondary);
+}
+.pfb-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pfb-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--c-border-divider);
+}
+.pfb-check__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.pfb-check__label {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

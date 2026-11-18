@@ -19,6 +19,7 @@
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-bim": "workspace:*",
     "@archova/mod-logistics": "workspace:*",
+    "@archova/mod-prefab": "workspace:*",
     "@archova/mod-plant": "workspace:*",
     "@archova/mod-announcements": "workspace:*",
     "@archova/mod-bookmarks": "workspace:*",
