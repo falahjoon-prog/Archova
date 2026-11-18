@@ -712,6 +712,9 @@ export function financialsRoutes(
               {
                 scheduledAmount: money(b.scheduledAmount, 'scheduledAmount'),
                 ...(b.overallReason ? { overallReason: b.overallReason } : {}),
+                ...(b.declarationsOverride
+                  ? { declarationsOverride: { reason: b.declarationsOverride.reason } }
+                  : {}),
                 ...(b.lineReasons
                   ? {
                       lineReasons: b.lineReasons.map((r, n) => ({

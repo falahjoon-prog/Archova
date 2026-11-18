@@ -79,6 +79,7 @@ export {
   FileBadge as PermitsIcon,
   MountainSnow as GeotechIcon,
   ShieldCheck as InsuranceIcon,
+  FileCheck2 as DeclarationsIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   Boxes as CoordinationIcon,

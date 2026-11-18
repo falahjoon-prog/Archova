@@ -956,6 +956,13 @@ export const ReadQuoteWithNovaBody = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
   "fileId": s.FileRefSchema,
 }).strict();
+export const ReadDeclarationWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReadDeclarationWithNovaBody = z.object({
+  "fileId": s.FileRefSchema,
+}).strict();
 export const DetectTakeoffWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4414,6 +4421,68 @@ export const TransitionCoverParams = z.object({
   "coverId": z.string().regex(new RegExp("^cvr_[0-9A-Za-z]{26}$")),
 });
 export const TransitionCoverBody = s.CoverTransitionRequestSchema;
+export const ListDeclarationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeclarationsQuery = z.object({
+  "kind": s.DeclarationKindSchema.optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.DeclarationStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateDeclarationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDeclarationBody = s.CreateDeclarationRequestSchema;
+export const GetDeclarationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "declarationId": z.string().regex(new RegExp("^dcl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeclarationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "declarationId": z.string().regex(new RegExp("^dcl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDeclarationBody = s.UpdateDeclarationRequestSchema;
+export const TransitionDeclarationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "declarationId": z.string().regex(new RegExp("^dcl_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDeclarationBody = s.DeclarationTransitionRequestSchema;
+export const ListDeclarationFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetDeclarationRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetDeclarationRequirementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetDeclarationRequirementsBody = s.SetDeclarationRequirementsRequestSchema;
+export const ListDeclarationClaimsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeclarationChasesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDeclarationChasesQuery = z.object({
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ChaseDeclarationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ChaseDeclarationsBody = s.ChaseDeclarationsRequestSchema;
 export const ListEsignEnvelopesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6647,6 +6716,18 @@ export const operations = {
     params: ReadQuoteWithNovaParams,
     query: null,
     body: ReadQuoteWithNovaBody,
+  },
+  readDeclarationWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/declaration-readings',
+    module: "ai",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReadDeclarationWithNovaParams,
+    query: null,
+    body: ReadDeclarationWithNovaBody,
   },
   detectTakeoffWithNova: {
     method: 'POST',
@@ -13963,6 +14044,138 @@ export const operations = {
     params: TransitionCoverParams,
     query: null,
     body: TransitionCoverBody,
+  },
+  listDeclarations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/statements',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: ListDeclarationsParams,
+    query: ListDeclarationsQuery,
+    body: null,
+  },
+  createDeclaration: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/statements',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDeclarationParams,
+    query: null,
+    body: CreateDeclarationBody,
+  },
+  getDeclaration: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: GetDeclarationParams,
+    query: null,
+    body: null,
+  },
+  updateDeclaration: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDeclarationParams,
+    query: null,
+    body: UpdateDeclarationBody,
+  },
+  transitionDeclaration: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}/transition',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionDeclarationParams,
+    query: null,
+    body: TransitionDeclarationBody,
+  },
+  listDeclarationFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/flags',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: ListDeclarationFlagsParams,
+    query: null,
+    body: null,
+  },
+  getDeclarationRequirements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/requirements',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: GetDeclarationRequirementsParams,
+    query: null,
+    body: null,
+  },
+  setDeclarationRequirements: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/requirements',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetDeclarationRequirementsParams,
+    query: null,
+    body: SetDeclarationRequirementsBody,
+  },
+  listDeclarationClaims: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/claims',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: ListDeclarationClaimsParams,
+    query: null,
+    body: null,
+  },
+  listDeclarationChases: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/chases',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.read",
+    internal: false,
+    contentType: null,
+    params: ListDeclarationChasesParams,
+    query: ListDeclarationChasesQuery,
+    body: null,
+  },
+  chaseDeclarations: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/declarations/chases',
+    module: "declarations",
+    auth: "required",
+    permission: "declarations.statements.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ChaseDeclarationsParams,
+    query: null,
+    body: ChaseDeclarationsBody,
   },
   listEsignEnvelopes: {
     method: 'GET',

@@ -34,6 +34,7 @@
     "@archova/mod-financials": "workspace:*",
     "@archova/mod-precon": "workspace:*",
     "@archova/mod-insurance": "workspace:*",
+    "@archova/mod-declarations": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-permits": "workspace:*",
     "@archova/mod-geotech": "workspace:*",

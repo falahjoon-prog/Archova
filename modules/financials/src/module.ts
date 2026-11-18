@@ -95,6 +95,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     },
     api: {
       ledgerSource: service.ledgerSource,
+      /** Subcontract claims awaiting a payment schedule, for the declarations register (`declarations`). */
+      openSubcontractClaims: service.openSubcontractClaims,
       sopaRiskSignals: service.sopaRiskSignals,
       recordPayment: service.recordPayment,
       createContract: service.createContract,

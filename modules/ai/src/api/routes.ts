@@ -51,6 +51,7 @@ import type { CaptureObservationView, CaptureScanService } from '../application/
 import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
+import type { DeclarationReadService } from '../application/declaration-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import { NCC_NOTE } from '../domain/ncc-references';
 import type { SummarySource } from '../domain/diary-summary';
@@ -309,6 +310,7 @@ export function aiRoutes(
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
+  declarationReads: DeclarationReadService,
   quoteNegotiations: QuoteNegotiateService,
   laborProductivity: LaborProductivityService,
   announcementDrafts: AnnouncementDraftService,
@@ -579,6 +581,25 @@ export function aiRoutes(
           runId: encodeId('aiRun', runId),
           suggestionId: encodeId('aiSuggestion', suggestionId),
           truncated,
+        },
+      };
+    },
+    readDeclarationWithNova: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const {
+        runId,
+        fileId: _file,
+        ...reading
+      } = await declarationReads.read(requireTenant(input), projectUuid(input.params.projectId), {
+        fileId,
+      });
+      return {
+        status: 200,
+        body: {
+          ...reading,
+          runId: encodeId('aiRun', runId),
+          fileId: input.body.fileId,
         },
       };
     },

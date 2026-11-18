@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, renderInProject } from '@/test/render';
+import { fakeProblem } from '@/test/fake-api';
 import type { PaymentClaim, PaymentClaimDetail } from '../data/api';
 
 const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).createFakeApi());
@@ -164,6 +165,46 @@ describe('ClaimDetailScreen', () => {
     expect(fake.callsTo('POST', `${P}/payment-claims/{claimId}/schedule`)[0]!.init.body).toEqual({
       scheduledAmount: '20000.00',
       overallReason: 'Rough-in incomplete',
+    });
+  });
+
+  it('asks for an acknowledgement when a required declaration is missing, then sends it', async () => {
+    const SCHEDULE = `${P}/payment-claims/{claimId}/schedule`;
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());
+    let calls = 0;
+    fake.on('POST', SCHEDULE, () => {
+      calls += 1;
+      return calls === 1
+        ? {
+            ...fakeProblem(422, 'financials.schedule.declarations_missing'),
+            errors: [
+              { path: 'declarationsOverride', message: 'No payroll tax declaration received.' },
+            ],
+          }
+        : detail({ status: 'scheduled' });
+    });
+    const user = userEvent.setup();
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    await screen.findByLabelText(/Scheduled amount/);
+    await user.click(screen.getByRole('button', { name: 'Issue payment schedule' }));
+    expect(await screen.findByText('A declaration this project asks for is missing')).toBeTruthy();
+    expect(screen.getByText('No payroll tax declaration received.')).toBeTruthy();
+    // It names the way ahead and does not suggest holding the money back.
+    expect(screen.getByText(/You can still issue the schedule on time/)).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Issue payment schedule' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    await enterText(
+      user,
+      screen.getByLabelText(/Why you are going ahead without it/),
+      'Paper is coming',
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue payment schedule' }));
+    await waitFor(() => expect(fake.callsTo('POST', SCHEDULE)).toHaveLength(2));
+    expect(fake.callsTo('POST', SCHEDULE)[1]!.init.body).toEqual({
+      scheduledAmount: '28500.00',
+      declarationsOverride: { reason: 'Paper is coming' },
     });
   });
 

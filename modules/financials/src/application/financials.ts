@@ -90,6 +90,23 @@ export interface FinancialsDeps {
     scope: TenantScope,
     fileId: string,
   ) => Promise<{ projectId: string | null; status: string }>;
+  /**
+   * Subcontractor statutory declarations (`declarations`), read lazily at request time. When a project requires them,
+   * issuing a payment schedule for money on a subcontract claim whose declarations are missing needs an
+   * acknowledgement. The schedule is never refused outright: a late schedule can make the whole claim payable.
+   */
+  declarations?: {
+    gate: (
+      scope: TenantScope,
+      projectId: string,
+      input: { claimId: string; companyId: string; periodEnd: string; statementRecorded: boolean },
+    ) => Promise<{ state: 'cleared' | 'warning' | 'blocked'; issues: { message: string }[] }>;
+    recordOverride: (
+      scope: TenantScope,
+      projectId: string,
+      input: { claimId: string; companyId: string; issues: string[]; reason: string },
+    ) => Promise<void>;
+  };
 }
 
 /** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */
@@ -163,6 +180,8 @@ export interface CreateVariationInput {
 export interface IssueScheduleInput {
   scheduledAmount: string;
   overallReason?: string;
+  /** Goes ahead although a required declaration is missing (see `FinancialsDeps.declarations`). */
+  declarationsOverride?: { reason: string };
   lineReasons?: { sovItemId: string; reason: string }[];
 }
 
@@ -1261,6 +1280,93 @@ export function createFinancialsService(deps: FinancialsDeps) {
   }
 
   /**
+   * Scheduling money on a subcontract claim while a required declaration is missing needs an acknowledgement from
+   * someone allowed to give it. This never stops a schedule being issued in time, and a schedule for nothing is not
+   * asked about: Archova does not suggest withholding for a missing declaration (compliance/05 §6).
+   */
+  async function checkDeclarations(
+    scope: TenantScope,
+    projectId: string,
+    claim: ClaimRow,
+    scheduledCents: number,
+    override: { reason: string } | undefined,
+  ) {
+    if (!deps.declarations || scheduledCents <= 0) return;
+    const contract = await getContractRow(scope, projectId, claim.contractId);
+    if (contract.kind !== 'subcontract' || !contract.payeeCompanyId) return;
+    const [statement] = await scope.tx
+      .select({ id: claimStatements.id })
+      .from(claimStatements)
+      .where(eq(claimStatements.claimId, claim.id))
+      .limit(1);
+    const gate = await deps.declarations.gate(scope, projectId, {
+      claimId: claim.id,
+      companyId: contract.payeeCompanyId,
+      periodEnd: claim.periodEnd,
+      statementRecorded: Boolean(statement),
+    });
+    if (gate.state !== 'blocked') return;
+    const issues = gate.issues.map((i) => i.message);
+    if (!override)
+      throw new AppError(
+        'financials.schedule.declarations_missing',
+        'A declaration this project requires is missing for this subcontractor. Get it, or acknowledge and go ahead.',
+        [{ path: 'declarationsOverride', message: issues.join(' ') }],
+      );
+    await need(scope, 'declarations.statements.override', projectId);
+    await deps.declarations.recordOverride(scope, projectId, {
+      claimId: claim.id,
+      companyId: contract.payeeCompanyId,
+      issues,
+      reason: override.reason,
+    });
+  }
+
+  /**
+   * Open subcontract claims (submitted, valid, no schedule yet) for the declarations register. Internal: the caller
+   * has already checked its own permission.
+   */
+  async function openSubcontractClaims(scope: TenantScope, projectId: string) {
+    const rows = await scope.tx
+      .select({
+        claimId: paymentClaims.id,
+        number: paymentClaims.number,
+        contractId: contracts.id,
+        contractTitle: contracts.title,
+        payeeCompanyId: contracts.payeeCompanyId,
+        periodEnd: paymentClaims.periodEnd,
+        statementId: claimStatements.id,
+      })
+      .from(paymentClaims)
+      .innerJoin(contracts, eq(contracts.id, paymentClaims.contractId))
+      .leftJoin(claimStatements, eq(claimStatements.claimId, paymentClaims.id))
+      .where(
+        and(
+          eq(paymentClaims.projectId, projectId),
+          eq(paymentClaims.status, 'submitted'),
+          eq(paymentClaims.isValid, true),
+          eq(contracts.kind, 'subcontract'),
+        ),
+      )
+      .orderBy(asc(paymentClaims.periodEnd), asc(paymentClaims.number));
+    return rows.flatMap((r) =>
+      r.payeeCompanyId
+        ? [
+            {
+              claimId: r.claimId,
+              number: r.number,
+              contractId: r.contractId,
+              contractTitle: r.contractTitle,
+              payeeCompanyId: r.payeeCompanyId,
+              periodEnd: r.periodEnd,
+              statementRecorded: r.statementId !== null,
+            },
+          ]
+        : [],
+    );
+  }
+
+  /**
    * Issue the payment schedule. A reason is required for every reduction (CLM-AC8), the result is immutable, and
    * whether it was issued within time is recorded at issue (CLM-AC10).
    */
@@ -1301,6 +1407,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         'Give a reason for every reduction before issuing a schedule for less than the claim.',
         [{ path: 'overallReason', message: 'Required when scheduling less than claimed' }],
       );
+    await checkDeclarations(scope, projectId, claim, scheduled, input.declarationsOverride);
     const issuedAt = now();
     const issuedOn = localDateOf(
       issuedAt,
@@ -1780,6 +1887,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     claimDetail,
     recordStatement,
     issueSchedule,
+    openSubcontractClaims,
     listEvidence,
     queueEvidenceDelivery,
     listEvidenceDeliveries,

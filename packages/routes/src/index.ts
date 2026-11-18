@@ -128,6 +128,7 @@ export const webRoutes = {
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
+  declarations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/declarations`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>

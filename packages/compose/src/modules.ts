@@ -33,6 +33,7 @@ import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
+import { DECLARATIONS_PERMISSIONS, createDeclarationsModule } from '@archova/mod-declarations';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
 import { GEOTECH_PERMISSIONS, createGeotechModule } from '@archova/mod-geotech';
@@ -110,6 +111,7 @@ export const MODULE_PERMISSIONS = [
   PERMITS_PERMISSIONS,
   GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
+  DECLARATIONS_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -343,6 +345,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
+  // Built right after financials; financials reaches it lazily at request time.
+  // eslint-disable-next-line prefer-const -- assigned after financials, which reads it lazily
+  let declarations!: ReturnType<typeof createDeclarationsModule>;
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -352,6 +357,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.timesheetMinutesByCostCode(scope, projectId),
     dayActivity: (scope, projectId, date) => workforce.api.dayActivity(scope, projectId, date),
     getFile: (scope, fileId) => files.api.getFile(scope, fileId),
+    // declarations is built after financials (it reads open claims from it); only called at request time.
+    declarations: {
+      gate: (scope, projectId, input) => declarations.api.claimGate(scope, projectId, input),
+      recordOverride: (scope, projectId, input) =>
+        declarations.api.recordOverride(scope, projectId, input),
+    },
     // diary is built later; this is only called at request time.
     diaryEntryExists: async (scope, projectId, date) =>
       (await diary.api.dayForSummary(scope, projectId, date)) !== null,
@@ -395,6 +406,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   const geotech = createGeotechModule(services, { platform: platform.api, files: files.api });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
+  declarations = createDeclarationsModule(services, {
+    platform: platform.api,
+    files: files.api,
+    messages: opts.messages,
+    claims: { open: (scope, projectId) => financials.api.openSubcontractClaims(scope, projectId) },
+    senderName: async (userId) => {
+      const u = await identity.api.getUser(userId);
+      return u ? u.name : 'The project team';
+    },
+  });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
@@ -668,6 +689,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     permits,
     geotech,
     insurance,
+    declarations,
     estimating,
     esign,
     integrations,
@@ -720,6 +742,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     permits,
     geotech,
     insurance,
+    declarations,
     estimating,
     esign,
     integrations,

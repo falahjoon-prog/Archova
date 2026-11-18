@@ -73,6 +73,7 @@ export type ProjectTool =
   | 'permits'
   | 'geotech'
   | 'insurance'
+  | 'declarations'
   | 'inspections'
   | 'late-submissions'
   | 'spec-books'
