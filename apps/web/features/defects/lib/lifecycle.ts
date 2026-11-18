@@ -1,9 +1,10 @@
 // Defect lifecycle (product 06): Draft → Open → Ready for inspection → Closed, Ready → Open on reject (reason),
-// Open → Disputed when the subbie says it isn't theirs, Disputed → Open on reassign, Void with a reason.
+// Closed → Open on reopen (reason; the final approver's call). Open → Disputed when the subbie says it isn't theirs, Disputed → Open on reassign, Void with a reason.
 
 import type { ApiDefectAction, Defect, DefectInput, DefectStatus } from './types';
 
-export type DefectAction = 'issue' | 'ready' | 'close' | 'reject' | 'dispute' | 'reassign' | 'void';
+export type DefectAction =
+  'issue' | 'ready' | 'close' | 'reject' | 'dispute' | 'reassign' | 'void' | 'reopen';
 
 const ALLOWED: Record<DefectAction, readonly DefectStatus[]> = {
   issue: ['draft'],
@@ -13,6 +14,7 @@ const ALLOWED: Record<DefectAction, readonly DefectStatus[]> = {
   dispute: ['open'],
   reassign: ['open', 'disputed'],
   void: ['draft', 'open', 'disputed', 'ready_for_review'],
+  reopen: ['closed'],
 };
 
 export function canDefect(status: DefectStatus, action: DefectAction): boolean {
@@ -27,6 +29,7 @@ const API_ACTION: Record<DefectAction, ApiDefectAction> = {
   dispute: 'dispute',
   reassign: 'reassign',
   void: 'void',
+  reopen: 'reopen',
 };
 
 /** Whether to offer an action: the API says so per caller; preview data falls back to the status table. */

@@ -88,12 +88,15 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
  */
 export function AppShell({
   orgName,
+  orgLogoUrl,
   nav,
   actions,
   assistant,
   children,
 }: {
   orgName: string;
+  /** The company's own logo (white-label); the Archova logo shows when absent. */
+  orgLogoUrl?: string | null;
   nav: readonly NavEntry[];
   actions?: ReactNode;
   /** The panel, its toggle label and open state; omitted where the assistant doesn't apply. */
@@ -148,7 +151,17 @@ export function AppShell({
       <header ref={barRef} className="app-shell__bar">
         <div className="app-shell__brand">
           <Link className="app-shell__logo ac-focusable" href={webRoutes.orgPicker()}>
-            <BrandLogo height={36} />
+            {orgLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL, not optimisable
+              <img
+                className="app-shell__org-logo"
+                src={orgLogoUrl}
+                alt={`${orgName} home`}
+                height={36}
+              />
+            ) : (
+              <BrandLogo height={36} />
+            )}
           </Link>
           <span className="app-shell__org" title="Organisation">
             {orgName}
@@ -180,12 +193,14 @@ export function AppShell({
             <button
               type="button"
               className="app-shell__assistant-toggle ac-focusable"
+              aria-label={assistant.label}
               aria-expanded={assistantOpen}
               aria-controls="assistant-panel"
               aria-keyshortcuts="Control+J Meta+J"
               onClick={toggleAssistant}
             >
-              <NovaIcon size={16} /> {assistant.label}
+              <NovaIcon size={16} />
+              <span className="app-shell__assistant-label">{assistant.label}</span>
             </button>
           ) : null}
           {actions}

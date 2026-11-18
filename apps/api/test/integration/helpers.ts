@@ -254,6 +254,7 @@ export async function uploadBytes(
   bytes: Uint8Array,
   filename = 'document.pdf',
   mime = 'application/pdf',
+  module = 'documents',
 ) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const created = await browser.post(`/v1/orgs/${orgId}/uploads`, {
@@ -261,7 +262,7 @@ export async function uploadBytes(
     mime,
     sizeBytes: bytes.length,
     sha256,
-    module: 'documents',
+    module,
     projectId,
   });
   if (created.statusCode !== 201)

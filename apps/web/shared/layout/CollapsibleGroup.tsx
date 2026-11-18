@@ -81,7 +81,9 @@ export function CollapsibleGroup({
         aria-controls={regionId}
         onClick={onToggle}
       >
-        {Icon ? <Icon size={20} strokeWidth={1.5} aria-hidden="true" /> : null}
+        {Icon && variant === 'panel' ? (
+          <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
+        ) : null}
         <span className="cgroup__label">{label}</span>
         {!open ? <span className="cgroup__count">{count}</span> : null}
         {!open && hasCurrent ? (

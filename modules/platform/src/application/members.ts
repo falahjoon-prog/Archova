@@ -14,33 +14,117 @@ export function createMemberService(deps: {
   companies: CompanyService;
   projects: ProjectService;
 }) {
+  /**
+   * Active members, optionally narrowed by `q` (name, email, title, trade or company name), company and trade. Names and
+   * emails live in the identity module, so a search loads the project's members (at most 1000) and filters them here.
+   */
   async function list(
     scope: TenantScope,
     projectId: string,
-    opts: { limit: number; cursor?: string },
+    opts: {
+      limit: number;
+      cursor?: string | undefined;
+      q?: string | undefined;
+      companyId?: string | undefined;
+      trade?: string | undefined;
+    },
   ) {
     await deps.projects.get(scope, projectId);
+    const q = opts.q?.trim().toLowerCase();
+    const trade = opts.trade?.trim().toLowerCase();
     const after = decodeCursor<{ id: string }>(opts.cursor);
     const conditions: SQL[] = [
       eq(projectMembers.projectId, projectId),
       eq(projectMembers.status, 'active'),
     ];
-    if (after) conditions.push(gt(projectMembers.id, after.id));
+    if (opts.companyId) conditions.push(eq(projectMembers.companyId, opts.companyId));
+    const filtered = Boolean(q || trade);
+    if (after && !filtered) conditions.push(gt(projectMembers.id, after.id));
     const rows = await scope.tx
       .select()
       .from(projectMembers)
       .where(and(...conditions))
       .orderBy(asc(projectMembers.id))
-      .limit(opts.limit + 1);
-    const page = toPage(rows, opts.limit, (r) => ({ id: r.id }));
-    const users = await deps.identity.getUsers(page.data.map((r) => r.userId));
+      .limit(filtered ? 1000 : opts.limit + 1);
+    const users = await deps.identity.getUsers(rows.map((r) => r.userId));
+    const names = q
+      ? await deps.companies.names(
+          scope,
+          rows.map((r) => r.companyId),
+        )
+      : new Map();
+    let enriched = rows.map((r) => ({
+      ...r,
+      name: users.get(r.userId)?.name ?? '',
+      email: users.get(r.userId)?.email ?? '',
+    }));
+    if (filtered) {
+      enriched = enriched.filter(
+        (m) =>
+          (!trade || (m.trade ?? '').toLowerCase() === trade) &&
+          (!q ||
+            [m.name, m.email, m.jobTitle, m.trade, m.phone, names.get(m.companyId)].some((v) =>
+              (v ?? '').toLowerCase().includes(q),
+            )),
+      );
+      if (after) enriched = enriched.filter((m) => m.id > after.id);
+    }
+    const page = toPage(enriched, opts.limit, (r) => ({ id: r.id }));
+    return page;
+  }
+
+  /** Changes the directory details kept for a member. Empty text clears a field. */
+  async function update(
+    scope: TenantScope,
+    projectId: string,
+    memberId: string,
+    input: {
+      phone?: string | null | undefined;
+      jobTitle?: string | null | undefined;
+      trade?: string | null | undefined;
+    },
+  ) {
+    await deps.projects.get(scope, projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.id, memberId),
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.status, 'active'),
+        ),
+      )
+      .for('update')
+      .limit(1);
+    if (!row) throw new AppError('project_member.not_found', 'That person is not on this project.');
+    const clean = (v: string | null | undefined, current: string | null) =>
+      v === undefined ? current : v?.trim() || null;
+    const [done] = await scope.tx
+      .update(projectMembers)
+      .set({
+        phone: clean(input.phone, row.phone),
+        jobTitle: clean(input.jobTitle, row.jobTitle),
+        trade: clean(input.trade, row.trade),
+        version: row.version + 1,
+        updatedAt: new Date(),
+        updatedBy: scope.ctx.userId,
+      })
+      .where(eq(projectMembers.id, row.id))
+      .returning();
+    await scope.recordChange({
+      module: 'platform',
+      entityType: 'project_member',
+      entityId: row.id,
+      op: 'upsert',
+      version: done!.version,
+      projectId,
+    });
+    const users = await deps.identity.getUsers([row.userId]);
     return {
-      nextCursor: page.nextCursor,
-      data: page.data.map((r) => ({
-        ...r,
-        name: users.get(r.userId)?.name ?? '',
-        email: users.get(r.userId)?.email ?? '',
-      })),
+      ...done!,
+      name: users.get(row.userId)?.name ?? '',
+      email: users.get(row.userId)?.email ?? '',
     };
   }
 
@@ -63,6 +147,20 @@ export function createMemberService(deps: {
       const u = users.get(r.userId);
       return u?.email ? [{ userId: r.userId, name: u.name, email: u.email }] : [];
     });
+  }
+
+  /** Everyone active on the project (up to 2,000), with company and whether they are outside the builder's org. */
+  async function listActiveMembers(scope: TenantScope, projectId: string) {
+    return scope.tx
+      .select({
+        userId: projectMembers.userId,
+        companyId: projectMembers.companyId,
+        isExternal: projectMembers.isExternal,
+      })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.status, 'active')))
+      .orderBy(asc(projectMembers.id))
+      .limit(2000);
   }
 
   /** Adds an existing user. Invitations for people without an account come with the invite flow. */
@@ -300,10 +398,32 @@ export function createMemberService(deps: {
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    // An organisation-level hold (suspended membership) is not an ordinary removal; the drain grant fails closed.
+    const [hold] = await scope.tx
+      .select({ id: memberships.id })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.orgId, scope.ctx.orgId),
+          eq(memberships.userId, userId),
+          eq(memberships.status, 'suspended'),
+        ),
+      )
+      .limit(1);
+    return { ...row, held: Boolean(hold) };
   }
 
-  return { list, add, remove, getProjectMembership, getProjectAccessState, contactsOfCompany };
+  return {
+    list,
+    update,
+    add,
+    remove,
+    getProjectMembership,
+    getProjectAccessState,
+    contactsOfCompany,
+    listActiveMembers,
+  };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;

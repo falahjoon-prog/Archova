@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatTransmittalNumber, parseRecipients, receiptState } from '../lib/types';
+import {
+  acknowledgementSummary,
+  flagRank,
+  formatTransmittalNumber,
+  parseRecipients,
+  receiptState,
+  type RegisterFlag,
+  type RegisterRecipient,
+} from '../lib/types';
 
 const none = { deliveredAt: null, openedAt: null, downloadedAt: null, acknowledgedAt: null };
 
@@ -26,5 +34,24 @@ describe('transmittal helpers', () => {
       invalid: ['nope'],
     });
     expect(parseRecipients('')).toEqual({ emails: [], invalid: [] });
+  });
+});
+
+describe('register helpers', () => {
+  const r = (role: 'to' | 'cc', status: RegisterRecipient['status']) =>
+    ({ role, status }) as RegisterRecipient;
+
+  it('summarises acknowledgements for the people asked, not the copied ones', () => {
+    expect(acknowledgementSummary([])).toBe('Not issued');
+    expect(acknowledgementSummary([r('cc', 'cc')])).toBe('1 copied');
+    expect(
+      acknowledgementSummary([r('to', 'acknowledged'), r('to', 'overdue'), r('cc', 'cc')]),
+    ).toBe('1 of 2 acknowledged');
+  });
+
+  it('ranks the worst flag', () => {
+    const f = (severity: 'high' | 'medium' | 'low') => ({ severity }) as RegisterFlag;
+    expect(flagRank([])).toBe(0);
+    expect(flagRank([f('low'), f('high'), f('medium')])).toBe(3);
   });
 });

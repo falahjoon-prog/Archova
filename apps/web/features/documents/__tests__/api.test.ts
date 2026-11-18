@@ -98,4 +98,37 @@ describe('documents API source', () => {
     });
     expect(updated.currentRev).toBe('C');
   });
+
+  it('asks for the last week and for tracked documents with the matching filters', async () => {
+    fake.on('GET', `${P}/documents`, () => ({
+      data: [{ ...doc, tracked: true }],
+      nextCursor: null,
+    }));
+    const api = createDocumentsApi('org_1');
+    const tracked = await api.listDocuments('prj_1', null, 'tracked');
+    expect(tracked[0]!.tracked).toBe(true);
+    await api.listDocuments('prj_1', null, 'week');
+    const [a, b] = fake.callsTo('GET', `${P}/documents`).map((c) => c.init.params?.query);
+    expect(a).toMatchObject({ tracked: 'true' });
+    expect(b).toHaveProperty('createdSince');
+  });
+
+  it('deletes with the version, lists the bin and restores', async () => {
+    fake.on('DELETE', `${P}/documents/{documentId}`, () => undefined);
+    fake.on('GET', `${P}/documents/bin`, () => ({
+      data: [{ ...doc, deletedAt: '2026-11-01T00:00:00Z' }],
+      nextCursor: null,
+    }));
+    fake.on('POST', `${P}/documents/{documentId}/restore`, () => ({
+      document: doc,
+      revisions: [],
+    }));
+    const api = createDocumentsApi('org_1');
+    await api.deleteDocument('prj_1', { id: 'doc_geo', version: 2 });
+    expect(fake.callsTo('DELETE', `${P}/documents/{documentId}`)[0]!.init.params?.header).toEqual({
+      'If-Match': '"2"',
+    });
+    expect((await api.listBin('prj_1'))[0]!.deletedAt).toBe('2026-11-01T00:00:00Z');
+    expect((await api.restoreDocument('prj_1', 'doc_geo')).id).toBe('doc_geo');
+  });
 });
