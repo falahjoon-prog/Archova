@@ -216,3 +216,22 @@ describe('Nova on the comparison', () => {
     ).toBeTruthy();
   });
 });
+
+describe('Nova levelling the bids', () => {
+  it('ranks the confirmed bids on the levelled total, names them, and awards nothing', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PackageScreen packageId="pkg_1" />);
+    const panel = await screen.findByRole('region', { name: /Nova: level the bids/ });
+    expect(within(panel).getByText('AI assistant')).toBeTruthy();
+    expect(within(panel).getByText(/not a licensed agent/)).toBeTruthy();
+
+    await user.click(within(panel).getByRole('button', { name: 'Level the bids' }));
+    const table = await within(panel).findByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    expect(within(rows[0]!).getAllByRole('cell')[0]!.textContent).toBe('1');
+    expect(within(panel).getByText(/Nova would take forward Bid [A-Z]:/)).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: 'Level again' })).toBeTruthy();
+    expect(within(panel).queryByRole('button', { name: /award|select/i })).toBeNull();
+  });
+});

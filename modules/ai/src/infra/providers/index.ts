@@ -20,6 +20,7 @@ import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retr
 import { heuristicLaborProductivity } from '../../eval/suites/labor-productivity';
 import { heuristicAnnouncementDraft } from '../../eval/suites/announcement-draft';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicBidLevel } from '../../eval/suites/bid-levelling';
 import { heuristicContractAsk } from '../../eval/suites/contract-ask';
 import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
@@ -66,6 +67,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
+  'bid.level': heuristicBidLevel,
   'labor.productivity': heuristicLaborProductivity,
   'announcement.draft': heuristicAnnouncementDraft,
   'contract.review': heuristicContractReview,

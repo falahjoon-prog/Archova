@@ -1091,6 +1091,15 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const LevelBidsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const LevelBidsWithNovaBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
+}).strict();
 export const ReviewBudgetWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6898,6 +6907,18 @@ export const operations = {
     params: NegotiateQuoteParams,
     query: null,
     body: NegotiateQuoteBody,
+  },
+  levelBidsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: LevelBidsWithNovaParams,
+    query: null,
+    body: LevelBidsWithNovaBody,
   },
   reviewBudgetWithNova: {
     method: 'POST',
