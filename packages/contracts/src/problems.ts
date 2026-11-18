@@ -420,6 +420,10 @@ export const PROBLEM_CODES = {
   // permits: project permits and approvals register
   'permit.not_found': 404,
   'permit.invalid_transition': 409,
+  // geotech: civil and geotechnical records
+  'geotech.investigation_not_found': 404,
+  'geotech.test_not_found': 404,
+  'geotech.earthworks_not_found': 404,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,

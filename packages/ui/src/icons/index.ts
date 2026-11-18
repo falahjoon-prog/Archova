@@ -73,6 +73,7 @@ export {
   TriangleAlert as IncidentsIcon,
   Megaphone as ToolboxIcon,
   FileBadge as PermitsIcon,
+  MountainSnow as GeotechIcon,
   ShieldCheck as InsuranceIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,

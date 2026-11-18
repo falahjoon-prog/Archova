@@ -35,6 +35,7 @@ import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-e
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
+import { GEOTECH_PERMISSIONS, createGeotechModule } from '@archova/mod-geotech';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -103,6 +104,7 @@ export const MODULE_PERMISSIONS = [
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
+  GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
@@ -384,6 +386,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     licences: { lapsed: (scope, today) => lapsedLicences!(scope, today) },
   });
+  const geotech = createGeotechModule(services, { platform: platform.api, files: files.api });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -620,6 +623,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
     integrations,
@@ -668,6 +672,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    geotech,
     insurance,
     estimating,
     integrations,

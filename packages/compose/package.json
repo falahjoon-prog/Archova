@@ -34,6 +34,7 @@
     "@archova/mod-insurance": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-permits": "workspace:*",
+    "@archova/mod-geotech": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-diary": "workspace:*",
     "@archova/mod-documents": "workspace:*",
