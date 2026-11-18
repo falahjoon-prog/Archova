@@ -64,6 +64,7 @@ export type ProjectTool =
   | 'prefab'
   | 'timesheets'
   | 'observations'
+  | 'action-plans'
   | 'swms'
   | 'incidents'
   | 'toolbox'

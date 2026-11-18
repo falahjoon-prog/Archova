@@ -3,6 +3,7 @@
 export {
   AlertOctagon,
   AlertTriangle,
+  Ban,
   ArrowLeft,
   Bell,
   Bookmark,
@@ -69,6 +70,7 @@ export {
   Truck as DeliveriesIcon,
   Factory as PrefabIcon,
   Eye as ObservationsIcon,
+  ListChecks as ActionPlansIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,

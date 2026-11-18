@@ -495,6 +495,7 @@ export const ListCoordinationIssuesParams = z.object({
 export const ListCoordinationIssuesQuery = z.object({
   "status": s.CoordinationIssueStatusSchema.optional(),
   "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
   "q": z.string().min(1).max(200).optional(),
 });
 export const CreateCoordinationIssueParams = z.object({
@@ -3093,6 +3094,59 @@ export const RespondToReadingParams = z.object({
   "readingId": z.string().regex(new RegExp("^erd_[0-9A-Za-z]{26}$")),
 });
 export const RespondToReadingBody = s.RespondToReadingRequestSchema;
+export const ListActionPlansParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListActionPlansQuery = z.object({
+  "status": s.ActionPlanStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanBody = s.CreateActionPlanRequestSchema;
+export const GetActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanBody = s.UpdateActionPlanRequestSchema;
+export const AddActionPlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const AddActionPlanItemBody = s.CreateActionPlanItemRequestSchema;
+export const UpdateActionPlanItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^ali_[0-9A-Za-z]{26}$")),
+});
+export const UpdateActionPlanItemBody = s.UpdateActionPlanItemRequestSchema;
+export const SaveActionPlanAsTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^apl_[0-9A-Za-z]{26}$")),
+});
+export const SaveActionPlanAsTemplateBody = s.SaveActionPlanTemplateRequestSchema;
+export const ListActionPlanTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateActionPlanTemplateBody = s.CreateActionPlanTemplateRequestSchema;
 export const ListIncidentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11074,6 +11128,114 @@ export const operations = {
     params: RespondToReadingParams,
     query: null,
     body: RespondToReadingBody,
+  },
+  listActionPlans: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: null,
+    params: ListActionPlansParams,
+    query: ListActionPlansQuery,
+    body: null,
+  },
+  createActionPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateActionPlanParams,
+    query: null,
+    body: CreateActionPlanBody,
+  },
+  getActionPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: null,
+    params: GetActionPlanParams,
+    query: null,
+    body: null,
+  },
+  updateActionPlan: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateActionPlanParams,
+    query: null,
+    body: UpdateActionPlanBody,
+  },
+  addActionPlanItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddActionPlanItemParams,
+    query: null,
+    body: AddActionPlanItemBody,
+  },
+  updateActionPlanItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/items/{itemId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.read",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateActionPlanItemParams,
+    query: null,
+    body: UpdateActionPlanItemBody,
+  },
+  saveActionPlanAsTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plans/{planId}/save-as-template',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveActionPlanAsTemplateParams,
+    query: null,
+    body: SaveActionPlanAsTemplateBody,
+  },
+  listActionPlanTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plan-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: null,
+    params: ListActionPlanTemplatesParams,
+    query: null,
+    body: null,
+  },
+  createActionPlanTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/action-plan-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.action_plans.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateActionPlanTemplateParams,
+    query: null,
+    body: CreateActionPlanTemplateBody,
   },
   listIncidents: {
     method: 'GET',
