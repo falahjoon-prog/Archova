@@ -16,6 +16,7 @@ import type { TimeService } from '../application/time';
 import type { RiskService } from '../application/risk';
 import type { SustainabilityService } from '../application/sustainability';
 import type { ReadinessService } from '../application/readiness';
+import type { IncidentAnalyticsService } from '../application/incident-analytics';
 import type { RiskRegisterService } from '../application/risk-register';
 import type { ReportsService } from '../application/reports';
 
@@ -30,6 +31,7 @@ export function reportingRoutes(
   sustainability: SustainabilityService,
   dbp: DbpService,
   riskRegister: RiskRegisterService,
+  incidentAnalytics: IncidentAnalyticsService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -123,6 +125,10 @@ export function reportingRoutes(
       body: await read(input, (s) =>
         sustainability.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
+    }),
+    getIncidentAnalytics: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => incidentAnalytics.get(s, input.query ?? {})),
     }),
     getLateSopaClaimRisk: async (input) => ({
       status: 200,

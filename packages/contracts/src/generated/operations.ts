@@ -1348,6 +1348,16 @@ export const SearchOrgQuery = z.object({
   "q": z.string().min(1).max(200),
   "perType": z.coerce.number().int().min(1).max(25).default(8),
 });
+export const GetIncidentAnalyticsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetIncidentAnalyticsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+  "bodyPart": s.BodyPartSchema.optional(),
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1915,6 +1925,11 @@ export const ListWarrantyClaimsQuery = z.object({
 export const GetWarrantySummaryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CompleteDefectPartParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const TransitionDefectParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -7633,6 +7648,18 @@ export const operations = {
     query: SearchOrgQuery,
     body: null,
   },
+  getIncidentAnalytics: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/incident-analytics',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetIncidentAnalyticsParams,
+    query: GetIncidentAnalyticsQuery,
+    body: null,
+  },
   getLateSopaClaimRisk: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/risk/late-sopa-claims',
@@ -8917,6 +8944,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetWarrantySummaryParams,
+    query: null,
+    body: null,
+  },
+  completeDefectPart: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.respond",
+    internal: false,
+    contentType: null,
+    params: CompleteDefectPartParams,
     query: null,
     body: null,
   },

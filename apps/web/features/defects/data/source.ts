@@ -42,6 +42,7 @@ function seedDefect(
     drawing: null,
     assigneeUserId: null,
     assigneeUserIds: [],
+    completedUserIds: [],
     managerUserId: null,
     finalApproverUserId: null,
     distributionUserIds: [],
@@ -356,6 +357,7 @@ export const defectsSource: DefectsSource = {
       assigneeCompanyId: input.assigneeCompanyId!,
       assigneeUserId: input.assigneeUserIds[0] ?? input.assigneeUserId,
       assigneeUserIds: input.assigneeUserIds,
+      completedUserIds: [],
       managerUserId: input.managerUserId,
       finalApproverUserId: input.finalApproverUserId,
       distributionUserIds: input.distributionUserIds,
@@ -473,6 +475,16 @@ export const defectsSource: DefectsSource = {
     transition(d, to, actor, reason.trim());
     if (action === 'reject' || action === 'reopen') d.readyForReviewAt = null;
     if (action === 'reopen') d.closedAt = null;
+    return delay(d);
+  },
+
+  /** One assignee says their own part is done (preview store; the API tells the approver when the last one does). */
+  async completePart(projectId: string, id: string, actor: Actor): Promise<Defect> {
+    const d = find(projectId, id);
+    if (d.status !== 'open' || !d.assigneeUserIds.includes(actor.id))
+      problem(403, 'defect.not_allowed', 'Only the people it is assigned to can do that.');
+    if (!d.completedUserIds.includes(actor.id))
+      d.completedUserIds = [...d.completedUserIds, actor.id];
     return delay(d);
   },
 
@@ -612,6 +624,8 @@ export interface DefectsSource {
   ): Promise<Defect>;
   /** Draft to open: assigns the company and sends it (needs the company already on the draft). */
   issue(projectId: string, id: string, actor: Actor): Promise<Defect>;
+  /** An assignee marks their own part done; the approver is told once everyone has. */
+  completePart(projectId: string, id: string, actor: Actor): Promise<Defect>;
   novaSuggest(
     projectId: string,
     v: { description: string; photos: File[]; drawing: Defect['drawing'] },
