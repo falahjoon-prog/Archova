@@ -16,4 +16,6 @@ export const OWNERPORTAL_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'ownerportal.approvals.decide', scope: 'project', tool: 'owner_portal', level: 'admin' },
   { key: 'ownerportal.capital.read', scope: 'project', tool: 'owner_portal', level: 'read' },
   { key: 'ownerportal.capital.manage', scope: 'project', tool: 'owner_portal', level: 'standard' },
+  // Issue and revoke the no-login client link, and pick the photos it shows. The client never holds this.
+  { key: 'ownerportal.share.manage', scope: 'project', tool: 'owner_portal', level: 'standard' },
 ];

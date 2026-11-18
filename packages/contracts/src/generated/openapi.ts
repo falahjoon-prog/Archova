@@ -13101,6 +13101,111 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The read-only client links on this project, newest first, with whether each still works. Tokens are never shown again. */
+        get: operations["listOwnerShareLinks"];
+        put?: never;
+        /** Issue a no-login client link (web `/c/[token]`, X45). The URL is returned once; if a recipient email is given it is also emailed. */
+        post: operations["createOwnerShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a client link working. Takes effect on the next request. */
+        post: operations["revokeOwnerShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The photos picked for the client view, newest first. Nothing is shown to the client unless it is listed here. */
+        get: operations["listOwnerSharedPhotos"];
+        put?: never;
+        /** Pick a project photo for the client view, or change its caption. Up to 60 photos. */
+        post: operations["addOwnerSharedPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a photo off the client view. */
+        delete: operations["removeOwnerSharedPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/owner-portal-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The client view for the current link session. Photo URLs are short-lived, so reload to refresh them. */
+        get: operations["getOwnerPortalAccess"];
+        put?: never;
+        /**
+         * Exchange a client link token for a read-only session on that link (web `/c/[token]`, X45).
+         * @description Sets the `__Host-opk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, a link whose issuer has lost access, or a plan without the portal returns `access_link.invalid` with no detail about the project.
+         */
+        post: operations["openOwnerPortalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/prefab/units": {
         parameters: {
             query?: never;
@@ -15139,6 +15244,91 @@ export interface components {
         };
         /** @enum {string} */
         OwnerMilestoneStatus: "done" | "on_track" | "at_risk" | "late";
+        OwnerShareLink: {
+            id: string;
+            label: string | null;
+            recipientEmail: string | null;
+            /** @enum {string} */
+            state: "active" | "expired" | "revoked" | "used_up";
+            /** Format: date-time */
+            expiresAt: string;
+            useCount: number;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        OwnerShareLinkList: {
+            data: components["schemas"]["OwnerShareLink"][];
+        };
+        CreateOwnerShareLinkRequest: {
+            label?: string | null;
+            recipientEmail?: string | null;
+            expiresInDays?: number;
+        };
+        CreatedOwnerShareLink: {
+            link: components["schemas"]["OwnerShareLink"];
+            /** @description The client link. Shown once; only a hash is stored. */
+            url: string;
+            emailed: boolean;
+        };
+        OwnerSharedPhoto: {
+            fileId: string;
+            caption: string;
+            filename: string;
+            url: string;
+            /** Format: date-time */
+            addedAt: string;
+        };
+        OwnerSharedPhotoList: {
+            data: components["schemas"]["OwnerSharedPhoto"][];
+        };
+        AddOwnerSharedPhotoRequest: {
+            fileId: string;
+            caption?: string;
+        };
+        OwnerPortalAccessUpdate: {
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            percentComplete: number;
+            summary: string;
+            /** Format: date-time */
+            publishedAt: string | null;
+        };
+        /** @description What a client sees on a share link. Never carries amounts, drafts, commitments or correspondence. */
+        OwnerPortalAccess: {
+            project: {
+                name: string;
+                fromOrg: string;
+                timezone: string;
+            };
+            progress: components["schemas"]["OwnerPortalAccessUpdate"] | null;
+            milestones: components["schemas"]["OwnerMilestone"][];
+            updates: components["schemas"]["OwnerPortalAccessUpdate"][];
+            changes: {
+                /** @enum {string} */
+                kind: "variation" | "decision";
+                reference: string;
+                title: string;
+                description: string;
+                timeImpactDays: number;
+                /** Format: date-time */
+                approvedAt: string | null;
+            }[];
+            photos: {
+                caption: string;
+                url: string;
+                /** Format: date-time */
+                addedAt: string;
+            }[];
+            /** Format: date-time */
+            expiresAt: string;
+        };
         OwnerMilestone: {
             name: string;
             /** Format: date */
@@ -47801,6 +47991,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerShareLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerShareLink: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerShareLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedOwnerShareLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeOwnerShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerSharedPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addOwnerSharedPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOwnerSharedPhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeOwnerSharedPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerPortalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openOwnerPortalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The client view; `__Host-opk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
                 };
             };
             default: components["responses"]["Problem"];

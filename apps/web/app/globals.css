@@ -2088,6 +2088,9 @@ fieldset.worker-card > legend {
   min-height: 100dvh;
   background: var(--c-bg);
 }
+.link-page--wide {
+  max-width: 56rem;
+}
 .link-item {
   flex-direction: row;
   align-items: center;

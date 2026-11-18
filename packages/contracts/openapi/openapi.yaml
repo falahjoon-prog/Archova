@@ -17791,6 +17791,150 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerShareLinks
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'The read-only client links on this project, newest first, with whether each still works. Tokens are never shown again.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerShareLink
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Issue a no-login client link (web `/c/[token]`, X45). The URL is returned once; if a recipient email is given it is also emailed.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerShareLinkRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatedOwnerShareLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^lnk_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: revokeOwnerShareLink
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Stop a client link working. Takes effect on the next request.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerSharedPhotos
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'The photos picked for the client view, newest first. Nothing is shown to the client unless it is listed here.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addOwnerSharedPhoto
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Pick a project photo for the client view, or change its caption. Up to 60 photos.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddOwnerSharedPhotoRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/FileId' }
+    delete:
+      operationId: removeOwnerSharedPhoto
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Take a photo off the client view.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/owner-portal-access:
+    post:
+      operationId: openOwnerPortalAccess
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-auth: none
+      summary: Exchange a client link token for a read-only session on that link (web `/c/[token]`, X45).
+      description: 'Sets the `__Host-opk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, a link whose issuer has lost access, or a plan without the portal returns `access_link.invalid` with no detail about the project.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The client view; `__Host-opk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerPortalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getOwnerPortalAccess
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-auth: none
+      summary: The client view for the current link session. Photo URLs are short-lived, so reload to refresh them.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerPortalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/prefab/units:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -21363,6 +21507,118 @@ components:
     OwnerMilestoneStatus:
       type: string
       enum: [done, on_track, at_risk, late]
+    OwnerShareLink:
+      type: object
+      required:
+        [id, label, recipientEmail, state, expiresAt, useCount, lastUsedAt, createdAt, revokedAt]
+      properties:
+        id: { type: string }
+        label: { type: [string, 'null'] }
+        recipientEmail: { type: [string, 'null'] }
+        state: { type: string, enum: [active, expired, revoked, used_up] }
+        expiresAt: { type: string, format: date-time }
+        useCount: { type: integer }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    OwnerShareLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerShareLink' }
+    CreateOwnerShareLinkRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label: { type: [string, 'null'], maxLength: 100 }
+        recipientEmail: { type: [string, 'null'], maxLength: 254 }
+        expiresInDays: { type: integer, minimum: 1, maximum: 90 }
+    CreatedOwnerShareLink:
+      type: object
+      required: [link, url, emailed]
+      properties:
+        link: { $ref: '#/components/schemas/OwnerShareLink' }
+        url: { type: string, description: 'The client link. Shown once; only a hash is stored.' }
+        emailed: { type: boolean }
+    OwnerSharedPhoto:
+      type: object
+      required: [fileId, caption, filename, url, addedAt]
+      properties:
+        fileId: { type: string }
+        caption: { type: string }
+        filename: { type: string }
+        url: { type: string }
+        addedAt: { type: string, format: date-time }
+    OwnerSharedPhotoList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerSharedPhoto' }
+    AddOwnerSharedPhotoRequest:
+      type: object
+      additionalProperties: false
+      required: [fileId]
+      properties:
+        fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        caption: { type: string, maxLength: 300 }
+    OwnerPortalAccessUpdate:
+      type: object
+      required: [title, periodStart, periodEnd, percentComplete, summary, publishedAt]
+      properties:
+        title: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        summary: { type: string }
+        publishedAt: { type: [string, 'null'], format: date-time }
+    OwnerPortalAccess:
+      type: object
+      description: 'What a client sees on a share link. Never carries amounts, drafts, commitments or correspondence.'
+      required: [project, progress, milestones, updates, changes, photos, expiresAt]
+      properties:
+        project:
+          type: object
+          required: [name, fromOrg, timezone]
+          properties:
+            name: { type: string }
+            fromOrg: { type: string }
+            timezone: { type: string }
+        progress:
+          oneOf:
+            - { $ref: '#/components/schemas/OwnerPortalAccessUpdate' }
+            - { type: 'null' }
+        milestones:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+        updates:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerPortalAccessUpdate' }
+        changes:
+          type: array
+          items:
+            type: object
+            required: [kind, reference, title, description, timeImpactDays, approvedAt]
+            properties:
+              kind: { type: string, enum: [variation, decision] }
+              reference: { type: string }
+              title: { type: string }
+              description: { type: string }
+              timeImpactDays: { type: integer }
+              approvedAt: { type: [string, 'null'], format: date-time }
+        photos:
+          type: array
+          items:
+            type: object
+            required: [caption, url, addedAt]
+            properties:
+              caption: { type: string }
+              url: { type: string }
+              addedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
     OwnerMilestone:
       type: object
       additionalProperties: false

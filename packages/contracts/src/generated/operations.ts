@@ -4356,6 +4356,35 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListOwnerShareLinksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerShareLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerShareLinkBody = s.CreateOwnerShareLinkRequestSchema;
+export const RevokeOwnerShareLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^lnk_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerSharedPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddOwnerSharedPhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddOwnerSharedPhotoBody = s.AddOwnerSharedPhotoRequestSchema;
+export const RemoveOwnerSharedPhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const OpenOwnerPortalAccessBody = s.OpenInductionAccessRequestSchema;
 export const ListPrefabUnitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -13982,6 +14011,102 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listOwnerShareLinks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerShareLinksParams,
+    query: null,
+    body: null,
+  },
+  createOwnerShareLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerShareLinkParams,
+    query: null,
+    body: CreateOwnerShareLinkBody,
+  },
+  revokeOwnerShareLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: RevokeOwnerShareLinkParams,
+    query: null,
+    body: null,
+  },
+  listOwnerSharedPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerSharedPhotosParams,
+    query: null,
+    body: null,
+  },
+  addOwnerSharedPhoto: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddOwnerSharedPhotoParams,
+    query: null,
+    body: AddOwnerSharedPhotoBody,
+  },
+  removeOwnerSharedPhoto: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: RemoveOwnerSharedPhotoParams,
+    query: null,
+    body: null,
+  },
+  getOwnerPortalAccess: {
+    method: 'GET',
+    path: '/v1/owner-portal-access',
+    module: "ownerportal",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openOwnerPortalAccess: {
+    method: 'POST',
+    path: '/v1/owner-portal-access',
+    module: "ownerportal",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenOwnerPortalAccessBody,
   },
   listPrefabUnits: {
     method: 'GET',

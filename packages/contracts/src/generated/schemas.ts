@@ -220,6 +220,12 @@ export const AddMeetingSectionRequestSchema = z.object({
 }).strict();
 export type AddMeetingSectionRequest = z.infer<typeof AddMeetingSectionRequestSchema>;
 
+export const AddOwnerSharedPhotoRequestSchema = z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+  "caption": z.string().max(300).optional(),
+}).strict();
+export type AddOwnerSharedPhotoRequest = z.infer<typeof AddOwnerSharedPhotoRequestSchema>;
+
 export const AddPrefabCheckRequestSchema = z.object({
   "stage": z.enum(["factory", "site"]),
   "label": z.string().min(1).max(200),
@@ -3185,6 +3191,13 @@ export const CreateOwnerProgressUpdateRequestSchema = z.object({
 }).strict();
 export type CreateOwnerProgressUpdateRequest = z.infer<typeof CreateOwnerProgressUpdateRequestSchema>;
 
+export const CreateOwnerShareLinkRequestSchema = z.object({
+  "label": z.string().max(100).nullable().optional(),
+  "recipientEmail": z.string().max(254).nullable().optional(),
+  "expiresInDays": z.number().int().min(1).max(90).optional(),
+}).strict();
+export type CreateOwnerShareLinkRequest = z.infer<typeof CreateOwnerShareLinkRequestSchema>;
+
 export const PermitKindSchema = z.enum(["building_permit", "development_approval", "construction_certificate", "occupation_certificate", "council_approval", "planning_permit", "environmental_permit", "road_occupancy", "traffic_management", "crane_hoist", "demolition", "hot_work", "trade_licence", "other"]);
 export type PermitKind = z.infer<typeof PermitKindSchema>;
 
@@ -3772,6 +3785,26 @@ export const CreateWorkflowRequestSchema = z.object({
   "active": z.boolean().optional(),
 });
 export type CreateWorkflowRequest = z.infer<typeof CreateWorkflowRequestSchema>;
+
+export const OwnerShareLinkSchema = z.object({
+  "id": z.string(),
+  "label": z.string().nullable(),
+  "recipientEmail": z.string().nullable(),
+  "state": z.enum(["active", "expired", "revoked", "used_up"]),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "useCount": z.number().int(),
+  "lastUsedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type OwnerShareLink = z.infer<typeof OwnerShareLinkSchema>;
+
+export const CreatedOwnerShareLinkSchema = z.object({
+  "link": OwnerShareLinkSchema,
+  "url": z.string(),
+  "emailed": z.boolean(),
+});
+export type CreatedOwnerShareLink = z.infer<typeof CreatedOwnerShareLinkSchema>;
 
 export const DashboardTileSchema = z.object({
   "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
@@ -7693,6 +7726,42 @@ export const OwnerInvoicePrefillSchema = z.object({
 });
 export type OwnerInvoicePrefill = z.infer<typeof OwnerInvoicePrefillSchema>;
 
+export const OwnerPortalAccessUpdateSchema = z.object({
+  "title": z.string(),
+  "periodStart": z.string().date(),
+  "periodEnd": z.string().date(),
+  "percentComplete": z.number().int().min(0).max(100),
+  "summary": z.string(),
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type OwnerPortalAccessUpdate = z.infer<typeof OwnerPortalAccessUpdateSchema>;
+
+export const OwnerPortalAccessSchema = z.object({
+  "project": z.object({
+  "name": z.string(),
+  "fromOrg": z.string(),
+  "timezone": z.string(),
+}),
+  "progress": z.union([OwnerPortalAccessUpdateSchema, z.null()]),
+  "milestones": z.array(OwnerMilestoneSchema),
+  "updates": z.array(OwnerPortalAccessUpdateSchema),
+  "changes": z.array(z.object({
+  "kind": z.enum(["variation", "decision"]),
+  "reference": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "timeImpactDays": z.number().int(),
+  "approvedAt": z.string().datetime({ offset: true }).nullable(),
+})),
+  "photos": z.array(z.object({
+  "caption": z.string(),
+  "url": z.string(),
+  "addedAt": z.string().datetime({ offset: true }),
+})),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type OwnerPortalAccess = z.infer<typeof OwnerPortalAccessSchema>;
+
 export const OwnerProgressUpdateSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -7714,6 +7783,25 @@ export const OwnerProgressUpdateListSchema = z.object({
   "data": z.array(OwnerProgressUpdateSchema),
 });
 export type OwnerProgressUpdateList = z.infer<typeof OwnerProgressUpdateListSchema>;
+
+export const OwnerShareLinkListSchema = z.object({
+  "data": z.array(OwnerShareLinkSchema),
+});
+export type OwnerShareLinkList = z.infer<typeof OwnerShareLinkListSchema>;
+
+export const OwnerSharedPhotoSchema = z.object({
+  "fileId": z.string(),
+  "caption": z.string(),
+  "filename": z.string(),
+  "url": z.string(),
+  "addedAt": z.string().datetime({ offset: true }),
+});
+export type OwnerSharedPhoto = z.infer<typeof OwnerSharedPhotoSchema>;
+
+export const OwnerSharedPhotoListSchema = z.object({
+  "data": z.array(OwnerSharedPhotoSchema),
+});
+export type OwnerSharedPhotoList = z.infer<typeof OwnerSharedPhotoListSchema>;
 
 export const PackageActionRequestSchema = z.object({
   "action": z.enum(["send", "close", "reopen", "cancel"]),

@@ -36,6 +36,23 @@ export function useCapitalPlan() {
   });
 }
 
+export function useShareLinks() {
+  const { orgId, projectId, source } = useCtx();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-portal', { part: 'share-links' }),
+    queryFn: () => source.shareLinks(projectId),
+  });
+}
+// The signed photo links last 10 minutes; refetch before they lapse.
+export function useSharedPhotos() {
+  const { orgId, projectId, source } = useCtx();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-portal', { part: 'shared-photos' }),
+    queryFn: () => source.sharedPhotos(projectId),
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** Every mutation refreshes the whole portal: the three tabs are small and share one root key. */
 export function useOwnerPortalMutations() {
   const { orgId, projectId, source } = useCtx();
@@ -44,6 +61,24 @@ export function useOwnerPortalMutations() {
     qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'owner-portal') });
   const opts = { onSettled: refresh };
   return {
+    createShareLink: useMutation({
+      mutationFn: (v: Parameters<typeof source.createShareLink>[1]) =>
+        source.createShareLink(projectId, v),
+      ...opts,
+    }),
+    revokeShareLink: useMutation({
+      mutationFn: (id: string) => source.revokeShareLink(projectId, id),
+      ...opts,
+    }),
+    sharePhoto: useMutation({
+      mutationFn: (v: { fileId: string; caption: string }) =>
+        source.sharePhoto(projectId, v.fileId, v.caption),
+      ...opts,
+    }),
+    unsharePhoto: useMutation({
+      mutationFn: (fileId: string) => source.unsharePhoto(projectId, fileId),
+      ...opts,
+    }),
     createUpdate: useMutation({
       mutationFn: (v: Parameters<typeof source.createUpdate>[1]) =>
         source.createUpdate(projectId, v),
