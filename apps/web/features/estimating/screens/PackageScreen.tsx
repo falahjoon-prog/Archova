@@ -46,6 +46,7 @@ import {
 } from '../lib/quote-types';
 import { ComparisonTable } from '../quotes/ComparisonTable';
 import { money } from '../quotes/money';
+import { LevellingPanel } from '../quotes/LevellingPanel';
 import { NegotiatePanel } from '../quotes/NegotiatePanel';
 import { QuoteReview } from '../quotes/QuoteReview';
 import { SourceDialog, type SourceTarget } from '../quotes/SourceDialog';
@@ -280,6 +281,7 @@ function Comparison({
             onSource={onSource}
           />
           <p className="u-caption u-m-0">Amounts are ex GST. GST is shown separately.</p>
+          <LevellingPanel packageId={pkg.id} quotes={comparable} scope={pkg.scope} />
           <NegotiatePanel packageId={pkg.id} quotes={comparable} />
         </>
       )}

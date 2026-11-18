@@ -32,6 +32,7 @@ import {
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
+import { HANDOVER_PERMISSIONS, createHandoverModule } from '@archova/mod-handover';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { DECLARATIONS_PERMISSIONS, createDeclarationsModule } from '@archova/mod-declarations';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
@@ -71,6 +72,7 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
@@ -103,12 +105,14 @@ export const MODULE_PERMISSIONS = [
   REPORTING_PERMISSIONS,
   SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
+  WORKFLOWS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
+  HANDOVER_PERMISSIONS,
   GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   DECLARATIONS_PERMISSIONS,
@@ -348,9 +352,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // Built right after financials; financials reaches it lazily at request time.
   // eslint-disable-next-line prefer-const -- assigned after financials, which reads it lazily
   let declarations!: ReturnType<typeof createDeclarationsModule>;
+  const workflows = createWorkflowsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    workflows: workflows.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
@@ -414,6 +421,31 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     senderName: async (userId) => {
       const u = await identity.api.getUser(userId);
       return u ? u.name : 'The project team';
+    },
+  });
+  const handover = createHandoverModule(services, {
+    platform: platform.api,
+    files: files.api,
+    // What other modules know about the project, read on the caller's own access: a figure the caller may not see is null.
+    signals: async (scope, projectId) => {
+      const [defectCounts, warranty, permitRows] = await Promise.all([
+        defects.api.portfolioCounts(scope, projectId),
+        access.api
+          .can(scope, 'defects.warranty.read', { projectId })
+          .then((ok) => (ok ? defects.api.warrantySummary(scope, projectId) : null)),
+        access.api
+          .can(scope, 'permits.permits.read', { projectId })
+          .then((ok) => (ok ? permits.api.statusSummary(scope, projectId) : null)),
+      ]);
+      return {
+        openDefects: defectCounts.restricted ? null : defectCounts.open,
+        warrantyItems: warranty ? warranty.itemCount : null,
+        occupationCertificate: permitRows
+          ? permitRows.some((p) => p.kind === 'occupation_certificate')
+            ? 'present'
+            : 'none'
+          : null,
+      };
     },
   });
 
@@ -493,6 +525,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    bidsForLevelling: (scope, projectId, packageId) =>
+      estimating.api.bidsForLevelling(scope, projectId, packageId),
     budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
@@ -580,6 +614,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+    createDelivery: (scope, projectId, input) =>
+      logistics.api.createDelivery(scope, projectId, input),
   });
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
@@ -687,6 +723,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    handover,
     geotech,
     insurance,
     declarations,
@@ -698,6 +735,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,
@@ -740,6 +778,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    handover,
     geotech,
     insurance,
     declarations,
@@ -752,6 +791,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,

@@ -54,6 +54,112 @@ export function createActionSender(api: ApiClient, orgId: string): ActionSender 
           }),
         );
         return;
+      case 'delivery.checkIn':
+        unwrap(
+          await api.POST('/v1/orgs/{orgId}/projects/{projectId}/deliveries/{deliveryId}/check-in', {
+            params: { path: { ...base, deliveryId: a.targetId } },
+            // The time the truck was logged on the phone, not the time the signal came back.
+            body: {
+              event: p.event as 'arrived',
+              ...(typeof p.at === 'string' ? { at: p.at } : {}),
+            },
+          }),
+        );
+        return;
+      case 'swms.acknowledge':
+        unwrap(
+          await api.POST('/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge', {
+            params: {
+              path: { ...base, swmsId: a.targetId },
+              header: { 'Idempotency-Key': a.id },
+            },
+            body: { workerName: String(p.workerName ?? ''), language: 'en' },
+          }),
+        );
+        return;
+      case 'swms.transition':
+        unwrap(
+          await api.POST('/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition', {
+            params: {
+              path: { ...base, swmsId: a.targetId },
+              header: { 'If-Match': `"${String(p.version)}"` },
+            },
+            body: {
+              action: p.action as 'accept',
+              ...(typeof p.reason === 'string' && p.reason ? { reason: p.reason } : {}),
+              ...(p.action === 'accept' ? { confirmedUnderstandable: true } : {}),
+            },
+          }),
+        );
+        return;
+      case 'permit.startRenewal':
+        unwrap(
+          await api.POST('/v1/orgs/{orgId}/projects/{projectId}/permits/{permitId}/transition', {
+            params: {
+              path: { ...base, permitId: a.targetId },
+              header: { 'If-Match': `"${String(p.version)}"` },
+            },
+            body: { action: 'startRenewal' },
+          }),
+        );
+        return;
+      case 'environment.startCondition':
+        unwrap(
+          await api.POST(
+            '/v1/orgs/{orgId}/projects/{projectId}/environment/conditions/{conditionId}/transition',
+            {
+              params: {
+                path: { ...base, conditionId: a.targetId },
+                header: { 'If-Match': `"${String(p.version)}"` },
+              },
+              body: { action: 'start' },
+            },
+          ),
+        );
+        return;
+      case 'toolbox.addAttendee':
+      case 'toolbox.transition': {
+        // Earlier queued changes may already have moved the talk on, so use its current version, not the one the
+        // phone saw. Closing a talk that someone else closed is still refused by the server.
+        const talk = unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}', {
+            params: { path: { ...base, talkId: a.targetId } },
+          }),
+        );
+        const params = {
+          path: { ...base, talkId: a.targetId },
+          header: { 'If-Match': `"${talk.talk.version}"` },
+        };
+        if (a.kind === 'toolbox.addAttendee') {
+          unwrap(
+            await api.POST(
+              '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/attendees',
+              {
+                params,
+                body: {
+                  attendees: [
+                    {
+                      personName: String(p.personName ?? ''),
+                      ...(typeof p.userId === 'string' ? { userId: p.userId } : {}),
+                    },
+                  ],
+                },
+              },
+            ),
+          );
+        } else {
+          unwrap(
+            await api.POST(
+              '/v1/orgs/{orgId}/projects/{projectId}/toolbox-talks/{talkId}/transition',
+              {
+                params,
+                body: { action: p.action as 'close' },
+              },
+            ),
+          );
+        }
+        return;
+      }
     }
   };
 }

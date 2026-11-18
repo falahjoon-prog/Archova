@@ -67,6 +67,7 @@ export {
 
 export {
   BookOpen as DiaryIcon,
+  Camera as PhotosIcon,
   HardHat as AttendanceIcon,
   Truck as DeliveriesIcon,
   Factory as PrefabIcon,
@@ -87,6 +88,7 @@ export {
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
   BadgeCheck as WarrantyIcon,
+  FolderCheck as HandoverIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,

@@ -136,12 +136,14 @@ export const ID_PREFIXES = {
   scheduleDependency: 'sdp',
   scheduleLink: 'slk',
   report: 'rpt',
+  projectRisk: 'rsk',
   notification: 'ntf',
   bookmark: 'bmk',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
   inspection: 'ins',
   observation: 'obs',
+  photoAlbum: 'alb',
   actionPlan: 'apl',
   actionPlanItem: 'ali',
   actionPlanTemplate: 'apt',
@@ -161,6 +163,9 @@ export const ID_PREFIXES = {
   declaration: 'dcl',
   declarationEvent: 'dce',
   declarationChase: 'dch',
+  handoverItem: 'hoi',
+  handoverEvent: 'hoe',
+  handoverIssue: 'hoz',
   incidentPerson: 'ipp',
   toolboxTopic: 'tbp',
   toolboxTalk: 'tbt',
@@ -194,6 +199,8 @@ export const ID_PREFIXES = {
   forecastAdjustment: 'fca',
   trustMovement: 'tmv',
   dataExport: 'dxp',
+  workflow: 'wfl',
+  workflowRun: 'wfr',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

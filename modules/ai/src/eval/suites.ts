@@ -4,6 +4,7 @@ import { assistAnswerSuite, assistPlanSuite } from './suites/assist';
 import { contractAskSuite } from './suites/contract-ask';
 import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
+import { contractSovSuite } from './suites/contract-sov';
 import { defectTagSuite } from './suites/defect-tag';
 import { budgetReviewSuite } from './suites/budget-review';
 import { diarySummarySuite } from './suites/diary-summary';
@@ -23,9 +24,11 @@ import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { laborProductivitySuite } from './suites/labor-productivity';
 import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
+import { bidLevelSuite } from './suites/bid-levelling';
 import { quoteReadSuite } from './suites/quote-read';
 import { declarationReadSuite } from './suites/declaration-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
+import { voiceLogSuite } from './suites/voice-log';
 import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
 import { swmsDraftSuite } from './suites/swms-draft';
@@ -49,6 +52,7 @@ export const SUITES: readonly AnySuite[] = [
   helpExplainSuite,
   diaryWeeklySuite,
   meetingMinutesSuite,
+  voiceLogSuite,
   rfiDraftSuite,
   rfiAnswerSuite,
   swmsDraftSuite,
@@ -61,11 +65,13 @@ export const SUITES: readonly AnySuite[] = [
   quoteReadSuite,
   declarationReadSuite,
   quoteNegotiateSuite,
+  bidLevelSuite,
   laborProductivitySuite,
   announcementDraftSuite,
   contractReviewSuite,
   contractAskSuite,
   contractCompareSuite,
+  contractSovSuite,
   takeoffDetectSuite,
   assistPlanSuite,
   assistAnswerSuite,

@@ -5,12 +5,13 @@ import { addDays, endOfLocalDay, localDateOf, startOfLocalDay } from '@archova/t
 import { Button, ListItem, Screen, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
 import { deviceTimeZone } from '../../../lib/capture/capture';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { PendingActions, StateMessage, useAttempt, useCurrentOrg } from '../../../shared';
 import { checkInDelivery, listDeliveries } from '../commands';
 import { checkInLabel, deliverySubtitle, itemsSummary, nextCheckIn } from '../format';
 
 export function DeliveriesScreen({ projectId }: { projectId: string }) {
   const t = useTheme();
+  const attempt = useAttempt();
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const zone = deviceTimeZone() ?? 'UTC';
@@ -27,8 +28,19 @@ export function DeliveriesScreen({ projectId }: { projectId: string }) {
     enabled: target !== null,
   });
   const checkIn = useMutation({
-    mutationFn: (v: { id: string; event: 'arrived' | 'unloaded' }) =>
-      checkInDelivery(api, target!, v.id, v.event),
+    mutationFn: (v: { id: string; event: 'arrived' | 'unloaded' }) => {
+      // Stamped now, so a check-in sent later still records when the truck actually arrived.
+      const at = new Date().toISOString();
+      return attempt(
+        {
+          projectId,
+          kind: 'delivery.checkIn',
+          targetId: v.id,
+          payload: { event: v.event, at },
+        },
+        () => checkInDelivery(api, target!, v.id, v.event, at),
+      );
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
   if (!orgId) {
@@ -60,6 +72,9 @@ export function DeliveriesScreen({ projectId }: { projectId: string }) {
   return (
     <Screen title="Deliveries">
       {rows.length === 0 ? <StateMessage message="No deliveries in the next week." /> : null}
+      {checkIn.data === 'queued' ? (
+        <StateMessage message="No signal. This is saved on this phone and will be sent when you are online." />
+      ) : null}
       {checkIn.isError ? (
         <StateMessage tone="danger" message="Could not log that. Try again." />
       ) : null}
@@ -76,6 +91,7 @@ export function DeliveriesScreen({ projectId }: { projectId: string }) {
             {d.accessNotes ? (
               <Text style={{ color: t.color.textSecondary }}>{d.accessNotes}</Text>
             ) : null}
+            <PendingActions targetId={d.id} />
             {next ? (
               <Button
                 label={checkInLabel(next)}
