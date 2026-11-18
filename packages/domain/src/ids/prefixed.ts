@@ -7,6 +7,7 @@ export const ID_PREFIXES = {
   user: 'usr',
   project: 'prj',
   company: 'cmp',
+  companyContact: 'cct',
   membership: 'mem',
   projectMember: 'pmb',
   projectLocation: 'plc',
