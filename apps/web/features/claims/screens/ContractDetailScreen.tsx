@@ -20,6 +20,8 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DeadlineChip } from '../components/DeadlineChip';
+import { OwnerInvoicesPanel } from '../components/OwnerInvoicesPanel';
+import { PrimeContractSummary } from '../components/PrimeContractSummary';
 import { PaymentSummaryPanel } from '../components/PaymentSummaryPanel';
 import { RecordClaimForm } from '../components/RecordClaimForm';
 import { VariationsPanel } from '../components/VariationsPanel';
@@ -115,6 +117,7 @@ function Detail({ d }: { d: ContractDetail }) {
         </Link>
       </p>
       <h1 className="u-m-0">{c.title}</h1>
+      {c.kind === 'head' ? <PrimeContractSummary contract={c} claims={claims} /> : null}
       <Card title="Terms">
         <DescriptionList
           items={[
@@ -160,6 +163,9 @@ function Detail({ d }: { d: ContractDetail }) {
           />
         }
       />
+      {c.kind === 'head' && !perms.data?.isExternal ? (
+        <OwnerInvoicesPanel contractId={c.id} canManage={canRecord} />
+      ) : null}
       <PaymentSummaryPanel
         contractId={c.id}
         canManageTrust={canDecide && !perms.data?.isExternal}

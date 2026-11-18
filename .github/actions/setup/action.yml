@@ -1,0 +1,25 @@
+name: Set up the workspace
+description: pnpm, Node from .nvmrc, the frozen install, and the turbo cache for one CI job.
+inputs:
+  turbo-cache-key:
+    description: Names this job's turbo cache so lint, tests and build each keep their own.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+    # Turbo skips a task whose inputs are unchanged since an earlier run. Restore the newest cache of this job (a
+    # push to main saves one per commit), and save a new one at the end of the job.
+    - uses: actions/cache@v4
+      with:
+        path: .turbo
+        key: turbo-${{ inputs.turbo-cache-key }}-${{ github.sha }}
+        restore-keys: turbo-${{ inputs.turbo-cache-key }}-
+    - run: echo "TURBO_CACHE_DIR=$GITHUB_WORKSPACE/.turbo" >> "$GITHUB_ENV"
+      shell: bash

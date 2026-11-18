@@ -32,7 +32,13 @@ import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DiaryEditor } from '../components/DiaryEditor';
 import { DiaryReadView } from '../components/DiaryReadView';
 import { possibleDelay } from '../data/source';
-import { useDiaryDay, useDiaryMutations, useDiaryRange, useWeekSummary } from '../hooks/useDiary';
+import {
+  useDiaryDay,
+  useDiaryGaps,
+  useDiaryMutations,
+  useDiaryRange,
+  useWeekSummary,
+} from '../hooks/useDiary';
 import { dayStrip, diffContent, eotByDefault, labourTotals, submitProblems } from '../lib/entry';
 import {
   DIARY_STATUS_LABELS,
@@ -65,6 +71,7 @@ export function DiaryDayScreen({ date }: { date?: string }) {
     <div className="stack-lg">
       <DayHeader day={day} today={today} entry={entry.data} />
       {previewDataOnly ? <PreviewDataNotice tool="The site diary" /> : null}
+      <GapNotice today={today} />
       <WeekSummary key={mondayOf(day)} weekStart={mondayOf(day)} />
       <div className="diary-layout">
         <DayStrip day={day} today={today} />
@@ -88,6 +95,31 @@ const shortDate = (d: LocalDate) =>
   new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
     new Date(`${d}T12:00:00Z`),
   );
+
+/** Nova's rule-based flag: recent days with sign-ins or equipment logs but no submitted daily log. */
+function GapNotice({ today }: { today: LocalDate }) {
+  const org = useCurrentOrg();
+  const project = useCurrentProject();
+  const gaps = useDiaryGaps(addDays(today, -13), today);
+  if (!gaps.data?.length) return null;
+  return (
+    <Alert tone="warning" title="Site activity with no daily log">
+      <p className="u-caption">
+        People signed in or equipment was logged on these days, but no daily log was submitted.
+      </p>
+      <ul className="row-actions">
+        {gaps.data.map((g) => (
+          <li key={g.date}>
+            <Link className="link" href={webRoutes.diary(org.orgSlug, project.projectId, g.date)}>
+              {formatLocalDate(g.date)}
+              {g.state === 'draft' ? ' (draft)' : ''}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Alert>
+  );
+}
 
 /** Nova's summary of the week the day sits in, for the client or head office. It is copied out, never saved into a day. */
 function WeekSummary({ weekStart }: { weekStart: LocalDate }) {

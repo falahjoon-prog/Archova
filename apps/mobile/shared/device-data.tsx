@@ -9,6 +9,8 @@ import { SyncEngine, SyncScheduler, type SyncTrigger } from '@archova/sync-core'
 import { api } from '../lib/api';
 import { openOrgDatabase, SqliteSyncStore, type SqlDatabase } from '../lib/db';
 import { expoSqlDriver } from '../lib/db/expo-driver';
+import { ActionQueue } from '../lib/actions/action-queue';
+import { createActionSender } from '../lib/actions/send';
 import { createSignInSender, SignInQueue } from '../lib/attendance/sign-in-queue';
 import { createUploadApi } from '../lib/files/api';
 import { UploadQueue } from '../lib/files/upload-queue';
@@ -48,6 +50,7 @@ export interface DeviceData {
   store: SqliteSyncStore;
   uploads: UploadQueue;
   signIns: SignInQueue;
+  actions: ActionQueue;
   offline: OfflineProjects;
   sheets: SheetCache;
   requestSync: (trigger: SyncTrigger) => void;
@@ -93,6 +96,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           backgroundFileTransfer,
         );
         const signIns = new SignInQueue(db, createSignInSender(api, orgId));
+        const actions = new ActionQueue(db, createActionSender(api, orgId));
         const sheets = new SheetCache(db, sheetFiles);
         const offline = new OfflineProjects(db, store, sheets);
         const engine = new SyncEngine({
@@ -106,11 +110,14 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           void db.closeAsync();
           return;
         }
-        const scheduler = new SyncScheduler(createDeviceSync({ uploads, signIns, engine }), {
-          setTimeout: (cb, ms) => setTimeout(cb, ms),
-          clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-          now: () => Date.now(),
-        });
+        const scheduler = new SyncScheduler(
+          createDeviceSync({ uploads, signIns, actions, engine }),
+          {
+            setTimeout: (cb, ms) => setTimeout(cb, ms),
+            clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+            now: () => Date.now(),
+          },
+        );
         scheduler.start();
         let wasConnected: boolean | null = null;
         const netSub = NetInfo.addEventListener((net) => {
@@ -135,6 +142,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
             store,
             uploads,
             signIns,
+            actions,
             offline,
             sheets,
             requestSync: (t) => scheduler.request(t),

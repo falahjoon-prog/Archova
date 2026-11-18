@@ -53,6 +53,17 @@ export function useDiaryRange(from: LocalDate, to: LocalDate) {
   });
 }
 
+/** Days with site activity but no submitted daily log (Nova's gap flag). */
+export function useDiaryGaps(from: LocalDate, to: LocalDate) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const diarySource = useDiarySource();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'diary', { gaps: true, from, to }),
+    queryFn: () => diarySource.gaps(projectId, from, to),
+  });
+}
+
 /**
  * Draft autosave writes through (it's the user's own draft); submit, amend and sign-off wait for the server
  * because they are evidence (X42, frontend 02 §3).

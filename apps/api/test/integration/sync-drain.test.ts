@@ -247,6 +247,25 @@ describe('drain grant (X38), who can use it', () => {
     expect(await ok(late.token)).toBe(401);
   });
 
+  it("lets a project admin end a person's grants, and no one else", async () => {
+    const w = await world('drain-end');
+    const g = (await w.grant(w.a.id))!;
+    const other = (await w.grant(w.b.id))!;
+    const url = `/v1/orgs/${w.org.id}/projects/${w.a.id}/late-submissions/end-grants`;
+    const body = { userId: w.ex.userId };
+    // Someone with no project access can not end it.
+    expect((await w.ex.browser.post(url, body)).statusCode).toBeGreaterThanOrEqual(403);
+    expect((await send(w.org.id, g.token, [mutation(w.a.id)])).statusCode).toBe(200);
+
+    const done = await w.pm.browser.post(url, body);
+    expect(done.statusCode).toBe(200);
+    expect(done.json()).toEqual({ ended: 1 });
+    expect((await send(w.org.id, g.token, [mutation(w.a.id)])).statusCode).toBe(401);
+    // The other project's grant is untouched, and ending twice is harmless.
+    expect((await send(w.org.id, other.token, [mutation(w.b.id)])).statusCode).toBe(200);
+    expect((await w.pm.browser.post(url, body)).json()).toEqual({ ended: 0 });
+  });
+
   it('limits guesses per caller address without keeping a record per guess', async () => {
     const w = await world('drain-guess');
     const guess = () =>

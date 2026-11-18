@@ -423,4 +423,10 @@ describe('drawings API source', () => {
     expect(defectPatch.init.params?.header).toEqual({ 'If-Match': '"2"' });
     expect(defectPatch.init.body).toEqual({ pin: { drawingRevisionId: 'drv_c', x: 0.2, y: 0.3 } });
   });
+
+  it('never reports an empty set as ready to publish', () => {
+    const blockers = publishBlockers({ sheets: [] } as never);
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0]).toMatch(/No sheets were found/);
+  });
 });

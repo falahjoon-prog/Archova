@@ -14,6 +14,18 @@ export type ToolId =
   | 'rollCall'
   | 'meetings'
   | 'tenders'
+  | 'documents'
+  | 'specifications'
+  | 'submittals'
+  | 'rfis'
+  | 'toolbox'
+  | 'swms'
+  | 'timesheets'
+  | 'crews'
+  | 'equipment'
+  | 'deliveries'
+  | 'permits'
+  | 'environment'
   | 'ownerPortal';
 
 export interface ToolDef {
@@ -99,6 +111,97 @@ export const TOOLS: readonly ToolDef[] = [
     label: 'Tenders',
     icon: ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 13h6', 'M9 17h6'],
     route: mobileRoutes.tenders,
+  },
+  {
+    id: 'documents',
+    label: 'Documents',
+    icon: ['M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z'],
+    route: mobileRoutes.documents,
+  },
+  {
+    id: 'specifications',
+    label: 'Specs',
+    icon: ['M5 3h10l4 4v14H5z', 'M15 3v4h4', 'M8 11h8', 'M8 15h8', 'M8 19h5'],
+    route: mobileRoutes.specifications,
+  },
+  {
+    id: 'submittals',
+    label: 'Submittals',
+    icon: ['M4 4h16v16H4z', 'M8 12l3 3 5-6'],
+    route: mobileRoutes.submittals,
+  },
+  {
+    id: 'rfis',
+    label: 'RFIs',
+    icon: [
+      'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
+      'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7',
+      'M12 17v.01',
+    ],
+    route: mobileRoutes.rfis,
+  },
+  {
+    id: 'toolbox',
+    label: 'Toolbox talks',
+    icon: ['M3 8h18v12H3z', 'M9 8V5h6v3', 'M3 13h18', 'M11 13v2h2v-2'],
+    route: mobileRoutes.toolboxTalks,
+  },
+  {
+    id: 'swms',
+    label: 'SWMS',
+    icon: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z', 'M8.5 12l2.5 2.5 4.5-5'],
+    route: mobileRoutes.swmsRegister,
+  },
+  {
+    id: 'timesheets',
+    label: 'Timesheets',
+    icon: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 7v5l3 2'],
+    route: mobileRoutes.timesheets,
+  },
+  {
+    id: 'crews',
+    label: 'Crews',
+    icon: [
+      'M4 20c0-3 2.5-5 5-5s5 2 5 5',
+      'M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+      'M16 6h5',
+      'M16 10h5',
+      'M16 14h5',
+    ],
+    route: mobileRoutes.crews,
+  },
+  {
+    id: 'permits',
+    label: 'Permits',
+    icon: ['M6 3h12v18H6z', 'M9 8h6', 'M9 12h6', 'M9 16l1.5 1.5L14 14'],
+    route: mobileRoutes.permits,
+  },
+  {
+    id: 'environment',
+    label: 'Environment',
+    icon: ['M5 19c0-8 5-14 14-14 0 9-6 14-14 14z', 'M5 19c3-5 6-8 10-10'],
+    route: mobileRoutes.environment,
+  },
+  {
+    id: 'equipment',
+    label: 'Equipment',
+    icon: [
+      'M3 17h13l3-5h-6l-2-5H6v10',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M14 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.equipment,
+  },
+  {
+    id: 'deliveries',
+    label: 'Deliveries',
+    icon: [
+      'M3 7h11v10H3z',
+      'M14 10h4l3 3v4h-7',
+      'M7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+      'M17 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    ],
+    route: mobileRoutes.deliveries,
   },
   {
     id: 'ownerPortal',

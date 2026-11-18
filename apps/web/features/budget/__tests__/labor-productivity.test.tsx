@@ -102,7 +102,112 @@ describe('LaborProductivityPanel', () => {
       uom: 'm2',
       budgetedHours: 120,
       budgetedQuantity: 500,
-      quantityComplete: 250,
     });
+  });
+
+  it('logs quantity for a day and refuses a correction without a note', async () => {
+    fake.on('GET', `${P}/cost-codes/{costCodeId}/production/log`, () => ({
+      data: [
+        {
+          id: 'pgl_1',
+          loggedOn: '2026-10-28',
+          quantity: 40,
+          note: null,
+          createdAt: '2026-10-28T01:00:00Z',
+        },
+      ],
+    }));
+    fake.on('POST', `${P}/cost-codes/{costCodeId}/production/log`, () => ({
+      entry: {
+        id: 'pgl_2',
+        loggedOn: '2026-10-29',
+        quantity: 12.5,
+        note: null,
+        createdAt: '2026-10-29T01:00:00Z',
+      },
+      quantityComplete: 262.5,
+    }));
+    const user = userEvent.setup();
+    renderInProject(<LaborProductivityPanel canManage={false} />);
+    await user.click(await screen.findByRole('button', { name: 'Log quantity 03-100' }));
+    expect(await screen.findByText(/40/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Log quantity' }));
+    expect(await screen.findByText(/Enter the quantity put in place/)).toBeTruthy();
+    await enterText(user, screen.getByLabelText(/^Quantity put in place/), '-5');
+    await user.click(screen.getByRole('button', { name: 'Log quantity' }));
+    expect(await screen.findByText(/Say why the quantity is being taken off/)).toBeTruthy();
+    expect(fake.callsTo('POST', `${P}/cost-codes/{costCodeId}/production/log`)).toHaveLength(0);
+    await user.clear(screen.getByLabelText(/^Quantity put in place/));
+    await enterText(user, screen.getByLabelText(/^Quantity put in place/), '12.5');
+    await user.click(screen.getByRole('button', { name: 'Log quantity' }));
+    await waitFor(() =>
+      expect(fake.callsTo('POST', `${P}/cost-codes/{costCodeId}/production/log`)).toHaveLength(1),
+    );
+    expect(
+      fake.callsTo('POST', `${P}/cost-codes/{costCodeId}/production/log`)[0]!.init.body,
+    ).toMatchObject({ quantity: 12.5 });
+  });
+
+  it('exports the report as CSV', async () => {
+    fake.on('GET', `${P}/reports/labor-productivity/export`, () => ({
+      filename: 'labor-productivity.csv',
+      csv: 'Cost code\r\n03-100\r\n',
+      count: 2,
+    }));
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const user = userEvent.setup();
+    renderInProject(<LaborProductivityPanel canManage={false} />);
+    await screen.findByText('Slab');
+    await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+    await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
+  });
+
+  it('asks Nova about a slow code and keeps the conversation going', async () => {
+    const turn = (role: string, text: string) => ({ role, text });
+    fake.on('POST', `${P}/ai/labor-productivity`, (init) => {
+      const asking = Boolean((init.body as { question?: string } | undefined)?.question);
+      return {
+        runId: 'air_1',
+        reply: asking
+          ? 'Weather could explain some of it.'
+          : 'This code is 37.5% under its planned rate.',
+        causes: asking
+          ? []
+          : [
+              {
+                title: 'Rework or waiting time',
+                why: 'Hours outrun the work.',
+                check: 'Ask the supervisor.',
+                likelihood: 'likely',
+              },
+            ],
+        questions: ['Was there any rework?'],
+        notes: [],
+        history: asking
+          ? [
+              turn('nova', 'This code is 37.5% under its planned rate.'),
+              turn('user', 'Weather?'),
+              turn('nova', 'Weather could explain some of it.'),
+            ]
+          : [turn('nova', 'This code is 37.5% under its planned rate.')],
+        disclaimer: 'Nova is an AI assistant.',
+      };
+    });
+    const user = userEvent.setup();
+    renderInProject(<LaborProductivityPanel canManage={false} />);
+    // Only the slow code offers Nova.
+    expect(await screen.findAllByRole('button', { name: /^Ask Nova/ })).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Ask Nova 03-100' }));
+    expect(await screen.findByText('Rework or waiting time')).toBeTruthy();
+    expect(screen.getByText('Likely')).toBeTruthy();
+    await enterText(user, screen.getByLabelText('Ask Nova a follow-up'), 'Weather?');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('Weather could explain some of it.')).toBeTruthy();
+    const calls = fake.callsTo('POST', `${P}/ai/labor-productivity`);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]!.init.body).toMatchObject({ costCodeId: 'ccd_1', question: 'Weather?' });
+    expect((calls[1]!.init.body as { history: unknown[] }).history).toHaveLength(1);
   });
 });

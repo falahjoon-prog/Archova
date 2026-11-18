@@ -100,6 +100,14 @@ export function diaryRoutes(database: Database, diary: DiaryService) {
       );
       return { status: 200, body: { data: rows.map(toEntryDto) } };
     },
+    listDiaryGaps: async (input) => ({
+      status: 200,
+      body: {
+        data: await read(input, (s) =>
+          diary.gaps(s, project(input.params), input.query.from, input.query.to),
+        ),
+      },
+    }),
     getDiaryEntry: async (input: DayInput) =>
       ok(200, await read(input, (s) => diary.detail(s, project(input.params), input.params.date))),
     saveDiaryEntry: async (input) => {

@@ -7,4 +7,6 @@ export const BIM_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'bim.models.manage', scope: 'project', tool: 'coordination', level: 'admin' },
   { key: 'bim.issues.read', scope: 'project', tool: 'coordination', level: 'read' },
   { key: 'bim.issues.manage', scope: 'project', tool: 'coordination', level: 'standard' },
+  { key: 'bim.captures.read', scope: 'project', tool: 'coordination', level: 'read' },
+  { key: 'bim.captures.manage', scope: 'project', tool: 'coordination', level: 'standard' },
 ];
