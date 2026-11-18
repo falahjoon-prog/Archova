@@ -87,6 +87,7 @@ export {
   FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
   BadgeCheck as WarrantyIcon,
+  FolderCheck as HandoverIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,

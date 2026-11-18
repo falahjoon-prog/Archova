@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto';
 import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
 import { COMPANIES, type CompanyKey, DOCS, ORG, PROJECTS } from './data';
-import { seedExtra } from './extra';
+import { seedExtra, seedPlant } from './extra';
 import { enableAllFlags } from './flags';
 import { makePdf } from './pdf';
 import { Session } from './session';
@@ -538,6 +538,23 @@ if (process.env.SEED_DB_URL) {
 
 // Ten records of each major kind on the first active project (see extra.ts).
 await seedExtra({
+  s,
+  org: o(),
+  projects: PROJECTS.map((p, i) => ({
+    id: projectIds[i]!,
+    name: p.name,
+    status: p.status,
+    timezone: p.timezone,
+  })),
+  company,
+  userId: me.user.id,
+  origin: ORIGIN,
+  password: PASSWORD,
+  upload,
+  sheets: PROJECTS[0]!.sheets,
+  documents: DOCS,
+});
+await seedPlant({
   s,
   org: o(),
   projects: PROJECTS.map((p, i) => ({

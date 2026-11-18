@@ -23,6 +23,7 @@ import {
   ImportsIcon,
   DefectsIcon,
   WarrantyIcon,
+  HandoverIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
@@ -190,6 +191,11 @@ export function projectToolGroups(
       href: webRoutes.warranty(orgSlug, projectId),
       label: 'Warranty',
       icon: WarrantyIcon,
+    },
+    canCreate('documents') && {
+      href: webRoutes.handover(orgSlug, projectId),
+      label: 'Handover',
+      icon: HandoverIcon,
     },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
