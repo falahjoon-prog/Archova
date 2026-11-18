@@ -125,6 +125,7 @@ jobs:
           shellcheck --version | head -2; docker compose version
       - name: shellcheck
         run: shellcheck backup/backup.sh ../../../../tools/infra/linode-deploy.sh ../../../../tools/infra/linode-cert.sh
+      - uses: docker/setup-buildx-action@v3 # the docker.io package on self-hosted runners has no BuildKit (--chmod)
       - name: Build the backup and signing-helper images
         run: |
           docker build -t archova/backup:ci backup
