@@ -73,3 +73,52 @@ export interface Sendable {
   /** Drawings only: the code the register holds, e.g. "S". */
   discipline: string | null;
 }
+
+export type RegisterRow = S['DocumentRegisterRow'];
+export type RegisterRecipient = S['RegisterRecipient'];
+export type RegisterFlag = S['RegisterFlag'];
+export type RegisterRecipientStatus = S['RegisterRecipientStatus'];
+
+export const RECIPIENT_STATUS_LABELS: Record<RegisterRecipientStatus, string> = {
+  acknowledged: 'Acknowledged',
+  cc: 'Copied',
+  pending: 'Awaiting acknowledgement',
+  outstanding: 'Not acknowledged',
+  overdue: 'Overdue',
+  stale: 'Has an older revision',
+};
+
+export const RECIPIENT_STATUS_TONE: Record<
+  RegisterRecipientStatus,
+  'success' | 'neutral' | 'info' | 'warning' | 'danger'
+> = {
+  acknowledged: 'success',
+  cc: 'neutral',
+  pending: 'info',
+  outstanding: 'warning',
+  overdue: 'danger',
+  stale: 'danger',
+};
+
+export const FLAG_LABELS: Record<RegisterFlag['kind'], string> = {
+  ack_overdue: 'Acknowledgement overdue',
+  ack_outstanding: 'Acknowledgement outstanding',
+  superseded_in_use: 'Superseded revision in use',
+  distribution_gap: 'Distribution gap',
+  not_distributed: 'Not issued',
+};
+
+/** The worst flag first, for sorting a register by what needs attention. */
+export function flagRank(flags: readonly RegisterFlag[]): number {
+  const rank = { high: 3, medium: 2, low: 1 } as const;
+  return flags.reduce((m, f) => Math.max(m, rank[f.severity]), 0);
+}
+
+/** "3 of 5 acknowledged" for the people asked to acknowledge (copied recipients are not counted). */
+export function acknowledgementSummary(recipients: readonly RegisterRecipient[]): string {
+  if (!recipients.length) return 'Not issued';
+  const asked = recipients.filter((r) => r.role === 'to');
+  if (!asked.length) return `${recipients.length} copied`;
+  const done = asked.filter((r) => r.status === 'acknowledged').length;
+  return `${done} of ${asked.length} acknowledged`;
+}

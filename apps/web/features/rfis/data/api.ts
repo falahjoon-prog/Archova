@@ -105,6 +105,8 @@ export function toRfi(
     ballInCourtId,
     ballInCourtCompanyId:
       r.assignees.find((a) => a.userId === ballInCourtId)?.companyId ?? companyOf(ballInCourtId),
+    ballInCourtSince: r.ballInCourt.since,
+    receivedFromCompanyId: r.receivedFromCompanyId,
     distributionCompanyIds: r.distributionCompanyIds,
     dueDate: r.dueDate,
     costImpact: r.costImpact,

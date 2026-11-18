@@ -14,6 +14,7 @@ import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
 import { createSpecService } from './application/specs';
 import { createTileService } from './application/tiles';
+import { createRegisterService } from './application/register';
 import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
@@ -51,6 +52,7 @@ export function createDocumentsModule(
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
+  const register = createRegisterService(c, folders);
   const transmittalLinks = createTransmittalLinkService({
     database: services.database,
     transmittals,
@@ -99,6 +101,7 @@ export function createDocumentsModule(
       geometry,
       tiles,
       transmittals,
+      register,
       links: transmittalLinks,
       platform: deps.platform,
       messages: deps.links.messages,

@@ -1,4 +1,4 @@
--- Composed from modules/esign/db/migrations/20261107120000_esign_envelopes.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/esign/db/migrations/20261118040000_esign_envelopes.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- esign: envelopes sent for signature. Documents, recipients (with routing order), optional placed fields and an
 -- append-only audit trail per envelope. Signing happens over an access link (X45), so nothing here needs an account.
 

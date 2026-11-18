@@ -38,6 +38,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'drawing.compare_visual': 0.5,
   // Nova Esti (ai/10 E1): one sheet image in, the found items out; one run per target on a sheet. Priya to confirm.
   'takeoff.detect': 1,
+  // Nova help: a short answer at the fast tier, no project records read. Priya to confirm.
+  'help.explain': 0.05,
   // Nova on the budget: the findings and totals in, a short read and options out, standard tier. Priya to confirm.
   'budget.review': 0.5,
   'diary.summary': 0.5,
@@ -46,6 +48,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'defect.tag': 0.1,
   // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
   'safety.hazard_scan': 0.25,
+  // Site Capture: one tour still at the standard tier, a short list out (same as a site photo). Priya to confirm.
+  'coordination.capture_scan': 0.25,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
@@ -54,6 +58,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.negotiate': 0.5,
   // Nova: one turn of discussion on a slow cost code's labor productivity; same size as a quote negotiation turn. Priya to confirm.
   'labor.productivity': 0.5,
+  // Nova: a short announcement drafted from rough notes at the fast tier; half a credit like other short drafts. Priya to confirm.
+  'announcement.draft': 0.5,
   // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
   'contract.review': 40,
   // F34 Ask the contract: the pages and one question at the standard tier, a short cited answer out. Priya to confirm.
@@ -63,6 +69,9 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // Nova listening: one short spoken question turned into text. Priya to confirm.
   'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
+  // The Nova panel with tools: a cheap planning step, then one cited answer (ai/07 §3). Priya to confirm.
+  'assist.plan': 0.1,
+  'assist.answer': 1,
 };
 
 export function creditsFor(

@@ -23,6 +23,8 @@ export const PLAN_MODULE_KEYS = [
   'defects',
   'quality',
   'safety',
+  'insurance',
+  'geotech',
   'photos',
   'meetings',
   'correspondence',

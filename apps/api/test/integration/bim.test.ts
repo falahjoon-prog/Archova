@@ -152,3 +152,87 @@ describe('design coordination', () => {
     expect(detail.json().comments).toHaveLength(1);
   });
 });
+
+describe('site captures', () => {
+  it('keeps a dated 360 tour link, links it to an RFI and an issue, and refuses other links', async () => {
+    const { pm, sub, base } = await setup();
+    const rfi = (
+      await pm.browser.post(`${base}/rfis`, { subject: 'Riser fire-stopping', question: 'Which?' })
+    ).json().rfi as { id: string };
+    const issue = (
+      await pm.browser.post(`${base}/coordination-issues`, { title: 'Riser gap' })
+    ).json().issue as { id: string };
+
+    const made = await pm.browser.post(`${base}/site-captures`, {
+      title: 'Level 3 walkthrough',
+      url: 'https://my.matterport.com/show/?m=AbCdEf12345#hash',
+      capturedOn: '2026-11-05',
+      area: 'Level 3 east',
+      rfiId: rfi.id,
+      issueId: issue.id,
+    });
+    expect(made.statusCode).toBe(201);
+    const cap = made.json() as { id: string; version: number };
+    expect(made.json()).toMatchObject({
+      provider: 'matterport',
+      url: 'https://my.matterport.com/show/?m=AbCdEf12345',
+      capturedOn: '2026-11-05',
+      rfiId: rfi.id,
+      issueId: issue.id,
+    });
+
+    for (const url of [
+      'http://my.matterport.com/show/?m=x',
+      'https://evil.example.com/tour',
+      'javascript:alert(1)',
+    ])
+      expect(
+        (
+          await pm.browser.post(`${base}/site-captures`, {
+            title: 'Bad',
+            url,
+            capturedOn: '2026-11-05',
+          })
+        ).statusCode,
+      ).toBe(422);
+    expect(
+      (
+        await pm.browser.post(`${base}/site-captures`, {
+          title: 'Bad RFI',
+          url: 'https://kuula.co/share/abc',
+          capturedOn: '2026-11-05',
+          rfiId: 'rfi_00000000000000000000000000',
+        })
+      ).statusCode,
+    ).toBe(422);
+
+    await pm.browser.post(`${base}/site-captures`, {
+      title: 'Earlier',
+      url: 'https://kuula.co/share/abc',
+      capturedOn: '2026-10-01',
+    });
+    const list = (await pm.browser.get(`${base}/site-captures`)).json().data as { title: string }[];
+    expect(list.map((c) => c.title)).toEqual(['Level 3 walkthrough', 'Earlier']);
+
+    const patched = await pm.browser.patch(
+      `${base}/site-captures/${cap.id}`,
+      { url: 'https://kuula.co/share/xyz', issueId: null },
+      ifMatch(cap.version),
+    );
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json()).toMatchObject({ provider: 'kuula', issueId: null });
+    expect(
+      (
+        await pm.browser.patch(
+          `${base}/site-captures/${cap.id}`,
+          { area: 'x' },
+          ifMatch(cap.version),
+        )
+      ).statusCode,
+    ).toBe(412);
+
+    expect((await sub.browser.get(`${base}/site-captures`)).statusCode).toBe(403);
+    expect((await pm.browser.del(`${base}/site-captures/${cap.id}`)).statusCode).toBe(204);
+    expect((await pm.browser.get(`${base}/site-captures`)).json().data).toHaveLength(1);
+  });
+});

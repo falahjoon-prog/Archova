@@ -22,11 +22,12 @@ import {
 } from '../commands';
 import { actionLabel, stageLabel, statusLabel } from './labels';
 
-const NEEDS_REASON: ReadonlySet<DefectAction> = new Set(['reject', 'dispute', 'void']);
+const NEEDS_REASON: ReadonlySet<DefectAction> = new Set(['reject', 'dispute', 'void', 'reopen']);
 
 const errorText: Partial<Record<CommandError, string>> = {
   'defect.reason_required': 'Add a reason. The other company will see it.',
   'defect.photo_required': 'Take an "after" photo of the fix first.',
+  'defect.evidence_required': 'Add a note or a photo as evidence before closing.',
   'defect.not_allowed': 'Your company cannot do that on this defect.',
   'defect.invalid_transition': 'This defect has changed. Pull to refresh and try again.',
 };

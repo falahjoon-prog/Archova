@@ -153,6 +153,12 @@ export function CoordinationScreen() {
           <>
             <Link
               className={buttonClassName('secondary')}
+              href={webRoutes.coordinationCaptures(org.orgSlug, project.projectId)}
+            >
+              <CoordinationIcon size={16} aria-hidden="true" /> Site capture
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
               href={webRoutes.coordinationModels(org.orgSlug, project.projectId)}
             >
               <CoordinationIcon size={16} aria-hidden="true" /> Open 3D viewer

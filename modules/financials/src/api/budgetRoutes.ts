@@ -93,6 +93,16 @@ const toSnapshotDto = (r: BudgetSnapshotRow) => ({
   totals: snapshotTotals(r.lines),
 });
 
+const forecastDto = (r: Awaited<ReturnType<BudgetService['forecast']>>) => ({
+  hasBudget: r.hasBudget,
+  months: r.months,
+  lines: r.lines.map(({ line: l, ...x }) => ({
+    ...x,
+    lineId: encodeId('budgetLine', l.id),
+    description: l.description,
+  })),
+});
+
 export function budgetRoutes(database: Database, budget: BudgetService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -279,6 +289,56 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
           ),
         ),
       ),
+    }),
+    getBudgetForecast: async (input) => ({
+      status: 200,
+      body: forecastDto(await read(input, (s) => budget.forecast(s, project(input.params)))),
+    }),
+    saveBudgetForecast: async (input) => ({
+      status: 200,
+      body: forecastDto(
+        await tx(input, (s) =>
+          budget.saveForecast(s, project(input.params), {
+            lines: input.body.lines.map((l) => ({
+              lineId: ref('budgetLine', l.lineId, 'lines.lineId'),
+              entries: l.entries,
+            })),
+          }),
+        ),
+      ),
+    }),
+    getBudgetCostReport: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReport(s, project(input.params));
+        return {
+          hasBudget: r.hasBudget,
+          status: r.status,
+          lines: r.lines.map(({ line: l, ...x }) => ({
+            ...x,
+            lineId: encodeId('budgetLine', l.id),
+            description: l.description,
+          })),
+        };
+      }),
+    }),
+    getBudgetCostReportItems: async (input) => ({
+      status: 200,
+      body: await read(input, async (s) => {
+        const r = await budget.costReportItems(
+          s,
+          project(input.params),
+          line(input.params),
+          input.query.column,
+        );
+        return {
+          ...r,
+          groups: r.groups.map((g) => ({
+            ...g,
+            sourceId: g.sourceId ? encodeId('commitment', g.sourceId) : null,
+          })),
+        };
+      }),
     }),
     getBudgetReviewChecks: async (input) => ({
       status: 200,

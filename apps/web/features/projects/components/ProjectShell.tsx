@@ -6,15 +6,22 @@ import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/p
 import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
+  DeliveriesIcon,
+  PrefabIcon,
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  ToolboxIcon,
   IncidentsIcon,
+  PermitsIcon,
+  GeotechIcon,
+  InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
+  WarrantyIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
@@ -171,6 +178,11 @@ export function projectToolGroups(
       label: 'Defects',
       icon: DefectsIcon,
     },
+    canRead('defects') && {
+      href: webRoutes.warranty(orgSlug, projectId),
+      label: 'Warranty',
+      icon: WarrantyIcon,
+    },
     canRead('meetings') && {
       href: webRoutes.meetings(orgSlug, projectId),
       label: 'Meetings',
@@ -191,6 +203,11 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('payment_claims') && {
+      href: webRoutes.tmTickets(orgSlug, projectId),
+      label: 'T&M tickets',
+      icon: ContractsIcon,
+    },
     canRead('budget') && {
       href: webRoutes.budget(orgSlug, projectId),
       label: 'Budget',
@@ -205,6 +222,16 @@ export function projectToolGroups(
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.deliveries(orgSlug, projectId),
+      label: 'Deliveries',
+      icon: DeliveriesIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.prefab(orgSlug, projectId),
+      label: 'Prefab',
+      icon: PrefabIcon,
     },
     canRead('inspections') && {
       href: webRoutes.inspections(orgSlug, projectId),
@@ -222,9 +249,34 @@ export function projectToolGroups(
       icon: SwmsIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.toolboxTalks(orgSlug, projectId),
+      label: 'Toolbox talks',
+      icon: ToolboxIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
+    },
+    canRead('environment') && {
+      href: webRoutes.environment(orgSlug, projectId),
+      label: 'Environment',
+      icon: InspectionsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.permits(orgSlug, projectId),
+      label: 'Permits',
+      icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.insurance(orgSlug, projectId),
+      label: 'Insurance & bonds',
+      icon: InsuranceIcon,
     },
     canAdmin('inspections') && {
       href: webRoutes.safetySignals(orgSlug, projectId),
@@ -325,7 +377,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'site',
     label: 'Site & programme',
     icon: ProgrammeIcon,
-    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance'],
+    tools: ['Site diary', 'Delay register', 'Programme', 'Attendance', 'Deliveries', 'Prefab'],
   },
   {
     id: 'quality-safety',
@@ -333,9 +385,11 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     icon: InductionsIcon,
     tools: [
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
@@ -345,7 +399,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
     id: 'commercial',
     label: 'Commercial',
     icon: ContractsIcon,
-    tools: ['Contracts', 'Payment claims', 'Budget', 'Owner portal'],
+    tools: ['Contracts', 'Payment claims', 'T&M tickets', 'Budget', 'Owner portal'],
   },
   {
     id: 'estimating',
