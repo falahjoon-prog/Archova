@@ -30,7 +30,7 @@ const apiRfi = (over: Record<string, unknown> = {}) => ({
   assignees: [
     { userId: 'usr_elec', companyId: 'cmp_elec', isBallInCourt: true, respondedAt: null },
   ],
-  ballInCourt: { side: 'assignees', userIds: ['usr_elec'] },
+  ballInCourt: { side: 'assignees', userIds: ['usr_elec'], since: '2026-10-01T00:30:00Z' },
   distributionUserIds: [],
   distributionCompanyIds: ['cmp_arch'],
   dueDate: '2026-10-09',

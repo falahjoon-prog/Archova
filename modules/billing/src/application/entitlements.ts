@@ -20,6 +20,8 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'defects',
     'quality',
     'safety',
+    'insurance',
+    'geotech',
     'photos',
     'meetings',
     'correspondence',
@@ -29,6 +31,8 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'ownerportal',
     // Design coordination (phase 5): models and coordination issues.
     'bim',
+    // E-signature envelopes: documents sent for signature to people without an account.
+    'esign',
     // Contracts, claims and SOPA schedules (phase 2). Paid plans list this as 'claims'; until the catalogue is
     // reconciled the trial (pilots) is the only way in, and every date shows "rules not yet legally reviewed".
     'financials',

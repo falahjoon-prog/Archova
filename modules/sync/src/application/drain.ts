@@ -79,6 +79,8 @@ export interface AccessState {
   kind: 'ordinary' | 'for_cause' | 'wipe_now' | null;
   removedAt: Date | null;
   episode: number;
+  /** The person is on an organisation-level hold (suspended): no grant stands (X38). */
+  held?: boolean;
 }
 export type AccessStateLookup = (
   scope: TenantScope,
@@ -160,7 +162,7 @@ export function createDrainService(deps: DrainDeps) {
     scope: TenantScope,
     input: { userId: string; projectId?: string | null; module?: string | null },
   ) {
-    await scope.tx
+    const ended = await scope.tx
       .update(drainGrants)
       .set({ revokedAt: new Date() })
       .where(
@@ -171,7 +173,9 @@ export function createDrainService(deps: DrainDeps) {
           input.projectId ? eq(drainGrants.projectId, input.projectId) : undefined,
           input.module ? eq(drainGrants.module, input.module) : undefined,
         ),
-      );
+      )
+      .returning({ id: drainGrants.id });
+    return ended.length;
   }
 
   async function queue(
@@ -316,6 +320,7 @@ export function createDrainService(deps: DrainDeps) {
       const state = await deps.accessState(scope, grant.projectId, grant.userId);
       if (
         !state ||
+        state.held ||
         state.status !== 'removed' ||
         state.kind !== 'ordinary' ||
         state.episode !== grant.accessEpisode

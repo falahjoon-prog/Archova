@@ -122,3 +122,50 @@ export function productivityTotals(rows: readonly ProductivityRow[]): Productivi
     flaggedRows: rows.filter((r) => r.flagged).length,
   };
 }
+
+/** One CSV cell: quoted when needed, and a leading `=`, `+`, `-` or `@` is defused so a spreadsheet can't run it. */
+const cell = (v: string | number | boolean | null): string => {
+  if (v === null) return '';
+  let t = String(v);
+  if (/^[=+\-@\t\r]/.test(t) && typeof v === 'string') t = `'${t}`;
+  return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+};
+
+export function laborProductivityCsv(rows: readonly ProductivityRow[]): string {
+  const head = [
+    'Cost code',
+    'Description',
+    'Timesheet hours',
+    '% hours used',
+    'Earned hours',
+    '% complete production',
+    'UOM',
+    'Budgeted hours',
+    'Budgeted quantity',
+    'Quantity in place',
+    'Revised budgeted rate (UOM/hr)',
+    'Actual rate (UOM/hr)',
+    'Below plan',
+  ];
+  const pct = (v: number | null) => (v === null ? null : Math.round(v * 1000) / 10);
+  const lines = rows.map((r) =>
+    [
+      r.code,
+      r.description,
+      r.timesheetHours,
+      pct(r.pctHoursUsed),
+      r.earnedHours,
+      pct(r.pctComplete),
+      r.uom,
+      r.budgetedHours,
+      r.budgetedQuantity,
+      r.quantityComplete,
+      r.budgetedRate,
+      r.actualRate,
+      r.flagged ? 'Yes' : 'No',
+    ]
+      .map(cell)
+      .join(','),
+  );
+  return [head.map(cell).join(','), ...lines].join('\r\n') + '\r\n';
+}

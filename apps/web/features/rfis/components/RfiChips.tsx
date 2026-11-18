@@ -1,8 +1,9 @@
 import { StatusPill, type StatusTone } from '@archova/ui';
 import type { ProjectDirectory } from '@/shared/providers/useProjectDirectory';
-import { businessDaysBetween, formatLocalDate } from '@/shared/lib/format';
+import { businessDaysBetween, formatLocalDate, todayIn } from '@/shared/lib/format';
+import { NovaIcon } from '@archova/ui/icons';
 import { isOverdue } from '../lib/lifecycle';
-import { STATUS_LABELS, type Rfi, type RfiStatus } from '../lib/types';
+import { STALE_BALL_BUSINESS_DAYS, STATUS_LABELS, type Rfi, type RfiStatus } from '../lib/types';
 
 const TONES: Record<RfiStatus, StatusTone> = {
   draft: 'info',
@@ -60,4 +61,24 @@ export function ImpactChip({ rfi }: { rfi: Pick<Rfi, 'costImpact' | 'scheduleImp
     rfi.scheduleImpactDays ? `${rfi.scheduleImpactDays} days delay` : null,
   ].filter(Boolean);
   return <StatusPill tone="warning">{parts.join(' · ')}</StatusPill>;
+}
+
+/** Business days the ball has sat on the same side; null when nobody holds it or the start isn't known. */
+export function ballWaitingDays(
+  rfi: Pick<Rfi, 'ballInCourtSince'>,
+  today: string,
+  timeZone: string,
+): number | null {
+  if (!rfi.ballInCourtSince) return null;
+  return Math.max(0, businessDaysBetween(todayIn(timeZone, new Date(rfi.ballInCourtSince)), today));
+}
+
+/** Nova's flag on an RFI whose ball has sat on the same side too long. A flag for a person to chase, nothing more. */
+export function StaleBallFlag({ days }: { days: number | null }) {
+  if (days === null || days < STALE_BALL_BUSINESS_DAYS) return null;
+  return (
+    <StatusPill tone="warning">
+      <NovaIcon size={12} aria-hidden="true" /> Waiting {days} business days
+    </StatusPill>
+  );
 }

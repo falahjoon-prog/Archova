@@ -11,7 +11,12 @@ import {
   type BudgetReviewTurn,
   type CostCodeProduction,
   type CreateCostCode,
+  type CostReportColumn,
+  type CreateProductionItem,
+  type LogProductionEntry,
   type ImportBudgetLinesRequest,
+  type LaborTurn,
+  type LogQuantity,
   type RecordDirectCost,
   type UpdateBudgetLine,
   type UpdateCostCode,
@@ -56,6 +61,48 @@ export function useCreateSnapshot(projectId: string) {
   return useMutation({
     mutationFn: (body: { name: string; note?: string }) => source.createSnapshot(projectId, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useForecast(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { forecast: true }),
+    queryFn: () => source.forecast(projectId),
+  });
+}
+
+export function useSaveForecast(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lines: { lineId: string; entries: Record<string, string> }[]) =>
+      source.saveForecast(projectId, lines),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useCostReport(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costReport: true }),
+    queryFn: () => source.costReport(projectId),
+  });
+}
+
+export function useCostReportItems(
+  projectId: string,
+  target: { lineId: string; column: CostReportColumn } | null,
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costReportItems: target }),
+    queryFn: () => source.costReportItems(projectId, target!.lineId, target!.column),
+    enabled: target !== null,
   });
 }
 
@@ -195,5 +242,86 @@ export function useSetProduction(projectId: string) {
     mutationFn: (v: { costCodeId: string; body: CostCodeProduction }) =>
       source.setProduction(projectId, v.costCodeId, v.body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useQuantityLog(projectId: string, costCodeId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { quantityLog: costCodeId }),
+    queryFn: () => source.quantityLog(projectId, costCodeId),
+  });
+}
+
+/** Logging quantity moves the code's quantity in place, so the report and its log refresh. */
+export function useLogQuantity(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; body: LogQuantity }) =>
+      source.logQuantity(projectId, v.costCodeId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useProductionReport(
+  projectId: string,
+  filter: { trade?: string; location?: string },
+) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { production: filter }),
+    queryFn: () => source.productionReport(projectId, filter),
+  });
+}
+
+export function useCreateProductionItem(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateProductionItem) => source.createProductionItem(projectId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useProductionEntries(projectId: string, itemId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { productionEntries: itemId }),
+    queryFn: () => source.productionEntries(projectId, itemId),
+  });
+}
+
+/** Logging quantity moves the item's total, the curve and the rate flags, so the whole report refreshes. */
+export function useLogProductionEntry(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { itemId: string; body: LogProductionEntry }) =>
+      source.logProductionEntry(projectId, v.itemId, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+  });
+}
+
+export function useExportLaborProductivity(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (filter: { divisionId?: string; subJobId?: string }) =>
+      source.exportLaborProductivity(projectId, filter),
+  });
+}
+
+/** One turn with Nova about a cost code. The server keeps no conversation; the caller passes `history` back. */
+export function useExplainLabor(projectId: string) {
+  const source = useBudgetApi();
+  return useMutation({
+    mutationFn: (v: { costCodeId: string; question?: string; history?: LaborTurn[] }) =>
+      source.explainLabor(projectId, v),
   });
 }

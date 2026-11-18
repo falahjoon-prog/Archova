@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   divisionOf,
   isWithin,
+  laborProductivityCsv,
   productivityRow,
   productivityTotals,
   type CodeNode,
@@ -92,5 +93,26 @@ describe('totals and tree', () => {
     expect(divisionOf(nodes, '04')).toBe('04');
     expect(isWithin(nodes, '03.1.a', '03.1')).toBe(true);
     expect(isWithin(nodes, '03', '03.1')).toBe(false);
+  });
+});
+
+describe('laborProductivityCsv', () => {
+  it('writes a header and one line per row, flagging slow rows', () => {
+    const plan = { uom: 'm2', budgetedHours: 100, budgetedQuantity: 500, quantityComplete: 250 };
+    const slow = productivityRow(node('03.1'), '03', plan, 60 * 80);
+    const csv = laborProductivityCsv([slow]).split('\r\n');
+    expect(csv[0]).toContain('Cost code,Description,Timesheet hours');
+    expect(csv[1]).toBe('03.1,03.1,80,80,50,50,m2,100,500,250,5,3.125,Yes');
+    expect(csv[2]).toBe('');
+  });
+
+  it('quotes commas and defuses spreadsheet formulas', () => {
+    const r = productivityRow(
+      { id: 'a', code: '=SUM(A1)', description: 'Walls, tiled', parentId: null },
+      'a',
+      null,
+      0,
+    );
+    expect(laborProductivityCsv([r]).split('\r\n')[1]).toMatch(/^'=SUM\(A1\),"Walls, tiled",0,/);
   });
 });

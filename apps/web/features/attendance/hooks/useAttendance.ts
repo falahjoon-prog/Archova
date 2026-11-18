@@ -8,6 +8,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createAttendanceApi } from '../data/api';
 import { checkInPreview, createCheckInApi } from '../data/checkin';
+import { clearancePreview, createClearanceApi } from '../data/clearance';
 import { attendancePreview, type AttendanceSource } from '../data/source';
 import type {
   AttendanceSite,
@@ -191,4 +192,15 @@ export function useCheckInMutations() {
         settle(await source.checkOut(projectId, gateCode)),
     }),
   };
+}
+
+/** One Safety ID lookup at a time; the answer is live, so nothing is cached between scans. */
+export function useClearanceCheck() {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useMemo(
+    () => (previewDataOnly ? clearancePreview : createClearanceApi(orgId)),
+    [orgId],
+  );
+  return useMutation({ mutationFn: (code: string) => source.check(projectId, code) });
 }

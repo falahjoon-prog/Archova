@@ -21,16 +21,21 @@ describe('projectToolGroups', () => {
       'Delay register',
       'Programme',
       'Attendance',
+      'Deliveries',
+      'Prefab',
       'Defects',
+      'Warranty',
       'Inspections',
       'Observations',
       'Action plans',
       'SWMS',
+      'Toolbox talks',
       'Incidents',
       'Safety signals',
       'Inductions',
       'Contracts',
       'Payment claims',
+      'T&M tickets',
       'Budget',
       'Owner portal',
       'Tender packages',
@@ -54,6 +59,7 @@ describe('projectToolGroups', () => {
       'Specifications',
       'Transmittals',
       'Defects',
+      'Warranty',
       'Tender packages',
       'Estimates',
       'Cost library',
@@ -71,7 +77,7 @@ describe('projectToolGroups', () => {
       toolLevels: { defects: 'read' },
     });
     expect(groups.filter((g) => g.id).map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
-      ['Quality & safety', ['Defects']],
+      ['Quality & safety', ['Defects', 'Warranty']],
       ['Estimating', ['Tender packages', 'Estimates', 'Cost library']],
     ]);
   });

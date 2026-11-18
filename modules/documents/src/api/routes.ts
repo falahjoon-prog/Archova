@@ -29,6 +29,7 @@ import type {
   TransmittalItemView,
   TransmittalService,
 } from '../application/transmittals';
+import type { RegisterService } from '../application/register';
 import type { TransmittalLinkService } from '../application/transmittal-links';
 import {
   toDocumentDetail,
@@ -42,6 +43,7 @@ import {
   toSpecBookDto,
   toSpecSectionDto,
   toSheetGeometryDto,
+  toRegisterRowDto,
   toTransmittalDto,
 } from './mappers';
 
@@ -56,6 +58,7 @@ export interface DocumentsRouteDeps {
   geometry: GeometryService;
   tiles: TileService;
   transmittals: TransmittalService;
+  register: RegisterService;
   links: TransmittalLinkService;
   platform: Pick<PlatformApi, 'getProject' | 'getOrg'>;
   messages: MessageSender;
@@ -569,6 +572,16 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       return { status: 204 };
     },
 
+    getDocumentRegister: async (input) => {
+      const rows = await read(input, (s) => d.register.register(s, project(input.params)));
+      // Sheet/document number order; unnumbered last.
+      rows.sort((a, b) =>
+        (a.number ?? '\uffff' + a.title).localeCompare(b.number ?? '\uffff' + b.title, 'en-AU', {
+          numeric: true,
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toRegisterRowDto) } };
+    },
     listTransmittals: async (input) => {
       const page = await read(input, (s) =>
         d.transmittals.list(s, project(input.params), {

@@ -15,16 +15,29 @@ export function createPortfolioService(deps: ReportingDeps) {
       const claims = await deps.claims.portfolioCounts(scope, p.id);
       const variations = await deps.variations.portfolioCounts(scope, p.id);
       const incidents = await deps.incidents.portfolioCounts(scope, p.id);
+      const observations = await deps.observations.portfolioCounts(scope, p.id);
+      const inspections = await deps.inspections.portfolioCounts(scope, p.id);
       const programme = await deps.programme.portfolioCounts(scope, p.id);
       const budget = await deps.budget.portfolioSummary(scope, p.id);
       budgets.push(budget);
-      const counts = { rfis, defects, submittals, claims, variations, incidents, programme };
+      const counts = {
+        rfis,
+        defects,
+        submittals,
+        claims,
+        variations,
+        incidents,
+        observations,
+        inspections,
+        programme,
+      };
       rows.push({
         id: encodeId('project', p.id),
         name: p.name,
         number: p.number,
         status: p.status,
         phase: p.phase,
+        state: p.state,
         siteLocation: p.siteLocation,
         ...counts,
         budget: budgetView(budget),
