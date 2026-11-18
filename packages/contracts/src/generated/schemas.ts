@@ -791,6 +791,9 @@ export const BimModelListSchema = z.object({
 });
 export type BimModelList = z.infer<typeof BimModelListSchema>;
 
+export const BodyPartSchema = z.enum(["head", "eye", "face", "neck", "shoulder", "upper_arm", "elbow", "forearm", "wrist", "hand", "fingers", "chest", "upper_back", "lower_back", "abdomen", "hip_groin", "thigh", "knee", "lower_leg", "ankle", "foot", "toes", "multiple", "systemic"]);
+export type BodyPart = z.infer<typeof BodyPartSchema>;
+
 export const BookmarkEntityTypeSchema = z.enum(["rfi", "submittal", "defect", "drawing_sheet", "meeting"]);
 export type BookmarkEntityType = z.infer<typeof BookmarkEntityTypeSchema>;
 
@@ -5738,6 +5741,9 @@ export const HandoverTransitionRequestSchema = z.object({
 }).strict();
 export type HandoverTransitionRequest = z.infer<typeof HandoverTransitionRequestSchema>;
 
+export const HarmSourceSchema = z.enum(["falls_trips_slips", "hitting_objects", "being_hit", "body_stressing", "vehicle_plant", "electricity_heat", "chemicals", "sound_pressure", "biological", "mental_stress", "other"]);
+export type HarmSource = z.infer<typeof HarmSourceSchema>;
+
 export const HazardPatternSchema = z.object({
   "category": z.string(),
   "label": z.string(),
@@ -5997,6 +6003,66 @@ export const IncidentActionFromSourceListSchema = z.object({
 });
 export type IncidentActionFromSourceList = z.infer<typeof IncidentActionFromSourceListSchema>;
 
+export const InjuryCountSchema = z.object({
+  "key": z.string(),
+  "count": z.number().int(),
+});
+export type InjuryCount = z.infer<typeof InjuryCountSchema>;
+
+export const IncidentAnalyticsSummarySchema = z.object({
+  "injuries": z.number().int(),
+  "lostTimeInjuries": z.number().int(),
+  "recordableInjuries": z.number().int(),
+  "daysLost": z.number().int(),
+  "notifiable": z.number().int(),
+  "hoursWorked": z.number().nullable(),
+  "ltifr": z.number().nullable(),
+  "trifr": z.number().nullable(),
+  "byBodyPart": z.array(InjuryCountSchema),
+  "byHarmSource": z.array(InjuryCountSchema),
+  "byInjuryType": z.array(InjuryCountSchema),
+  "byOutcome": z.array(InjuryCountSchema),
+});
+export type IncidentAnalyticsSummary = z.infer<typeof IncidentAnalyticsSummarySchema>;
+
+export const InjuryTypeSchema = z.enum(["fracture", "laceration", "sprain_strain", "contusion", "burn", "foreign_body", "amputation", "concussion", "dermatitis", "hearing_loss", "respiratory", "psychological", "other"]);
+export type InjuryType = z.infer<typeof InjuryTypeSchema>;
+
+export const InjuryOutcomeSchema = z.enum(["first_aid", "medical_treatment", "restricted_work", "lost_time", "fatality"]);
+export type InjuryOutcome = z.infer<typeof InjuryOutcomeSchema>;
+
+export const IncidentAnalyticsRowSchema = z.object({
+  "incidentId": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "ref": z.string(),
+  "occurredAt": z.string().datetime({ offset: true }),
+  "localDate": z.string().date(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "bodyPart": z.union([BodyPartSchema, z.null()]),
+  "injuryType": z.union([InjuryTypeSchema, z.null()]),
+  "harmSource": z.union([HarmSourceSchema, z.null()]),
+  "outcome": z.union([InjuryOutcomeSchema, z.null()]),
+  "daysLost": z.number().int(),
+  "notifiable": z.boolean(),
+});
+export type IncidentAnalyticsRow = z.infer<typeof IncidentAnalyticsRowSchema>;
+
+export const IncidentAnalyticsSchema = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+  "summary": IncidentAnalyticsSummarySchema,
+  "daysWithoutInjury": z.number().int().nullable(),
+  "daysWithoutIncident": z.number().int().nullable(),
+  "projectsRestricted": z.number().int(),
+  "projectsTruncated": z.boolean(),
+  "rowsTruncated": z.boolean(),
+  "rows": z.array(IncidentAnalyticsRowSchema),
+  "injury": z.record(z.string(), z.unknown()).optional(),
+});
+export type IncidentAnalytics = z.infer<typeof IncidentAnalyticsSchema>;
+
 export const IncidentCloseBlockerSchema = z.object({
   "field": z.string(),
   "message": z.string(),
@@ -6045,7 +6111,6 @@ export const IncidentPersonInputSchema = z.object({
   "personName": z.string().min(1).max(200),
   "companyId": CompanyRefSchema.optional(),
   "role": z.enum(["injured", "witness", "involved"]),
-  "injury": z.record(z.string(), z.unknown()).optional(),
 }).strict();
 export type IncidentPersonInput = z.infer<typeof IncidentPersonInputSchema>;
 

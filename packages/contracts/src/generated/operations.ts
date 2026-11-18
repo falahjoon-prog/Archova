@@ -1340,6 +1340,16 @@ export const SearchOrgQuery = z.object({
   "q": z.string().min(1).max(200),
   "perType": z.coerce.number().int().min(1).max(25).default(8),
 });
+export const GetIncidentAnalyticsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetIncidentAnalyticsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+  "bodyPart": s.BodyPartSchema.optional(),
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+});
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -7611,6 +7621,18 @@ export const operations = {
     contentType: null,
     params: SearchOrgParams,
     query: SearchOrgQuery,
+    body: null,
+  },
+  getIncidentAnalytics: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/incident-analytics',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetIncidentAnalyticsParams,
+    query: GetIncidentAnalyticsQuery,
     body: null,
   },
   getLateSopaClaimRisk: {

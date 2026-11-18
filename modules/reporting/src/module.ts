@@ -6,6 +6,7 @@ import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createSustainabilityService } from './application/sustainability';
 import { createReadinessService } from './application/readiness';
+import { createIncidentAnalyticsService } from './application/incident-analytics';
 import { createRiskRegisterService } from './application/risk-register';
 import { createReportsService } from './application/reports';
 import type { ReportingDeps } from './application/sources';
@@ -28,6 +29,7 @@ export function createReportingModule(
   const audit = createAuditService(deps);
   const sustainability = createSustainabilityService(deps);
   const dbp = createDbpService(deps);
+  const incidentAnalytics = createIncidentAnalyticsService(deps);
   return {
     definition: defineModule({ name: 'reporting', permissions: REPORTING_PERMISSIONS }),
     routes: reportingRoutes(
@@ -40,6 +42,7 @@ export function createReportingModule(
       sustainability,
       dbp,
       riskRegister,
+      incidentAnalytics,
     ),
     api: {
       /** Open risks by level and the risk RAG, for the project health model. */

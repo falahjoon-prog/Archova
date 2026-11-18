@@ -465,6 +465,34 @@ export function createTimesheetService(deps: TimesheetDeps) {
     };
   }
 
+  /**
+   * Hours on submitted, approved and exported timesheets of a project between two local dates, for safety rates
+   * (`reporting`). Null when the caller may not view attendance there. A total only; no worker is named.
+   */
+  async function hoursWorked(
+    scope: TenantScope,
+    projectId: string,
+    range: { from: string; to: string; companyId?: string },
+  ): Promise<number | null> {
+    if (!(await deps.access.can(scope, 'workforce.attendance.view', { projectId }))) return null;
+    const [row] = await scope.tx
+      .select({
+        minutes: sql<string>`coalesce(sum(${timesheetLines.minutes} - ${timesheetLines.breakMinutes}), 0)`,
+      })
+      .from(timesheetLines)
+      .innerJoin(timesheets, eq(timesheets.id, timesheetLines.timesheetId))
+      .where(
+        and(
+          eq(timesheets.projectId, projectId),
+          gte(timesheets.localDate, range.from),
+          lte(timesheets.localDate, range.to),
+          inArray(timesheets.status, ['submitted', 'approved', 'exported']),
+          ...(range.companyId ? [eq(timesheets.companyId, range.companyId)] : []),
+        ),
+      );
+    return Number(row?.minutes ?? 0) / 60;
+  }
+
   return {
     list,
     get,
@@ -477,6 +505,7 @@ export function createTimesheetService(deps: TimesheetDeps) {
     exportCsv,
     minutesByCostCode,
     dayActivity,
+    hoursWorked,
   };
 }
 
