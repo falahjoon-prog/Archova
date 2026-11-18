@@ -46,6 +46,7 @@ export const CORE_MODULES = [
   'sync',
   'integrations',
   'conversations',
+  'forms',
   'announcements',
 ] as const;
 

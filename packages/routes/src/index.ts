@@ -75,6 +75,12 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
   announcements: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/announcements`,
   conversations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/conversations`,
+  forms: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/forms`,
+  form: (orgSlug: string, projectId: string, formId: string) =>
+    `${p(orgSlug, projectId)}/forms/${enc(formId)}`,
+  formTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/form-templates`,
+  formTemplate: (orgSlug: string, templateId: string) =>
+    `/${enc(orgSlug)}/settings/form-templates/${enc(templateId)}`,
   correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
   newCorrespondence: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/correspondence/new`,

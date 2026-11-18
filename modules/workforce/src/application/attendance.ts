@@ -1,4 +1,17 @@
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { geofenceStatus, uuidv7, type GeoFix } from '@archova/domain';
 import { localDateOf, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
@@ -875,6 +888,30 @@ export function createAttendanceService(deps: WorkforceDeps) {
    * Mobile pull (modules/sync): the sessions among `ids` the caller may see, by the same rule as
    * `sessionsForDay` (a company-scoped viewer sees only their own company's); the rest go out as deletes.
    */
+  /**
+   * Who signed in to a project's site on each local day in a range (names only). Read by `forms` so Nova can flag a
+   * form signed by someone who wasn't on site; it carries nothing else about the person.
+   */
+  async function namesOnSite(
+    scope: TenantScope,
+    projectId: string,
+    range: { from: string; to: string },
+  ) {
+    const rows = await scope.tx
+      .selectDistinct({ localDate: attendanceSessions.localDate, fullName: workers.fullName })
+      .from(attendanceSessions)
+      .innerJoin(workers, eq(workers.id, attendanceSessions.workerId))
+      .where(
+        and(
+          eq(attendanceSessions.projectId, projectId),
+          gte(attendanceSessions.localDate, range.from),
+          lte(attendanceSessions.localDate, range.to),
+        ),
+      )
+      .limit(5000);
+    return rows;
+  }
+
   async function visibleSessions(scope: TenantScope, projectId: string, ids: readonly string[]) {
     if (!ids.length) return [];
     const v = await viewer(scope, projectId);
@@ -1070,6 +1107,7 @@ export function createAttendanceService(deps: WorkforceDeps) {
     endRollCall,
     listRollCalls,
     visibleSessions,
+    namesOnSite,
   };
 }
 

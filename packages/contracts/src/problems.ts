@@ -209,6 +209,12 @@ export const PROBLEM_CODES = {
   'announcement.audience_empty': 422,
   // conversations
   'conversation.not_found': 404,
+  // forms
+  'form.not_found': 404,
+  'form.template_not_found': 404,
+  'form.already_submitted': 409,
+  'form.incomplete': 422,
+  'form.template_locked': 409,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,

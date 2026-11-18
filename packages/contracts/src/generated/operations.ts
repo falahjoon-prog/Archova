@@ -1825,6 +1825,63 @@ export const DraftAnnouncementWithNovaBody = z.object({
   "notes": z.string().min(1).max(4000),
   "audience": z.string().max(200).optional(),
 }).strict();
+export const ListFormTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListOrgFormTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateFormTemplateBody = s.CreateFormTemplateRequestSchema;
+export const UpdateFormTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^frt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateFormTemplateBody = s.UpdateFormTemplateRequestSchema;
+export const ListFormsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListFormsQuery = z.object({
+  "templateId": z.string().max(80).optional(),
+  "status": s.FormStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const StartFormParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const StartFormBody = s.StartFormRequestSchema;
+export const ListFormAttentionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetFormParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "formId": z.string().regex(new RegExp("^frm_[0-9A-Za-z]{26}$")),
+});
+export const SaveFormParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "formId": z.string().regex(new RegExp("^frm_[0-9A-Za-z]{26}$")),
+});
+export const SaveFormBody = s.SaveFormRequestSchema;
+export const SignFormParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "formId": z.string().regex(new RegExp("^frm_[0-9A-Za-z]{26}$")),
+});
+export const SignFormBody = s.SignFormRequestSchema;
+export const SubmitFormParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "formId": z.string().regex(new RegExp("^frm_[0-9A-Za-z]{26}$")),
+});
 export const ListCorrespondenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8106,6 +8163,138 @@ export const operations = {
     params: DraftAnnouncementWithNovaParams,
     query: null,
     body: DraftAnnouncementWithNovaBody,
+  },
+  listFormTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/form-templates',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.read",
+    internal: false,
+    contentType: null,
+    params: ListFormTemplatesParams,
+    query: null,
+    body: null,
+  },
+  listOrgFormTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/form-templates',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: null,
+    params: ListOrgFormTemplatesParams,
+    query: null,
+    body: null,
+  },
+  createFormTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/form-templates',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateFormTemplateParams,
+    query: null,
+    body: CreateFormTemplateBody,
+  },
+  updateFormTemplate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/form-templates/{templateId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateFormTemplateParams,
+    query: null,
+    body: UpdateFormTemplateBody,
+  },
+  listForms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.read",
+    internal: false,
+    contentType: null,
+    params: ListFormsParams,
+    query: ListFormsQuery,
+    body: null,
+  },
+  startForm: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.fill",
+    internal: false,
+    contentType: "application/json",
+    params: StartFormParams,
+    query: null,
+    body: StartFormBody,
+  },
+  listFormAttention: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms/attention',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.read",
+    internal: false,
+    contentType: null,
+    params: ListFormAttentionParams,
+    query: null,
+    body: null,
+  },
+  getForm: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.read",
+    internal: false,
+    contentType: null,
+    params: GetFormParams,
+    query: null,
+    body: null,
+  },
+  saveForm: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.fill",
+    internal: false,
+    contentType: "application/json",
+    params: SaveFormParams,
+    query: null,
+    body: SaveFormBody,
+  },
+  signForm: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/signatures',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.fill",
+    internal: false,
+    contentType: "application/json",
+    params: SignFormParams,
+    query: null,
+    body: SignFormBody,
+  },
+  submitForm: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/forms/{formId}/submit',
+    module: "forms",
+    auth: "required",
+    permission: "forms.forms.fill",
+    internal: false,
+    contentType: null,
+    params: SubmitFormParams,
+    query: null,
+    body: null,
   },
   listCorrespondence: {
     method: 'GET',

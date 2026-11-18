@@ -77,6 +77,7 @@ import {
   createCorrespondenceModule,
 } from '@archova/mod-correspondence';
 import { CONVERSATIONS_PERMISSIONS, createConversationsModule } from '@archova/mod-conversations';
+import { FORMS_PERMISSIONS, createFormsModule } from '@archova/mod-forms';
 import { ANNOUNCEMENTS_PERMISSIONS, createAnnouncementsModule } from '@archova/mod-announcements';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
@@ -88,6 +89,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   CONVERSATIONS_PERMISSIONS,
+  FORMS_PERMISSIONS,
   ANNOUNCEMENTS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
@@ -247,6 +249,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       submittals: 'submittals.submittals.submit',
       // A subcontractor attaches supporting records to a notice or reply.
       correspondence: 'correspondence.items.respond',
+      // Photos on a form, from anyone who can fill it in.
+      forms: 'forms.forms.fill',
     },
   });
   filesApi = files.api;
@@ -526,6 +530,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   lapsedLicences = workforce.api.lapsedLicences;
 
+  const forms = createFormsModule(services, {
+    platform: platform.api,
+    identity: identity.api,
+    attendance: (scope, projectId, range) => workforce.api.namesOnSite(scope, projectId, range),
+  });
+
   const logistics = createLogisticsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -605,6 +615,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     announcements,
     defects,
     meetings,
@@ -653,6 +664,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     conversations,
+    forms,
     announcements,
     defects,
     meetings,

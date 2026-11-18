@@ -1,0 +1,31 @@
+{
+  "name": "@archova/mod-forms",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run test/unit --passWithNoTests"
+  },
+  "dependencies": {
+    "@archova/contracts": "workspace:*",
+    "@archova/domain": "workspace:*",
+    "@archova/kernel": "workspace:*",
+    "@archova/mod-identity": "workspace:*",
+    "@archova/mod-platform": "workspace:*",
+    "@archova/time": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "eslint": "^9.39.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

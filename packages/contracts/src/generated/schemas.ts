@@ -2482,6 +2482,42 @@ export const CreateForecastAdjustmentRequestSchema = z.object({
 }).strict();
 export type CreateForecastAdjustmentRequest = z.infer<typeof CreateForecastAdjustmentRequestSchema>;
 
+export const FormCategorySchema = z.enum(["safety", "quality", "site", "admin", "general"]);
+export type FormCategory = z.infer<typeof FormCategorySchema>;
+
+export const FormFieldTypeSchema = z.enum(["heading", "text", "longtext", "number", "date", "checkbox", "select", "checklist", "table", "photo", "signature"]);
+export type FormFieldType = z.infer<typeof FormFieldTypeSchema>;
+
+export const FormTableColumnSchema = z.object({
+  "key": z.string().regex(new RegExp("^[a-z][a-z0-9_]{0,39}$")),
+  "label": z.string().min(1).max(100),
+}).strict();
+export type FormTableColumn = z.infer<typeof FormTableColumnSchema>;
+
+export const FormFieldSchema = z.object({
+  "key": z.string().regex(new RegExp("^[a-z][a-z0-9_]{0,39}$")),
+  "type": FormFieldTypeSchema,
+  "label": z.string().min(1).max(200),
+  "help": z.string().max(500).optional(),
+  "required": z.boolean().optional(),
+  "options": z.array(z.string().min(1).max(200)).max(50).optional(),
+  "columns": z.array(FormTableColumnSchema).min(1).max(8).optional(),
+  "rows": z.number().int().min(1).max(50).optional(),
+  "slots": z.number().int().min(1).max(30).optional(),
+}).strict();
+export type FormField = z.infer<typeof FormFieldSchema>;
+
+export const CreateFormTemplateRequestSchema = z.object({
+  "copyFromLibraryKey": z.string().max(80).optional(),
+  "name": z.string().min(1).max(200).optional(),
+  "description": z.string().max(1000).optional(),
+  "category": FormCategorySchema.optional(),
+  "fields": z.array(FormFieldSchema).max(100).optional(),
+  "linkModule": z.enum(["diary", "incidents", "inspections", "attendance"]).nullable().optional(),
+  "cadenceDays": z.number().int().min(1).max(365).nullable().optional(),
+}).strict();
+export type CreateFormTemplateRequest = z.infer<typeof CreateFormTemplateRequestSchema>;
+
 export const CreateGateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
@@ -4581,6 +4617,95 @@ export const FolderListSchema = z.object({
   "data": z.array(FolderSchema),
 });
 export type FolderList = z.infer<typeof FolderListSchema>;
+
+export const FormAttentionSchema = z.object({
+  "kind": z.enum(["signer_not_on_site", "overdue"]),
+  "message": z.string(),
+  "templateId": z.string(),
+  "templateName": z.string(),
+  "formId": z.string().nullable(),
+  "signerNames": z.array(z.string()),
+});
+export type FormAttention = z.infer<typeof FormAttentionSchema>;
+
+export const FormAttentionListSchema = z.object({
+  "data": z.array(FormAttentionSchema),
+});
+export type FormAttentionList = z.infer<typeof FormAttentionListSchema>;
+
+export const FormStatusSchema = z.enum(["draft", "submitted"]);
+export type FormStatus = z.infer<typeof FormStatusSchema>;
+
+export const FormSummarySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "numberLabel": z.string(),
+  "templateId": z.string(),
+  "templateName": z.string(),
+  "category": FormCategorySchema,
+  "title": z.string(),
+  "status": FormStatusSchema,
+  "createdById": z.string(),
+  "createdByName": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "signatureCount": z.number().int(),
+});
+export type FormSummary = z.infer<typeof FormSummarySchema>;
+
+export const FormSignatureSchema = z.object({
+  "id": z.string(),
+  "fieldKey": z.string(),
+  "signerName": z.string(),
+  "signedAt": z.string().datetime({ offset: true }),
+});
+export type FormSignature = z.infer<typeof FormSignatureSchema>;
+
+export const FormFlagSchema = z.object({
+  "kind": z.enum(["signer_not_on_site", "overdue"]),
+  "message": z.string(),
+  "signerNames": z.array(z.string()).optional(),
+});
+export type FormFlag = z.infer<typeof FormFlagSchema>;
+
+export const FormDetailSchema = z.object({
+  "form": FormSummarySchema,
+  "templateName": z.string(),
+  "linkModule": z.enum(["diary", "incidents", "inspections", "attendance"]).nullable(),
+  "fields": z.array(FormFieldSchema),
+  "answers": z.record(z.string(), z.unknown()),
+  "signatures": z.array(FormSignatureSchema),
+  "flags": z.array(FormFlagSchema),
+  "canEdit": z.boolean(),
+  "version": z.number().int(),
+});
+export type FormDetail = z.infer<typeof FormDetailSchema>;
+
+export const FormPageSchema = z.object({
+  "data": z.array(FormSummarySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type FormPage = z.infer<typeof FormPageSchema>;
+
+export const FormTemplateSchema = z.object({
+  "id": z.string(),
+  "source": z.enum(["library", "custom"]),
+  "name": z.string(),
+  "description": z.string(),
+  "category": FormCategorySchema,
+  "fields": z.array(FormFieldSchema),
+  "linkModule": z.enum(["diary", "incidents", "inspections", "attendance"]).nullable(),
+  "cadenceDays": z.number().int().nullable(),
+  "status": z.enum(["active", "archived"]),
+  "version": z.number().int(),
+  "updatedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type FormTemplate = z.infer<typeof FormTemplateSchema>;
+
+export const FormTemplateListSchema = z.object({
+  "data": z.array(FormTemplateSchema),
+});
+export type FormTemplateList = z.infer<typeof FormTemplateListSchema>;
 
 export const GateWithCodeSchema = z.object({
   "gate": GateSchema,
@@ -8459,6 +8584,12 @@ export const SaveDiaryEntryRequestSchema = z.object({
 }).strict();
 export type SaveDiaryEntryRequest = z.infer<typeof SaveDiaryEntryRequestSchema>;
 
+export const SaveFormRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "answers": z.record(z.string(), z.unknown()).optional(),
+}).strict();
+export type SaveFormRequest = z.infer<typeof SaveFormRequestSchema>;
+
 export const SaveInductionDraftRequestSchema = z.object({
   "content": InductionContentSchema,
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
@@ -8683,6 +8814,12 @@ export const ShiftListSchema = z.object({
 });
 export type ShiftList = z.infer<typeof ShiftListSchema>;
 
+export const SignFormRequestSchema = z.object({
+  "fieldKey": z.string().regex(new RegExp("^[a-z][a-z0-9_]{0,39}$")),
+  "signerName": z.string().min(1).max(200),
+}).strict();
+export type SignFormRequest = z.infer<typeof SignFormRequestSchema>;
+
 export const SignInResultSchema = z.object({
   "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),
   "eligibility": z.union([EligibilityCheckSchema, z.null()]),
@@ -8806,6 +8943,12 @@ export const StaffActionSchema = z.object({
   "at": z.string().datetime({ offset: true }),
 });
 export type StaffAction = z.infer<typeof StaffActionSchema>;
+
+export const StartFormRequestSchema = z.object({
+  "templateId": z.string().min(1).max(80),
+  "title": z.string().max(200).optional(),
+}).strict();
+export type StartFormRequest = z.infer<typeof StartFormRequestSchema>;
 
 export const StartInductionRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
@@ -9921,6 +10064,17 @@ export const UpdateFolderRequestSchema = z.object({
   "allowedCompanyIds": z.array(CompanyRefSchema).max(200).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateFolderRequest = z.infer<typeof UpdateFolderRequestSchema>;
+
+export const UpdateFormTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "description": z.string().max(1000).optional(),
+  "category": FormCategorySchema.optional(),
+  "fields": z.array(FormFieldSchema).max(100).optional(),
+  "linkModule": z.enum(["diary", "incidents", "inspections", "attendance"]).nullable().optional(),
+  "cadenceDays": z.number().int().min(1).max(365).nullable().optional(),
+  "status": z.enum(["active", "archived"]).optional(),
+}).strict();
+export type UpdateFormTemplateRequest = z.infer<typeof UpdateFormTemplateRequestSchema>;
 
 export const UpdateGateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
