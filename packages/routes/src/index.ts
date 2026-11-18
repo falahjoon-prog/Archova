@@ -205,6 +205,10 @@ export const mobileRoutes = {
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
+  permits: (projectId: string) => `/project/${enc(projectId)}/permits`,
+  permit: (projectId: string, permitId: string) =>
+    `/project/${enc(projectId)}/permits/${enc(permitId)}`,
+  environment: (projectId: string) => `/project/${enc(projectId)}/environment`,
   documents: (projectId: string) => `/project/${enc(projectId)}/documents`,
   document: (projectId: string, documentId: string) =>
     `/project/${enc(projectId)}/documents/${enc(documentId)}`,
