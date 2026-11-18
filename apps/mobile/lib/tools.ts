@@ -17,6 +17,9 @@ export type ToolId =
   | 'documents'
   | 'specifications'
   | 'submittals'
+  | 'rfis'
+  | 'toolbox'
+  | 'swms'
   | 'timesheets'
   | 'crews'
   | 'ownerPortal';
@@ -122,6 +125,28 @@ export const TOOLS: readonly ToolDef[] = [
     label: 'Submittals',
     icon: ['M4 4h16v16H4z', 'M8 12l3 3 5-6'],
     route: mobileRoutes.submittals,
+  },
+  {
+    id: 'rfis',
+    label: 'RFIs',
+    icon: [
+      'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
+      'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7',
+      'M12 17v.01',
+    ],
+    route: mobileRoutes.rfis,
+  },
+  {
+    id: 'toolbox',
+    label: 'Toolbox talks',
+    icon: ['M3 8h18v12H3z', 'M9 8V5h6v3', 'M3 13h18', 'M11 13v2h2v-2'],
+    route: mobileRoutes.toolboxTalks,
+  },
+  {
+    id: 'swms',
+    label: 'SWMS',
+    icon: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z', 'M8.5 12l2.5 2.5 4.5-5'],
+    route: mobileRoutes.swmsRegister,
   },
   {
     id: 'timesheets',

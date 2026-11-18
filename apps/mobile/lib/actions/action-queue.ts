@@ -11,7 +11,11 @@ import { isOfflineError } from '../attendance/sign-in-queue';
 export { isOfflineError };
 
 export type ActionKind =
-  'submittal.respond' | 'timesheet.submit' | 'timesheet.approve' | 'timesheet.reject';
+  | 'submittal.respond'
+  | 'rfi.respond'
+  | 'timesheet.submit'
+  | 'timesheet.approve'
+  | 'timesheet.reject';
 
 export interface QueuedAction {
   id: string;
