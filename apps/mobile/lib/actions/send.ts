@@ -21,6 +21,17 @@ export function createActionSender(api: ApiClient, orgId: string): ActionSender 
           ),
         );
         return;
+      case 'rfi.respond':
+        unwrap(
+          await api.POST('/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/responses', {
+            params: {
+              path: { ...base, rfiId: a.targetId },
+              header: { 'Idempotency-Key': a.id },
+            },
+            body: { body: String(p.body ?? '') },
+          }),
+        );
+        return;
       case 'timesheet.submit':
         unwrap(
           await api.POST('/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit', {

@@ -19,6 +19,7 @@ import {
 } from '@archova/ui';
 import { BookmarkButton } from '@/features/bookmarks';
 import { webRoutes } from '@archova/routes';
+import { RelatedItemsPanel } from '@/features/links';
 import { OnProgramme } from '@/features/schedule';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
@@ -394,6 +395,7 @@ function DetailsBody({ rfi }: { rfi: Rfi }) {
         </Card>
         <RfiPhotos rfi={rfi} />
         <OnProgramme kind="rfi" itemId={rfi.id} />
+        <RelatedItemsPanel type="rfi" id={rfi.id} />
       </div>
       <Card title="Details">
         <DescriptionList
