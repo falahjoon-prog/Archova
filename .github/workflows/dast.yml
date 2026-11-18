@@ -38,6 +38,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure docker compose (self-hosted runners may only have the docker.io package)
+        run: |
+          if ! docker compose version >/dev/null 2>&1; then
+            v=v2.29.7
+            dir="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"; mkdir -p "$dir"
+            base="https://github.com/docker/compose/releases/download/$v"
+            curl -fsSL -o "$dir/docker-compose" "$base/docker-compose-linux-x86_64"
+            curl -fsSL "$base/checksums.txt" | grep ' docker-compose-linux-x86_64$' | sed "s#docker-compose-linux-x86_64#$dir/docker-compose#" | sha256sum -c -
+            chmod +x "$dir/docker-compose"
+          fi
+          docker compose version
+
       - name: Start the stack
         run: docker compose -f docker-compose.demo.yml up -d --build
 
