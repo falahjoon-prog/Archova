@@ -4830,3 +4830,117 @@ fieldset.worker-card > legend {
   align-items: flex-end;
   gap: var(--space-3);
 }
+
+/* EOT claims board */
+.eot-nova {
+  gap: var(--space-3);
+}
+.eot-flags,
+.eot-chips,
+.eot-evidence,
+.eot-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.eot-chips {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.eot-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.eot-flag__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eot-ask,
+.eot-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.eot-ask > :first-child,
+.eot-inline > :first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.eot-ask > button {
+  margin-block-start: var(--space-6);
+}
+.eot-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-divider);
+}
+.eot-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.eot-facts dt {
+  color: var(--c-text-secondary);
+}
+.eot-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.eot-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.eot-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.eot-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--c-border-divider);
+}
+.eot-item__main {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eot-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-block-size: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.eot-draft {
+  width: 100%;
+  min-block-size: 16rem;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm, 0.875rem);
+}
+.eot-sub {
+  display: block;
+}

@@ -195,6 +195,17 @@ export const AddCoordinationCommentRequestSchema = z.object({
 }).strict();
 export type AddCoordinationCommentRequest = z.infer<typeof AddCoordinationCommentRequestSchema>;
 
+export const AddDelayEventEvidenceRequestSchema = z.object({
+  "candidateKeys": z.array(z.string().max(100)).max(200).optional(),
+  "correspondenceIds": z.array(z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$"))).max(50).optional(),
+  "notes": z.array(z.object({
+  "date": z.string().date().optional(),
+  "label": z.string().min(1).max(400),
+  "detail": z.string().max(2000).optional(),
+}).strict()).max(20).optional(),
+}).strict();
+export type AddDelayEventEvidenceRequest = z.infer<typeof AddDelayEventEvidenceRequestSchema>;
+
 export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
 export type FileRef = z.infer<typeof FileRefSchema>;
 
@@ -2537,6 +2548,25 @@ export const CreateDefectRequestSchema = z.object({
 }).strict();
 export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
 
+export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
+export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
+
+export const CreateDelayEventRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "cause": DiaryDelayTypeSchema,
+  "startedOn": z.string().date(),
+  "endedOn": z.string().date().nullable().optional(),
+  "awareOn": z.string().date().optional(),
+  "criticalPath": z.boolean().nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "affected": z.string().max(1000).nullable().optional(),
+  "daysClaimed": z.number().int().min(0).max(3650).optional(),
+  "noticeDueOn": z.string().date().nullable().optional(),
+  "claimDueOn": z.string().date().nullable().optional(),
+  "candidateKeys": z.array(z.string().max(100)).max(200).optional(),
+}).strict();
+export type CreateDelayEventRequest = z.infer<typeof CreateDelayEventRequestSchema>;
+
 export const DeliveryItemSchema = z.object({
   "description": z.string().min(1).max(300),
   "quantity": z.string().max(40).nullable().optional(),
@@ -2564,9 +2594,6 @@ export const CreateDeliveryRequestSchema = z.object({
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateDeliveryRequest = z.infer<typeof CreateDeliveryRequestSchema>;
-
-export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
-export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
 
 export const CreateDiaryDelayRequestSchema = z.object({
   "type": DiaryDelayTypeSchema,
@@ -4004,6 +4031,192 @@ export const DefectTransitionRequestSchema = z.object({
   "assigneeCompanyId": CompanyRefSchema.optional(),
 }).strict();
 export type DefectTransitionRequest = z.infer<typeof DefectTransitionRequestSchema>;
+
+export const DelayEventStatusSchema = z.enum(["draft", "notice_given", "claimed", "assessed", "closed", "withdrawn"]);
+export type DelayEventStatus = z.infer<typeof DelayEventStatusSchema>;
+
+export const DelayEventClockSchema = z.object({
+  "dueOn": z.string().date(),
+  "daysLeft": z.number().int().nullable(),
+  "state": z.enum(["met", "met_late", "ok", "due_soon", "due_today", "overdue"]),
+  "overridden": z.boolean(),
+});
+export type DelayEventClock = z.infer<typeof DelayEventClockSchema>;
+
+export const DelayEventEvidenceSummarySchema = z.object({
+  "items": z.number().int(),
+  "diaryHours": z.number(),
+  "rfiDays": z.number(),
+  "rainDays": z.number().int(),
+  "rainMm": z.number(),
+  "notices": z.number().int(),
+  "firstDate": z.string().date().nullable(),
+  "lastDate": z.string().date().nullable(),
+});
+export type DelayEventEvidenceSummary = z.infer<typeof DelayEventEvidenceSummarySchema>;
+
+export const DelayEventSchema = z.object({
+  "id": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "ref": z.string(),
+  "title": z.string(),
+  "cause": DiaryDelayTypeSchema,
+  "status": DelayEventStatusSchema,
+  "startedOn": z.string().date(),
+  "endedOn": z.string().date().nullable(),
+  "awareOn": z.string().date(),
+  "criticalPath": z.boolean().nullable(),
+  "summary": z.string().nullable(),
+  "affected": z.string().nullable(),
+  "daysClaimed": z.number().int(),
+  "suggestedDays": z.number().int(),
+  "noticeDueOn": z.string().date().nullable(),
+  "claimDueOn": z.string().date().nullable(),
+  "noticeSentOn": z.string().date().nullable(),
+  "noticeRefLabel": z.string().nullable(),
+  "claimSentOn": z.string().date().nullable(),
+  "claimRefLabel": z.string().nullable(),
+  "assessedOn": z.string().date().nullable(),
+  "daysGranted": z.number().int().nullable(),
+  "assessmentNote": z.string().nullable(),
+  "noticeClock": DelayEventClockSchema,
+  "claimClock": DelayEventClockSchema,
+  "evidence": DelayEventEvidenceSummarySchema,
+  "version": z.number().int(),
+});
+export type DelayEvent = z.infer<typeof DelayEventSchema>;
+
+export const DelayEventCandidateSchema = z.object({
+  "key": z.string(),
+  "kind": z.enum(["diary_delay", "rfi_impact", "rfi_late", "weather_day"]),
+  "cause": DiaryDelayTypeSchema,
+  "date": z.string().date(),
+  "label": z.string(),
+  "detail": z.string().nullable(),
+  "hours": z.number().nullable(),
+  "days": z.number().nullable(),
+  "rainMm": z.number().nullable(),
+  "possibleEot": z.boolean(),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")).nullable(),
+});
+export type DelayEventCandidate = z.infer<typeof DelayEventCandidateSchema>;
+
+export const DelayEventCandidateListSchema = z.object({
+  "today": z.string().date(),
+  "rainThresholdMm": z.number(),
+  "truncated": z.boolean(),
+  "data": z.array(DelayEventCandidateSchema),
+});
+export type DelayEventCandidateList = z.infer<typeof DelayEventCandidateListSchema>;
+
+export const DelayEventItemKindSchema = z.enum(["diary_delay", "rfi_impact", "rfi_late", "weather_day", "correspondence", "note"]);
+export type DelayEventItemKind = z.infer<typeof DelayEventItemKindSchema>;
+
+export const DelayEventItemSchema = z.object({
+  "id": z.string().regex(new RegExp("^dxi_[0-9A-Za-z]{26}$")),
+  "kind": DelayEventItemKindSchema,
+  "sourceKey": z.string().nullable(),
+  "date": z.string().date().nullable(),
+  "label": z.string(),
+  "detail": z.string().nullable(),
+  "hours": z.number().nullable(),
+  "days": z.number().nullable(),
+  "rainMm": z.number().nullable(),
+});
+export type DelayEventItem = z.infer<typeof DelayEventItemSchema>;
+
+export const DelayEventLogEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^dxl_[0-9A-Za-z]{26}$")),
+  "kind": z.string(),
+  "detail": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type DelayEventLogEntry = z.infer<typeof DelayEventLogEntrySchema>;
+
+export const EotFormSchema = z.enum(["as4000", "as2124", "as4902", "other"]);
+export type EotForm = z.infer<typeof EotFormSchema>;
+
+export const EotDayBasisSchema = z.enum(["calendar", "business"]);
+export type EotDayBasis = z.infer<typeof EotDayBasisSchema>;
+
+export const EotSettingsSchema = z.object({
+  "form": EotFormSchema,
+  "noticeDays": z.number().int(),
+  "claimDays": z.number().int(),
+  "dayBasis": EotDayBasisSchema,
+  "noticeClause": z.string().nullable(),
+  "claimClause": z.string().nullable(),
+  "confirmed": z.boolean(),
+  "confirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "rainThresholdMm": z.number(),
+  "wetDayAllowance": z.number().int().nullable(),
+  "isDefault": z.boolean(),
+  "version": z.number().int(),
+});
+export type EotSettings = z.infer<typeof EotSettingsSchema>;
+
+export const DelayEventDetailSchema = z.object({
+  "event": DelayEventSchema,
+  "items": z.array(DelayEventItemSchema),
+  "history": z.array(DelayEventLogEntrySchema),
+  "settings": EotSettingsSchema,
+});
+export type DelayEventDetail = z.infer<typeof DelayEventDetailSchema>;
+
+export const DelayEventDraftSchema = z.object({
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+  "subject": z.string(),
+  "body": z.string(),
+  "warnings": z.array(z.string()),
+});
+export type DelayEventDraft = z.infer<typeof DelayEventDraftSchema>;
+
+export const DelayEventDraftRequestSchema = z.object({
+  "kind": z.enum(["notice", "claim"]),
+  "senderName": z.string().max(200).optional(),
+}).strict();
+export type DelayEventDraftRequest = z.infer<typeof DelayEventDraftRequestSchema>;
+
+export const DelayEventFlagSchema = z.object({
+  "kind": z.enum(["notice_overdue", "notice_due_soon", "claim_overdue", "claim_due_soon", "periods_unconfirmed", "untracked_delay", "no_evidence", "days_over_span", "wet_days_over_allowance", "assessment_waiting"]),
+  "severity": z.enum(["high", "medium", "low"]),
+  "message": z.string(),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")).nullable(),
+});
+export type DelayEventFlag = z.infer<typeof DelayEventFlagSchema>;
+
+export const DelayEventInsightsSchema = z.object({
+  "asOf": z.string().datetime({ offset: true }),
+  "today": z.string().date(),
+  "flags": z.array(DelayEventFlagSchema),
+  "summary": z.object({
+  "events": z.number().int(),
+  "open": z.number().int(),
+  "daysClaimed": z.number().int(),
+  "daysGranted": z.number().int(),
+  "awaitingAssessment": z.number().int(),
+  "untrackedDelays": z.number().int(),
+  "wetDays": z.number().int(),
+  "wetDayAllowance": z.number().int().nullable(),
+  "periodsConfirmed": z.boolean(),
+}),
+});
+export type DelayEventInsights = z.infer<typeof DelayEventInsightsSchema>;
+
+export const DelayEventListSchema = z.object({
+  "data": z.array(DelayEventSchema),
+});
+export type DelayEventList = z.infer<typeof DelayEventListSchema>;
+
+export const DelayEventTransitionRequestSchema = z.object({
+  "action": z.enum(["give_notice", "submit_claim", "record_assessment", "close", "withdraw", "reopen"]),
+  "on": z.string().date().optional(),
+  "daysClaimed": z.number().int().min(0).max(3650).optional(),
+  "daysGranted": z.number().int().min(0).max(3650).optional(),
+  "note": z.string().max(2000).optional(),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type DelayEventTransitionRequest = z.infer<typeof DelayEventTransitionRequestSchema>;
 
 export const DelayRegisterRowSchema = z.object({
   "id": z.string(),
@@ -9086,6 +9299,19 @@ export const PublishInductionRequestSchema = z.object({
 }).strict();
 export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
 
+export const PutEotSettingsRequestSchema = z.object({
+  "form": EotFormSchema,
+  "noticeDays": z.number().int().min(0).max(365),
+  "claimDays": z.number().int().min(0).max(365),
+  "dayBasis": EotDayBasisSchema,
+  "noticeClause": z.string().max(100).nullable().optional(),
+  "claimClause": z.string().max(100).nullable().optional(),
+  "confirmed": z.boolean(),
+  "rainThresholdMm": z.number().min(0).max(1000),
+  "wetDayAllowance": z.number().int().min(0).max(1000).nullable().optional(),
+}).strict();
+export type PutEotSettingsRequest = z.infer<typeof PutEotSettingsRequestSchema>;
+
 export const PutRfiAnnotationRequestSchema = z.object({
   "shapes": z.array(MarkupShapeSchema).max(500),
 }).strict();
@@ -11201,6 +11427,21 @@ export const UpdateDefectRequestSchema = z.object({
   "warrantyItemId": z.union([WarrantyItemRefSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDefectRequest = z.infer<typeof UpdateDefectRequestSchema>;
+
+export const UpdateDelayEventRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "cause": DiaryDelayTypeSchema.optional(),
+  "startedOn": z.string().date().optional(),
+  "endedOn": z.string().date().nullable().optional(),
+  "awareOn": z.string().date().optional(),
+  "criticalPath": z.boolean().nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "affected": z.string().max(1000).nullable().optional(),
+  "daysClaimed": z.number().int().min(0).max(3650).optional(),
+  "noticeDueOn": z.string().date().nullable().optional(),
+  "claimDueOn": z.string().date().nullable().optional(),
+}).strict();
+export type UpdateDelayEventRequest = z.infer<typeof UpdateDelayEventRequestSchema>;
 
 export const UpdateDeliveryRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),

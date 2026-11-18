@@ -351,6 +351,12 @@ export const PROBLEM_CODES = {
   'schedule.link_exists': 409,
   'schedule.item_link_not_found': 404,
   'schedule.item_link_exists': 409,
+  // scheduling (delay events and EOT claims)
+  'delay_event.not_found': 404,
+  'delay_event.bad_state': 409,
+  'delay_event.evidence_taken': 409,
+  'delay_event.evidence_not_found': 404,
+  'delay_event.source_not_found': 422,
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
