@@ -10025,6 +10025,173 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Site investigations (boreholes, test pits, CPT) for a project, newest first. */
+        get: operations["listGeotechInvestigations"];
+        put?: never;
+        /** Record a site investigation. It is numbered GEO-0001 per project. */
+        post: operations["createGeotechInvestigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        /** A site investigation. */
+        get: operations["getGeotechInvestigation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a site investigation. */
+        patch: operations["updateGeotechInvestigation"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Material and soil test results, each judged against the spec limits typed on it. */
+        get: operations["listGeotechTests"];
+        put?: never;
+        /** Record a test result with optional spec limits. */
+        post: operations["createGeotechTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                testId: components["parameters"]["GeotechTestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a test result entered by mistake. */
+        delete: operations["deleteGeotechTest"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Cut, fill, import and export entries, newest first. */
+        get: operations["listGeotechEarthworks"];
+        put?: never;
+        /** Record a cut, fill, import or export volume for a zone. */
+        post: operations["createGeotechEarthworks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Cut, fill and the net material balance by zone and for the whole project. */
+        get: operations["getGeotechEarthworksSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                entryId: components["parameters"]["GeotechEarthworksId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an earthworks entry entered by mistake. */
+        delete: operations["deleteGeotechEarthworks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/geotech/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags (no model): failed tests, zones short of fill, investigations with no report. */
+        get: operations["listGeotechFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/permits": {
         parameters: {
             query?: never;
@@ -22959,6 +23126,166 @@ export interface components {
             status?: components["schemas"]["CorrectiveStatus"];
         };
         /** @enum {string} */
+        GeotechInvestigationKind: "borehole" | "test_pit" | "cpt" | "dcp" | "plate_load" | "groundwater_bore" | "other";
+        /** @enum {string} */
+        GeotechTestKind: "cbr" | "mdd" | "omc" | "moisture_content" | "field_density_ratio" | "plasticity_index" | "liquid_limit" | "ucs" | "particle_size" | "other";
+        /**
+         * @description Derived from the value and the spec limits typed on the result. no_spec when no limits were typed.
+         * @enum {string}
+         */
+        GeotechTestOutcome: "pass" | "fail" | "no_spec";
+        /** @enum {string} */
+        GeotechEarthworksKind: "cut" | "fill" | "import" | "export";
+        GeotechInvestigation: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            kind: components["schemas"]["GeotechInvestigationKind"];
+            title: string;
+            location: string | null;
+            latitude: number | null;
+            longitude: number | null;
+            depthM: number | null;
+            groundwaterDepthM: number | null;
+            /** Format: date */
+            investigatedOn: string | null;
+            consultantCompanyId: string | null;
+            summary: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        GeotechInvestigationPage: {
+            data: components["schemas"]["GeotechInvestigation"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechInvestigationRequest: {
+            kind: components["schemas"]["GeotechInvestigationKind"];
+            title: string;
+            location?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            depthM?: number | null;
+            groundwaterDepthM?: number | null;
+            /** Format: date */
+            investigatedOn?: string | null;
+            consultantCompanyId?: string | null;
+            summary?: string | null;
+            fileIds?: string[];
+        };
+        UpdateGeotechInvestigationRequest: {
+            kind?: components["schemas"]["GeotechInvestigationKind"];
+            title?: string;
+            location?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            depthM?: number | null;
+            groundwaterDepthM?: number | null;
+            /** Format: date */
+            investigatedOn?: string | null;
+            consultantCompanyId?: string | null;
+            summary?: string | null;
+            fileIds?: string[];
+        };
+        GeotechTest: {
+            id: string;
+            projectId: string;
+            investigationId: string | null;
+            kind: components["schemas"]["GeotechTestKind"];
+            sampleRef: string | null;
+            zone: string | null;
+            depthFromM: number | null;
+            depthToM: number | null;
+            value: number;
+            unit: string;
+            specMin: number | null;
+            specMax: number | null;
+            result: components["schemas"]["GeotechTestOutcome"];
+            /** Format: date */
+            testedOn: string;
+            lab: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        GeotechTestPage: {
+            data: components["schemas"]["GeotechTest"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechTestRequest: {
+            investigationId?: string | null;
+            kind: components["schemas"]["GeotechTestKind"];
+            sampleRef?: string | null;
+            zone?: string | null;
+            depthFromM?: number | null;
+            depthToM?: number | null;
+            value: number;
+            unit?: string | null;
+            specMin?: number | null;
+            specMax?: number | null;
+            /** Format: date */
+            testedOn: string;
+            lab?: string | null;
+            notes?: string | null;
+        };
+        GeotechEarthworksEntry: {
+            id: string;
+            projectId: string;
+            zone: string;
+            kind: components["schemas"]["GeotechEarthworksKind"];
+            volumeM3: number;
+            material: string | null;
+            /** Format: date */
+            recordedOn: string;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        GeotechEarthworksPage: {
+            data: components["schemas"]["GeotechEarthworksEntry"][];
+            nextCursor: string | null;
+        };
+        CreateGeotechEarthworksRequest: {
+            zone: string;
+            kind: components["schemas"]["GeotechEarthworksKind"];
+            volumeM3: number;
+            material?: string | null;
+            /** Format: date */
+            recordedOn: string;
+            notes?: string | null;
+        };
+        GeotechEarthworksTotals: {
+            cut: number;
+            fill: number;
+            imported: number;
+            exported: number;
+            /** @description cut + imported - fill - exported, in cubic metres. Negative means short of material. */
+            balance: number;
+        };
+        GeotechZoneTotals: components["schemas"]["GeotechEarthworksTotals"] & {
+            zone: string;
+        };
+        GeotechEarthworksSummary: {
+            zones: components["schemas"]["GeotechZoneTotals"][];
+            total: components["schemas"]["GeotechEarthworksTotals"];
+        };
+        GeotechFlag: {
+            /** @enum {string} */
+            kind: "failed_test" | "short_of_fill" | "no_report";
+            /** @enum {string} */
+            severity: "high" | "medium";
+            title: string;
+            detail: string;
+            refId: string | null;
+        };
+        GeotechFlagList: {
+            data: components["schemas"]["GeotechFlag"][];
+        };
+        /** @enum {string} */
         PermitKind: "building_permit" | "development_approval" | "construction_certificate" | "occupation_certificate" | "council_approval" | "planning_permit" | "environmental_permit" | "road_occupancy" | "traffic_management" | "crane_hoist" | "demolition" | "hot_work" | "trade_licence" | "other";
         /**
          * @description Derived from the lifecycle and the expiry date in the project's own calendar day.
@@ -23305,6 +23632,9 @@ export interface components {
         ToolboxAttendeeId: string;
         IncidentId: string;
         IncidentActionId: string;
+        GeotechInvestigationId: string;
+        GeotechTestId: string;
+        GeotechEarthworksId: string;
         PermitId: string;
         SwmsId: string;
         OrgId: string;
@@ -39883,6 +40213,337 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechInvestigations: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["GeotechInvestigationKind"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateGeotechInvestigation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                investigationId: components["parameters"]["GeotechInvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGeotechInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechInvestigation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechTests: {
+        parameters: {
+            query?: {
+                investigationId?: string;
+                kind?: components["schemas"]["GeotechTestKind"];
+                result?: components["schemas"]["GeotechTestOutcome"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechTestPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechTest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechTestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechTest"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteGeotechTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                testId: components["parameters"]["GeotechTestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechEarthworks: {
+        parameters: {
+            query?: {
+                zone?: string;
+                kind?: components["schemas"]["GeotechEarthworksKind"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGeotechEarthworks: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGeotechEarthworksRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksEntry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGeotechEarthworksSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechEarthworksSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteGeotechEarthworks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                entryId: components["parameters"]["GeotechEarthworksId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGeotechFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeotechFlagList"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -3276,6 +3276,80 @@ export const AcknowledgeSwmsParams = z.object({
   "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListGeotechInvestigationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechInvestigationsQuery = z.object({
+  "kind": s.GeotechInvestigationKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechInvestigationBody = s.CreateGeotechInvestigationRequestSchema;
+export const GetGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGeotechInvestigationBody = s.UpdateGeotechInvestigationRequestSchema;
+export const ListGeotechTestsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechTestsQuery = z.object({
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")).optional(),
+  "kind": s.GeotechTestKindSchema.optional(),
+  "result": s.GeotechTestOutcomeSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechTestBody = s.CreateGeotechTestRequestSchema;
+export const DeleteGeotechTestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "testId": z.string().regex(new RegExp("^gts_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechEarthworksQuery = z.object({
+  "zone": z.string().max(100).optional(),
+  "kind": s.GeotechEarthworksKindSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateGeotechEarthworksBody = s.CreateGeotechEarthworksRequestSchema;
+export const GetGeotechEarthworksSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DeleteGeotechEarthworksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "entryId": z.string().regex(new RegExp("^gew_[0-9A-Za-z]{26}$")),
+});
+export const ListGeotechFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ListPermitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11230,6 +11304,150 @@ export const operations = {
     params: AcknowledgeSwmsParams,
     query: null,
     body: AcknowledgeSwmsBody,
+  },
+  listGeotechInvestigations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechInvestigationsParams,
+    query: ListGeotechInvestigationsQuery,
+    body: null,
+  },
+  createGeotechInvestigation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechInvestigationParams,
+    query: null,
+    body: CreateGeotechInvestigationBody,
+  },
+  getGeotechInvestigation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechInvestigationParams,
+    query: null,
+    body: null,
+  },
+  updateGeotechInvestigation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/investigations/{investigationId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateGeotechInvestigationParams,
+    query: null,
+    body: UpdateGeotechInvestigationBody,
+  },
+  listGeotechTests: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechTestsParams,
+    query: ListGeotechTestsQuery,
+    body: null,
+  },
+  createGeotechTest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechTestParams,
+    query: null,
+    body: CreateGeotechTestBody,
+  },
+  deleteGeotechTest: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/tests/{testId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechTestParams,
+    query: null,
+    body: null,
+  },
+  listGeotechEarthworks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechEarthworksParams,
+    query: ListGeotechEarthworksQuery,
+    body: null,
+  },
+  createGeotechEarthworks: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGeotechEarthworksParams,
+    query: null,
+    body: CreateGeotechEarthworksBody,
+  },
+  getGeotechEarthworksSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/summary',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: GetGeotechEarthworksSummaryParams,
+    query: null,
+    body: null,
+  },
+  deleteGeotechEarthworks: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/earthworks/{entryId}',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteGeotechEarthworksParams,
+    query: null,
+    body: null,
+  },
+  listGeotechFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/geotech/flags',
+    module: "geotech",
+    auth: "required",
+    permission: "geotech.geotech.read",
+    internal: false,
+    contentType: null,
+    params: ListGeotechFlagsParams,
+    query: null,
+    body: null,
   },
   listPermits: {
     method: 'GET',

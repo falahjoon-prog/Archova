@@ -124,6 +124,7 @@ export const webRoutes = {
   toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
+  geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,

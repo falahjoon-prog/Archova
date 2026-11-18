@@ -2487,6 +2487,57 @@ export const CreateGateRequestSchema = z.object({
 }).strict();
 export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
+export const GeotechEarthworksKindSchema = z.enum(["cut", "fill", "import", "export"]);
+export type GeotechEarthworksKind = z.infer<typeof GeotechEarthworksKindSchema>;
+
+export const CreateGeotechEarthworksRequestSchema = z.object({
+  "zone": z.string().min(1).max(100),
+  "kind": GeotechEarthworksKindSchema,
+  "volumeM3": z.number().max(999999999),
+  "material": z.string().max(200).nullable().optional(),
+  "recordedOn": z.string().date(),
+  "notes": z.string().max(2000).nullable().optional(),
+}).strict();
+export type CreateGeotechEarthworksRequest = z.infer<typeof CreateGeotechEarthworksRequestSchema>;
+
+export const GeotechInvestigationKindSchema = z.enum(["borehole", "test_pit", "cpt", "dcp", "plate_load", "groundwater_bore", "other"]);
+export type GeotechInvestigationKind = z.infer<typeof GeotechInvestigationKindSchema>;
+
+export const CreateGeotechInvestigationRequestSchema = z.object({
+  "kind": GeotechInvestigationKindSchema,
+  "title": z.string().min(1).max(300),
+  "location": z.string().max(300).nullable().optional(),
+  "latitude": z.number().min(-90).max(90).nullable().optional(),
+  "longitude": z.number().min(-180).max(180).nullable().optional(),
+  "depthM": z.number().min(0).nullable().optional(),
+  "groundwaterDepthM": z.number().min(0).nullable().optional(),
+  "investigatedOn": z.string().date().nullable().optional(),
+  "consultantCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict();
+export type CreateGeotechInvestigationRequest = z.infer<typeof CreateGeotechInvestigationRequestSchema>;
+
+export const GeotechTestKindSchema = z.enum(["cbr", "mdd", "omc", "moisture_content", "field_density_ratio", "plasticity_index", "liquid_limit", "ucs", "particle_size", "other"]);
+export type GeotechTestKind = z.infer<typeof GeotechTestKindSchema>;
+
+export const CreateGeotechTestRequestSchema = z.object({
+  "investigationId": z.string().regex(new RegExp("^gin_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "kind": GeotechTestKindSchema,
+  "sampleRef": z.string().max(100).nullable().optional(),
+  "zone": z.string().max(100).nullable().optional(),
+  "depthFromM": z.number().min(0).nullable().optional(),
+  "depthToM": z.number().min(0).nullable().optional(),
+  "value": z.number().min(-999999999).max(999999999),
+  "unit": z.string().max(20).nullable().optional(),
+  "specMin": z.number().min(-999999999).max(999999999).nullable().optional(),
+  "specMax": z.number().min(-999999999).max(999999999).nullable().optional(),
+  "testedOn": z.string().date(),
+  "lab": z.string().max(200).nullable().optional(),
+  "notes": z.string().max(2000).nullable().optional(),
+}).strict();
+export type CreateGeotechTestRequest = z.infer<typeof CreateGeotechTestRequestSchema>;
+
 export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
 export type ImportEntity = z.infer<typeof ImportEntitySchema>;
 
@@ -4593,6 +4644,117 @@ export const GenerateTimesheetsResultSchema = z.object({
   "linesAdded": z.number().int(),
 });
 export type GenerateTimesheetsResult = z.infer<typeof GenerateTimesheetsResultSchema>;
+
+export const GeotechEarthworksEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "zone": z.string(),
+  "kind": GeotechEarthworksKindSchema,
+  "volumeM3": z.number(),
+  "material": z.string().nullable(),
+  "recordedOn": z.string().date(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type GeotechEarthworksEntry = z.infer<typeof GeotechEarthworksEntrySchema>;
+
+export const GeotechEarthworksPageSchema = z.object({
+  "data": z.array(GeotechEarthworksEntrySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechEarthworksPage = z.infer<typeof GeotechEarthworksPageSchema>;
+
+export const GeotechEarthworksTotalsSchema = z.object({
+  "cut": z.number(),
+  "fill": z.number(),
+  "imported": z.number(),
+  "exported": z.number(),
+  "balance": z.number(),
+});
+export type GeotechEarthworksTotals = z.infer<typeof GeotechEarthworksTotalsSchema>;
+
+export const GeotechZoneTotalsSchema = z.intersection(GeotechEarthworksTotalsSchema, z.object({
+  "zone": z.string(),
+}));
+export type GeotechZoneTotals = z.infer<typeof GeotechZoneTotalsSchema>;
+
+export const GeotechEarthworksSummarySchema = z.object({
+  "zones": z.array(GeotechZoneTotalsSchema),
+  "total": GeotechEarthworksTotalsSchema,
+});
+export type GeotechEarthworksSummary = z.infer<typeof GeotechEarthworksSummarySchema>;
+
+export const GeotechFlagSchema = z.object({
+  "kind": z.enum(["failed_test", "short_of_fill", "no_report"]),
+  "severity": z.enum(["high", "medium"]),
+  "title": z.string(),
+  "detail": z.string(),
+  "refId": z.string().nullable(),
+});
+export type GeotechFlag = z.infer<typeof GeotechFlagSchema>;
+
+export const GeotechFlagListSchema = z.object({
+  "data": z.array(GeotechFlagSchema),
+});
+export type GeotechFlagList = z.infer<typeof GeotechFlagListSchema>;
+
+export const GeotechInvestigationSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "kind": GeotechInvestigationKindSchema,
+  "title": z.string(),
+  "location": z.string().nullable(),
+  "latitude": z.number().nullable(),
+  "longitude": z.number().nullable(),
+  "depthM": z.number().nullable(),
+  "groundwaterDepthM": z.number().nullable(),
+  "investigatedOn": z.string().date().nullable(),
+  "consultantCompanyId": z.string().nullable(),
+  "summary": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type GeotechInvestigation = z.infer<typeof GeotechInvestigationSchema>;
+
+export const GeotechInvestigationPageSchema = z.object({
+  "data": z.array(GeotechInvestigationSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechInvestigationPage = z.infer<typeof GeotechInvestigationPageSchema>;
+
+export const GeotechTestOutcomeSchema = z.enum(["pass", "fail", "no_spec"]);
+export type GeotechTestOutcome = z.infer<typeof GeotechTestOutcomeSchema>;
+
+export const GeotechTestSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "investigationId": z.string().nullable(),
+  "kind": GeotechTestKindSchema,
+  "sampleRef": z.string().nullable(),
+  "zone": z.string().nullable(),
+  "depthFromM": z.number().nullable(),
+  "depthToM": z.number().nullable(),
+  "value": z.number(),
+  "unit": z.string(),
+  "specMin": z.number().nullable(),
+  "specMax": z.number().nullable(),
+  "result": GeotechTestOutcomeSchema,
+  "testedOn": z.string().date(),
+  "lab": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type GeotechTest = z.infer<typeof GeotechTestSchema>;
+
+export const GeotechTestPageSchema = z.object({
+  "data": z.array(GeotechTestSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type GeotechTestPage = z.infer<typeof GeotechTestPageSchema>;
 
 export const GrantedWalletSchema = z.object({
   "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
@@ -9927,6 +10089,21 @@ export const UpdateGateRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
+
+export const UpdateGeotechInvestigationRequestSchema = z.object({
+  "kind": GeotechInvestigationKindSchema.optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "location": z.string().max(300).nullable().optional(),
+  "latitude": z.number().min(-90).max(90).nullable().optional(),
+  "longitude": z.number().min(-180).max(180).nullable().optional(),
+  "depthM": z.number().min(0).nullable().optional(),
+  "groundwaterDepthM": z.number().min(0).nullable().optional(),
+  "investigatedOn": z.string().date().nullable().optional(),
+  "consultantCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "summary": z.string().max(4000).nullable().optional(),
+  "fileIds": z.array(z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"))).max(6).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateGeotechInvestigationRequest = z.infer<typeof UpdateGeotechInvestigationRequestSchema>;
 
 export const UpdateIncidentActionRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),

@@ -13,6 +13,7 @@ import {
   ToolboxIcon,
   IncidentsIcon,
   PermitsIcon,
+  GeotechIcon,
   InsuranceIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
@@ -260,6 +261,11 @@ export function projectToolGroups(
       href: webRoutes.permits(orgSlug, projectId),
       label: 'Permits',
       icon: PermitsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.geotech(orgSlug, projectId),
+      label: 'Civil and geotech',
+      icon: GeotechIcon,
     },
     canRead('inspections') && {
       href: webRoutes.insurance(orgSlug, projectId),

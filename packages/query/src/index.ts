@@ -68,6 +68,7 @@ export type ProjectTool =
   | 'toolbox'
   | 'environment'
   | 'permits'
+  | 'geotech'
   | 'insurance'
   | 'inspections'
   | 'late-submissions'
