@@ -1,14 +1,15 @@
-// Sustainability on the phone: how the project is tracking, what Nova flags, and the conditions to keep up. Online only.
+// Sustainability on the phone: how the project is tracking, what Nova flags, and the conditions to keep up. Reads need a signal; starting a condition is saved on the phone and sent later when offline.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Text, View } from 'react-native';
 import { Button, ListItem, Screen, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { PendingActions, StateMessage, useAttempt, useCurrentOrg } from '../../../shared';
 import { getSummary, listConditions, startCondition } from '../commands';
 import { carbonText, conditionSubtitle, percentText, tonnesText } from '../format';
 
 export function EnvironmentScreen({ projectId }: { projectId: string }) {
   const t = useTheme();
+  const attempt = useAttempt();
   const qc = useQueryClient();
   const { orgId } = useCurrentOrg();
   const target = orgId ? { orgId, projectId } : null;
@@ -23,7 +24,16 @@ export function EnvironmentScreen({ projectId }: { projectId: string }) {
     enabled: target !== null,
   });
   const start = useMutation({
-    mutationFn: (c: { id: string; version: number }) => startCondition(api, target!, c),
+    mutationFn: (c: { id: string; version: number }) =>
+      attempt(
+        {
+          projectId,
+          kind: 'environment.startCondition',
+          targetId: c.id,
+          payload: { version: c.version },
+        },
+        () => startCondition(api, target!, c),
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environment', orgId, projectId] }),
   });
 
@@ -104,6 +114,7 @@ export function EnvironmentScreen({ projectId }: { projectId: string }) {
       {conditions.data.map((c) => (
         <View key={c.id} style={{ gap: t.space[2] }}>
           <ListItem title={c.title} subtitle={conditionSubtitle(c)} />
+          <PendingActions targetId={c.id} />
           {c.availableActions.includes('start') ? (
             <Button
               label="Start"
@@ -114,6 +125,9 @@ export function EnvironmentScreen({ projectId }: { projectId: string }) {
           ) : null}
         </View>
       ))}
+      {start.data === 'queued' ? (
+        <StateMessage message="No signal. This is saved on this phone and will be sent when you are online." />
+      ) : null}
       {start.isError ? (
         <StateMessage tone="danger" message="Could not start that condition. Try again." />
       ) : null}
