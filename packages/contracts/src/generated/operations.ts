@@ -1125,6 +1125,12 @@ export const SummariseDiaryWeekWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "weekStart": z.string().date(),
 });
+export const ParseVoiceLogWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const ParseVoiceLogWithNovaBody = s.VoiceLogRequestSchema;
 export const DraftMinutesWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7032,6 +7038,18 @@ export const operations = {
     params: SummariseDiaryWeekWithNovaParams,
     query: null,
     body: null,
+  },
+  parseVoiceLogWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log',
+    module: "ai",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: ParseVoiceLogWithNovaParams,
+    query: null,
+    body: ParseVoiceLogWithNovaBody,
   },
   draftMinutesWithNova: {
     method: 'POST',

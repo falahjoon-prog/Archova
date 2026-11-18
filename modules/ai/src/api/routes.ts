@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { HelpService } from '../application/help';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { VoiceLogService } from '../application/voice-log';
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
 import type { AssistService } from '../application/assist';
@@ -320,6 +321,7 @@ export function aiRoutes(
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
+  voiceLog: VoiceLogService,
   swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
   assist: AssistService,
@@ -991,6 +993,15 @@ export function aiRoutes(
         projectUuid(input.params.projectId),
         meetingId,
         { notes: input.body.notes },
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    parseVoiceLogWithNova: async (input) => {
+      const row = await voiceLog.parse(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        input.params.date,
+        { transcript: input.body.transcript },
       );
       return { status: 200, body: toSuggestionDto(row) };
     },

@@ -61,15 +61,15 @@ const WEEKDAYS: Array<[RegExp, number]> = [
 const MONTHS =
   /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b/;
 /** Words and shapes that give a date or a day: without one in the quote, a due date was guessed. */
-const DATE_CUE = new RegExp(
+export const DATE_CUE = new RegExp(
   `\\d{1,2}[/.-]\\d{1,2}|\\d{4}-\\d{2}-\\d{2}|${MONTHS.source}|\\b(today|tomorrow|tonight|week|fortnight|month|eod|cob)\\b|${WEEKDAYS.map(([r]) => r.source).join('|')}`,
 );
 
 /** The weekday names a quote uses (1 Monday .. 7 Sunday). */
-const weekdaysIn = (text: string): number[] =>
+export const weekdaysIn = (text: string): number[] =>
   WEEKDAYS.filter(([r]) => r.test(text)).map(([, n]) => n);
 
-const numbersIn = (text: string): string[] =>
+export const numbersIn = (text: string): string[] =>
   (text.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ''));
 
 /** Whole words of three letters or more, for matching a person or company to what the notes say. */

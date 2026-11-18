@@ -24,6 +24,7 @@ import { createHelpService } from './application/help';
 import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
+import { createVoiceLogService } from './application/voice-log';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
@@ -540,6 +541,7 @@ export function createAiModule(
     gateway,
     meeting: deps.meetingForMinutes,
   });
+  const voiceLog = createVoiceLogService({ database: services.database, gateway });
   const help = createHelpService({ gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
@@ -577,6 +579,7 @@ export function createAiModule(
       speech,
       takeoffDetect,
       minutesExtract,
+      voiceLog,
       swmsDrafts,
       hazardScans,
       assist,
@@ -640,6 +643,8 @@ export function createAiModule(
       summariseDiaryWeek: diaryWeekly.summariseWeek,
       /** F7: proposed minute items from typed meeting notes; `meetings.api.forMinutesDraft` supplies the meeting. */
       extractMinutes: minutesExtract.extract,
+      /** Voice log: a day's dictated transcript split into proposed diary records (note, delays, observations, tasks). */
+      parseVoiceLog: voiceLog.parse,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */
