@@ -157,6 +157,21 @@ export function createEstimatesApi(orgId: string) {
         }),
       );
     },
+
+    /** An issued estimate becomes the project's draft budget (once). */
+    async sendToBudget(
+      projectId: string,
+      estimateId: string,
+      codes?: Record<string, string>,
+    ): Promise<{ estimate: Estimate; imported: number }> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${ONE}/send-to-budget`, {
+          params: { path: { orgId, projectId, estimateId }, header: idempotencyKey() },
+          body: codes ? { codes } : {},
+        }),
+      );
+    },
   };
 }
 

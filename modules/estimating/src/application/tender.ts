@@ -62,7 +62,11 @@ export interface EstimatingDeps {
   /** Raising a subcontract from the awarded quote. */
   financials: Pick<
     FinancialsModule['api'],
-    'createContract' | 'contractForQuote' | 'createCommitment' | 'commitmentForQuote'
+    | 'createContract'
+    | 'contractForQuote'
+    | 'createCommitment'
+    | 'commitmentForQuote'
+    | 'importEstimateBudget'
   >;
   /** Prequalification (precon): which companies a tender invite must refuse when the org requires it. */
   prequal: {

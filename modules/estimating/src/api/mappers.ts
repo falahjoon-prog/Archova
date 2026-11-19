@@ -220,6 +220,7 @@ export const toEstimateDto = ({ estimate: e, lines, totals }: EstimateView): Est
   gstPct: e.gstPct,
   issuedAt: iso(e.issuedAt),
   issuedBy: userOrNull(e.issuedBy),
+  sentToBudgetAt: iso(e.sentToBudgetAt),
   lines: lines.map((l) => ({
     id: encodeId('estimateLine', l.id),
     parentId: l.parentId ? encodeId('estimateLine', l.parentId) : null,

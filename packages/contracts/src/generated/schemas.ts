@@ -5722,6 +5722,7 @@ export const EstimateSchema = z.intersection(EstimateSettingsSchema, z.object({
   "status": z.enum(["draft", "issued"]),
   "issuedAt": z.string().datetime({ offset: true }).nullable(),
   "issuedBy": z.string().nullable(),
+  "sentToBudgetAt": z.string().datetime({ offset: true }).nullable(),
   "lines": z.array(EstimateLineSchema),
   "totals": EstimateTotalsSchema,
   "createdAt": z.string().datetime({ offset: true }),

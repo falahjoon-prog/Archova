@@ -385,6 +385,21 @@ export function createBudgetService(
     return { budget, lines: await viewLines(scope, budget.id, showMargin), imported: rows.length };
   }
 
+  /**
+   * An issued estimate becomes the budget (`estimating`): starts the budget when the project has none, then imports the
+   * rows all-or-nothing like a spreadsheet. A locked budget, or a code that already has a line, refuses the lot.
+   */
+  async function importEstimate(
+    scope: TenantScope,
+    projectId: string,
+    rows: Parameters<typeof importLines>[2],
+  ) {
+    await need(scope, 'financials.budget.manage', projectId);
+    await requireStaff(scope, projectId);
+    if (!(await budgetFor(scope, projectId))) await createBudget(scope, projectId);
+    return importLines(scope, projectId, rows);
+  }
+
   async function lockBudget(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.budget.manage', projectId);
     await requireStaff(scope, projectId);
@@ -908,6 +923,7 @@ export function createBudgetService(
     deleteLine,
     lockBudget,
     importLines,
+    importEstimate,
     adjustLine,
     listAdjustments,
     listProjectAdjustments,

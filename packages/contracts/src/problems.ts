@@ -270,6 +270,8 @@ export const PROBLEM_CODES = {
   'estimate.invalid': 422,
   'estimate.locked': 409,
   'estimate.rates_missing': 422,
+  'estimate.not_issued': 409,
+  'estimate.already_sent': 409,
   // integrations
   'import.not_found': 404,
   'import.invalid_state': 409,

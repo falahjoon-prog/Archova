@@ -5476,6 +5476,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/send-to-budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn an issued estimate into the project's draft budget, once.
+         * @description Makes a budget line per estimate section (cost code `EST-nn`, or the one given in `codes`), plus a contingency
+         *     and a margin line, so the budget adds up to the issued total ex GST. Starts the budget if the project has
+         *     none. Refused when the estimate is not issued (`estimate.not_issued`), was already sent
+         *     (`estimate.already_sent`), or the budget is locked or already has a line on one of the codes. All or none.
+         *     Also needs `financials.budget.manage`.
+         */
+        post: operations["sendEstimateToBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch": {
         parameters: {
             query?: never;
@@ -21498,6 +21526,8 @@ export interface components {
             /** Format: date-time */
             issuedAt: string | null;
             issuedBy: string | null;
+            /** Format: date-time */
+            sentToBudgetAt: string | null;
             lines: components["schemas"]["EstimateLine"][];
             totals: components["schemas"]["EstimateTotals"];
             /** Format: date-time */
@@ -36630,6 +36660,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendEstimateToBudget: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Section id (or `unsectioned`) to the cost code the budget line uses. */
+                    codes?: {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        estimate: components["schemas"]["Estimate"];
+                        imported: number;
+                    };
                 };
             };
             default: components["responses"]["Problem"];

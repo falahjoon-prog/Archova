@@ -122,7 +122,8 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
     m.addLine.error ??
     m.updateLine.error ??
     m.deleteLine.error ??
-    m.issue.error;
+    m.issue.error ??
+    m.sendToBudget.error;
 
   const itemRow = (line: EstimateLine) => {
     const fromTakeoff = line.measurementIds.length > 0;
@@ -206,7 +207,9 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
         title={e.name}
         description={
           locked
-            ? 'Issued. Quantities, rates and the total are frozen.'
+            ? e.sentToBudgetAt
+              ? 'Issued and sent to the budget. Quantities, rates and the total are frozen.'
+              : 'Issued. Quantities, rates and the total are frozen.'
             : 'A draft. Takeoff quantities follow what has been accepted on the drawings.'
         }
         actions={
@@ -217,6 +220,14 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
             <StatusPill tone={locked ? 'success' : 'neutral'}>
               {locked ? 'Issued' : 'Draft'}
             </StatusPill>
+            {locked && !e.sentToBudgetAt ? (
+              <Button
+                loading={m.sendToBudget.isPending}
+                onClick={() => m.sendToBudget.mutate(e.id)}
+              >
+                Send to budget
+              </Button>
+            ) : null}
             {locked ? null : (
               <Button
                 loading={m.issue.isPending}

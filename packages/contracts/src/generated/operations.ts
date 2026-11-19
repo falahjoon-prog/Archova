@@ -1719,6 +1719,14 @@ export const IssueEstimateParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
 });
+export const SendEstimateToBudgetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const SendEstimateToBudgetBody = z.object({
+  "codes": z.record(z.string(), z.string().min(1).max(30)).optional(),
+}).strict();
 export const CreateAssistedTakeoffMeasurementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8677,6 +8685,18 @@ export const operations = {
     params: IssueEstimateParams,
     query: null,
     body: null,
+  },
+  sendEstimateToBudget: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/send-to-budget',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.issue",
+    internal: false,
+    contentType: "application/json",
+    params: SendEstimateToBudgetParams,
+    query: null,
+    body: SendEstimateToBudgetBody,
   },
   createAssistedTakeoffMeasurements: {
     method: 'POST',

@@ -135,6 +135,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       /** Plant hire posted to a project budget as a direct cost (`plant`, scheduled job). */
       postPlantCost,
       costCodeBudgeted,
+      /** An issued estimate becomes the project's draft budget (`estimating`). */
+      importEstimateBudget: budget.importEstimate,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
       /** Material delivery scheduling (`logistics`): look up a purchase order to link a delivery to. */
