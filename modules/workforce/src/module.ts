@@ -13,6 +13,7 @@ import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
 import { toSessionDto } from './api/mappers';
+import { attendanceSyncCommands } from './sync';
 import { workforceRoutes, type InductionHooks } from './api/routes';
 import { WORKFORCE_PERMISSIONS } from './permissions';
 
@@ -118,6 +119,8 @@ export function createWorkforceModule(
     api: {
       /** What the mobile pull reads (modules/sync): attendance sessions. */
       syncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: attendanceSyncCommands(attendance),
       /** Scheduled job (every 15 minutes per org): closes sessions left open after the site's day end. */
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
