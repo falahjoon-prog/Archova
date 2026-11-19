@@ -125,6 +125,8 @@ export function createWorkforceModule(
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
       getInductionVersion: inductions.versionForAi,
+      /** For `safety` (pre-task plans): each login's induction status on a project today. */
+      inductionStatusForUsers: inductions.statusForUsers,
       /** For `reporting` (Nova project risk): subcontractor insurance read through live wallet grants. */
       insuranceSignals: grants.insuranceSignals,
       /** For `reporting` (incident analytics): hours on submitted timesheets, the denominator of LTIFR and TRIFR. */

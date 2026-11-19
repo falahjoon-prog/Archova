@@ -3585,6 +3585,83 @@ export const ClearToolboxSignatureParams = z.object({
   "talkId": z.string().regex(new RegExp("^tbt_[0-9A-Za-z]{26}$")),
   "attendeeId": z.string().regex(new RegExp("^tba_[0-9A-Za-z]{26}$")),
 });
+export const ListPretaskPlansParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPretaskPlansQuery = z.object({
+  "status": s.PretaskStatusSchema.optional(),
+  "workDate": z.string().date().optional(),
+  "unreviewed": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreatePretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePretaskPlanBody = s.CreatePretaskPlanRequestSchema;
+export const SuggestPretaskHazardsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestPretaskHazardsQuery = z.object({
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")).optional(),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")).optional(),
+});
+export const GetPretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePretaskPlanBody = s.UpdatePretaskPlanRequestSchema;
+export const DeletePretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const TransitionPretaskPlanBody = s.PretaskTransitionRequestSchema;
+export const ReviewPretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const ReviewPretaskPlanBody = s.ReviewPretaskPlanRequestSchema;
+export const AddPretaskCrewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const AddPretaskCrewBody = s.AddPretaskCrewRequestSchema;
+export const RemovePretaskCrewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+  "crewId": z.string().regex(new RegExp("^ptw_[0-9A-Za-z]{26}$")),
+});
+export const SignPretaskCrewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+  "crewId": z.string().regex(new RegExp("^ptw_[0-9A-Za-z]{26}$")),
+});
+export const SignPretaskCrewBody = s.SignPretaskCrewRequestSchema;
+export const ClearPretaskSignatureParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+  "crewId": z.string().regex(new RegExp("^ptw_[0-9A-Za-z]{26}$")),
+});
 export const ListIncidentActionsFromSourceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -12684,6 +12761,150 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ClearToolboxSignatureParams,
+    query: null,
+    body: null,
+  },
+  listPretaskPlans: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.read",
+    internal: false,
+    contentType: null,
+    params: ListPretaskPlansParams,
+    query: ListPretaskPlansQuery,
+    body: null,
+  },
+  createPretaskPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePretaskPlanParams,
+    query: null,
+    body: CreatePretaskPlanBody,
+  },
+  suggestPretaskHazards: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/suggestions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.read",
+    internal: false,
+    contentType: null,
+    params: SuggestPretaskHazardsParams,
+    query: SuggestPretaskHazardsQuery,
+    body: null,
+  },
+  getPretaskPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.read",
+    internal: false,
+    contentType: null,
+    params: GetPretaskPlanParams,
+    query: null,
+    body: null,
+  },
+  updatePretaskPlan: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePretaskPlanParams,
+    query: null,
+    body: UpdatePretaskPlanBody,
+  },
+  deletePretaskPlan: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: null,
+    params: DeletePretaskPlanParams,
+    query: null,
+    body: null,
+  },
+  transitionPretaskPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionPretaskPlanParams,
+    query: null,
+    body: TransitionPretaskPlanBody,
+  },
+  reviewPretaskPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/review',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewPretaskPlanParams,
+    query: null,
+    body: ReviewPretaskPlanBody,
+  },
+  addPretaskCrew: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: AddPretaskCrewParams,
+    query: null,
+    body: AddPretaskCrewBody,
+  },
+  removePretaskCrew: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: null,
+    params: RemovePretaskCrewParams,
+    query: null,
+    body: null,
+  },
+  signPretaskCrew: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}/signature',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: SignPretaskCrewParams,
+    query: null,
+    body: SignPretaskCrewBody,
+  },
+  clearPretaskSignature: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}/signature',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: null,
+    params: ClearPretaskSignatureParams,
     query: null,
     body: null,
   },

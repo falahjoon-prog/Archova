@@ -244,6 +244,18 @@ export const AddPrefabCheckRequestSchema = z.object({
 }).strict();
 export type AddPrefabCheckRequest = z.infer<typeof AddPrefabCheckRequestSchema>;
 
+export const PretaskCrewInputSchema = z.object({
+  "personName": z.string().min(1).max(200),
+  "companyId": z.string().nullable().optional(),
+  "userId": z.string().nullable().optional(),
+}).strict();
+export type PretaskCrewInput = z.infer<typeof PretaskCrewInputSchema>;
+
+export const AddPretaskCrewRequestSchema = z.object({
+  "crew": z.array(PretaskCrewInputSchema).min(1).max(100),
+}).strict();
+export type AddPretaskCrewRequest = z.infer<typeof AddPretaskCrewRequestSchema>;
+
 export const EmailSchema = z.string().email().max(320);
 export type Email = z.infer<typeof EmailSchema>;
 
@@ -3464,6 +3476,29 @@ export const CreatePrequalificationRequestSchema = z.object({
   "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
 }).strict();
 export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificationRequestSchema>;
+
+export const PretaskRiskLevelSchema = z.enum(["low", "medium", "high", "extreme"]);
+export type PretaskRiskLevel = z.infer<typeof PretaskRiskLevelSchema>;
+
+export const PretaskHazardSchema = z.object({
+  "hazard": z.string().min(1).max(300),
+  "riskBefore": PretaskRiskLevelSchema,
+  "controls": z.string().max(2000),
+  "riskAfter": PretaskRiskLevelSchema,
+}).strict();
+export type PretaskHazard = z.infer<typeof PretaskHazardSchema>;
+
+export const CreatePretaskPlanRequestSchema = z.object({
+  "taskTitle": z.string().min(1).max(200),
+  "workDate": z.string().date(),
+  "location": z.string().max(200).nullable().optional(),
+  "companyId": z.string().nullable().optional(),
+  "swmsId": z.string().nullable().optional(),
+  "supervisorName": z.string().min(1).max(200),
+  "hazards": z.array(PretaskHazardSchema).max(50).optional(),
+  "crew": z.array(PretaskCrewInputSchema).max(100).optional(),
+}).strict();
+export type CreatePretaskPlanRequest = z.infer<typeof CreatePretaskPlanRequestSchema>;
 
 export const CreateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80),
@@ -9391,6 +9426,112 @@ export const PrequalificationListSchema = z.object({
 });
 export type PrequalificationList = z.infer<typeof PrequalificationListSchema>;
 
+export const PretaskInductionStateSchema = z.enum(["current", "not_inducted", "needs_reinduction", "expired", "unknown"]);
+export type PretaskInductionState = z.infer<typeof PretaskInductionStateSchema>;
+
+export const PretaskCrewSchema = z.object({
+  "id": z.string(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "userId": z.string().nullable(),
+  "signedAt": z.string().datetime({ offset: true }).nullable(),
+  "signatureFileId": z.string().nullable(),
+  "inductionStatus": z.union([PretaskInductionStateSchema, z.null()]),
+  "swmsRead": z.boolean().nullable(),
+});
+export type PretaskCrew = z.infer<typeof PretaskCrewSchema>;
+
+export const PretaskEventSchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "note": z.string().nullable(),
+  "actor": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type PretaskEvent = z.infer<typeof PretaskEventSchema>;
+
+export const PretaskStatusSchema = z.enum(["open", "closed"]);
+export type PretaskStatus = z.infer<typeof PretaskStatusSchema>;
+
+export const PretaskPlanSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "taskTitle": z.string(),
+  "workDate": z.string().date(),
+  "location": z.string().nullable(),
+  "companyId": z.string().nullable(),
+  "swmsId": z.string().nullable(),
+  "supervisorName": z.string(),
+  "hazards": z.array(PretaskHazardSchema),
+  "status": PretaskStatusSchema,
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "reviewedAt": z.string().datetime({ offset: true }).nullable(),
+  "reviewedBy": z.string().nullable(),
+  "reviewNote": z.string().nullable(),
+  "crewCount": z.number().int(),
+  "signedCount": z.number().int(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type PretaskPlan = z.infer<typeof PretaskPlanSchema>;
+
+export const PretaskSwmsRefSchema = z.object({
+  "id": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "expired": z.boolean(),
+});
+export type PretaskSwmsRef = z.infer<typeof PretaskSwmsRefSchema>;
+
+export const PretaskWarningSchema = z.object({
+  "code": z.enum(["swms_not_accepted", "swms_expired", "induction", "swms_not_read"]),
+  "message": z.string(),
+  "personName": z.string().nullable(),
+});
+export type PretaskWarning = z.infer<typeof PretaskWarningSchema>;
+
+export const PretaskPlanDetailSchema = z.object({
+  "plan": PretaskPlanSchema,
+  "crew": z.array(PretaskCrewSchema),
+  "swms": z.union([PretaskSwmsRefSchema, z.null()]),
+  "closeBlockers": z.array(z.string()),
+  "warnings": z.array(PretaskWarningSchema),
+  "events": z.array(PretaskEventSchema),
+  "canEdit": z.boolean(),
+  "canReview": z.boolean(),
+});
+export type PretaskPlanDetail = z.infer<typeof PretaskPlanDetailSchema>;
+
+export const PretaskPlanPageSchema = z.object({
+  "data": z.array(PretaskPlanSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type PretaskPlanPage = z.infer<typeof PretaskPlanPageSchema>;
+
+export const PretaskSuggestionSchema = z.object({
+  "reason": z.enum(["from_swms", "recurring", "recent_incident"]),
+  "hazard": z.string(),
+  "controls": z.string(),
+  "riskBefore": PretaskRiskLevelSchema,
+  "because": z.string(),
+});
+export type PretaskSuggestion = z.infer<typeof PretaskSuggestionSchema>;
+
+export const PretaskSuggestionListSchema = z.object({
+  "data": z.array(PretaskSuggestionSchema),
+});
+export type PretaskSuggestionList = z.infer<typeof PretaskSuggestionListSchema>;
+
+export const PretaskTransitionRequestSchema = z.object({
+  "action": z.enum(["close", "reopen"]),
+}).strict();
+export type PretaskTransitionRequest = z.infer<typeof PretaskTransitionRequestSchema>;
+
 export const ProblemSchema = z.object({
   "drainGrant": DrainGrantSchema.optional(),
   "type": z.string(),
@@ -10336,6 +10477,11 @@ export const ReverseClaimPaymentRequestSchema = z.object({
 }).strict();
 export type ReverseClaimPaymentRequest = z.infer<typeof ReverseClaimPaymentRequestSchema>;
 
+export const ReviewPretaskPlanRequestSchema = z.object({
+  "note": z.string().max(2000).nullable().optional(),
+}).strict();
+export type ReviewPretaskPlanRequest = z.infer<typeof ReviewPretaskPlanRequestSchema>;
+
 export const TmReviewStageSchema = z.enum(["in_progress", "ready_for_review", "field_verified"]);
 export type TmReviewStage = z.infer<typeof TmReviewStageSchema>;
 
@@ -10829,6 +10975,11 @@ export const SignInductionRequestSchema = z.object({
   "clientAt": z.string().datetime({ offset: true }).optional(),
 }).strict();
 export type SignInductionRequest = z.infer<typeof SignInductionRequestSchema>;
+
+export const SignPretaskCrewRequestSchema = z.object({
+  "signatureFileId": z.string(),
+}).strict();
+export type SignPretaskCrewRequest = z.infer<typeof SignPretaskCrewRequestSchema>;
 
 export const SignTmTicketRequestSchema = z.object({
   "role": z.enum(["contractor", "principal_rep"]),
@@ -12464,6 +12615,17 @@ export const UpdatePrequalificationRequestSchema = z.object({
   "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
 }).strict();
 export type UpdatePrequalificationRequest = z.infer<typeof UpdatePrequalificationRequestSchema>;
+
+export const UpdatePretaskPlanRequestSchema = z.object({
+  "taskTitle": z.string().min(1).max(200).optional(),
+  "workDate": z.string().date().optional(),
+  "location": z.string().max(200).nullable().optional(),
+  "companyId": z.string().nullable().optional(),
+  "swmsId": z.string().nullable().optional(),
+  "supervisorName": z.string().min(1).max(200).optional(),
+  "hazards": z.array(PretaskHazardSchema).max(50).optional(),
+}).strict();
+export type UpdatePretaskPlanRequest = z.infer<typeof UpdatePretaskPlanRequestSchema>;
 
 export const UpdateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80).optional(),

@@ -70,6 +70,7 @@ import {
   WORKFORCE_PERMISSIONS,
   createWorkforceModule,
   type NumberVault,
+  type WorkforceApi,
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
@@ -395,6 +396,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
   // inspection or observation), so safety asks for it lazily.
   let qualityApi: QualityApi | null = null;
+  // Pre-task plans show each person's induction status; workforce is built later, so safety asks for it lazily.
+  let inductionStatusForUsers: WorkforceApi['inductionStatusForUsers'] | null = null;
   const safety = createSafetyModule(services, {
     access: access.api,
     platform: platform.api,
@@ -402,6 +405,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     sources: {
       exists: (scope, projectId, type, sourceId) =>
         qualityApi!.sourceExists(scope, projectId, type, sourceId),
+    },
+    inductions: {
+      statusForUsers: (scope, projectId, userIds) =>
+        inductionStatusForUsers!(scope, projectId, userIds),
     },
   });
 
@@ -634,6 +641,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
   lapsedLicences = workforce.api.lapsedLicences;
+  inductionStatusForUsers = workforce.api.inductionStatusForUsers;
 
   const logistics = createLogisticsModule(services, {
     access: access.api,

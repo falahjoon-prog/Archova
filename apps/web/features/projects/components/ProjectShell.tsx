@@ -13,6 +13,7 @@ import {
   InspectionsIcon,
   SwmsIcon,
   ToolboxIcon,
+  PretaskIcon,
   IncidentsIcon,
   PermitsIcon,
   GeotechIcon,
@@ -284,6 +285,11 @@ export function projectToolGroups(
       icon: ToolboxIcon,
     },
     canRead('inspections') && {
+      href: webRoutes.pretaskPlans(orgSlug, projectId),
+      label: 'Pre-task plans',
+      icon: PretaskIcon,
+    },
+    canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
       icon: IncidentsIcon,
@@ -434,6 +440,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Action plans',
       'SWMS',
       'Toolbox talks',
+      'Pre-task plans',
       'Incidents',
       'Safety signals',
       'Inductions',

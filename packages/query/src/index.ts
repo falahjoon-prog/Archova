@@ -71,6 +71,7 @@ export type ProjectTool =
   | 'swms'
   | 'incidents'
   | 'toolbox'
+  | 'pretask'
   | 'environment'
   | 'permits'
   | 'handover'

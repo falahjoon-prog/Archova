@@ -13,6 +13,7 @@ import type { SwmsFields, SwmsService } from '../application/swms';
 import type { SwmsContent } from '../domain/swms';
 import type { ActionInput, IncidentFields, IncidentService } from '../application/incidents';
 import type { AttendeeInput, ToolboxService } from '../application/toolbox';
+import type { CrewInput, PretaskService } from '../application/pretask';
 import {
   toActionDto,
   toActionFromSource,
@@ -21,6 +22,9 @@ import {
   toSwmsDetail,
   toSuggestionDto,
   toSwmsDto,
+  toHazardSuggestionDto,
+  toPlanDetail,
+  toPlanDto,
   toTalkDetail,
   toTalkDto,
   toTopicDto,
@@ -150,6 +154,7 @@ export function safetyRoutes(
   swms: SwmsService,
   incidents: IncidentService,
   toolbox: ToolboxService,
+  pretask: PretaskService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -198,7 +203,199 @@ export function safetyRoutes(
     headers: { etag: etag(d.talk.version) },
   });
 
+  const planId = (p: { planId: string }) => {
+    const id = decodeId('pretaskPlan', p.planId);
+    if (!id) throw new AppError('pretask.not_found');
+    return id;
+  };
+  const crewId = (p: { crewId: string }) => {
+    const id = decodeId('pretaskCrew', p.crewId);
+    if (!id) throw new AppError('pretask.crew_not_found');
+    return id;
+  };
+  const planOk = (status: number, d: Awaited<ReturnType<PretaskService['detail']>>) => ({
+    status,
+    body: toPlanDetail(d),
+    headers: { etag: etag(d.plan.version) },
+  });
+  const crewInputs = (
+    list: { personName: string; companyId?: string | null; userId?: string | null }[],
+  ): CrewInput[] =>
+    list.map((p, i) => ({
+      personName: p.personName,
+      companyId: p.companyId ? ref('company', p.companyId, `crew.${i}.companyId`) : null,
+      userId: p.userId ? ref('user', p.userId, `crew.${i}.userId`) : null,
+    }));
+
   return defineRoutes({
+    listPretaskPlans: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        pretask.list(s, project(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.workDate ? { workDate: q.workDate } : {}),
+          ...(q.unreviewed === 'true' ? { unreviewed: true } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return { status: 200, body: { data: page.data.map(toPlanDto), nextCursor: page.nextCursor } };
+    },
+    suggestPretaskHazards: async (input) => {
+      const q = input.query;
+      const data = await read(input, (s) =>
+        pretask.suggestions(s, project(input.params), {
+          ...(q.swmsId ? { swmsId: ref('swms', q.swmsId, 'swmsId') } : {}),
+          ...(q.planId ? { planId: ref('pretaskPlan', q.planId, 'planId') } : {}),
+        }),
+      );
+      return { status: 200, body: { data: data.map(toHazardSuggestionDto) } };
+    },
+    createPretaskPlan: async (input) => {
+      const b = input.body;
+      return planOk(
+        201,
+        await tx(input, (s) =>
+          pretask.create(s, project(input.params), {
+            taskTitle: b.taskTitle,
+            workDate: b.workDate,
+            supervisorName: b.supervisorName,
+            ...(b.location !== undefined ? { location: b.location } : {}),
+            ...(b.companyId ? { companyId: ref('company', b.companyId, 'companyId') } : {}),
+            ...(b.swmsId ? { swmsId: ref('swms', b.swmsId, 'swmsId') } : {}),
+            ...(b.hazards ? { hazards: b.hazards } : {}),
+            ...(b.crew ? { crew: crewInputs(b.crew) } : {}),
+          }),
+        ),
+      );
+    },
+    getPretaskPlan: async (input) =>
+      planOk(
+        200,
+        await read(input, (s) => pretask.detail(s, project(input.params), planId(input.params))),
+      ),
+    updatePretaskPlan: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.update(s, project(input.params), planId(input.params), expected, {
+            ...(b.taskTitle !== undefined ? { taskTitle: b.taskTitle } : {}),
+            ...(b.workDate !== undefined ? { workDate: b.workDate } : {}),
+            ...(b.location !== undefined ? { location: b.location } : {}),
+            ...(b.companyId !== undefined
+              ? {
+                  companyId: b.companyId === null ? null : ref('company', b.companyId, 'companyId'),
+                }
+              : {}),
+            ...(b.swmsId !== undefined
+              ? { swmsId: b.swmsId === null ? null : ref('swms', b.swmsId, 'swmsId') }
+              : {}),
+            ...(b.supervisorName !== undefined ? { supervisorName: b.supervisorName } : {}),
+            ...(b.hazards !== undefined ? { hazards: b.hazards } : {}),
+          }),
+        ),
+      );
+    },
+    deletePretaskPlan: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      await tx(input, (s) =>
+        pretask.remove(s, project(input.params), planId(input.params), expected),
+      );
+      return { status: 204 };
+    },
+    transitionPretaskPlan: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.transition(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            input.body.action,
+          ),
+        ),
+      );
+    },
+    reviewPretaskPlan: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.review(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            input.body.note ?? null,
+          ),
+        ),
+      );
+    },
+    addPretaskCrew: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        201,
+        await tx(input, (s) =>
+          pretask.addCrew(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            crewInputs(input.body.crew),
+          ),
+        ),
+      );
+    },
+    removePretaskCrew: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.removeCrew(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            crewId(input.params),
+          ),
+        ),
+      );
+    },
+    signPretaskCrew: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.sign(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            crewId(input.params),
+            ref('file', input.body.signatureFileId, 'signatureFileId'),
+          ),
+        ),
+      );
+    },
+    clearPretaskSignature: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return planOk(
+        200,
+        await tx(input, (s) =>
+          pretask.clearSignature(
+            s,
+            project(input.params),
+            planId(input.params),
+            expected,
+            crewId(input.params),
+          ),
+        ),
+      );
+    },
     listToolboxTopics: async (input) => ({
       status: 200,
       body: {

@@ -22,6 +22,7 @@ import {
   type SwmsContent,
   type SwmsStatus,
 } from '../domain/swms';
+import type { InductionState } from '../domain/pretask';
 import { acknowledgements, swms, swmsEvents } from '../infra/tables';
 
 export type SwmsRow = typeof swms.$inferSelect;
@@ -40,6 +41,14 @@ export interface SafetyDeps {
       type: 'inspection' | 'observation',
       sourceId: string,
     ): Promise<boolean>;
+  };
+  /** Each login's induction status on a project today; provided by `workforce`, which is built after `safety`. */
+  inductions?: {
+    statusForUsers(
+      scope: TenantScope,
+      projectId: string,
+      userIds: string[],
+    ): Promise<Map<string, InductionState>>;
   };
   now?: () => Date;
 }
