@@ -2,7 +2,7 @@ import { and, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { TenantScope } from '@archova/kernel';
 import { percentOf, toCents } from '../domain/money';
 import type { ReleaseStage } from '../domain/release';
-import type { ReminderContract } from '../domain/reminders';
+import type { OpenSopaClaim, ReminderContract } from '../domain/reminders';
 import {
   contracts,
   paymentClaims,
@@ -30,7 +30,7 @@ export async function findReminderContracts(scope: TenantScope): Promise<Reminde
     .limit(5000);
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
-  const [withheld, accounts, terms, releases, claimRows] = await Promise.all([
+  const [withheld, accounts, terms, releases, claimRows, openRows] = await Promise.all([
     scope.tx
       .select({
         contractId: paymentClaims.contractId,
@@ -57,6 +57,27 @@ export async function findReminderContracts(scope: TenantScope): Promise<Reminde
           inArray(paymentClaims.contractId, ids),
           eq(paymentClaims.isValid, true),
           isNotNull(paymentClaims.paymentDueOn),
+        ),
+      ),
+    // Valid claims still inside a SOPA window, with their payment schedule if one was issued.
+    scope.tx
+      .select({
+        id: paymentClaims.id,
+        contractId: paymentClaims.contractId,
+        number: paymentClaims.number,
+        scheduleDueOn: paymentClaims.scheduleDueOn,
+        claimedTotal: paymentClaims.claimedTotal,
+        issuedAt: paymentSchedules.issuedAt,
+        scheduled: paymentSchedules.scheduledAmount,
+      })
+      .from(paymentClaims)
+      .leftJoin(paymentSchedules, eq(paymentSchedules.claimId, paymentClaims.id))
+      .where(
+        and(
+          inArray(paymentClaims.contractId, ids),
+          eq(paymentClaims.isValid, true),
+          ne(paymentClaims.status, 'withdrawn'),
+          isNotNull(paymentClaims.scheduleDueOn),
         ),
       ),
   ]);
@@ -108,7 +129,20 @@ export async function findReminderContracts(scope: TenantScope): Promise<Reminde
         };
       })
       .filter((q) => q.outstandingCents > 0);
-    if (retentionWithheldCents <= 0 && unpaidClaims.length === 0) continue;
+    const openClaims: OpenSopaClaim[] = openRows
+      .filter((q) => q.contractId === c.id)
+      .map((q) => ({
+        claimId: q.id,
+        number: q.number,
+        scheduleDueOn: q.scheduleDueOn!,
+        claimedTotalCents: toCents(q.claimedTotal),
+        schedule:
+          q.issuedAt && q.scheduled
+            ? { issuedAt: q.issuedAt, scheduledCents: toCents(q.scheduled) }
+            : null,
+      }));
+    if (retentionWithheldCents <= 0 && unpaidClaims.length === 0 && openClaims.length === 0)
+      continue;
     const acct = acctByContract.get(c.id);
     const t = termsByContract.get(c.id);
     const releasedByStage: Partial<Record<ReleaseStage, number>> = {};
@@ -140,6 +174,7 @@ export async function findReminderContracts(scope: TenantScope): Promise<Reminde
         defectsPeriodDays: t?.defectsPeriodDays ?? null,
       },
       releasedByStage,
+      openClaims,
       unpaidClaims,
     });
   }

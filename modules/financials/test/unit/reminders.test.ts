@@ -116,4 +116,61 @@ describe('planReminders', () => {
     expect(planReminders([{ ...c, projectId: 'nope' }], NOW, ctx)).toEqual([]);
     expect(planReminders([{ ...c, ownerUserId: 'gone' }], NOW, ctx)).toEqual([]);
   });
+
+  describe('SOPA deadlines', () => {
+    const open = (o: Partial<NonNullable<ReminderContract['openClaims']>[number]>) => ({
+      claimId: 'q1',
+      number: 2,
+      scheduleDueOn: '2026-11-07',
+      claimedTotalCents: 1_100_000,
+      schedule: null,
+      ...o,
+    });
+    const run = (c: Partial<ReminderContract>, now = NOW) =>
+      planReminders([{ ...base, retentionWithheldCents: 0, ...c }], now, ctx);
+
+    it('warns daily in the last days before a payment schedule is due', () => {
+      const [r, ...rest] = run({ openClaims: [open({})] });
+      expect(rest).toEqual([]);
+      expect(r).toMatchObject({
+        kind: 'financials.schedule_due',
+        title: 'C-003 Tiling: payment schedule for claim 2 is due 2026-11-07',
+        dedupeKey: 'schedule-due:q1:2026-11-07:2026-11-05',
+      });
+      expect(r?.body).toContain('$11000.00');
+      expect(run({ openClaims: [open({ scheduleDueOn: '2026-11-20' })] })).toEqual([]);
+    });
+
+    it('says once that the schedule deadline was missed', () => {
+      const [r] = run({ openClaims: [open({ scheduleDueOn: '2026-11-01' })] });
+      expect(r).toMatchObject({
+        kind: 'financials.schedule_due',
+        dedupeKey: 'schedule-missed:q1',
+      });
+    });
+
+    it('reminds before the adjudication window closes when the schedule was for less (N11)', () => {
+      const claim = open({
+        schedule: { issuedAt: new Date('2026-10-28T01:00:00Z'), scheduledCents: 500_000 },
+      });
+      const nsw = { sopaState: 'NSW', openClaims: [claim] };
+      // The window closes Wed 11 Nov 2026: two days left on the 9th, six on the 5th.
+      const [r] = run(nsw, new Date('2026-11-09T00:00:00Z'));
+      expect(r).toMatchObject({
+        kind: 'financials.adjudication_window',
+        dedupeKey: 'adjudication-window:q1:2026-11-11:2026-11-09',
+      });
+      expect(run(nsw)).toEqual([]);
+      expect(run(nsw, new Date('2026-11-12T00:00:00Z'))).toEqual([]);
+    });
+
+    it('stays quiet when the schedule covers the claim', () => {
+      const claim = open({
+        schedule: { issuedAt: new Date('2026-10-28T01:00:00Z'), scheduledCents: 1_000_000 },
+      });
+      expect(
+        run({ sopaState: 'NSW', openClaims: [claim] }, new Date('2026-11-09T00:00:00Z')),
+      ).toEqual([]);
+    });
+  });
 });
