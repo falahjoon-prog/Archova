@@ -401,7 +401,9 @@ main:focus {
   border-color: var(--c-action-primary-hover);
 }
 .app-shell__assistant-toggle[aria-expanded='true'] {
-  box-shadow: inset 0 0 0 2px var(--c-bg), 0 0 0 2px var(--c-action-primary);
+  box-shadow:
+    inset 0 0 0 2px var(--c-bg),
+    0 0 0 2px var(--c-action-primary);
 }
 .app-shell__assistant {
   width: 380px;
