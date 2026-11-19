@@ -512,6 +512,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const integrations = createIntegrationsModule(services, {
     platform: platform.api,
     files: files.api,
+    applyRfi: (scope, projectId, input) => rfis.api.importRfi(scope, projectId, input),
     webhooks: opts.webhooks,
     accounting: opts.accounting,
   });

@@ -1881,6 +1881,11 @@ export const CancelImportJobParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
 });
+export const ApplyImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
 export const ListImportRowsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -9145,6 +9150,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: CancelImportJobParams,
+    query: null,
+    body: null,
+  },
+  applyImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/apply',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: null,
+    params: ApplyImportJobParams,
     query: null,
     body: null,
   },

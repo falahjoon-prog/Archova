@@ -28,12 +28,13 @@ const J = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}' as c
 const PARSE = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse' as const;
 const MAPPING = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping' as const;
 const CANCEL = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel' as const;
+const APPLY = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/apply' as const;
 const ROWS = '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows' as const;
 const SUGGEST = '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings' as const;
 
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 
-/** Live API only: staged rows exist only on the server. Applying a dry run is not in the API yet. */
+/** Live API only: staged rows exist only on the server. Applying works for RFI imports. */
 export function createImportsApi(orgId: string) {
   const path = (projectId: string, importJobId: string) => ({ orgId, projectId, importJobId });
   return {
@@ -118,6 +119,13 @@ export function createImportsApi(orgId: string) {
         await api.PUT(MAPPING, {
           params: { path: path(projectId, job.id), header: ifMatch(job.version) },
           body: mapping,
+        }),
+      );
+    },
+    async apply(projectId: string, job: ImportJob): Promise<ImportJob> {
+      return unwrap(
+        await api.POST(APPLY, {
+          params: { path: path(projectId, job.id), header: ifMatch(job.version) },
         }),
       );
     },

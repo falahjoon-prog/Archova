@@ -318,11 +318,31 @@ function ImportDetail({ id }: { id: string }) {
           ) : null}
           {j.status === 'validated' ? (
             <>
-              <Alert tone="info" title="Nothing has been created">
-                This was a dry run. Applying the rows to the register isn&apos;t available yet.
-              </Alert>
+              {j.entity === 'rfi' ? (
+                <Alert tone="info" title="Ready to import">
+                  {j.validRows} {j.validRows === 1 ? 'RFI is' : 'RFIs are'} ready. They keep their
+                  original numbers and dates, and nobody is notified.
+                  {j.invalidRows ? ` The ${j.invalidRows} with problems will be left out.` : ''}
+                  <Button
+                    disabled={m.apply.isPending || j.validRows === 0}
+                    onClick={() => m.apply.mutate(j)}
+                  >
+                    {m.apply.isPending ? 'Importing…' : `Import ${j.validRows} RFIs`}
+                  </Button>
+                  <ErrorAlert error={m.apply.error} title="We couldn't import these RFIs" />
+                </Alert>
+              ) : (
+                <Alert tone="info" title="Nothing has been created">
+                  This was a dry run. Importing this kind of record isn&apos;t available yet.
+                </Alert>
+              )}
               <RowsStep job={j} />
             </>
+          ) : null}
+          {j.status === 'done' ? (
+            <Alert tone="success" title="Import finished">
+              The records are in the register with their original numbers and dates.
+            </Alert>
           ) : null}
           {j.status === 'cancelled' ? (
             <Alert tone="info" title="This import was cancelled">

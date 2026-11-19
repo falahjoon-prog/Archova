@@ -5,6 +5,7 @@ import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } fro
 import type { FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import { CsvTooLarge, CsvTooWide, isBlankRecord, parseCsv } from '../domain/csv';
+import { toRfiImport, type RfiImportInput } from '../domain/apply-rfi';
 import { missingRequired, normaliseRow, type Mapping } from '../domain/normalise';
 import {
   importJobs,
@@ -22,6 +23,8 @@ export const MAX_ROWS = 50_000;
 /** The biggest file read inside the API; bigger ones wait for the worker (files readBytes contract). */
 export const MAX_INLINE_BYTES = 5_000_000;
 const INSERT_CHUNK = 500;
+/** Rows one apply call creates; bigger imports wait for the worker. */
+export const MAX_APPLY_ROWS = 5000;
 /** What a spreadsheet saved as CSV reports as its type (Excel on Windows says `ms-excel`). */
 const CSV_MIMES = ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'];
 const OPEN: ImportJobStatus[] = ['uploaded', 'parsed', 'mapped', 'validated', 'applying'];
@@ -29,6 +32,12 @@ const OPEN: ImportJobStatus[] = ['uploaded', 'parsed', 'mapped', 'validated', 'a
 export interface ImportsDeps {
   platform: Pick<PlatformApi, 'getProject'>;
   files: Pick<FilesModule['api'], 'getFile' | 'readFileBytes'>;
+  /** The `rfis` import command (X49); without it RFI imports stay dry runs. */
+  applyRfi?: (
+    scope: TenantScope,
+    projectId: string,
+    input: RfiImportInput,
+  ) => Promise<{ id: string; created: boolean }>;
   now?: () => Date;
 }
 
@@ -306,6 +315,51 @@ export function createImportService(deps: ImportsDeps) {
     return bump(scope, job, { status: 'cancelled', finishedAt: now() });
   }
 
+  /**
+   * Creates the records for every row that passed the dry run, through the owning module's import command, in one
+   * transaction: a row that the module rejects stops the whole import and nothing is created. Rows with problems stay
+   * as they are. Only RFI imports can be applied so far.
+   */
+  async function apply(scope: TenantScope, projectId: string, jobId: string, expected: number) {
+    const job = await load(scope, projectId, jobId);
+    if (job.version !== expected) throw versionConflict();
+    mustBe(job, 'validated');
+    if (job.entity !== 'rfi' || !deps.applyRfi)
+      throw new AppError(
+        'import.apply_unsupported',
+        'Applying this kind of import is not available yet.',
+      );
+    if (job.validRows === 0)
+      throw new AppError('import.nothing_to_apply', 'No rows passed the check.');
+    if (job.validRows > MAX_APPLY_ROWS)
+      throw new AppError(
+        'import.too_many_rows',
+        `Imports apply up to ${MAX_APPLY_ROWS} rows at a time; split the file.`,
+      );
+    const { timezone } = await deps.platform.getProject(scope, projectId);
+    const valid = await scope.tx
+      .select()
+      .from(importRows)
+      .where(and(eq(importRows.jobId, job.id), eq(importRows.status, 'valid')))
+      .orderBy(asc(importRows.rowNumber));
+    for (const row of valid) {
+      const made = toRfiImport(row.normalised ?? {}, timezone, job.id);
+      if (!made.ok) {
+        await scope.tx
+          .update(importRows)
+          .set({ status: 'failed', errors: [{ field: 'row', message: made.reason }] })
+          .where(eq(importRows.id, row.id));
+        continue;
+      }
+      const result = await deps.applyRfi(scope, projectId, made.input);
+      await scope.tx
+        .update(importRows)
+        .set({ status: result.created ? 'applied' : 'skipped', createdEntityId: result.id })
+        .where(eq(importRows.id, row.id));
+    }
+    return bump(scope, job, { status: 'done', finishedAt: now() });
+  }
+
   async function rows(
     scope: TenantScope,
     projectId: string,
@@ -329,7 +383,7 @@ export function createImportService(deps: ImportsDeps) {
     return toPage(found, opts.limit, (r) => ({ n: r.rowNumber }));
   }
 
-  return { list, get: load, create, parse, setMapping, cancel, rows };
+  return { list, get: load, create, parse, setMapping, cancel, apply, rows };
 }
 
 export type ImportService = ReturnType<typeof createImportService>;

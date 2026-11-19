@@ -284,6 +284,8 @@ export const PROBLEM_CODES = {
   'import.file_not_a_register': 422,
   'import.invalid_mapping': 422,
   'import.mapping_incomplete': 422,
+  'import.apply_unsupported': 422,
+  'import.nothing_to_apply': 422,
   // defects
   'defect.not_found': 404,
   'defect.invalid_transition': 409,
