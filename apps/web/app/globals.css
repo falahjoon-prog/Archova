@@ -340,6 +340,20 @@ main:focus {
     order: 3;
     flex: 1 0 100%;
   }
+  /* Three buttons per row, evenly sized, instead of ragged wrapping. */
+  .app-shell__nav ul {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-shell__nav-link {
+    width: 100%;
+    /* Left-aligned so every label starts on the same line, with or without a caret. */
+    justify-content: flex-start;
+    padding-inline: var(--space-3);
+  }
+  .app-shell__nav .app-shell__nav-menu li {
+    display: block;
+  }
   .app-shell__user {
     display: none;
   }
@@ -370,15 +384,24 @@ main:focus {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: calc(var(--space-10) + var(--space-1));
+  min-height: var(--space-9, 36px);
   padding: 0 var(--space-3);
-  color: var(--c-action-primary);
+  /* Filled so Ask Nova is the one call to action in the bar. */
+  color: var(--c-bg);
   font: inherit;
   font-weight: 600;
-  background: transparent;
-  border: 1px solid var(--c-border-divider);
+  background: var(--c-action-primary);
+  border: 1px solid var(--c-action-primary);
   border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
   cursor: pointer;
+}
+.app-shell__assistant-toggle:hover {
+  background: var(--c-action-primary-hover);
+  border-color: var(--c-action-primary-hover);
+}
+.app-shell__assistant-toggle[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 2px var(--c-bg), 0 0 0 2px var(--c-action-primary);
 }
 .app-shell__assistant {
   width: 380px;
@@ -909,19 +932,18 @@ main:focus {
     position: static;
     max-height: none;
     flex-direction: row;
-    overflow-x: auto;
+    /* Every tool is visible at once: the strip wraps onto rows instead of scrolling sideways. */
+    flex-wrap: wrap;
+    overflow: visible;
     gap: var(--space-2);
     border-bottom: 1px solid var(--c-border-divider);
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    /* A fade on the right edge says there is more to scroll to. */
-    mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
   }
-  .project-nav li {
-    scroll-snap-align: start;
+  .project-nav__group {
+    display: contents;
   }
   .project-nav ul {
     flex-direction: row;
+    flex-wrap: wrap;
   }
   .project-nav__group-label,
   .project-nav .cgroup__header,
