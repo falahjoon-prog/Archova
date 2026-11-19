@@ -20,6 +20,12 @@ const NOT_NULL_NO_DEFAULT_OK = new Set([
   'modules/financials/db/migrations/20261108093517_financials_tm_review_stage.sql',
 ]);
 
+/** Session-level SET check: merged files it flags wrongly. Don't add new files. */
+const SESSION_SET_OK = new Set([
+  // Merged 18 Nov; the line it flags is the `set` clause of an UPDATE, not a session SET.
+  'modules/billing/db/migrations/20261118171500_plan_modules_v2.sql',
+]);
+
 export function lintMigrationFiles(): string[] {
   const problems: string[] = [];
   for (const m of sourceMigrations()) {
@@ -63,7 +69,7 @@ export function lintMigrationFiles(): string[] {
     }
     if (/\bbypassrls\b/i.test(sql) && !/nobypassrls/i.test(sql))
       problems.push(`${where}: migrations never grant BYPASSRLS`);
-    if (/^\s*set\s+(?!local\b)/im.test(sql))
+    if (!SESSION_SET_OK.has(where) && /^\s*set\s+(?!local\b)/im.test(sql))
       problems.push(`${where}: session-level SET is banned; use SET LOCAL`);
   }
   return problems;

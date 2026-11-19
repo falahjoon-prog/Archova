@@ -54,6 +54,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
   'quote.read': 1.5,
+  // One declaration or certificate PDF (a few pages) read into the register's fields at the standard tier. Priya to confirm.
+  'declaration.read': 1,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
   // Nova: levelling every bid of a tender package at once (all bids in, one structured read out); two negotiation turns worth. Priya to confirm.

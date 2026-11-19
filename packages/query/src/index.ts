@@ -76,6 +76,7 @@ export type ProjectTool =
   | 'handover'
   | 'geotech'
   | 'insurance'
+  | 'declarations'
   | 'inspections'
   | 'late-submissions'
   | 'spec-books'

@@ -27,6 +27,7 @@ import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
+import { heuristicDeclarationRead } from '../../eval/suites/declaration-read';
 import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
 import { heuristicVoiceLog } from '../../eval/suites/voice-log';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
@@ -69,6 +70,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'coordination.capture_scan': heuristicCaptureScan,
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
+  'declaration.read': heuristicDeclarationRead,
   'quote.negotiate': heuristicQuoteNegotiate,
   'bid.level': heuristicBidLevel,
   'labor.productivity': heuristicLaborProductivity,

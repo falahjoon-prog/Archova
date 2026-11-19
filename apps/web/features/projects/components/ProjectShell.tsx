@@ -17,6 +17,7 @@ import {
   PermitsIcon,
   GeotechIcon,
   InsuranceIcon,
+  DeclarationsIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   FolderLinksIcon,
@@ -306,6 +307,11 @@ export function projectToolGroups(
       href: webRoutes.insurance(orgSlug, projectId),
       label: 'Insurance & bonds',
       icon: InsuranceIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.declarations(orgSlug, projectId),
+      label: 'Declarations',
+      icon: DeclarationsIcon,
     },
     canAdmin('inspections') && {
       href: webRoutes.safetySignals(orgSlug, projectId),

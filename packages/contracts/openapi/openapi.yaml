@@ -42,6 +42,7 @@ tags:
   - name: environment
   - name: precon
   - name: insurance
+  - name: declarations
   - name: safety
   - name: permits
   - name: handover
@@ -4419,6 +4420,40 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NovaQuoteReading' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/declaration-readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: readDeclarationWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: declarations.statements.manage
+      summary: Nova reads an uploaded subcontractor declaration or certificate (PDF) into the register's fields.
+      description: |
+        The PDF is already uploaded to the project. Nova reads its text (a scanned page through OCR) and proposes the
+        kind of declaration, who made it, the dates it covers, the insurer or reference, and who signed it, each with the
+        page and words it came from (`source`). Code keeps a value only when its words are on that page and, for a date,
+        when the date is printed there; anything else comes back null with a `warning`. Nothing is saved: the person
+        checks the reading against the PDF and records the declaration. Costs one Nova credit. A PDF with no readable
+        text returns 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { $ref: '#/components/schemas/FileRef' }
+      responses:
+        '200':
+          description: The reading
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaDeclarationReading' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections:
     parameters:
@@ -17647,6 +17682,73 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: listClaimPayments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: Payments made against a claim, with what is due, paid and still owing. A payee sees only their own contracts.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordClaimPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: >
+        Record a payment made against a claim (builder staff). Needs an issued payment schedule. The claim becomes paid
+        once the amount due, including GST, is met.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimPaymentRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments/{paymentId}/reverse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - name: paymentId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^pay_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reverseClaimPayment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: Undo a payment by recording the same amount back, dated today. A payment can be reversed once.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReverseClaimPaymentRequest' }
+      responses:
+        '200':
+          description: Reversed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimPayments' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -19432,6 +19534,238 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CoverDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/statements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeclarations
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: The subcontractor statutory declarations register for a project, with each item's status today.
+      parameters:
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/DeclarationKind' } }
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DeclarationStatus' } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDeclaration
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.manage
+      summary: Record a declaration received from a company on the project. It is numbered DEC-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDeclarationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeclarationId'
+    get:
+      operationId: getDeclaration
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: One declaration with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDeclaration
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.manage
+      summary: Edit a declaration. Send the ETag in If-Match.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDeclarationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DeclarationId'
+    post:
+      operationId: transitionDeclaration
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.manage
+      summary: reject (a note says why) or accept a declaration again.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeclarationTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeclarationFlags
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: What needs attention across the project's declarations today (rule-based, no model), most urgent first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/requirements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDeclarationRequirements
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: Which declarations this project asks for with every subcontract claim.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setDeclarationRequirements
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.manage
+      summary: Replace the required set. An empty list switches the claim check off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetDeclarationRequirementsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationRequirementList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeclarationClaims
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: Open subcontract payment claims with where each stands on the required declarations.
+      description: >
+        A claim is `blocked` when a required declaration is missing, rejected, or does not cover the claim's period
+        end; `cleared` when every required one is on the register or a subcontractor's statement is recorded on the
+        claim. Issuing a payment schedule for money on a blocked claim needs an acknowledgement. The schedule itself
+        is never stopped from being issued in time.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationClaimList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/declarations/chases:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDeclarationChases
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.read
+      summary: The chase emails sent to subcontractors for missing declarations.
+      parameters:
+        - { name: companyId, in: query, schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationChaseList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: chaseDeclarations
+      tags: [declarations]
+      x-module: declarations
+      x-permission: declarations.statements.manage
+      summary: Nova drafts, and with `send` sends, a chase email for a company's missing declarations.
+      description: >
+        Without `send` (the default) nothing leaves Archova: the draft is returned for the person to read and edit.
+        With `send` the email goes to the company's email address on file, exactly as given in `subject` and `body`
+        (or the draft when they are left out), and is recorded. The draft asks for the declarations; it never says a
+        claim will be held or reduced. Nothing is sent when nothing is missing (422) or the company has no email (422).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChaseDeclarationsRequest' }
+      responses:
+        '200':
+          description: The draft, and whether it was sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclarationChaseResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/esign/envelopes:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -19854,6 +20188,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cvr_[0-9A-Za-z]{26}$' }
+    DeclarationId:
+      name: declarationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dcl_[0-9A-Za-z]{26}$' }
     CompanyId:
       name: companyId
       in: path
@@ -25033,6 +25372,7 @@ components:
                 permit,
                 cover,
                 warranty_item,
+                declaration,
               ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
@@ -32651,6 +32991,45 @@ components:
         reference: { type: string, minLength: 1, maxLength: 200 }
         note: { type: string, minLength: 1, maxLength: 2000 }
         reversesMovementId: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+    ClaimPayment:
+      type: object
+      required: [id, paidOn, amount, reference, source, reversesPaymentId, recordedAt]
+      properties:
+        id: { type: string, pattern: '^pay_[0-9A-Za-z]{26}$' }
+        paidOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        reference: { type: string }
+        source: { type: string, enum: [manual, xero, myob] }
+        reversesPaymentId: { type: [string, 'null'], pattern: '^pay_[0-9A-Za-z]{26}$' }
+        recordedAt: { type: string, format: date-time }
+    ClaimPayments:
+      type: object
+      required: [claimId, payments, amountDue, paid, outstanding]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        payments:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimPayment' }
+        amountDue:
+          {
+            type: [string, 'null'],
+            description: 'Including GST; null before a payment schedule is issued',
+          }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        outstanding: { type: [string, 'null'] }
+    RecordClaimPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [paidOn, amount, reference]
+      properties:
+        paidOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+    ReverseClaimPaymentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 100 }
     PaymentSummaryClaim:
       type: object
       required:
@@ -33821,6 +34200,16 @@ components:
       properties:
         scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
         overallReason: { type: string, minLength: 1, maxLength: 5000 }
+        declarationsOverride:
+          type: object
+          additionalProperties: false
+          required: [reason]
+          description: >
+            Needed to schedule money on a subcontract claim while a declaration the project requires is missing
+            (see `listDeclarationClaims`). Needs `declarations.statements.override`. The schedule is not stopped from being issued
+            in time: this puts who went ahead, and why, on the record.
+          properties:
+            reason: { type: string, minLength: 3, maxLength: 2000 }
         lineReasons:
           type: array
           maxItems: 500
@@ -39314,6 +39703,376 @@ components:
               expiresOn: { type: [string, 'null'], format: date }
               daysLeft: { type: [integer, 'null'] }
               message: { type: string }
+    DeclarationKind:
+      type: string
+      enum: [workers_comp, payroll_tax, wages]
+    DeclarationStatus:
+      type: string
+      description: Derived from the lifecycle and the dates it covers, in the project's own calendar day.
+      enum: [current, expiring_soon, expired, not_yet_valid, rejected]
+    DeclarationLifecycle:
+      type: string
+      enum: [accepted, rejected]
+    Declaration:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          companyId,
+          kind,
+          declarantName,
+          declarantPosition,
+          declaredOn,
+          validFrom,
+          validTo,
+          issuer,
+          referenceNumber,
+          claimId,
+          lifecycle,
+          status,
+          daysToEnd,
+          notes,
+          fileIds,
+          readByNova,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        companyId: { type: string }
+        kind: { $ref: '#/components/schemas/DeclarationKind' }
+        declarantName: { type: [string, 'null'] }
+        declarantPosition: { type: [string, 'null'] }
+        declaredOn: { type: [string, 'null'], format: date }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        issuer: { type: [string, 'null'] }
+        referenceNumber: { type: [string, 'null'] }
+        claimId:
+          { type: [string, 'null'], description: Set when it was given for one payment claim. }
+        lifecycle: { $ref: '#/components/schemas/DeclarationLifecycle' }
+        status: { $ref: '#/components/schemas/DeclarationStatus' }
+        daysToEnd: { type: integer, description: Negative once the period it covers has ended. }
+        notes: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        readByNova: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DeclarationEvent:
+      type: object
+      required: [id, action, fromLifecycle, toLifecycle, validTo, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromLifecycle:
+          { oneOf: [{ $ref: '#/components/schemas/DeclarationLifecycle' }, { type: 'null' }] }
+        toLifecycle: { $ref: '#/components/schemas/DeclarationLifecycle' }
+        validTo: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DeclarationDetail:
+      type: object
+      required: [declaration, events]
+      properties:
+        declaration: { $ref: '#/components/schemas/Declaration' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationEvent' }
+    DeclarationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Declaration' }
+        nextCursor: { type: [string, 'null'] }
+    CreateDeclarationRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, companyId, validFrom, validTo]
+      properties:
+        kind: { $ref: '#/components/schemas/DeclarationKind' }
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        declarantName: { type: [string, 'null'], maxLength: 200 }
+        declarantPosition: { type: [string, 'null'], maxLength: 200 }
+        declaredOn: { type: [string, 'null'], format: date }
+        issuer: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        claimId: { type: [string, 'null'], pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        readByNova: { type: boolean }
+    UpdateDeclarationRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/DeclarationKind' }
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        declarantName: { type: [string, 'null'], maxLength: 200 }
+        declarantPosition: { type: [string, 'null'], maxLength: 200 }
+        declaredOn: { type: [string, 'null'], format: date }
+        issuer: { type: [string, 'null'], maxLength: 200 }
+        referenceNumber: { type: [string, 'null'], maxLength: 100 }
+        claimId: { type: [string, 'null'], pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        notes: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 6
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    DeclarationTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [reject, accept] }
+        note: { type: [string, 'null'], maxLength: 1000, description: Required for reject. }
+    DeclarationRequirement:
+      type: object
+      required: [kind, leadDays]
+      properties:
+        kind: { $ref: '#/components/schemas/DeclarationKind' }
+        leadDays: { type: integer, minimum: 0, maximum: 365 }
+    DeclarationRequirementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationRequirement' }
+    SetDeclarationRequirementsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/DeclarationRequirement' }
+    DeclarationIssueKind:
+      type: string
+      enum: [missing, rejected, does_not_cover, expired, expiring]
+    DeclarationIssue:
+      type: object
+      required:
+        [kind, level, declarationKind, declarationId, declarationLabel, validTo, daysLeft, message]
+      properties:
+        kind: { $ref: '#/components/schemas/DeclarationIssueKind' }
+        level: { type: string, enum: [blocking, warning] }
+        declarationKind: { $ref: '#/components/schemas/DeclarationKind' }
+        declarationId: { type: [string, 'null'] }
+        declarationLabel: { type: [string, 'null'] }
+        validTo: { type: [string, 'null'], format: date }
+        daysLeft: { type: [integer, 'null'] }
+        message: { type: string }
+    DeclarationFlag:
+      type: object
+      required:
+        [
+          kind,
+          severity,
+          companyId,
+          title,
+          detail,
+          declarationId,
+          declarationKind,
+          validTo,
+          daysLeft,
+        ]
+      properties:
+        kind: { $ref: '#/components/schemas/DeclarationIssueKind' }
+        severity: { type: string, enum: [info, warn, high] }
+        companyId: { type: string }
+        title: { type: string }
+        detail: { type: string }
+        declarationId: { type: [string, 'null'] }
+        declarationKind: { $ref: '#/components/schemas/DeclarationKind' }
+        validTo: { type: [string, 'null'], format: date }
+        daysLeft: { type: [integer, 'null'] }
+    DeclarationFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationFlag' }
+    DeclarationClaimStatus:
+      type: object
+      required:
+        [
+          claimId,
+          number,
+          contractId,
+          contractTitle,
+          companyId,
+          companyName,
+          periodEnd,
+          state,
+          coveredByStatement,
+          issues,
+        ]
+      properties:
+        claimId: { type: string }
+        number: { type: integer }
+        contractId: { type: string }
+        contractTitle: { type: string }
+        companyId: { type: string }
+        companyName: { type: string }
+        periodEnd: { type: string, format: date }
+        state: { type: string, enum: [cleared, warning, blocked] }
+        coveredByStatement:
+          type: boolean
+          description: A subcontractor's statement is recorded on the claim, which stands for all three declarations.
+        issues:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationIssue' }
+    DeclarationClaimList:
+      type: object
+      required: [requirementsSet, data]
+      properties:
+        requirementsSet:
+          type: boolean
+          description: False when the project has set no requirements, so no claim is ever blocked.
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationClaimStatus' }
+    ChaseDeclarationsRequest:
+      type: object
+      additionalProperties: false
+      required: [companyId]
+      properties:
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        claimId:
+          {
+            type: [string, 'null'],
+            pattern: '^pcl_[0-9A-Za-z]{26}$',
+            description: Chase for this open claim; otherwise for what is missing today.,
+          }
+        send: { type: boolean, default: false }
+        subject: { type: [string, 'null'], maxLength: 300 }
+        body: { type: [string, 'null'], maxLength: 8000 }
+    DeclarationChaseDraft:
+      type: object
+      required: [subject, body, kinds]
+      properties:
+        subject: { type: string }
+        body: { type: string }
+        kinds:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationKind' }
+    DeclarationChaseResult:
+      type: object
+      required: [draft, recipient, sent, chaseId, sentAt]
+      properties:
+        draft:
+          oneOf: [{ $ref: '#/components/schemas/DeclarationChaseDraft' }, { type: 'null' }]
+          description: Null when nothing is missing.
+        recipient: { type: [string, 'null'], description: The company's email on file. }
+        sent: { type: boolean }
+        chaseId: { type: [string, 'null'] }
+        sentAt: { type: [string, 'null'], format: date-time }
+    DeclarationChase:
+      type: object
+      required: [id, companyId, claimId, kinds, recipient, subject, body, sentBy, sentAt]
+      properties:
+        id: { type: string }
+        companyId: { type: string }
+        claimId: { type: [string, 'null'] }
+        kinds:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationKind' }
+        recipient: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        sentBy: { type: [string, 'null'] }
+        sentAt: { type: string, format: date-time }
+    DeclarationChaseList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeclarationChase' }
+    NovaDeclarationReading:
+      type: object
+      required:
+        - runId
+        - fileId
+        - pageCount
+        - scannedPages
+        - skippedPages
+        - truncated
+        - kind
+        - companyName
+        - declarantName
+        - declarantPosition
+        - declaredOn
+        - validFrom
+        - validTo
+        - issuer
+        - referenceNumber
+        - signed
+        - warnings
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        fileId: { type: string }
+        pageCount: { type: integer, minimum: 1 }
+        scannedPages:
+          description: Pages read by OCR rather than the PDF text layer; check these against the PDF.
+          type: array
+          items: { type: integer, minimum: 1 }
+        skippedPages:
+          type: array
+          items: { type: integer, minimum: 1 }
+        truncated: { type: boolean }
+        kind:
+          description: Which declaration the document is, or null when Nova could not tell.
+          oneOf: [{ $ref: '#/components/schemas/DeclarationKind' }, { type: 'null' }]
+        companyName: { $ref: '#/components/schemas/NovaDeclarationField' }
+        declarantName: { $ref: '#/components/schemas/NovaDeclarationField' }
+        declarantPosition: { $ref: '#/components/schemas/NovaDeclarationField' }
+        declaredOn: { $ref: '#/components/schemas/NovaDeclarationField' }
+        validFrom: { $ref: '#/components/schemas/NovaDeclarationField' }
+        validTo: { $ref: '#/components/schemas/NovaDeclarationField' }
+        issuer: { $ref: '#/components/schemas/NovaDeclarationField' }
+        referenceNumber: { $ref: '#/components/schemas/NovaDeclarationField' }
+        signed:
+          type: [boolean, 'null']
+          description: Whether the document shows a signature or a signed-by line; null when unclear. Nova never checks a signature is genuine.
+        warnings:
+          type: array
+          items: { type: string }
+    NovaDeclarationField:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: [string, 'null'], description: Dates are `YYYY-MM-DD`. }
+        source:
+          oneOf:
+            - type: object
+              required: [page, snippet]
+              properties:
+                page: { type: integer, minimum: 1 }
+                snippet: { type: string }
+            - type: 'null'
     UpdateIncidentRequest:
       type: object
       additionalProperties: false

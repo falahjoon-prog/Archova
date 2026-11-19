@@ -139,6 +139,7 @@ export const webRoutes = {
   handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
+  declarations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/declarations`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
@@ -224,6 +225,7 @@ export const mobileRoutes = {
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
+  photos: (projectId: string) => `/project/${enc(projectId)}/photos`,
   permits: (projectId: string) => `/project/${enc(projectId)}/permits`,
   permit: (projectId: string, permitId: string) =>
     `/project/${enc(projectId)}/permits/${enc(permitId)}`,

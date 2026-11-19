@@ -384,8 +384,12 @@ export const PROBLEM_CODES = {
   'financials.claim.duplicate_item': 422,
   'financials.claim.over_item_value': 422,
   'financials.claim.already_scheduled': 409,
+  'financials.payment.no_schedule': 409,
+  'financials.payment.not_found': 404,
+  'financials.payment.not_reversible': 409,
   'financials.schedule.reason_required': 422,
   'financials.schedule.over_claim': 422,
+  'financials.schedule.declarations_missing': 422,
   'financials.sopa.state_not_live': 422,
   'financials.variation.not_found': 404,
   'financials.forecast_adjustment.not_found': 404,
@@ -491,6 +495,9 @@ export const PROBLEM_CODES = {
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,
+  // declarations: subcontractor statutory declarations register
+  'declaration.not_found': 404,
+  'declaration.invalid_transition': 409,
   'incident.not_found': 404,
   'incident.action_not_found': 404,
   'incident.invalid_transition': 409,
