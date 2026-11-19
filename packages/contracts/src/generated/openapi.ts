@@ -22148,6 +22148,15 @@ export interface components {
             variance: number;
             /** @enum {string} */
             status: "not_started" | "on_track" | "behind" | "complete";
+            /** @description Units per working day over the last 28 days; null with fewer than 3 days of work. */
+            trailingRate: number | null;
+            /** @description Units per working day needed from tomorrow to hit the planned finish; null when finished or past due. */
+            requiredRate: number | null;
+            /**
+             * Format: date
+             * @description Finish date if the trailing rate holds; null when complete or no usable rate.
+             */
+            forecastFinish: string | null;
         };
         ProductionCurvePoint: {
             /**

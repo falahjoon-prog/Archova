@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  itemForecast,
   itemProgress,
   plannedFraction,
   productionCurve,
@@ -129,5 +130,49 @@ describe('rateFlags', () => {
       'crew:Crew 2:panels',
       'trade:Solar:panels',
     ]);
+  });
+});
+
+describe('itemForecast', () => {
+  const fItem: Item = {
+    id: 'a',
+    name: 'Panels',
+    uom: 'panels',
+    trade: null,
+    location: null,
+    plannedQuantity: 100,
+    plannedStart: '2026-10-05',
+    plannedFinish: '2026-11-27',
+  };
+  const log = (loggedOn: string, quantity: number) => ({
+    itemId: 'a',
+    loggedOn,
+    quantity,
+    crew: null,
+  });
+
+  it('has no rate with too few working days', () => {
+    const f = itemForecast(fItem, [log('2026-11-02', 5)], 5, '2026-11-09');
+    expect(f.trailingRate).toBeNull();
+    expect(f.forecastFinish).toBeNull();
+    expect(f.requiredRate).toBeGreaterThan(0);
+  });
+
+  it('projects the finish at the trailing rate and the rate needed to hit plan', () => {
+    // Mon 2026-10-19 .. Fri 2026-11-13 is 20 working days; 40 panels at 2/day over the last 4 weeks.
+    const entries = ['2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09'].map((d) => log(d, 10));
+    const f = itemForecast(fItem, entries, 40, '2026-11-15');
+    expect(f.trailingRate).toBe(2);
+    expect(f.forecastFinish! > fItem.plannedFinish).toBe(true);
+    expect(f.requiredRate).toBeGreaterThan(f.trailingRate!);
+  });
+
+  it('is empty when complete and has no required rate once past due', () => {
+    expect(itemForecast(fItem, [], 100, '2026-11-15')).toEqual({
+      trailingRate: null,
+      requiredRate: null,
+      forecastFinish: null,
+    });
+    expect(itemForecast(fItem, [], 10, '2026-12-01').requiredRate).toBeNull();
   });
 });
