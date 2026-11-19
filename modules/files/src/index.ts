@@ -107,6 +107,19 @@ export function createFilesModule(
           checkAccess: false,
           onlyIfUnfiled: true,
         }),
+      /**
+       * A manager confirmed a safety hazard on this photo: it moves to the Safety risk album, over where it was taken.
+       * Photos that are not gallery photos (incident, induction) stay where they are.
+       */
+      fileSafetyRisk: (
+        scope: Parameters<typeof albums.fileUnder>[0],
+        projectId: string,
+        fileId: string,
+      ) =>
+        albums.fileUnder(scope, projectId, fileId, { category: 'safety_risk' }, 'manual', {
+          checkAccess: false,
+          softMissing: true,
+        }),
       /** What a device may queue offline and push (modules/sync). */
       syncCommands: [createPhotoCommand],
     },

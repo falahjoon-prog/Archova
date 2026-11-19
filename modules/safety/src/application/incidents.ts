@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
 import { localDateOf } from '@archova/time';
-import { uuidv7 } from '@archova/domain';
+import { injuryProblems, uuidv7 } from '@archova/domain';
 import {
   AppError,
   decodeCursor,
@@ -218,6 +218,11 @@ export function createIncidentService(deps: SafetyDeps) {
   async function replacePeople(scope: TenantScope, row: IncidentRow, people: PersonInput[]) {
     for (const p of people)
       if (p.companyId) await checkCompany(scope, row.projectId, p.companyId, 'people');
+    for (const p of people) {
+      const problems = p.injury ? injuryProblems(p.injury) : [];
+      if (problems.length > 0)
+        throw new AppError('validation_failed', 'The injury details are not valid.', problems);
+    }
     await scope.tx.delete(incidentPeople).where(eq(incidentPeople.incidentId, row.id));
     if (people.length === 0) return;
     await scope.tx.insert(incidentPeople).values(

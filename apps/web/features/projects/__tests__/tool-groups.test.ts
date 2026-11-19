@@ -19,6 +19,7 @@ describe('projectToolGroups', () => {
       'Meetings',
       'Site diary',
       'Delay register',
+      'EOT claims',
       'Programme',
       'Attendance',
       'Deliveries',

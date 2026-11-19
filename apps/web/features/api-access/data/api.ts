@@ -44,6 +44,13 @@ export function createApiAccessApi(orgId: string) {
         }),
       );
     },
+    async replayDelivery(webhookId: string, deliveryId: string): Promise<WebhookDelivery> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay', {
+          params: { path: { orgId, webhookId, deliveryId } },
+        }),
+      );
+    },
     async deliveries(webhookId: string): Promise<WebhookDelivery[]> {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries', {

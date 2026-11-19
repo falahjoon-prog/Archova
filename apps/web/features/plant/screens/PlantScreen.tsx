@@ -30,7 +30,12 @@ import type {
   PlantFlag,
   PlantPlan,
 } from '../data/api';
-import { usePlantData, usePlantMutations, usePlantUtilisation } from '../hooks/usePlant';
+import {
+  useCostCodes,
+  usePlantData,
+  usePlantMutations,
+  usePlantUtilisation,
+} from '../hooks/usePlant';
 
 const ZONE = 'Australia/Sydney';
 const WINDOW_DAYS = 30;
@@ -84,7 +89,9 @@ export function PlantScreen() {
   const util = usePlantUtilisation(past, today);
   const projects = useQuery(queries.projects(org.orgId));
   const m = usePlantMutations();
-  const canManage = org.role === 'owner' || org.role === 'admin';
+  // Staff keep the register and allocate machines; daily rates are for owners and admins (plant.rates.view).
+  const canManage = org.role === 'owner' || org.role === 'admin' || org.role === 'member';
+  const canSeeRates = org.role === 'owner' || org.role === 'admin';
 
   const assetName = useMemo(() => {
     const map = new Map((assets.data ?? []).map((a) => [a.id, `${a.name} (${a.assetNumber})`]));
@@ -108,7 +115,15 @@ export function PlantScreen() {
       cell: (a) =>
         a.ownership === 'hired' ? `Hired${a.supplier ? ` from ${a.supplier}` : ''}` : 'Owned',
     },
-    { id: 'rate', header: 'Daily rate', cell: (a) => money(a.dailyRateCents) },
+    ...(canSeeRates
+      ? [
+          {
+            id: 'rate',
+            header: 'Daily rate',
+            cell: (a: PlantAsset) => money(a.dailyRateCents),
+          } satisfies DataTableColumn<PlantAsset>,
+        ]
+      : []),
     {
       id: 'status',
       header: 'Status',
@@ -146,7 +161,25 @@ export function PlantScreen() {
       sortValue: (a) => a.startsOn,
       cell: (a) => `${formatLocalDate(a.startsOn)} to ${formatLocalDate(a.endsOn)}`,
     },
-    { id: 'cost', header: 'Est. cost', cell: (a) => money(a.estimatedCostCents) },
+    ...(canSeeRates
+      ? [
+          {
+            id: 'cost',
+            header: 'Est. cost',
+            cell: (a: PlantAllocation) => money(a.estimatedCostCents),
+          } satisfies DataTableColumn<PlantAllocation>,
+        ]
+      : []),
+    {
+      id: 'posted',
+      header: 'Posted to budget',
+      cell: (a) =>
+        a.postedThrough
+          ? `Through ${formatLocalDate(a.postedThrough)}`
+          : a.costCodeId
+            ? 'Not yet'
+            : 'No cost code',
+    },
     {
       id: 'status',
       header: 'Status',
@@ -285,7 +318,7 @@ export function PlantScreen() {
                 />
               }
             />
-            {canManage ? <AssetForm m={m} /> : null}
+            {canManage ? <AssetForm m={m} canSeeRates={canSeeRates} /> : null}
           </div>
         ) : null}
         {tab === 'schedule' ? (
@@ -417,7 +450,7 @@ function FlagRow({ flag }: { flag: PlantFlag }) {
   );
 }
 
-function AssetForm({ m }: { m: Mutations }) {
+function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
   const [name, setName] = useState('');
   const [assetNumber, setAssetNumber] = useState('');
   const [category, setCategory] = useState<PlantAssetCategory>('excavator');
@@ -438,7 +471,7 @@ function AssetForm({ m }: { m: Mutations }) {
         category,
         ownership,
         ...(ownership === 'hired' && supplier.trim() ? { supplier: supplier.trim() } : {}),
-        ...(rate ? { dailyRateCents: dollarsToCents(rate) } : {}),
+        ...(canSeeRates && rate ? { dailyRateCents: dollarsToCents(rate) } : {}),
       },
       {
         onSuccess: () => {
@@ -487,12 +520,14 @@ function AssetForm({ m }: { m: Mutations }) {
               onChange={(e) => setSupplier(e.target.value)}
             />
           ) : null}
-          <TextField
-            label="Daily rate ($)"
-            inputMode="decimal"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-          />
+          {canSeeRates ? (
+            <TextField
+              label="Daily rate ($)"
+              inputMode="decimal"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+            />
+          ) : null}
         </div>
         {error ? <Alert tone="danger">{error}</Alert> : null}
         <ErrorAlert error={m.createAsset.error} title="We couldn't add this machine" />
@@ -519,6 +554,8 @@ function AllocateForm({
 }) {
   const [assetId, setAssetId] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [costCodeId, setCostCodeId] = useState('');
+  const codes = useCostCodes(projectId);
   const [startsOn, setStartsOn] = useState(today);
   const [endsOn, setEndsOn] = useState(today);
   const [error, setError] = useState<string | null>(null);
@@ -528,7 +565,10 @@ function AllocateForm({
     if (!assetId) return setError('Choose the machine.');
     if (!projectId) return setError('Choose the project.');
     if (endsOn < startsOn) return setError('The allocation must not end before it starts.');
-    m.allocate.mutate({ assetId, body: { projectId, startsOn, endsOn } });
+    m.allocate.mutate({
+      assetId,
+      body: { projectId, startsOn, endsOn, ...(costCodeId ? { costCodeId } : {}) },
+    });
   }
   return (
     <Card title="Allocate a machine to a project">
@@ -548,13 +588,34 @@ function AllocateForm({
           <Select
             label="Project"
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+            onChange={(e) => {
+              setProjectId(e.target.value);
+              setCostCodeId('');
+            }}
             options={[
               { value: '', label: 'Choose a project' },
               ...projects.map((p) => ({ value: p.id, label: p.name })),
             ]}
           />
         </div>
+        <Select
+          label="Cost code (hire cost is posted to this budget line)"
+          value={costCodeId}
+          onChange={(e) => setCostCodeId(e.target.value)}
+          options={[
+            {
+              value: '',
+              label: projectId
+                ? (codes.data ?? []).length
+                  ? 'No cost code, not posted to the budget'
+                  : 'No cost codes you can use on this project'
+                : 'Choose a project first',
+            },
+            ...(codes.data ?? [])
+              .filter((c) => !c.archived)
+              .map((c) => ({ value: c.id, label: `${c.code} ${c.description}` })),
+          ]}
+        />
         <div className="form-row">
           <TextField
             label="From"

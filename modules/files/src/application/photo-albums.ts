@@ -259,7 +259,7 @@ export function createPhotoAlbumsService({
     fileId: string,
     input: FilingInput,
     source: PhotoFilingSource,
-    opts: { checkAccess?: boolean; onlyIfUnfiled?: boolean } = {},
+    opts: { checkAccess?: boolean; onlyIfUnfiled?: boolean; softMissing?: boolean } = {},
   ) {
     if (opts.checkAccess !== false) await write(scope, projectId);
     if (
@@ -272,11 +272,12 @@ export function createPhotoAlbumsService({
         [{ path: 'refId', message: 'refKind and refId come together' }],
       );
     // Called from other modules' write paths: a file that isn't a gallery photo is simply not filed.
-    const f = opts.onlyIfUnfiled
-      ? await loadPhoto(scope, projectId, fileId).catch((e: unknown) =>
-          e instanceof AppError && e.code === 'file.not_found' ? null : Promise.reject(e),
-        )
-      : await loadPhoto(scope, projectId, fileId);
+    const f =
+      opts.onlyIfUnfiled || opts.softMissing
+        ? await loadPhoto(scope, projectId, fileId).catch((e: unknown) =>
+            e instanceof AppError && e.code === 'file.not_found' ? null : Promise.reject(e),
+          )
+        : await loadPhoto(scope, projectId, fileId);
     if (!f) return null;
     if (opts.onlyIfUnfiled) {
       const [existing] = await scope.tx

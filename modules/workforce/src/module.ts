@@ -13,6 +13,7 @@ import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
 import { toSessionDto } from './api/mappers';
+import { attendanceSyncCommands } from './sync';
 import { workforceRoutes, type InductionHooks } from './api/routes';
 import { WORKFORCE_PERMISSIONS } from './permissions';
 
@@ -118,18 +119,24 @@ export function createWorkforceModule(
     api: {
       /** What the mobile pull reads (modules/sync): attendance sessions. */
       syncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: attendanceSyncCommands(attendance),
       /** Scheduled job (every 15 minutes per org): closes sessions left open after the site's day end. */
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
       getInductionVersion: inductions.versionForAi,
       /** For `reporting` (Nova project risk): subcontractor insurance read through live wallet grants. */
       insuranceSignals: grants.insuranceSignals,
+      /** For `reporting` (incident analytics): hours on submitted timesheets, the denominator of LTIFR and TRIFR. */
+      hoursWorked: sheets.hoursWorked,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
       /** For `permits` (Nova flags): licences in the wallet that have lapsed or are about to. */
       lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `reporting` (time dashboard): paid time per timesheet line, by project and date range. */
+      timeForReporting: sheets.timeForReporting,
       /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
       dayActivity: sheets.dayActivity,
       /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */

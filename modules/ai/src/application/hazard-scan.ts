@@ -31,6 +31,8 @@ export interface HazardScanDeps {
   gateway: Pick<Gateway, 'runTask'>;
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
+  /** Files a confirmed hazard's photo under the Photos tool's Safety risk album. */
+  fileSafetyRisk?: (scope: TenantScope, projectId: string, fileId: string) => Promise<unknown>;
   now?: () => Date;
 }
 
@@ -213,6 +215,7 @@ export function createHazardScanService(deps: HazardScanDeps) {
         actorId: scope.ctx.userId,
       },
     });
+    if (input.decision === 'confirmed') await deps.fileSafetyRisk?.(scope, projectId, row.fileId);
     return view(updated!);
   }
 

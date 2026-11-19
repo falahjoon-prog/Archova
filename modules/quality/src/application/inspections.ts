@@ -757,7 +757,10 @@ export function createInspectionService(deps: QualityDeps) {
       throw new AppError('validation_failed', 'Add a comment or attach a file.', [
         { path: 'body', message: 'A comment or a file is required' },
       ]);
-    const checked = await checkFiles(deps, scope, projectId, fileIds);
+    const checked = await checkFiles(deps, scope, projectId, fileIds, 'fileIds', {
+      kind: 'inspection',
+      id: inspection.id,
+    });
     if (body) await logItemEvent(scope, inspection, templateItemId, 'comment', { body });
     await logFiles(scope, inspection, templateItemId, checked, new Set());
     return detail(scope, projectId, inspectionId);
@@ -802,6 +805,7 @@ export function createInspectionService(deps: QualityDeps) {
         projectId,
         r.fileIds ?? [],
         `responses/${n}/fileIds`,
+        { kind: 'inspection', id },
       );
       const values = {
         // N/A overrides any item type; otherwise only pass/fail items carry a result.

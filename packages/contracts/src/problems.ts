@@ -42,6 +42,9 @@ export const PROBLEM_CODES = {
   'webhook.invalid_event_type': 422,
   'webhook.verification_failed': 422,
   'webhook.limit_reached': 409,
+  'webhook.delivery_not_found': 404,
+  'webhook.delivery_pending': 409,
+  'webhook.disabled': 409,
   // accounting connections (integrations/02)
   'accounting.not_configured': 409,
   'accounting.not_found': 404,
@@ -351,6 +354,12 @@ export const PROBLEM_CODES = {
   'schedule.link_exists': 409,
   'schedule.item_link_not_found': 404,
   'schedule.item_link_exists': 409,
+  // scheduling (delay events and EOT claims)
+  'delay_event.not_found': 404,
+  'delay_event.bad_state': 409,
+  'delay_event.evidence_taken': 409,
+  'delay_event.evidence_not_found': 404,
+  'delay_event.source_not_found': 422,
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
@@ -419,6 +428,9 @@ export const PROBLEM_CODES = {
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.change_event.not_found': 404,
+  'financials.change_event.closed': 409,
+  'financials.change_event.reason_required': 422,
   'financials.tm_ticket.not_found': 404,
   'financials.tm_ticket.bad_state': 409,
   'financials.tm_ticket.duplicate_source': 409,
@@ -471,6 +483,11 @@ export const PROBLEM_CODES = {
   'geotech.investigation_not_found': 404,
   'geotech.test_not_found': 404,
   'geotech.earthworks_not_found': 404,
+  // handover: project handover and close-out pack
+  'handover.item_not_found': 404,
+  'handover.invalid_transition': 409,
+  'handover.nothing_to_issue': 422,
+  'handover.incomplete': 409,
   // insurance: subcontractor insurance and bonds register
   'cover.not_found': 404,
   'cover.invalid_transition': 409,
@@ -541,6 +558,7 @@ export const PROBLEM_CODES = {
   'gate.invalid_code': 422,
   'worker.not_found': 404,
   'attendance.not_on_site': 409,
+  'attendance.session_not_found': 404,
   'roll_call.not_found': 404,
   'roll_call.ended': 409,
   'induction.not_found': 404,

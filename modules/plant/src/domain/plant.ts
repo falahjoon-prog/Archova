@@ -99,6 +99,7 @@ export interface FlagAllocation extends Span {
   id: string;
   assetId: string;
   projectId: string;
+  costCodeId?: string | null;
 }
 export interface FlagPlan {
   id: string;
@@ -116,6 +117,7 @@ export type FlagCode =
   | 'double_booking'
   | 'booked_while_unavailable'
   | 'service_during_booking'
+  | 'hire_not_costed'
   | 'idle';
 export type FlagSeverity = 'critical' | 'warning' | 'info';
 
@@ -212,6 +214,20 @@ export function computeFlags(input: {
           date: b.startsOn,
         });
       }
+
+    // Hire that nothing tags to a cost code never reaches a project budget.
+    if (asset.ownership === 'hired' && asset.dailyRateCents) {
+      const untagged = allocs.filter((a) => !a.costCodeId && a.endsOn >= input.today);
+      if (untagged.length > 0)
+        flags.push({
+          code: 'hire_not_costed',
+          severity: 'warning',
+          assetId: asset.id,
+          subjectId: untagged[0]!.id,
+          message: `${label(asset)} is on hire but ${plural(untagged.length, 'allocation')} ${untagged.length === 1 ? 'has' : 'have'} no cost code, so the hire cost won't reach the project budget.`,
+          date: untagged[0]!.startsOn,
+        });
+    }
 
     if (asset.status === 'maintenance') {
       const upcoming = allocs.filter((a) => a.endsOn >= input.today);

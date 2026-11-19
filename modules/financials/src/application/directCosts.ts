@@ -24,6 +24,100 @@ export interface RecordDirectCostInput {
   amount: string;
   /** The GST on top, zero if none. */
   gst?: string;
+  /** Who is on record as the author, when a job records the cost for someone (scheduled plant hire). */
+  createdBy?: string;
+}
+
+/** Locks the budget line, then moves its actual by `deltaCents`. */
+async function moveActual(
+  scope: TenantScope,
+  projectId: string,
+  budgetLineId: string,
+  deltaCents: number,
+) {
+  const [line] = await scope.tx
+    .select()
+    .from(budgetLines)
+    .where(and(eq(budgetLines.id, budgetLineId), eq(budgetLines.projectId, projectId)))
+    .for('update');
+  if (!line)
+    throw new AppError(
+      'financials.budget.line_not_found',
+      'That budget line is not on this project.',
+    );
+  await scope.tx
+    .update(budgetLines)
+    .set({ actual: fromCents(Math.max(toCents(line.actual) + deltaCents, 0)) })
+    .where(eq(budgetLines.id, line.id));
+}
+
+/**
+ * Records a direct cost without a permission check: the caller has already decided who may do this (the staff route
+ * above, or the scheduled plant hire posting in the worker, which acts for no one). Adds to the budget line's actual.
+ */
+export async function insertDirectCost(
+  scope: TenantScope,
+  projectId: string,
+  input: RecordDirectCostInput,
+  now: () => Date = () => new Date(),
+) {
+  if (toCents(input.amount) <= 0)
+    throw new AppError('validation_failed', 'A direct cost must be for more than zero.', [
+      { path: 'amount', message: 'Must be more than zero' },
+    ]);
+  if (input.incurredOn > now().toISOString().slice(0, 10))
+    throw new AppError('validation_failed', 'A cost cannot be incurred in the future.', [
+      { path: 'incurredOn', message: 'Must not be in the future' },
+    ]);
+  // Lock the line first (also proves it is on this project), then number under the project lock.
+  await moveActual(scope, projectId, input.budgetLineId, toCents(input.amount));
+  await scope.tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${'direct_costs:' + projectId}, 0))`,
+  );
+  const [n] = await scope.tx
+    .select({ n: sql<number>`coalesce(max(${directCosts.number}), 0) + 1` })
+    .from(directCosts)
+    .where(eq(directCosts.projectId, projectId));
+  const id = uuidv7();
+  const [created] = await scope.tx
+    .insert(directCosts)
+    .values({
+      id,
+      orgId: scope.ctx.orgId,
+      projectId,
+      number: Number(n!.n),
+      budgetLineId: input.budgetLineId,
+      category: input.category,
+      description: input.description.trim(),
+      supplier: input.supplier?.trim() || null,
+      reference: input.reference?.trim() || null,
+      incurredOn: input.incurredOn,
+      amount: input.amount,
+      gst: input.gst ?? '0',
+      createdBy: input.createdBy ?? scope.ctx.userId,
+    })
+    .returning();
+  await recordRetention(scope, {
+    recordType: 'financials.direct_costs',
+    recordId: id,
+    projectId,
+    category: 'financial_7y',
+    anchor: created!.createdAt,
+  });
+  scope.events.add({
+    type: 'financials.direct_cost.recorded.v1',
+    projectId,
+    entityType: 'direct_cost',
+    entityId: id,
+    entityVersion: created!.version,
+    data: {
+      directCostId: id,
+      number: created!.number,
+      budgetLineId: input.budgetLineId,
+      amount: created!.amount,
+    },
+  });
+  return created!;
 }
 
 /**
@@ -49,92 +143,13 @@ export function createDirectCostsService(deps: DirectCostsDeps) {
     return r;
   }
 
-  /** Locks the budget line, then moves its actual by `deltaCents`. */
-  async function moveActual(
-    scope: TenantScope,
-    projectId: string,
-    budgetLineId: string,
-    deltaCents: number,
-  ) {
-    const [line] = await scope.tx
-      .select()
-      .from(budgetLines)
-      .where(and(eq(budgetLines.id, budgetLineId), eq(budgetLines.projectId, projectId)))
-      .for('update');
-    if (!line)
-      throw new AppError(
-        'financials.budget.line_not_found',
-        'That budget line is not on this project.',
-      );
-    await scope.tx
-      .update(budgetLines)
-      .set({ actual: fromCents(Math.max(toCents(line.actual) + deltaCents, 0)) })
-      .where(eq(budgetLines.id, line.id));
-  }
-
   async function recordDirectCost(
     scope: TenantScope,
     projectId: string,
     input: RecordDirectCostInput,
   ) {
     await need(scope, 'financials.direct_costs.manage', projectId);
-    if (toCents(input.amount) <= 0)
-      throw new AppError('validation_failed', 'A direct cost must be for more than zero.', [
-        { path: 'amount', message: 'Must be more than zero' },
-      ]);
-    if (input.incurredOn > now().toISOString().slice(0, 10))
-      throw new AppError('validation_failed', 'A cost cannot be incurred in the future.', [
-        { path: 'incurredOn', message: 'Must not be in the future' },
-      ]);
-    // Lock the line first (also proves it is on this project), then number under the project lock.
-    await moveActual(scope, projectId, input.budgetLineId, toCents(input.amount));
-    await scope.tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${'direct_costs:' + projectId}, 0))`,
-    );
-    const [n] = await scope.tx
-      .select({ n: sql<number>`coalesce(max(${directCosts.number}), 0) + 1` })
-      .from(directCosts)
-      .where(eq(directCosts.projectId, projectId));
-    const id = uuidv7();
-    const [created] = await scope.tx
-      .insert(directCosts)
-      .values({
-        id,
-        orgId: scope.ctx.orgId,
-        projectId,
-        number: Number(n!.n),
-        budgetLineId: input.budgetLineId,
-        category: input.category,
-        description: input.description.trim(),
-        supplier: input.supplier?.trim() || null,
-        reference: input.reference?.trim() || null,
-        incurredOn: input.incurredOn,
-        amount: input.amount,
-        gst: input.gst ?? '0',
-        createdBy: scope.ctx.userId,
-      })
-      .returning();
-    await recordRetention(scope, {
-      recordType: 'financials.direct_costs',
-      recordId: id,
-      projectId,
-      category: 'financial_7y',
-      anchor: created!.createdAt,
-    });
-    scope.events.add({
-      type: 'financials.direct_cost.recorded.v1',
-      projectId,
-      entityType: 'direct_cost',
-      entityId: id,
-      entityVersion: created!.version,
-      data: {
-        directCostId: id,
-        number: created!.number,
-        budgetLineId: input.budgetLineId,
-        amount: created!.amount,
-      },
-    });
-    return created!;
+    return insertDirectCost(scope, projectId, input, now);
   }
 
   async function listDirectCosts(scope: TenantScope, projectId: string) {

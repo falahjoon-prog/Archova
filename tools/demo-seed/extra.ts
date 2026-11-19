@@ -978,7 +978,7 @@ export async function seedExtra(ctx: ExtraContext) {
   });
 
   await step('site diary', async () => {
-    const have = await count(`${pp}/diary`);
+    const have = await count(`${pp}/diary?from=${day(-10)}&to=${day(0)}`);
     if (have >= 8) return 'already there';
     const notes = [
       [
@@ -1890,4 +1890,87 @@ export async function seedExtra(ctx: ExtraContext) {
       });
     }),
   );
+}
+
+// Plant and equipment: a small fleet, a few allocations on the demo projects and service schedules (one overdue, so
+// Nova has something to flag). Skipped when the register already has machines.
+export async function seedPlant(ctx: ExtraContext) {
+  const { s, org } = ctx;
+  const active = ctx.projects.filter((p) => p.status === 'active');
+  const primary = active[0];
+  if (!primary) return;
+  const today = localDateOf(new Date(), primary.timezone);
+  const day = (n: number): LocalDate => addDays(today, n);
+  await step('plant and equipment', async () => {
+    const have = await s.ok<{ data: unknown[] }>('GET', `${org}/plant/assets`);
+    if (have.data.length > 0) return 'existing';
+    const fleet = [
+      ['EX-001', '20t excavator', 'excavator', 'owned', 'Komatsu', 'PC210LC-11', 98000],
+      ['CR-001', 'Tower crane', 'crane', 'hired', 'Liebherr', '132 EC-H', 185000],
+      ['SL-001', 'Scissor lift 12m', 'access_platform', 'hired', 'JLG', '4045R', 21000],
+      ['TH-001', 'Telehandler 4t', 'loader', 'owned', 'Manitou', 'MT 1440', 42000],
+      ['GN-001', '60 kVA generator', 'generator', 'owned', 'Cummins', 'C60D5', 14500],
+    ] as const;
+    const ids: string[] = [];
+    for (const [assetNumber, name, category, ownership, make, model, rate] of fleet) {
+      const a = await s.ok<{ id: string }>('POST', `${org}/plant/assets`, {
+        name,
+        assetNumber,
+        category,
+        ownership,
+        make,
+        model,
+        dailyRateCents: rate,
+        ...(ownership === 'hired' ? { supplier: 'Coates Hire' } : {}),
+      });
+      ids.push(a.id);
+    }
+    const second = active[1] ?? primary;
+    const alloc = (i: number, projectId: string, from: number, to: number, note: string) =>
+      s.ok('POST', `${org}/plant/assets/${ids[i]}/allocations`, {
+        projectId,
+        startsOn: day(from),
+        endsOn: day(to),
+        note,
+      });
+    await alloc(0, primary.id, -5, 14, 'Bulk excavation');
+    await alloc(1, primary.id, 0, 60, 'Core and slab lifts');
+    await alloc(2, second.id, 3, 10, 'Facade fit-off');
+    await alloc(3, second.id, -2, 20, 'Material handling');
+    // Service schedules: one overdue, one due soon, one certificate, one recurring and completed.
+    const plan = (i: number, body: Record<string, unknown>) =>
+      s.ok<{ id: string }>('POST', `${org}/plant/assets/${ids[i]}/maintenance-plans`, body);
+    await plan(0, {
+      title: '500 hour service',
+      kind: 'service',
+      intervalDays: 90,
+      nextDueOn: day(-6),
+      responsible: 'Workshop',
+    });
+    await plan(1, {
+      title: 'Crane annual certification',
+      kind: 'certification',
+      nextDueOn: day(21),
+    });
+    await plan(2, {
+      title: 'Pre-hire inspection',
+      kind: 'inspection',
+      intervalDays: 30,
+      nextDueOn: day(9),
+    });
+    const done = await plan(3, {
+      title: '250 hour service',
+      kind: 'service',
+      intervalDays: 60,
+      nextDueOn: day(-1),
+      responsible: 'Workshop',
+    });
+    await s.ok('POST', `${org}/plant/maintenance-plans/${done.id}/complete`, {
+      doneOn: day(-1),
+      performedBy: 'Hunter Plant Services',
+      note: 'Oil, filters and hydraulic check. No faults.',
+      costCents: 64000,
+    });
+    return '5 machines, 4 allocations, 4 plans';
+  });
 }

@@ -5,6 +5,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import { fromCents, toCents } from '../domain/money';
+import { attachChangeEvent } from './changeEvents';
 import {
   summariseInvoices,
   type InvoiceClaimInput,
@@ -43,6 +44,8 @@ export interface CreateCommitmentInput {
   kind: 'subcontract' | 'purchase_order';
   title: string;
   vendorCompanyId?: string | null;
+  /** The change event this commitment prices; moves it to converted_to_commitment. */
+  changeEventId?: string;
   lines: { budgetLineId: string; description: string; amount: string }[];
   /** Set when raised from an awarded tender quote; one quote raises at most one commitment. */
   source?: { packageId: string; quoteId: string };
@@ -115,6 +118,8 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
         'financials.budget.line_not_found',
         'A budget line is not on this project.',
       );
+    if (input.changeEventId)
+      await attachChangeEvent(scope, projectId, input.changeEventId, 'converted_to_commitment');
     // Serialise numbering per project.
     await scope.tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${'commitments:' + projectId}, 0))`,
@@ -135,6 +140,7 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
         kind: input.kind,
         title: input.title.trim(),
         vendorCompanyId: input.vendorCompanyId ?? null,
+        changeEventId: input.changeEventId ?? null,
         total: fromCents(total),
         sourcePackageId: input.source?.packageId ?? null,
         sourceQuoteId: input.source?.quoteId ?? null,
