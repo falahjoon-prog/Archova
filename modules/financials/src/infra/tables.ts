@@ -32,7 +32,7 @@ export const contracts = financialsSchema.table('contracts', {
   originalValue: money('original_value').notNull(),
   retentionPct: numeric('retention_pct', { precision: 5, scale: 2 }).notNull(),
   retentionCapPct: numeric('retention_cap_pct', { precision: 5, scale: 2 }),
-  sopaState: text('sopa_state').$type<SopaState | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'>().notNull(),
+  sopaState: text('sopa_state').$type<SopaState | 'NT'>().notNull(),
   scheduleDays: integer('schedule_days'),
   paymentDays: integer('payment_days'),
   sourcePackageId: uuid('source_package_id'),

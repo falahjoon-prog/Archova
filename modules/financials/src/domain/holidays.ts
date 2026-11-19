@@ -18,4 +18,9 @@ export const PUBLIC_HOLIDAYS: Record<SopaState, ReadonlySet<string>> = {
   NSW: new Set([...national, ...easter, '2026-06-08', '2026-10-05']),
   VIC: new Set([...national, ...easter, '2026-06-08', '2026-03-09', '2026-11-03']),
   QLD: new Set([...national, ...easter, '2026-05-04', '2026-08-12', '2026-10-05']),
+  // Test set per compliance/02 §5: national days only. Gazette dates are owed before these states go live (X61).
+  WA: new Set(national),
+  SA: new Set(national),
+  TAS: new Set(national),
+  ACT: new Set(national),
 };

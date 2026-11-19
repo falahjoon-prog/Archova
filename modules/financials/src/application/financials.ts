@@ -388,11 +388,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
     await requireStaff(scope, projectId, 'record a claim');
     const contract = await getContractRow(scope, projectId, contractId);
     await lockContract(scope, contractId);
-    if (
-      contract.sopaState !== 'NSW' &&
-      contract.sopaState !== 'VIC' &&
-      contract.sopaState !== 'QLD'
-    )
+    // NT uses the west-coast model (payment disputes) and has no rule row yet.
+    if (!SOPA_RULES.some((r) => r.state === contract.sopaState))
       throw new AppError(
         'financials.sopa.state_not_live',
         `SOPA dates for ${contract.sopaState} are not available yet.`,

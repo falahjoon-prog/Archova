@@ -13,8 +13,19 @@ import {
   parseLocalDate,
 } from '@archova/time';
 
-export type SopaState = 'NSW' | 'VIC' | 'QLD';
+/** East-coast model states with a rule row. NT uses the west-coast model (payment disputes) and is not built yet (D4). */
+export type SopaState = 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT';
 export type ContractKind = 'head' | 'subcontract';
+
+/**
+ * `notice`: the claimant serves a notice of intention to apply; the respondent then has `respondentDays` to give a
+ * schedule; the claimant applies within `applyWithinDays` after that. The notice itself must be served within
+ * `noticeWithinDays` after the payment due date. `direct`: QLD, one window after the later of the payment due date
+ * and the last day for a schedule.
+ */
+export type NoScheduleRule =
+  | { kind: 'notice'; noticeWithinDays: number; respondentDays: number; applyWithinDays: number }
+  | { kind: 'direct'; applyWithinDays: number };
 
 export interface SopaRule {
   state: SopaState;
@@ -23,11 +34,15 @@ export interface SopaRule {
   actName: string;
   /** Business days the respondent has to give a payment schedule. */
   scheduleDays: number;
-  /** Caps on the payment period; the contract may shorten, never extend. */
-  paymentCapHead: number;
-  paymentCapSub: number;
+  /** TAS: schedule period where the respondent is a non-practitioner owner of a residential structure. */
+  scheduleDaysResidentialOwner?: number;
+  /** Caps on the payment period; the contract may shorten, never extend. Null: the Act sets no cap (SA, TAS). */
+  paymentCapHead: number | null;
+  paymentCapSub: number | null;
   /** Payment period when the contract is silent; null means the cap (compliance/02 N3 reads NSW that way). */
   paymentDefaultDays: number | null;
+  /** TAS: payment default for a residential owner respondent. */
+  paymentDefaultDaysResidentialOwner?: number;
   /** Days that are not business days every year, `MM-DD` to `MM-DD` (may wrap the year). */
   shutdown: { start: string; end: string } | null;
   /** A claim must say it is made under the Act or it is not a valid payment claim (NSW, VIC). */
@@ -39,6 +54,8 @@ export interface SopaRule {
     scheduleLessDays: number;
     /** Business days after the due date, when the scheduled amount is unpaid. */
     unpaidDays: number;
+    /** What the claimant may do when no schedule was given by the due date (compliance/01 §2). */
+    noSchedule: NoScheduleRule;
   };
   verifiedBy: string | null;
   verifiedOn: LocalDate | null;
@@ -58,6 +75,8 @@ export interface DeadlineInput {
   holidays: ReadonlySet<LocalDate>;
   /** The claim says it is made under the Act. */
   statesAct: boolean;
+  /** TAS: the respondent is a non-practitioner owner of a residential structure (longer periods). */
+  residentialOwner?: boolean;
 }
 
 export type DeadlineResult =
@@ -136,12 +155,21 @@ export function computeDeadlines(input: DeadlineInput): DeadlineResult {
   // The local day of service. A deeming clause that moves a late email to the next day is void (compliance/01 §4).
   const servedOn = localDateOf(input.servedAt, input.timeZone);
   const calendar = sopaCalendar(rule, input.holidays, servedOn);
-  const schedule = periodDays(rule.scheduleDays, input.contractScheduleDays);
+  const owner = input.residentialOwner === true;
+  const schedule = periodDays(
+    owner ? (rule.scheduleDaysResidentialOwner ?? rule.scheduleDays) : rule.scheduleDays,
+    input.contractScheduleDays,
+  );
   const cap = input.contractKind === 'head' ? rule.paymentCapHead : rule.paymentCapSub;
+  const defaultDays = owner
+    ? (rule.paymentDefaultDaysResidentialOwner ?? rule.paymentDefaultDays)
+    : rule.paymentDefaultDays;
   const payment =
     input.contractPaymentDays === null || input.contractPaymentDays === undefined
-      ? { days: rule.paymentDefaultDays ?? cap, readDown: false }
-      : periodDays(cap, input.contractPaymentDays);
+      ? { days: defaultDays ?? cap ?? rule.scheduleDays, readDown: false }
+      : cap === null
+        ? { days: input.contractPaymentDays, readDown: false }
+        : periodDays(cap, input.contractPaymentDays);
   return {
     valid: true,
     servedOn,
@@ -163,7 +191,7 @@ export interface AdjudicationInput {
   paymentDueOn?: LocalDate;
 }
 
-/** Last day to apply for adjudication in the two scenarios with a schedule. The no-schedule path comes later. */
+/** Last day to apply for adjudication in the two scenarios with a schedule. The no-schedule path is below. */
 export function adjudicationDeadline(input: AdjudicationInput): LocalDate | null {
   const { rule } = input;
   if (input.scheduleGivenOn)
@@ -181,6 +209,69 @@ export function adjudicationDeadline(input: AdjudicationInput): LocalDate | null
   return null;
 }
 
+export interface NoScheduleInput {
+  rule: SopaRule;
+  holidays: ReadonlySet<LocalDate>;
+  /** The claim's payment due date and the last day the respondent had to give a schedule. */
+  paymentDueOn: LocalDate;
+  scheduleDueOn: LocalDate;
+  /** The day the claimant served the notice of intention to apply (notice states only). */
+  noticeServedOn?: LocalDate;
+}
+
+export type NoScheduleResult =
+  | {
+      kind: 'direct';
+      /** Last day to apply for adjudication. */
+      applyBy: LocalDate;
+    }
+  | {
+      kind: 'notice';
+      /** Last day the claimant can serve the notice of intention. */
+      noticeBy: LocalDate;
+      /** Once the notice is served: the respondent's last day to give a schedule, and the last day to apply. */
+      respondentBy: LocalDate | null;
+      applyBy: LocalDate | null;
+    };
+
+/** Adjudication path when no payment schedule was given in time (N13, Q11). */
+export function noScheduleAdjudication(input: NoScheduleInput): NoScheduleResult {
+  const { rule } = input;
+  const path = rule.adjudication.noSchedule;
+  if (path.kind === 'direct') {
+    const from =
+      compareLocalDates(input.paymentDueOn, input.scheduleDueOn) >= 0
+        ? input.paymentDueOn
+        : input.scheduleDueOn;
+    return {
+      kind: 'direct',
+      applyBy: addBusinessDays(
+        from,
+        path.applyWithinDays,
+        sopaCalendar(rule, input.holidays, from),
+      ),
+    };
+  }
+  const cal = (d: LocalDate) => sopaCalendar(rule, input.holidays, d);
+  const noticeBy = addBusinessDays(
+    input.paymentDueOn,
+    path.noticeWithinDays,
+    cal(input.paymentDueOn),
+  );
+  if (!input.noticeServedOn) return { kind: 'notice', noticeBy, respondentBy: null, applyBy: null };
+  const respondentBy = addBusinessDays(
+    input.noticeServedOn,
+    path.respondentDays,
+    cal(input.noticeServedOn),
+  );
+  return {
+    kind: 'notice',
+    noticeBy,
+    respondentBy,
+    applyBy: addBusinessDays(respondentBy, path.applyWithinDays, cal(respondentBy)),
+  };
+}
+
 const base = {
   effectiveTo: null,
   verifiedBy: null,
@@ -189,8 +280,9 @@ const base = {
 } as const;
 
 /**
- * Seed rows for the states launching first (Grace D4). Unreviewed: a construction lawyer must sign each row off
- * before the state goes live (X61). VIC's row is the one in force from 15 Apr 2026; the earlier row is not seeded.
+ * Seed rows for the east-coast model states (Grace compliance/01 §2, 02 §4). NT is west-coast and not seeded.
+ * Unreviewed: a construction lawyer must sign each row off before the state goes live (X61). VIC's row is the one in
+ * force from 15 Apr 2026; the earlier row is not seeded. Windows marked ⚖ in compliance/01 are Grace's best reading.
  */
 export const SOPA_RULES: readonly SopaRule[] = [
   {
@@ -205,7 +297,11 @@ export const SOPA_RULES: readonly SopaRule[] = [
     shutdown: { start: '12-27', end: '12-31' },
     actStatementRequired: true,
     supportingStatementRequired: true,
-    adjudication: { scheduleLessDays: 10, unpaidDays: 20 },
+    adjudication: {
+      scheduleLessDays: 10,
+      unpaidDays: 20,
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+    },
   },
   {
     ...base,
@@ -218,7 +314,12 @@ export const SOPA_RULES: readonly SopaRule[] = [
     paymentDefaultDays: 10,
     shutdown: { start: '12-22', end: '01-10' },
     actStatementRequired: true,
-    adjudication: { scheduleLessDays: 10, unpaidDays: 10 },
+    adjudication: {
+      scheduleLessDays: 10,
+      unpaidDays: 10,
+      // ⚖ the notice window and the respondent's 5 BD are not confirmed for VIC.
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+    },
   },
   {
     ...base,
@@ -231,6 +332,82 @@ export const SOPA_RULES: readonly SopaRule[] = [
     paymentDefaultDays: 10,
     shutdown: { start: '12-22', end: '01-10' },
     actStatementRequired: false,
-    adjudication: { scheduleLessDays: 30, unpaidDays: 20 },
+    adjudication: {
+      scheduleLessDays: 30,
+      unpaidDays: 20,
+      noSchedule: { kind: 'direct', applyWithinDays: 30 },
+    },
+  },
+  {
+    ...base,
+    state: 'WA',
+    effectiveFrom: '2022-08-01',
+    actName: 'Building and Construction Industry (Security of Payment) Act 2021',
+    scheduleDays: 15,
+    paymentCapHead: 20,
+    paymentCapSub: 25,
+    paymentDefaultDays: null,
+    shutdown: { start: '12-22', end: '01-10' },
+    actStatementRequired: true,
+    adjudication: {
+      scheduleLessDays: 20,
+      unpaidDays: 20,
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 20 },
+    },
+  },
+  {
+    ...base,
+    state: 'SA',
+    effectiveFrom: '2011-12-10',
+    actName: 'Building and Construction Industry Security of Payment Act 2009',
+    scheduleDays: 15,
+    paymentCapHead: null,
+    paymentCapSub: null,
+    paymentDefaultDays: 15,
+    shutdown: { start: '12-27', end: '12-31' },
+    actStatementRequired: true,
+    adjudication: {
+      scheduleLessDays: 15,
+      unpaidDays: 20,
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 15 },
+    },
+  },
+  {
+    ...base,
+    state: 'TAS',
+    effectiveFrom: '2009-12-01',
+    actName: 'Building and Construction Industry Security of Payment Act 2009',
+    scheduleDays: 10,
+    scheduleDaysResidentialOwner: 20,
+    paymentCapHead: null,
+    paymentCapSub: null,
+    paymentDefaultDays: 10,
+    paymentDefaultDaysResidentialOwner: 20,
+    shutdown: { start: '12-27', end: '12-31' },
+    actStatementRequired: true,
+    adjudication: {
+      scheduleLessDays: 10,
+      unpaidDays: 20,
+      // ⚖ the apply window after the respondent's 5 BD is not confirmed for TAS.
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+    },
+  },
+  {
+    ...base,
+    state: 'ACT',
+    effectiveFrom: '2009-12-01',
+    actName: 'Building and Construction Industry (Security of Payment) Act 2009',
+    scheduleDays: 10,
+    paymentCapHead: 15,
+    paymentCapSub: 15,
+    paymentDefaultDays: 15,
+    shutdown: { start: '12-27', end: '12-31' },
+    actStatementRequired: true,
+    adjudication: {
+      scheduleLessDays: 10,
+      unpaidDays: 20,
+      // ⚖ ACT no-schedule notice timing is unconfirmed.
+      noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+    },
   },
 ];
