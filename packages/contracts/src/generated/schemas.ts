@@ -8284,6 +8284,22 @@ export const OwnerProgressUpdateListSchema = z.object({
 });
 export type OwnerProgressUpdateList = z.infer<typeof OwnerProgressUpdateListSchema>;
 
+export const OwnerShareChangeSchema = z.object({
+  "kind": z.enum(["variation", "decision"]),
+  "reference": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "timeImpactDays": z.number().int(),
+  "approvedAt": z.string().datetime({ offset: true }).nullable(),
+  "hidden": z.boolean(),
+});
+export type OwnerShareChange = z.infer<typeof OwnerShareChangeSchema>;
+
+export const OwnerShareChangeListSchema = z.object({
+  "data": z.array(OwnerShareChangeSchema),
+});
+export type OwnerShareChangeList = z.infer<typeof OwnerShareChangeListSchema>;
+
 export const OwnerShareLinkListSchema = z.object({
   "data": z.array(OwnerShareLinkSchema),
 });
@@ -10372,6 +10388,11 @@ export const SetMeetingAttendeesRequestSchema = z.object({
 }))).max(200),
 }).strict();
 export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
+
+export const SetOwnerShareChangeHiddenRequestSchema = z.object({
+  "hidden": z.boolean(),
+}).strict();
+export type SetOwnerShareChangeHiddenRequest = z.infer<typeof SetOwnerShareChangeHiddenRequestSchema>;
 
 export const SetPermitRequirementsRequestSchema = z.object({
   "items": z.array(PermitRequirementSchema).max(20),

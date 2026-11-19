@@ -43,6 +43,24 @@ export function useShareLinks() {
     queryFn: () => source.shareLinks(projectId),
   });
 }
+export function useShareChanges() {
+  const { orgId, projectId, source } = useCtx();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-portal', { part: 'share-changes' }),
+    queryFn: () => source.shareChanges(projectId),
+  });
+}
+/** Fetched on demand when the team opens the preview, never cached for long: photo links are signed. */
+export function useSharePreview(enabled: boolean) {
+  const { orgId, projectId, source } = useCtx();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'owner-portal', { part: 'share-preview' }),
+    queryFn: () => source.sharePreview(projectId),
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
 // The signed photo links last 10 minutes; refetch before they lapse.
 export function useSharedPhotos() {
   const { orgId, projectId, source } = useCtx();
@@ -64,6 +82,11 @@ export function useOwnerPortalMutations() {
     createShareLink: useMutation({
       mutationFn: (v: Parameters<typeof source.createShareLink>[1]) =>
         source.createShareLink(projectId, v),
+      ...opts,
+    }),
+    setChangeHidden: useMutation({
+      mutationFn: (v: { reference: string; hidden: boolean }) =>
+        source.setChangeHidden(projectId, v.reference, v.hidden),
       ...opts,
     }),
     revokeShareLink: useMutation({

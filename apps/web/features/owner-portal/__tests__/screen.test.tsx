@@ -133,10 +133,31 @@ describe('OwnerPortalScreen', () => {
       ],
     }));
     fake.on('GET', `${B}/shared-photos`, () => ({ data: [] }));
+    fake.on('GET', `${B}/share-changes`, () => ({
+      data: [
+        {
+          kind: 'decision',
+          reference: 'DEC-001',
+          title: 'Stone upgrade for $48,000',
+          description: '',
+          timeImpactDays: 0,
+          approvedAt: '2026-11-02T01:00:00Z',
+          hidden: false,
+        },
+      ],
+    }));
+    fake.on('PUT', `${B}/share-changes/{reference}`, () => ({ data: [] }));
     fake.on('POST', `${B}/share-links/{linkId}/revoke`, () => ({}));
     renderInProject(<OwnerPortalScreen />);
     expect(await screen.findByText('Harbour board')).toBeTruthy();
     expect(screen.getByText('No photos shared')).toBeTruthy();
+    expect(screen.getByText(/Check titles and descriptions for prices/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Hide DEC-001 on the client link' }));
+    await waitFor(() =>
+      expect(fake.callsTo('PUT', `${B}/share-changes/{reference}`)[0]!.init.body).toEqual({
+        hidden: true,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: 'Turn off Harbour board' }));
     await waitFor(() =>
       expect(fake.callsTo('POST', `${B}/share-links/{linkId}/revoke`)).toHaveLength(1),

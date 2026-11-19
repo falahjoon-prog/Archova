@@ -15,12 +15,19 @@ import {
   type StatusTone,
 } from '@archova/ui';
 import { OwnerPortalIcon } from '@archova/ui/icons';
+import { ClientPage } from '@/features/client-link';
 import { usePhotoFeed } from '@/features/photos';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { CreatedShareLink, ShareLink } from '../data/api';
-import { useOwnerPortalMutations, useShareLinks, useSharedPhotos } from '../hooks/useOwnerPortal';
+import {
+  useOwnerPortalMutations,
+  useShareChanges,
+  useShareLinks,
+  useSharePreview,
+  useSharedPhotos,
+} from '../hooks/useOwnerPortal';
 
 const STATE_LABEL: Record<ShareLink['state'], string> = {
   active: 'Working',
@@ -46,9 +53,86 @@ export function ShareTab() {
         Published progress updates, upcoming milestones, approved changes (no amounts) and the
         photos you pick below. Never costs, budgets, commitments or correspondence.
       </Alert>
+      <PreviewSection />
       <LinksSection />
+      <ChangesSection />
       <PhotosSection />
     </div>
+  );
+}
+
+function PreviewSection() {
+  const [open, setOpen] = useState(false);
+  const preview = useSharePreview(open);
+  return (
+    <Card
+      title="Preview as the client"
+      actions={<Button onClick={() => setOpen(true)}>Preview</Button>}
+    >
+      <p className="u-m-0">See exactly what a client link shows right now, before you send it.</p>
+      {open ? (
+        <Dialog
+          open
+          onClose={() => setOpen(false)}
+          title="What the client sees"
+          footer={<Button onClick={() => setOpen(false)}>Close</Button>}
+        >
+          <div className="stack-lg">
+            <ErrorAlert error={preview.error} title="We couldn't load the preview" />
+            {preview.isPending ? <SkeletonRows label="Loading the preview…" /> : null}
+            {preview.data ? <ClientPage view={preview.data} /> : null}
+          </div>
+        </Dialog>
+      ) : null}
+    </Card>
+  );
+}
+
+function ChangesSection() {
+  const list = useShareChanges();
+  const m = useOwnerPortalMutations();
+  const data = list.data ?? [];
+  return (
+    <Card title="Approved changes on the link">
+      <div className="stack">
+        <Alert tone="warning" title="Check titles and descriptions for prices">
+          Every approved variation and decision appears on the link automatically. Their wording is
+          free text and can contain amounts. Hide any that should not be shown.
+        </Alert>
+        <ErrorAlert error={list.error} title="We couldn't load the approved changes" />
+        <ErrorAlert error={m.setChangeHidden.error} title="We couldn't update this change" />
+        {list.isPending ? (
+          <SkeletonRows label="Loading approved changes…" />
+        ) : data.length === 0 ? (
+          <p className="u-m-0">No approved changes yet.</p>
+        ) : (
+          <ul className="plain-list">
+            {data.map((c) => (
+              <li key={c.reference} className="plain-list__item link-item">
+                <span>
+                  <strong className="u-block">
+                    {c.reference} {c.title}
+                  </strong>
+                  {c.description ? (
+                    <span className="u-caption u-block">{c.description}</span>
+                  ) : null}
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled={m.setChangeHidden.isPending}
+                  aria-label={`${c.hidden ? 'Show' : 'Hide'} ${c.reference} on the client link`}
+                  onClick={() =>
+                    m.setChangeHidden.mutate({ reference: c.reference, hidden: !c.hidden })
+                  }
+                >
+                  {c.hidden ? 'Hidden: show' : 'Hide'}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -298,6 +382,10 @@ function PickDialog({ sharedIds, onClose }: { sharedIds: Set<string>; onClose: (
       footer={<Button onClick={onClose}>Done</Button>}
     >
       <div className="stack">
+        <Alert tone="warning" title="Check before you share">
+          Photos keep their original file, including any GPS location. Make sure people and number
+          plates are not identifiable.
+        </Alert>
         <ErrorAlert error={feed.error} title="We couldn't load the site photos" />
         <ErrorAlert error={m.sharePhoto.error} title="We couldn't share this photo" />
         {feed.isPending ? (

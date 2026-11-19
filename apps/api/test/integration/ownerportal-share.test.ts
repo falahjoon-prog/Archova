@@ -5,6 +5,8 @@ import {
   createOrg,
   createProject,
   createTestContext,
+  outboxData,
+  removeMember,
   signUp,
   uploadBytes,
   uploadFile,
@@ -247,5 +249,114 @@ describe('client share link', () => {
     await s.pm.browser.post(`${s.portal}/shared-photos`, { fileId: mine, caption: 'a' });
     const removed = await s.pm.browser.del(`${s.portal}/shared-photos/${mine}`);
     expect(removed.json().data).toEqual([]);
+  });
+
+  it('lets the team hide an approved change whose free text carries a price, and preview what the client sees', async () => {
+    const s = await setup();
+    const req = (
+      await s.pm.browser.post(`${s.portal}/approvals`, { title: 'Stone upgrade for $48,000' })
+    ).json();
+    await s.client.browser.post(`${s.portal}/approvals/${req.id}/decision`, {
+      decision: 'approved',
+    });
+    const made = (await s.pm.browser.post(`${s.portal}/share-links`, {})).json();
+    const guest = new Browser(t.app);
+    const first = (
+      await guest.post('/v1/owner-portal-access', { token: tokenOf(made.url) })
+    ).json();
+    expect(JSON.stringify(first)).toContain('$48,000');
+    expect((await s.pm.browser.get(`${s.portal}/share-preview`)).json().changes).toHaveLength(1);
+
+    const listed = (await s.pm.browser.get(`${s.portal}/share-changes`)).json().data;
+    expect(listed).toMatchObject([{ reference: 'DEC-001', hidden: false }]);
+    const hide = await s.pm.browser.put(`${s.portal}/share-changes/DEC-001`, { hidden: true });
+    expect(hide.json().data[0].hidden).toBe(true);
+    // Both the live link and the preview drop it at once.
+    expect((await guest.get('/v1/owner-portal-access')).json().changes).toEqual([]);
+    expect((await s.pm.browser.get(`${s.portal}/share-preview`)).json().changes).toEqual([]);
+    expect(
+      (await s.pm.browser.put(`${s.portal}/share-changes/DEC-099`, { hidden: true })).statusCode,
+    ).toBe(404);
+    const shown = await s.pm.browser.put(`${s.portal}/share-changes/DEC-001`, { hidden: false });
+    expect(shown.json().data[0].hidden).toBe(false);
+
+    // The client role can neither list nor preview nor hide.
+    expect((await s.client.browser.get(`${s.portal}/share-preview`)).statusCode).toBe(403);
+    expect((await s.client.browser.get(`${s.portal}/share-changes`)).statusCode).toBe(403);
+    expect(
+      (await s.client.browser.put(`${s.portal}/share-changes/DEC-001`, { hidden: true }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (await s.client.browser.post(`${s.portal}/share-links/${made.link.id}/revoke`)).statusCode,
+    ).toBe(403);
+  });
+
+  it('records who issued, revoked and opened a link and who added or removed a photo', async () => {
+    const s = await setup();
+    const made = (await s.pm.browser.post(`${s.portal}/share-links`, {})).json();
+    const guest = new Browser(t.app);
+    await guest.post('/v1/owner-portal-access', { token: tokenOf(made.url) });
+    await new Browser(t.app).post('/v1/owner-portal-access', { token: tokenOf(made.url) });
+    const photo = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      jpeg(),
+      'e.jpg',
+      'image/jpeg',
+      'diary',
+    );
+    await s.pm.browser.post(`${s.portal}/shared-photos`, { fileId: photo });
+    await s.pm.browser.del(`${s.portal}/shared-photos/${photo}`);
+    await s.pm.browser.post(`${s.portal}/share-links/${made.link.id}/revoke`);
+    const events = (type: string) =>
+      outboxData<Record<string, unknown>>(t, s.org.id, s.pm.userId, type);
+    expect(await events('ownerportal.share_link.issued.v1')).toHaveLength(1);
+    // Only the first open is an event, however many times the link is used.
+    expect(await events('ownerportal.share_link.first_opened.v1')).toHaveLength(1);
+    expect(await events('ownerportal.share_link.revoked.v1')).toHaveLength(1);
+    expect(await events('ownerportal.shared_photo.added.v1')).toHaveLength(1);
+    expect(await events('ownerportal.shared_photo.removed.v1')).toHaveLength(1);
+  });
+
+  it('dies with its issuer, and its cookie opens nothing else', async () => {
+    const s = await setup();
+    const mgr = await signUp(t.app, 'ops-mgr');
+    await addMember(
+      s.pm.browser,
+      s.org.id,
+      s.project.id,
+      mgr.email,
+      'Project Manager',
+      'Builder Co',
+    );
+    const made = await mgr.browser.post(`${s.portal}/share-links`, {});
+    expect(made.statusCode).toBe(201);
+    const guest = new Browser(t.app);
+    expect(
+      (await guest.post('/v1/owner-portal-access', { token: tokenOf(made.json().url) })).statusCode,
+    ).toBe(200);
+
+    // The portal session is not a session for any other guest area or for the staff API.
+    for (const path of ['/v1/tender-access', '/v1/transmittal-access'])
+      expect([401, 410]).toContain((await guest.get(path)).statusCode);
+    expect((await guest.get(`${s.base}/members`)).statusCode).toBe(401);
+    // A session token is not a link token: the request is refused before it is even looked up.
+    expect(
+      (await new Browser(t.app).post('/v1/owner-portal-access', { token: `lns_${'A'.repeat(64)}` }))
+        .statusCode,
+    ).toBe(422);
+
+    await removeMember(s.pm.browser, s.org.id, s.project.id, mgr.email);
+    expect((await guest.get('/v1/owner-portal-access')).json().code).toBe('access_link.invalid');
+    expect(
+      (
+        await new Browser(t.app).post('/v1/owner-portal-access', {
+          token: tokenOf(made.json().url),
+        })
+      ).json().code,
+    ).toBe('access_link.invalid');
   });
 });

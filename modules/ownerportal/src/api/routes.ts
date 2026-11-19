@@ -93,6 +93,20 @@ export function ownerPortalRoutes(
         share.removePhoto(s, project(input.params), input.params.fileId),
       ),
     }),
+    previewOwnerShareView: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => share.preview(s, project(input.params))),
+    }),
+    listOwnerShareChanges: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => share.listChanges(s, project(input.params))),
+    }),
+    setOwnerShareChangeHidden: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) =>
+        share.setChangeHidden(s, project(input.params), input.params.reference, input.body.hidden),
+      ),
+    }),
     openOwnerPortalAccess: async (input) => {
       const r = await share.open(input.body.token, facts(input));
       return {
