@@ -16,7 +16,7 @@ import { NovaSovDialog } from '../components/NovaSovDialog';
 import { useClaimsMutations } from '../hooks/useClaims';
 import { aud, cents } from '../lib/money';
 
-const STATES = ['NSW', 'VIC', 'QLD'] as const;
+const STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT'] as const;
 type Row = { code: string; description: string; value: string; costCodeId: string };
 
 /** Sets up a contract and its schedule of values. The schedule must add up to the contract value (CLM-US1). */
