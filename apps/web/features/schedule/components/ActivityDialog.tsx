@@ -7,6 +7,7 @@ import { serverFieldErrors } from '@/shared/lib/forms';
 import type { DepType, ScheduleActivity, ScheduleDetail } from '../data/programme';
 import { formatRfiNumber, useRfiList } from '@/features/rfis';
 import { useSubmittalList } from '@/features/submittals';
+import { usePrefabUnits } from '@/features/prefab';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProgrammeMutations, useScheduleLinks } from '../hooks/useProgramme';
 import { DEP_LABELS } from '../lib/labels';
@@ -20,6 +21,7 @@ const KIND_OPTIONS = [
 const LINK_KIND_OPTIONS = [
   { value: 'rfi', label: 'An RFI' },
   { value: 'submittal', label: 'A submittal' },
+  { value: 'prefab_unit', label: 'A prefab unit' },
 ];
 const clip = (s: string) => (s.length > 70 ? `${s.slice(0, 69)}…` : s);
 
@@ -28,10 +30,11 @@ function LinkedItems({ detail, activityId }: { detail: ScheduleDetail; activityI
   const { projectId } = useCurrentProject();
   const m = useProgrammeMutations(detail.schedule.id);
   const links = useScheduleLinks(detail.schedule.id);
-  const [kind, setKind] = useState<'rfi' | 'submittal'>('rfi');
+  const [kind, setKind] = useState<'rfi' | 'submittal' | 'prefab_unit'>('rfi');
   const [target, setTarget] = useState('');
   const rfis = useRfiList(projectId, {});
   const submittals = useSubmittalList(projectId, {});
+  const prefab = usePrefabUnits(projectId);
   const mine = (links.data ?? []).filter((l) => l.activityId === activityId);
   const options =
     kind === 'rfi'
@@ -39,14 +42,21 @@ function LinkedItems({ detail, activityId }: { detail: ScheduleDetail; activityI
           value: r.id,
           label: clip(`${formatRfiNumber(r.number)}  ${r.subject}`),
         }))
-      : (submittals.data ?? []).map((s) => ({
-          value: s.id,
-          label: clip(`${s.numberLabel}  ${s.title}`),
-        }));
-  const pending = kind === 'rfi' ? rfis.isPending : submittals.isPending;
+      : kind === 'submittal'
+        ? (submittals.data ?? []).map((s) => ({
+            value: s.id,
+            label: clip(`${s.numberLabel}  ${s.title}`),
+          }))
+        : (prefab.data ?? []).map((u) => ({ value: u.id, label: clip(`${u.code}  ${u.name}`) }));
+  const pending =
+    kind === 'rfi'
+      ? rfis.isPending
+      : kind === 'submittal'
+        ? submittals.isPending
+        : prefab.isPending;
   return (
-    <section className="stack" aria-label="Linked RFIs and submittals">
-      <h3 className="u-m-0">RFIs and submittals</h3>
+    <section className="stack" aria-label="Linked RFIs, submittals and prefab units">
+      <h3 className="u-m-0">RFIs, submittals and prefab units</h3>
       <ErrorAlert
         error={links.error ?? m.createLink.error ?? m.deleteLink.error}
         title="We couldn't change the linked items"
@@ -62,14 +72,19 @@ function LinkedItems({ detail, activityId }: { detail: ScheduleDetail; activityI
                     <span className="u-muted">
                       ({(l.status ?? '').replace(/_/g, ' ')}
                       {l.dueDate
-                        ? `, ${l.kind === 'rfi' ? 'due' : 'needed on site'} ${l.dueDate}`
+                        ? `, ${l.kind === 'rfi' ? 'due' : l.kind === 'submittal' ? 'needed on site' : 'due on site'} ${l.dueDate}`
                         : ''}
                       {l.scheduleImpactDays ? `, ${l.scheduleImpactDays}d impact` : ''})
                     </span>
                   </>
                 ) : (
                   <span className="u-muted">
-                    {l.kind === 'rfi' ? 'An RFI' : 'A submittal'} you can't see
+                    {l.kind === 'rfi'
+                      ? 'An RFI'
+                      : l.kind === 'submittal'
+                        ? 'A submittal'
+                        : 'A prefab unit'}{' '}
+                    you can't see
                   </span>
                 )}
               </span>
@@ -92,7 +107,7 @@ function LinkedItems({ detail, activityId }: { detail: ScheduleDetail; activityI
           options={LINK_KIND_OPTIONS}
           value={kind}
           onChange={(e) => {
-            setKind(e.target.value as 'rfi' | 'submittal');
+            setKind(e.target.value as 'rfi' | 'submittal' | 'prefab_unit');
             setTarget('');
           }}
         />

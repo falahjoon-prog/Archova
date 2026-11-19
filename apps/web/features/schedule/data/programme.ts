@@ -102,7 +102,7 @@ export function createProgrammeApi(orgId: string) {
     },
     async placements(
       projectId: string,
-      kind: 'rfi' | 'submittal',
+      kind: 'rfi' | 'submittal' | 'prefab_unit',
       targetId: string,
     ): Promise<ItemPlacement[]> {
       return unwrap(
@@ -115,7 +115,7 @@ export function createProgrammeApi(orgId: string) {
       projectId: string,
       scheduleId: string,
       activityId: string,
-      body: { kind: 'rfi' | 'submittal'; targetId: string },
+      body: { kind: 'rfi' | 'submittal' | 'prefab_unit'; targetId: string },
     ): Promise<ScheduleLink> {
       return unwrap(
         await api.POST(`${P}/{scheduleId}/activities/{activityId}/links`, {

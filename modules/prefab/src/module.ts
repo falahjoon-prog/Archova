@@ -20,6 +20,10 @@ export function createPrefabModule(
   return {
     definition: defineModule({ name: 'prefab', permissions: PREFAB_PERMISSIONS }),
     routes: prefabRoutes(services.database, service),
+    api: {
+      /** For `scheduling`: units tied to programme activities. */
+      summariesByIds: service.summariesByIds,
+    },
   };
 }
 

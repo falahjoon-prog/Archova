@@ -14,14 +14,17 @@ type Source = (
 export interface LinksDeps {
   rfis: { summariesByIds: Source };
   submittals: { summariesByIds: Source };
+  prefab: { summariesByIds: Source };
 }
 
-const KIND_ID = { rfi: 'rfi', submittal: 'submittal' } as const;
+const KIND_ID = { rfi: 'rfi', submittal: 'submittal', prefab_unit: 'prefabUnit' } as const;
+const KINDS = ['rfi', 'submittal', 'prefab_unit'] as const;
 
 export function createLinksService(deps: LinksDeps) {
   const sources: Record<LinkKind, Source> = {
     rfi: (s, p, ids) => deps.rfis.summariesByIds(s, p, ids),
     submittal: (s, p, ids) => deps.submittals.summariesByIds(s, p, ids),
+    prefab_unit: (s, p, ids) => deps.prefab.summariesByIds(s, p, ids),
   };
 
   async function schedule(scope: TenantScope, projectId: string, scheduleId: string) {
@@ -43,8 +46,9 @@ export function createLinksService(deps: LinksDeps) {
     const found = {
       rfi: new Map<string, LinkTarget>(),
       submittal: new Map<string, LinkTarget>(),
+      prefab_unit: new Map<string, LinkTarget>(),
     };
-    for (const kind of ['rfi', 'submittal'] as const) {
+    for (const kind of KINDS) {
       const ids = [...new Set(rows.filter((r) => r.kind === kind).map((r) => r.targetId))];
       for (const t of await sources[kind](scope, projectId, ids)) found[kind].set(t.id, t);
     }
@@ -95,7 +99,10 @@ export function createLinksService(deps: LinksDeps) {
     const [target] = await sources[input.kind](scope, projectId, [targetId]);
     if (!target)
       throw new AppError('validation_failed', 'That item was not found.', [
-        { path: 'targetId', message: `Not an ${input.kind} you can see on this project` },
+        {
+          path: 'targetId',
+          message: `Not ${input.kind === 'rfi' ? 'an RFI' : input.kind === 'submittal' ? 'a submittal' : 'a prefab unit'} you can see on this project`,
+        },
       ]);
     const [dup] = await scope.tx
       .select({ id: activityLinks.id })

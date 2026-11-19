@@ -3619,7 +3619,7 @@ export const CreateScheduleDependencyRequestSchema = z.object({
 export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
 
 export const CreateScheduleLinkRequestSchema = z.object({
-  "kind": z.enum(["rfi", "submittal"]),
+  "kind": z.enum(["rfi", "submittal", "prefab_unit"]),
   "targetId": z.string(),
 }).strict();
 export type CreateScheduleLinkRequest = z.infer<typeof CreateScheduleLinkRequestSchema>;
@@ -10321,7 +10321,7 @@ export type ScheduleItemPlacementList = z.infer<typeof ScheduleItemPlacementList
 export const ScheduleLinkSchema = z.object({
   "id": z.string(),
   "activityId": z.string(),
-  "kind": z.enum(["rfi", "submittal"]),
+  "kind": z.enum(["rfi", "submittal", "prefab_unit"]),
   "targetId": z.string(),
   "visible": z.boolean(),
   "ref": z.string().nullable(),

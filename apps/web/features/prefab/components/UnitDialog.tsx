@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, Select, SkeletonRows, StatusPill, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
+import { OnProgramme } from '@/features/schedule';
 import type { Check } from '../data/api';
 import { usePrefabDetail, type usePrefabMutations } from '../hooks/usePrefab';
 import {
@@ -163,6 +164,7 @@ export function UnitDialog({
               </>
             ) : null}
           </dl>
+          <OnProgramme kind="prefab_unit" itemId={u.id} headingClass="u-m-0" />
           {u.notes ? <p className="u-m-0">{u.notes}</p> : null}
 
           {canWrite ? (

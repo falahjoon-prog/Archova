@@ -52,7 +52,7 @@ export function useScheduleLinks(scheduleId: string | null) {
 }
 
 /** Where one RFI or submittal sits on the programme. Errors (no programme access) just mean nothing to show. */
-export function useItemPlacements(kind: 'rfi' | 'submittal', targetId: string) {
+export function useItemPlacements(kind: 'rfi' | 'submittal' | 'prefab_unit', targetId: string) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   const source = useApi();
@@ -139,7 +139,11 @@ export function useProgrammeMutations(scheduleId: string | null) {
       onSuccess: store,
     }),
     createLink: useMutation({
-      mutationFn: (v: { activityId: string; kind: 'rfi' | 'submittal'; targetId: string }) =>
+      mutationFn: (v: {
+        activityId: string;
+        kind: 'rfi' | 'submittal' | 'prefab_unit';
+        targetId: string;
+      }) =>
         source.createLink(projectId, id(), v.activityId, { kind: v.kind, targetId: v.targetId }),
       onSuccess: all,
     }),

@@ -15118,12 +15118,12 @@ export interface components {
             id: string;
             activityId: string;
             /** @enum {string} */
-            kind: "rfi" | "submittal";
-            /** @description Public id of the RFI or submittal. */
+            kind: "rfi" | "submittal" | "prefab_unit";
+            /** @description Public id of the RFI, submittal or prefab unit. */
             targetId: string;
             /** @description False when the caller cannot see the item (or it is gone); the details are null. */
             visible: boolean;
-            /** @description RFI-012 or the submittal number label. */
+            /** @description RFI-012, the submittal number label or the prefab unit code. */
             ref: string | null;
             title: string | null;
             status: string | null;
@@ -15154,7 +15154,7 @@ export interface components {
         };
         CreateScheduleLinkRequest: {
             /** @enum {string} */
-            kind: "rfi" | "submittal";
+            kind: "rfi" | "submittal" | "prefab_unit";
             targetId: string;
         };
         PortfolioTool: {
@@ -29852,7 +29852,7 @@ export interface operations {
     listScheduleLinksForItem: {
         parameters: {
             query: {
-                kind: "rfi" | "submittal";
+                kind: "rfi" | "submittal" | "prefab_unit";
                 targetId: string;
             };
             header?: never;

@@ -66,7 +66,7 @@ export const activityLinks = schedulingSchema.table('activity_links', {
   projectId: uuid('project_id').notNull(),
   scheduleId: uuid('schedule_id').notNull(),
   activityId: uuid('activity_id').notNull(),
-  kind: text('kind').$type<'rfi' | 'submittal'>().notNull(),
+  kind: text('kind').$type<'rfi' | 'submittal' | 'prefab_unit'>().notNull(),
   targetId: uuid('target_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),

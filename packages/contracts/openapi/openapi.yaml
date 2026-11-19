@@ -1818,7 +1818,7 @@ paths:
             name: kind,
             in: query,
             required: true,
-            schema: { type: string, enum: [rfi, submittal] },
+            schema: { type: string, enum: [rfi, submittal, prefab_unit] },
           }
         - { name: targetId, in: query, required: true, schema: { type: string } }
       responses:
@@ -21043,14 +21043,18 @@ components:
       properties:
         id: { type: string }
         activityId: { type: string }
-        kind: { type: string, enum: [rfi, submittal] }
-        targetId: { type: string, description: 'Public id of the RFI or submittal.' }
+        kind: { type: string, enum: [rfi, submittal, prefab_unit] }
+        targetId: { type: string, description: 'Public id of the RFI, submittal or prefab unit.' }
         visible:
           {
             type: boolean,
             description: 'False when the caller cannot see the item (or it is gone); the details are null.',
           }
-        ref: { type: [string, 'null'], description: 'RFI-012 or the submittal number label.' }
+        ref:
+          {
+            type: [string, 'null'],
+            description: 'RFI-012, the submittal number label or the prefab unit code.',
+          }
         title: { type: [string, 'null'] }
         status: { type: [string, 'null'] }
         dueDate:
@@ -21094,7 +21098,7 @@ components:
       additionalProperties: false
       required: [kind, targetId]
       properties:
-        kind: { type: string, enum: [rfi, submittal] }
+        kind: { type: string, enum: [rfi, submittal, prefab_unit] }
         targetId: { type: string }
     PortfolioTool:
       type: object
