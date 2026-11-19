@@ -20,6 +20,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { IssueScheduleForm } from '../components/IssueScheduleForm';
+import { PaymentsCard } from '../components/PaymentsCard';
 import { StatementCard } from '../components/StatementCard';
 import type { PaymentClaimDetail } from '../data/api';
 import { useContract, useVariations, usePaymentClaim } from '../hooks/useClaims';
@@ -192,6 +193,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
           <IssueScheduleForm detail={d} />
         </Card>
       ) : null}
+      <PaymentsCard detail={d} canRecord={canAssess} />
     </div>
   );
 }
