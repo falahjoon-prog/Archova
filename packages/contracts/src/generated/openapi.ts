@@ -4807,6 +4807,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+                deliveryId: components["parameters"]["WebhookDeliveryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a finished delivery again, signed with the endpoint's current secret. It keeps the same event id, so a receiver that de-duplicates on it can tell it is a repeat. The 72 hour retry window starts again. */
+        post: operations["replayWebhookDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages": {
         parameters: {
             query?: never;
@@ -12980,6 +13001,50 @@ export interface paths {
         put?: never;
         /** Issue the payment schedule. A reason is required when the scheduled amount is less than the claim (CLM-AC8). Once issued it cannot be changed, and whether it was in time is recorded (CLM-AC10). */
         post: operations["issuePaymentSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        /** Payments made against a claim, with what is due, paid and still owing. A payee sees only their own contracts. */
+        get: operations["listClaimPayments"];
+        put?: never;
+        /** Record a payment made against a claim (builder staff). Needs an issued payment schedule. The claim becomes paid once the amount due, including GST, is met. */
+        post: operations["recordClaimPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/payments/{paymentId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo a payment by recording the same amount back, dated today. A payment can be reversed once. */
+        post: operations["reverseClaimPayment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22522,6 +22587,35 @@ export interface components {
             note?: string;
             reversesMovementId?: string;
         };
+        ClaimPayment: {
+            id: string;
+            /** Format: date */
+            paidOn: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            reference: string;
+            /** @enum {string} */
+            source: "manual" | "xero" | "myob";
+            reversesPaymentId: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ClaimPayments: {
+            claimId: string;
+            payments: components["schemas"]["ClaimPayment"][];
+            /** @description Including GST; null before a payment schedule is issued */
+            amountDue: string | null;
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            outstanding: string | null;
+        };
+        RecordClaimPaymentRequest: {
+            /** Format: date */
+            paidOn: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            reference: string;
+        };
+        ReverseClaimPaymentRequest: {
+            note?: string;
+        };
         PaymentSummaryClaim: {
             claimId: string;
             number: number;
@@ -27850,6 +27944,7 @@ export interface components {
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
         WebhookId: string;
+        WebhookDeliveryId: string;
         ImportJobId: string;
         LateSubmissionId: string;
         Limit: number;
@@ -35041,6 +35136,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BidBoard"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replayWebhookDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+                deliveryId: components["parameters"]["WebhookDeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delivery, queued to be sent again. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -49309,6 +49429,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimPayments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimPayments"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimPayments"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reverseClaimPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReverseClaimPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Reversed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimPayments"];
                 };
             };
             default: components["responses"]["Problem"];

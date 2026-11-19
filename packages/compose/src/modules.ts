@@ -510,6 +510,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
     readFile: (scope, fileId, maxBytes) => files.api.readFileBytes(scope, fileId, maxBytes),
+    fileSafetyRisk: (scope, projectId, fileId) =>
+      files.api.fileSafetyRisk(scope, projectId, fileId),
     assert: async (scope, key, target) => {
       await access!.api.assert(scope, key, target);
     },
@@ -549,6 +551,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     novaTools: buildNovaTools({
       rfis: rfis.api,
       defects: defects.api,
+      quality: quality.api.nova,
       financials: financials.api,
       scheduling: () => schedulingForNova!(),
     }),
@@ -715,6 +718,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...safety.api.syncCommands,
       ...documents.api.syncCommands,
       ...files.api.syncCommands,
+      ...workforce.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
   });

@@ -89,3 +89,13 @@ export function useWebhookDeliveries(webhookId: string | null) {
     enabled: webhookId !== null,
   });
 }
+
+export function useReplayDelivery(webhookId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (deliveryId: string) => source.replayDelivery(webhookId, deliveryId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...keys(orgId).webhooks, webhookId] }),
+  });
+}

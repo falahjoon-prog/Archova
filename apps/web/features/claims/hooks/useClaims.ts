@@ -12,6 +12,7 @@ import {
   type CreateVariation,
   type IssuePaymentSchedule,
   type RecordClaimStatement,
+  type RecordClaimPayment,
   type PaymentClaimStatus,
   type RecordRetentionRelease,
   type RecordTrustMovement,
@@ -274,6 +275,37 @@ export function useOwnerInvoiceMutations(projectId: string, contractId: string) 
     }),
     discard: useMutation({
       mutationFn: (ownerInvoiceId: string) => source.discardOwnerInvoice(projectId, ownerInvoiceId),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export function useClaimPayments(projectId: string, claimId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'payment-claims', { payments: claimId }),
+    queryFn: () => source.payments(projectId, claimId),
+  });
+}
+
+/** A payment can settle the claim, so the claim, contracts and forecast are refreshed with the payment list. */
+export function usePaymentMutations(projectId: string, claimId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'payment-claims') }),
+      qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') }),
+    ]);
+  return {
+    record: useMutation({
+      mutationFn: (body: RecordClaimPayment) => source.recordPayment(projectId, claimId, body),
+      onSuccess: refresh,
+    }),
+    reverse: useMutation({
+      mutationFn: (paymentId: string) => source.reversePayment(projectId, claimId, paymentId),
       onSuccess: refresh,
     }),
   };

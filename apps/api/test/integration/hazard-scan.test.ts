@@ -234,4 +234,23 @@ describe('Nova site photo hazard signals (F35)', () => {
     expect((await worker.browser.get(`${s.base}/ai/safety/hazard-signals`)).statusCode).toBe(403);
     expect((await worker.browser.get(`${s.base}/ai/safety/hazard-patterns`)).statusCode).toBe(403);
   });
+  it('moves a confirmed hazard photo to the Safety risk album, and leaves a dismissed one where it was', async () => {
+    const s = await setup();
+    const site = (n: number) =>
+      uploadBytes(t, s.pm.browser, s.org.id, s.project.id, PNG, `h${n}.png`, 'image/png', 'diary');
+    const first = await site(1);
+    const second = await site(2);
+    const confirmed = (await s.scan('Crew with no hard hats', first)).json().signals[0].id;
+    const dismissed = (await s.scan('Crew with no hard hats', second)).json().signals[0].id;
+    const review = (id: string, decision: string) =>
+      s.pm.browser.post(`${s.base}/ai/safety/hazard-signals/${id}/review`, { decision });
+    expect((await review(confirmed, 'confirmed')).statusCode).toBe(200);
+    expect((await review(dismissed, 'dismissed')).statusCode).toBe(200);
+    const inAlbum = async (album: string) =>
+      (await s.pm.browser.get(`${s.base}/photos/browse?album=${album}`))
+        .json()
+        .data.map((p: { file: { id: string } }) => p.file.id);
+    expect(await inAlbum('safety_risk')).toEqual([first]);
+    expect(await inAlbum('daily_log')).toEqual([second]);
+  });
 });

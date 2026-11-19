@@ -481,6 +481,9 @@ describe('Nova induction drafts: refresh after a document changes (F33 I2)', () 
           budgetReviewFacts: async () => {
             throw new Error('not used');
           },
+          bidsForLevelling: async () => {
+            throw new Error('not used');
+          },
           openRfisOnDrawing: async () => [],
           provider: t.ai,
         },

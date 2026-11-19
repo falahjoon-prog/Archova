@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, lte, min, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
-import { createTokenVault, type TokenVault } from '../domain/accounting/tokens';
+import { createKeyringVault, parseKeyring, type KeyringVault } from '../domain/accounting/tokens';
 import {
   PUBLIC_EVENT_TYPES,
   TEST_EVENT_TYPE,
@@ -37,7 +37,7 @@ export interface Claim {
 }
 
 export interface WebhooksDeps {
-  vault: TokenVault;
+  vault: KeyringVault;
   transport: WebhookTransport;
   now?: () => Date;
   /** Overrides `MAX_PENDING`; for tests. */
@@ -51,8 +51,8 @@ export interface CreateWebhookInput {
   projectIds?: string[] | undefined;
 }
 
-export const vaultFromKey = (base64Key: string) =>
-  createTokenVault(Buffer.from(base64Key, 'base64'));
+/** One base64 key, or `version:base64` pairs (see `parseKeyring`); the highest version seals new secrets. */
+export const vaultFromKey = (spec: string) => createKeyringVault(parseKeyring(spec));
 
 /** A 2xx is a success; 410 Gone also tells us to stop (integrations/06 §5). */
 const ok = (r: WebhookResult) => r.status !== null && r.status >= 200 && r.status < 300;
@@ -172,6 +172,37 @@ export function createWebhookService(deps: WebhooksDeps) {
       .limit(limit);
   }
 
+  /** Puts a finished delivery back in the queue (same event id, fresh attempts and 72h window). */
+  async function replay(scope: TenantScope, id: string, deliveryId: string) {
+    const [sub] = await scope.tx
+      .select({ id: webhookSubscriptions.id, status: webhookSubscriptions.status })
+      .from(webhookSubscriptions)
+      .where(eq(webhookSubscriptions.id, id));
+    if (!sub) throw new AppError('webhook.not_found');
+    if (sub.status !== 'active') throw new AppError('webhook.disabled');
+    const [d] = await scope.tx
+      .select()
+      .from(webhookDeliveries)
+      .where(and(eq(webhookDeliveries.id, deliveryId), eq(webhookDeliveries.subscriptionId, id)));
+    if (!d) throw new AppError('webhook.delivery_not_found');
+    if (d.status === 'pending') throw new AppError('webhook.delivery_pending');
+    const at = now();
+    const [row] = await scope.tx
+      .update(webhookDeliveries)
+      .set({
+        status: 'pending',
+        attempts: 0,
+        nextAttemptAt: at,
+        lastStatus: null,
+        lastError: null,
+        deliveredAt: null,
+        createdAt: at,
+      })
+      .where(eq(webhookDeliveries.id, deliveryId))
+      .returning();
+    return row!;
+  }
+
   /** Records a delivery for every active subscription the event matches. Idempotent on (subscription, event). */
   async function fanOut(scope: TenantScope, event: WebhookPayload): Promise<number> {
     if (!isPublicEventType(event.type)) return 0;
@@ -244,6 +275,27 @@ export function createWebhookService(deps: WebhooksDeps) {
       .onConflictDoNothing()
       .returning({ id: webhookDeliveries.id });
     return inserted.length;
+  }
+
+  /**
+   * Moves signing secrets sealed under an older key version over to the current one, so an old key can be retired.
+   * Never moves a secret to an older version (a worker started with a stale key list leaves them alone).
+   */
+  async function reseal(scope: TenantScope, limit = 200): Promise<number> {
+    const current = deps.vault.current;
+    const stale = await scope.tx
+      .select({ id: webhookSubscriptions.id, sealed: webhookSubscriptions.secretSealed })
+      .from(webhookSubscriptions)
+      .where(sql`get_byte(${webhookSubscriptions.secretSealed}, 0) < ${current}`)
+      .limit(limit);
+    for (const r of stale) {
+      const secret = deps.vault.open(scope.ctx.orgId, 'webhook-secret', r.sealed);
+      await scope.tx
+        .update(webhookSubscriptions)
+        .set({ secretSealed: deps.vault.seal(scope.ctx.orgId, 'webhook-secret', secret) })
+        .where(eq(webhookSubscriptions.id, r.id));
+    }
+    return stale.length;
   }
 
   /**
@@ -368,7 +420,19 @@ export function createWebhookService(deps: WebhooksDeps) {
     return database.withTenantTx(ctx, (scope) => record(scope, results));
   }
 
-  return { prepare, create, list, remove, deliveries, fanOut, claimDue, record, attemptDue };
+  return {
+    prepare,
+    create,
+    list,
+    remove,
+    deliveries,
+    replay,
+    fanOut,
+    claimDue,
+    record,
+    attemptDue,
+    reseal,
+  };
 }
 
 export type WebhookService = ReturnType<typeof createWebhookService>;

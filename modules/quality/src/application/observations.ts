@@ -382,7 +382,11 @@ export function createObservationService(deps: QualityDeps) {
     if (observation.version !== expectedVersion) throw versionConflict();
     if (patch.assigneeCompanyId) await checkAssignee(scope, projectId, patch.assigneeCompanyId);
     if (patch.swmsId) await checkSwms(scope, projectId, patch.swmsId);
-    if (patch.fileIds) await checkFiles(deps, scope, projectId, patch.fileIds);
+    if (patch.fileIds)
+      await checkFiles(deps, scope, projectId, patch.fileIds, 'fileIds', {
+        kind: 'observation',
+        id: observation.id,
+      });
     // A new type, or new files on a type that needs one, is checked against the files the observation will have.
     const refiled =
       patch.typeKey !== undefined || (patch.fileIds !== undefined && observation.typeKey)
@@ -470,7 +474,11 @@ export function createObservationService(deps: QualityDeps) {
         );
       await checkSwms(scope, projectId, swmsId);
     }
-    if (input.fileIds) await checkFiles(deps, scope, projectId, input.fileIds);
+    if (input.fileIds)
+      await checkFiles(deps, scope, projectId, input.fileIds, 'fileIds', {
+        kind: 'observation',
+        id: observation.id,
+      });
     const at = now();
     const [row] = await scope.tx
       .update(observations)

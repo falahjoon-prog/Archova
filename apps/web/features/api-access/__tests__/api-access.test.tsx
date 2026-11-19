@@ -122,4 +122,34 @@ describe('ApiAccessScreen', () => {
       eventTypes: ['rfis.rfi.created.v1'],
     });
   });
+  it('sends a finished delivery again', async () => {
+    const user = userEvent.setup();
+    const D = `${W}/{webhookId}/deliveries`;
+    const hook = {
+      id: 'whk_1',
+      url: 'https://hooks.example.com/a',
+      description: null,
+      eventTypes: ['rfis.rfi.created.v1'],
+      projectIds: null,
+      status: 'active',
+      disabledReason: null,
+      createdAt: '2026-10-30T00:00:00Z',
+    };
+    const delivery = {
+      id: 'whd_1',
+      eventType: 'rfis.rfi.created.v1',
+      status: 'abandoned',
+      attempts: 5,
+      lastStatus: 500,
+      lastError: null,
+      createdAt: '2026-10-30T00:00:00Z',
+    };
+    fake.on('GET', W, () => ({ data: [hook], availableEventTypes: ['rfis.rfi.created.v1'] }));
+    fake.on('GET', D, () => ({ data: [delivery] }));
+    fake.on('POST', `${D}/{deliveryId}/replay`, () => ({ ...delivery, status: 'pending' }));
+    renderInProject(<ApiAccessScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Deliveries' }));
+    await user.click(await screen.findByRole('button', { name: /Send rfis.rfi.created.v1 again/ }));
+    await waitFor(() => expect(fake.callsTo('POST', `${D}/{deliveryId}/replay`)).toHaveLength(1));
+  });
 });

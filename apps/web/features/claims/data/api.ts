@@ -37,6 +37,9 @@ export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
 export type SovDraft = S['NovaContractSovDraft'];
 export type SovDraftLine = SovDraft['lines'][number];
 export type RecordClaimStatement = S['RecordClaimStatementRequest'];
+export type ClaimPayments = S['ClaimPayments'];
+export type ClaimPayment = S['ClaimPayment'];
+export type RecordClaimPayment = S['RecordClaimPaymentRequest'];
 export type OwnerInvoice = S['OwnerInvoice'];
 export type OwnerInvoiceDetail = S['OwnerInvoiceDetail'];
 export type OwnerInvoiceLine = S['OwnerInvoiceLine'];
@@ -315,6 +318,37 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/payment-claims/{claimId}/schedule`, {
           params: { path: { orgId, projectId, claimId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async payments(projectId: string, claimId: string): Promise<ClaimPayments> {
+      return unwrap(
+        await api.GET(`${P}/payment-claims/{claimId}/payments`, {
+          params: { path: { orgId, projectId, claimId } },
+        }),
+      );
+    },
+    async recordPayment(
+      projectId: string,
+      claimId: string,
+      body: RecordClaimPayment,
+    ): Promise<ClaimPayments> {
+      return unwrap(
+        await api.POST(`${P}/payment-claims/{claimId}/payments`, {
+          params: { path: { orgId, projectId, claimId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async reversePayment(
+      projectId: string,
+      claimId: string,
+      paymentId: string,
+    ): Promise<ClaimPayments> {
+      return unwrap(
+        await api.POST(`${P}/payment-claims/{claimId}/payments/{paymentId}/reverse`, {
+          params: { path: { orgId, projectId, claimId, paymentId } },
+          body: {},
         }),
       );
     },

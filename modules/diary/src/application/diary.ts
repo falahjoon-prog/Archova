@@ -947,7 +947,8 @@ export function createDiaryService(deps: DiaryDeps) {
     const entry = existing ?? (await ensureEntry(scope, projectId, date));
     if (existing && entry.version !== expectedVersion) throw versionConflict();
     const amendmentReason = amendmentReasonFor(entry, reason);
-    if (patch.fileIds) await checkFiles(scope, projectId, patch.fileIds);
+    if (patch.fileIds)
+      await checkFiles(scope, projectId, patch.fileIds, { kind: 'diary_entry', id: entry.id });
     const before = {
       weatherOverride: entry.weatherOverride,
       weatherNotes: entry.weatherNotes,
