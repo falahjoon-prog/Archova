@@ -1,5 +1,5 @@
 import { encodeId } from '@archova/domain';
-import type { CheckRow, EventRow, UnitWithQa } from '../application/units';
+import type { CheckRow, EventRow, FactoryRow, UnitWithQa } from '../application/units';
 import type { Flag, Summary } from '../domain/prefab';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
@@ -70,4 +70,11 @@ export const toSummaryDto = (s: Summary) => ({
     code: n.code,
     installDate: n.installDate,
   })),
+});
+
+export const toFactoryDto = (f: FactoryRow) => ({
+  id: encodeId('prefabFactory', f.id),
+  name: f.name,
+  location: f.location,
+  contact: f.contact,
 });

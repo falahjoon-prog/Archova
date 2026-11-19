@@ -346,6 +346,8 @@ export const PROBLEM_CODES = {
   'prefab_unit.qa_open': 409,
   'prefab_unit.delivery_not_found': 422,
   'prefab_check.not_found': 404,
+  'prefab_factory.not_found': 404,
+  'prefab_factory.name_taken': 409,
   // scheduling (programme)
   'schedule.not_found': 404,
   'schedule.activity_not_found': 404,

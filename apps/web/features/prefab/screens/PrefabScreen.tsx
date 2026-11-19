@@ -21,10 +21,16 @@ import { formatInstant, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { AddUnitDialog } from '../components/AddUnitDialog';
+import { FactoriesDialog } from '../components/FactoriesDialog';
 import { NovaPrefabPanel } from '../components/NovaPrefabPanel';
 import { UnitDialog } from '../components/UnitDialog';
 import type { Unit } from '../data/api';
-import { usePrefabInsights, usePrefabMutations, usePrefabUnits } from '../hooks/usePrefab';
+import {
+  usePrefabFactories,
+  usePrefabInsights,
+  usePrefabMutations,
+  usePrefabUnits,
+} from '../hooks/usePrefab';
 import { KIND_LABELS, STATUS_LABELS, STATUS_TONES, fmtDate } from '../lib/units';
 
 /**
@@ -47,6 +53,8 @@ export function PrefabScreen() {
 
   const units = usePrefabUnits(project.projectId);
   const insights = usePrefabInsights(project.projectId);
+  const factories = usePrefabFactories(project.projectId);
+  const [managing, setManaging] = useState(false);
   const m = usePrefabMutations(project.projectId);
   const today = todayIn(project.timezone);
   const range = useMemo(
@@ -160,7 +168,14 @@ export function PrefabScreen() {
       <PageHeader
         title="Prefab and modular"
         description="Pods, panels and modules built off site: fabrication, QA, shipping and install."
-        actions={canWrite ? <Button onClick={() => setAdding(true)}>Add a unit</Button> : undefined}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setManaging(true)}>
+              Factories
+            </Button>
+            {canWrite ? <Button onClick={() => setAdding(true)}>Add a unit</Button> : null}
+          </>
+        }
       />
       <ErrorAlert error={units.error} title="We couldn't load the prefab units" />
 
@@ -203,6 +218,14 @@ export function PrefabScreen() {
         open={adding}
         onClose={() => setAdding(false)}
         deliveries={deliveryOptions}
+        factories={factories.data ?? []}
+        m={m}
+      />
+      <FactoriesDialog
+        open={managing}
+        onClose={() => setManaging(false)}
+        factories={factories.data ?? []}
+        canWrite={canWrite}
         m={m}
       />
       <UnitDialog

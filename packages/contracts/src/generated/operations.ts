@@ -4655,6 +4655,20 @@ export const RecordPrefabCheckParams = z.object({
   "checkId": z.string().regex(new RegExp("^pfc_[0-9A-Za-z]{26}$")),
 });
 export const RecordPrefabCheckBody = s.RecordPrefabCheckRequestSchema;
+export const ListPrefabFactoriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrefabFactoryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrefabFactoryBody = s.CreatePrefabFactoryRequestSchema;
+export const DeletePrefabFactoryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "factoryId": z.string().regex(new RegExp("^pff_[0-9A-Za-z]{26}$")),
+});
 export const GetPrefabInsightsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -14992,6 +15006,42 @@ export const operations = {
     params: RecordPrefabCheckParams,
     query: null,
     body: RecordPrefabCheckBody,
+  },
+  listPrefabFactories: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/factories',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.view",
+    internal: false,
+    contentType: null,
+    params: ListPrefabFactoriesParams,
+    query: null,
+    body: null,
+  },
+  createPrefabFactory: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/factories',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePrefabFactoryParams,
+    query: null,
+    body: CreatePrefabFactoryBody,
+  },
+  deletePrefabFactory: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/prefab/factories/{factoryId}',
+    module: "workforce",
+    auth: "required",
+    permission: "prefab.units.write",
+    internal: false,
+    contentType: null,
+    params: DeletePrefabFactoryParams,
+    query: null,
+    body: null,
   },
   getPrefabInsights: {
     method: 'GET',

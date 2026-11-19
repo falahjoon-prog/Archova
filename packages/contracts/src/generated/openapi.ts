@@ -14058,6 +14058,48 @@ export interface paths {
         patch: operations["recordPrefabCheck"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/factories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The factories this project builds units at, by name. */
+        get: operations["listPrefabFactories"];
+        put?: never;
+        /** Add a factory to the project list. Names are unique per project, ignoring case. */
+        post: operations["createPrefabFactory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/factories/{factoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                factoryId: components["parameters"]["PrefabFactoryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a factory from the list. Units keep the factory name they were given. */
+        delete: operations["deletePrefabFactory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/prefab/insights": {
         parameters: {
             query?: never;
@@ -14946,6 +14988,20 @@ export interface components {
         };
         PrefabUnitList: {
             data: components["schemas"]["PrefabUnit"][];
+        };
+        PrefabFactory: {
+            id: string;
+            name: string;
+            location: string | null;
+            contact: string | null;
+        };
+        PrefabFactoryList: {
+            data: components["schemas"]["PrefabFactory"][];
+        };
+        CreatePrefabFactoryRequest: {
+            name: string;
+            location?: string;
+            contact?: string;
         };
         PrefabCheck: {
             id: string;
@@ -27945,6 +28001,7 @@ export interface components {
         DelayEventId: string;
         DelayEventItemId: string;
         PrefabUnitId: string;
+        PrefabFactoryId: string;
         PrefabCheckId: string;
         DeliveryId: string;
         InspectionItemId: string;
@@ -51381,6 +51438,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PrefabCheck"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrefabFactories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabFactoryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrefabFactory: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrefabFactoryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabFactory"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePrefabFactory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                factoryId: components["parameters"]["PrefabFactoryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

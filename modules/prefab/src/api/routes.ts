@@ -9,7 +9,14 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { PrefabService } from '../application/units';
-import { toCheckDto, toEventDto, toFlagDto, toSummaryDto, toUnitDto } from './mappers';
+import {
+  toCheckDto,
+  toEventDto,
+  toFactoryDto,
+  toFlagDto,
+  toSummaryDto,
+  toUnitDto,
+} from './mappers';
 
 const id = (kind: IdKind, value: string, notFound: ProblemCode) => {
   const uuid = decodeId(kind, value);
@@ -127,6 +134,30 @@ export function prefabRoutes(database: Database, svc: PrefabService) {
         ),
       ),
     }),
+    listPrefabFactories: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => svc.listFactories(s, project(input.params)))).map(
+          toFactoryDto,
+        ),
+      },
+    }),
+    createPrefabFactory: async (input) => ({
+      status: 201,
+      body: toFactoryDto(
+        await tx(input, (s) => svc.addFactory(s, project(input.params), input.body)),
+      ),
+    }),
+    deletePrefabFactory: async (input) => {
+      await tx(input, (s) =>
+        svc.removeFactory(
+          s,
+          project(input.params),
+          id('prefabFactory', input.params.factoryId, 'prefab_factory.not_found'),
+        ),
+      );
+      return { status: 204 };
+    },
     getPrefabInsights: async (input) => {
       const r = await read(input, (s) => svc.insights(s, project(input.params)));
       return {
