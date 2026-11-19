@@ -386,13 +386,22 @@ main:focus {
   gap: var(--space-2);
   min-height: calc(var(--space-10) + var(--space-1));
   padding: 0 var(--space-3);
-  color: var(--c-action-primary);
+  /* Filled so Ask Nova is the one call to action in the bar. */
+  color: var(--c-bg);
   font: inherit;
   font-weight: 600;
-  background: transparent;
-  border: 1px solid var(--c-border-divider);
+  background: var(--c-action-primary);
+  border: 1px solid var(--c-action-primary);
   border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
   cursor: pointer;
+}
+.app-shell__assistant-toggle:hover {
+  background: var(--c-action-primary-hover);
+  border-color: var(--c-action-primary-hover);
+}
+.app-shell__assistant-toggle[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 2px var(--c-bg), 0 0 0 2px var(--c-action-primary);
 }
 .app-shell__assistant {
   width: 380px;
