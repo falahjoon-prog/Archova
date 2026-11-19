@@ -2,3 +2,4 @@
 export { CorrespondenceListScreen } from './screens/CorrespondenceListScreen';
 export { CorrespondenceNewScreen } from './screens/CorrespondenceNewScreen';
 export { CorrespondenceDetailScreen } from './screens/CorrespondenceDetailScreen';
+export { useCorrespondenceList } from './hooks/useCorrespondence';

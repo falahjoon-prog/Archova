@@ -54,3 +54,51 @@ export const deviceSpeech: SpeechPort = {
     void Speech.stop();
   },
 };
+
+/** Long dictation for the voice log: keeps listening through pauses until stopped, and reports the text so far. */
+export interface DictationPort {
+  ensurePermission(): Promise<boolean>;
+  /** Listen until `stop()`; `onText` gets the whole transcript each time it grows. Resolves with the final text. */
+  dictate(onText: (text: string) => void): Promise<string>;
+  stop(): void;
+}
+
+export const deviceDictation: DictationPort = {
+  ensurePermission: deviceSpeech.ensurePermission,
+  dictate(onText) {
+    return new Promise<string>((resolve) => {
+      const finals: string[] = [];
+      let interim = '';
+      const subs: { remove(): void }[] = [];
+      const text = () => [...finals, interim].filter(Boolean).join(' ').trim();
+      const done = () => {
+        subs.forEach((s) => s.remove());
+        resolve([...finals, interim].filter(Boolean).join(' ').trim());
+      };
+      subs.push(
+        ExpoSpeechRecognitionModule.addListener('result', (e) => {
+          const best = e.results[0]?.transcript ?? '';
+          if (e.isFinal) {
+            if (best) finals.push(best);
+            interim = '';
+          } else interim = best;
+          onText(text());
+        }),
+        ExpoSpeechRecognitionModule.addListener('error', done),
+        ExpoSpeechRecognitionModule.addListener('end', done),
+      );
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-AU',
+        interimResults: true,
+        continuous: true,
+        // The audio never leaves the phone where the OS can do this on device; only the text goes to Nova.
+        requiresOnDeviceRecognition: ExpoSpeechRecognitionModule.supportsOnDeviceRecognition(),
+        iosTaskHint: 'dictation',
+        contextualStrings: ['Nova', 'RFI', 'SWMS', 'diary', 'near miss', 'formwork', 'scaffold'],
+      });
+    });
+  },
+  stop() {
+    ExpoSpeechRecognitionModule.stop();
+  },
+};

@@ -18,7 +18,9 @@ export const webRoutes = {
   search: (orgSlug: string, q?: string) =>
     `/${enc(orgSlug)}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  myWork: (orgSlug: string) => `/${enc(orgSlug)}/my-work`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
+  incidentAnalytics: (orgSlug: string) => `/${enc(orgSlug)}/incident-analytics`,
   dbpInsights: (orgSlug: string) => `/${enc(orgSlug)}/dbp-insights`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   auditLog: (orgSlug: string) => `/${enc(orgSlug)}/audit-log`,
@@ -84,6 +86,7 @@ export const webRoutes = {
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  eot: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays/eot`,
   programme: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/programme`,
   contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
   newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
@@ -99,8 +102,13 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   budget: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/budget`,
   commitments: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/commitments`,
+  commitment: (orgSlug: string, projectId: string, commitmentId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}`,
   tmTickets: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/tm-tickets`,
+  commitmentInvoice: (orgSlug: string, projectId: string, commitmentId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/commitments/${enc(commitmentId)}/invoices/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  risks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/risks`,
   meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
   meeting: (orgSlug: string, projectId: string, meetingId: string) =>
     `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
@@ -116,6 +124,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  photos: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/photos`,
   safetySignals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/safety-signals`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
@@ -124,6 +133,7 @@ export const webRoutes = {
   toolboxTalks: (orgSlug: string, projectId: string, talkId?: string) =>
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
+  handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,
   insurance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/insurance`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
@@ -189,6 +199,8 @@ export const mobileRoutes = {
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
   voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
+  /** Dictate the whole day; Nova splits it into diary notes, delays, safety observations and tasks to review. */
+  voiceLog: (projectId: string) => `/project/${enc(projectId)}/voice-log`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,

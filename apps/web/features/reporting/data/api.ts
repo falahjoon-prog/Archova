@@ -3,6 +3,7 @@ import { unwrap } from '@archova/api-client';
 import { api } from '@/shared/lib/api';
 import { startOfLocalDay } from '../lib/types';
 import type {
+  MyWork,
   AuditFilters,
   AuditLogPage,
   DbpInsights,
@@ -33,6 +34,9 @@ export function createReportingApi(orgId: string) {
           params: { path, query: { includeClosed: includeClosed ? 'true' : 'false' } },
         }),
       );
+    },
+    async myWork(): Promise<MyWork> {
+      return unwrap(await api.GET('/v1/orgs/{orgId}/my-work', { params: { path } }));
     },
     async sustainability(includeClosed: boolean): Promise<SustainabilityPortfolio> {
       return unwrap(

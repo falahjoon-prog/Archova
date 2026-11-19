@@ -28,10 +28,12 @@ import {
   FINANCIALS_PERMISSIONS,
   createFinancialsModule,
   type EvidenceSigner,
+  type FinancialsModule,
 } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { ENVIRONMENT_PERMISSIONS, createEnvironmentModule } from '@archova/mod-environment';
+import { HANDOVER_PERMISSIONS, createHandoverModule } from '@archova/mod-handover';
 import { INSURANCE_PERMISSIONS, createInsuranceModule } from '@archova/mod-insurance';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { PERMITS_PERMISSIONS, createPermitsModule, type LapsedLicence } from '@archova/mod-permits';
@@ -70,6 +72,7 @@ import {
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
@@ -102,12 +105,14 @@ export const MODULE_PERMISSIONS = [
   REPORTING_PERMISSIONS,
   SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
+  WORKFLOWS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   ENVIRONMENT_PERMISSIONS,
   PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   PERMITS_PERMISSIONS,
+  HANDOVER_PERMISSIONS,
   GEOTECH_PERMISSIONS,
   INSURANCE_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
@@ -334,18 +339,34 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
   });
 
+  // financials is built later; the share link only asks for approved changes at request time.
+  let financialsApi: FinancialsModule['api'] | null = null;
   const ownerportal = createOwnerPortalModule(services, {
     access: access.api,
     platform: platform.api,
+    share: {
+      files: files.api,
+      approvedChanges: (scope, projectId) => financialsApi!.approvedClientChanges(scope, projectId),
+      entitlements: billing.api.entitlements.forOrg,
+      messages: opts.messages,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const notifications = createNotificationsModule(services);
   const bookmarks = createBookmarksModule(services);
   const recents = createRecentsModule(services);
 
+  const workflows = createWorkflowsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
+    workflows: workflows.api,
     ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
     // workforce is built later; the report only calls this at request time.
     timesheetMinutes: (scope, projectId) =>
@@ -356,6 +377,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diaryEntryExists: async (scope, projectId, date) =>
       (await diary.api.dayForSummary(scope, projectId, date)) !== null,
   });
+  financialsApi = financials.api;
 
   // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
   // inspection or observation), so safety asks for it lazily.
@@ -395,6 +417,31 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   const geotech = createGeotechModule(services, { platform: platform.api, files: files.api });
   const insurance = createInsuranceModule(services, { platform: platform.api, files: files.api });
+  const handover = createHandoverModule(services, {
+    platform: platform.api,
+    files: files.api,
+    // What other modules know about the project, read on the caller's own access: a figure the caller may not see is null.
+    signals: async (scope, projectId) => {
+      const [defectCounts, warranty, permitRows] = await Promise.all([
+        defects.api.portfolioCounts(scope, projectId),
+        access.api
+          .can(scope, 'defects.warranty.read', { projectId })
+          .then((ok) => (ok ? defects.api.warrantySummary(scope, projectId) : null)),
+        access.api
+          .can(scope, 'permits.permits.read', { projectId })
+          .then((ok) => (ok ? permits.api.statusSummary(scope, projectId) : null)),
+      ]);
+      return {
+        openDefects: defectCounts.restricted ? null : defectCounts.open,
+        warrantyItems: warranty ? warranty.itemCount : null,
+        occupationCertificate: permitRows
+          ? permitRows.some((p) => p.kind === 'occupation_certificate')
+            ? 'present'
+            : 'none'
+          : null,
+      };
+    },
+  });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
@@ -472,6 +519,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       financials.api.laborFactsForNova(scope, projectId, costCodeId),
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
+    bidsForLevelling: (scope, projectId, packageId) =>
+      estimating.api.bidsForLevelling(scope, projectId, packageId),
     budgetReviewFacts: (scope, projectId) => financials.api.budgetReviewFacts(scope, projectId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     meetingForMinutes: (scope, projectId, meetingId) =>
@@ -503,6 +552,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary: diary.api,
     rfis: rfis.api,
     submittals: submittals.api,
+    correspondence: correspondence.api,
     platform: platform.api,
     access: access.api,
   });
@@ -511,7 +561,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
 
-  const plant = createPlantModule(services, { access: access.api });
+  const plant = createPlantModule(services, {
+    access: access.api,
+    postCost: financials.api.postPlantCost,
+    requireProject: platform.api.getProject,
+    costCodeBudgeted: financials.api.costCodeBudgeted,
+  });
 
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
@@ -559,6 +614,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
+    createDelivery: (scope, projectId, input) =>
+      logistics.api.createDelivery(scope, projectId, input),
   });
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
@@ -579,6 +636,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     inspections: quality.api.reporting.inspections,
     programme: scheduling.api.reporting,
     budget: { portfolioSummary: financials.api.budgetSummary },
+    time: {
+      timeForReporting: workforce.api.timeForReporting,
+      costCodes: financials.api.costCodes,
+    },
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,
@@ -666,6 +727,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    handover,
     geotech,
     insurance,
     estimating,
@@ -676,6 +738,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,
@@ -718,6 +781,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     precon,
     safety,
     permits,
+    handover,
     geotech,
     insurance,
     estimating,
@@ -729,6 +793,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     reporting,
     search,
     exportsModule,
+    workflows,
     workforce,
     logistics,
     prefab,

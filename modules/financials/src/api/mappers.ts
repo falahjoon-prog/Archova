@@ -10,6 +10,8 @@ import type {
   VariationRow,
 } from '../application/financials';
 import type { CommitmentLineRow, CommitmentRow } from '../application/commitments';
+import type { InvoiceSummary } from '../domain/commitment-invoices';
+import type { PaymentApplication } from '../domain/payment-application';
 
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
 
@@ -77,6 +79,9 @@ export const toVariationDto = (v: { variation: VariationRow; claimedToDate: stri
   decidedAt: v.variation.decidedAt?.toISOString() ?? null,
   decisionNote: v.variation.decisionNote,
   costCodeId: v.variation.costCodeId ? encodeId('costCode', v.variation.costCodeId) : null,
+  changeEventId: v.variation.changeEventId
+    ? encodeId('changeEvent', v.variation.changeEventId)
+    : null,
 });
 
 export const toLineDto = (l: ClaimLineRow) => ({
@@ -114,9 +119,11 @@ export const toCommitmentDto = (c: CommitmentRow) => ({
   kind: c.kind,
   title: c.title,
   vendorCompanyId: company(c.vendorCompanyId),
+  contractId: c.contractId ? encodeId('contract', c.contractId) : null,
   status: c.status as 'draft',
   total: c.total,
   overBudgetOverride: c.overBudgetOverride,
+  changeEventId: c.changeEventId ? encodeId('changeEvent', c.changeEventId) : null,
   submittedAt: c.submittedAt?.toISOString() ?? null,
   decidedAt: c.decidedAt?.toISOString() ?? null,
   decisionNote: c.decisionNote,
@@ -126,4 +133,47 @@ export const toCommitmentLineDto = (l: CommitmentLineRow) => ({
   budgetLineId: encodeId('budgetLine', l.budgetLineId),
   description: l.description,
   amount: l.amount,
+});
+
+export const toCommitmentInvoicesDto = (d: {
+  linked: boolean;
+  contractId: string | null;
+  summary: InvoiceSummary | null;
+}) => ({
+  linked: d.linked,
+  contractId: d.contractId ? encodeId('contract', d.contractId) : null,
+  summary: d.summary
+    ? {
+        ...d.summary,
+        rows: d.summary.rows.map((r) => ({
+          ...r,
+          claimId: encodeId('paymentClaim', r.claimId),
+          receivedAt: r.receivedAt.toISOString(),
+        })),
+      }
+    : null,
+});
+
+export const toPaymentApplicationDto = (
+  claimId: string,
+  commitmentTitle: string,
+  a: PaymentApplication,
+) => ({
+  claimId,
+  commitmentTitle,
+  contractNumber: a.contractNumber,
+  contractTitle: a.contractTitle,
+  claimNumber: a.claimNumber,
+  status: a.status,
+  periodStart: a.periodStart,
+  periodEnd: a.periodEnd,
+  receivedAt: a.receivedAt.toISOString(),
+  paymentDueOn: a.paymentDueOn,
+  scheduleDueOn: a.scheduleDueOn,
+  summary: a.summary,
+  changeOrders: a.changeOrders,
+  retentionPct: a.retentionPct,
+  rows: a.rows,
+  prior: a.prior,
+  findings: a.findings,
 });

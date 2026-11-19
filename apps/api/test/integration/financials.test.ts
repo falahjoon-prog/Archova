@@ -1522,6 +1522,100 @@ describe('Commitments against the budget', () => {
   });
 });
 
+describe('Commitment invoices', () => {
+  it('links a subcontract to its contract and lists that contract’s claims', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const cc = (await post('cost-codes', { code: '03', description: 'Electrical' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '150000.00' })).json();
+    const commitment = (
+      await post('commitments', {
+        kind: 'subcontract',
+        title: 'Electrical subcontract',
+        vendorCompanyId: s.subCo.companyId,
+        lines: [{ budgetLineId: line.id, description: 'All', amount: '100000.00' }],
+      })
+    ).json().commitment;
+    const none = await s.pm.browser.get(`${s.base}/commitments/${commitment.id}/invoices`);
+    expect(none.json()).toMatchObject({ linked: false, summary: null });
+
+    const created = (await post('contracts', contractBody(s.subCo.companyId))).json();
+    const link = await s.pm.browser.put(`${s.base}/commitments/${commitment.id}/contract`, {
+      contractId: created.contract.id,
+    });
+    expect(link.statusCode).toBe(200);
+    expect(link.json().commitment.contractId).toBe(created.contract.id);
+
+    const claim = await post(`contracts/${created.contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: created.sov[0].id, thisClaim: '30000.00' }],
+    });
+    expect(claim.statusCode).toBe(201);
+    const inv = (await s.pm.browser.get(`${s.base}/commitments/${commitment.id}/invoices`)).json();
+    expect(inv.linked).toBe(true);
+    expect(inv.summary).toMatchObject({
+      originalSum: '100000.00',
+      revisedSum: '100000.00',
+      invoiced: '30000.00',
+      paid: '0.00',
+    });
+    expect(inv.summary.rows).toHaveLength(1);
+    expect(inv.summary.rows[0]).toMatchObject({ number: 1, percentComplete: '30.00' });
+
+    // The payment application behind that invoice, and its PDF.
+    const claimId = inv.summary.rows[0].claimId;
+    const app = await s.pm.browser.get(
+      `${s.base}/commitments/${commitment.id}/invoices/${claimId}`,
+    );
+    expect(app.statusCode).toBe(200);
+    expect(app.json()).toMatchObject({
+      claimNumber: 1,
+      summary: { revisedSum: '100000.00', completedToDate: '30000.00', percentComplete: '30.00' },
+    });
+    expect(app.json().rows).toHaveLength(1);
+    const pdfUrl = `${s.base}/commitments/${commitment.id}/invoices/${claimId}/pdf`;
+    const pdf = await s.pm.browser.post(pdfUrl, {
+      sections: ['g702', 'breakdown'],
+      amountCertified: '1.00',
+      paper: 'letter',
+    });
+    expect(pdf.statusCode).toBe(200);
+    expect(Buffer.from(pdf.json().dataBase64, 'base64').subarray(0, 5).toString()).toBe('%PDF-');
+    expect(
+      (await s.pm.browser.post(pdfUrl, { amountCertified: '9999999999999.00' })).statusCode,
+    ).toBe(422);
+    expect((await s.sub.browser.post(pdfUrl, {})).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices/${claimId}`))
+        .statusCode,
+    ).toBe(403);
+
+    // The same contract can't back a second commitment; a subcontractor sees none of it.
+    const other = (
+      await post('commitments', {
+        kind: 'subcontract',
+        title: 'Second',
+        lines: [{ budgetLineId: line.id, description: 'x', amount: '1.00' }],
+      })
+    ).json().commitment;
+    const dup = await s.pm.browser.put(`${s.base}/commitments/${other.id}/contract`, {
+      contractId: created.contract.id,
+    });
+    expect(dup.json().code).toBe('financials.commitment.contract_taken');
+    expect(
+      (await s.sub.browser.get(`${s.base}/commitments/${commitment.id}/invoices`)).statusCode,
+    ).toBe(403);
+
+    const clear = await s.pm.browser.put(`${s.base}/commitments/${commitment.id}/contract`, {
+      contractId: null,
+    });
+    expect(clear.json().commitment.contractId).toBeNull();
+  });
+});
+
 describe('Owner invoice pre-fill', () => {
   it('compiles approved subcontractor claims, holds flagged ones for confirmation, and frees them on discard', async () => {
     const s = await setup('NSW');
@@ -2193,6 +2287,101 @@ describe('Labor productivity', () => {
     ).toBe(403);
     expect(
       (await s.sub.browser.post(`${s.base}/ai/labor-productivity`, { costCodeId: code.id }))
+        .statusCode,
+    ).toBe(403);
+  });
+});
+
+describe('Change events', () => {
+  it('raises, converts to a variation or commitment, and closes with a reason', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const { contract } = (
+      await post('contracts', {
+        ...contractBody(s.subCo.companyId),
+        sov: [{ code: 'E1', description: 'Rough-in', value: '100000.00' }],
+      })
+    ).json();
+
+    const a = await post('change-events', {
+      title: 'Extra slab thickening',
+      reason: 'latent_condition',
+      estimate: '8000.00',
+    });
+    expect(a.statusCode).toBe(201);
+    const ce = a.json();
+    expect(ce).toMatchObject({ number: 1, status: 'open', reason: 'latent_condition' });
+    expect((await post('change-events', { title: 'Second', reason: 'rfi' })).json().number).toBe(2);
+    expect((await post('change-events', { title: 'x', reason: 'bogus' })).statusCode).toBe(422);
+
+    const edited = await s.pm.browser.patch(`${s.base}/change-events/${ce.id}`, {
+      title: 'Slab thickening at gridline C',
+      estimate: null,
+    });
+    expect(edited.json()).toMatchObject({ title: 'Slab thickening at gridline C', estimate: null });
+
+    // A variation raised from it moves it to converted_to_variation and shows on the event.
+    const v = await post(`contracts/${contract.id}/variations`, {
+      title: 'Thickened slab',
+      amount: '7500.00',
+      changeEventId: ce.id,
+    });
+    expect(v.statusCode).toBe(201);
+    expect(v.json().changeEventId).toBe(ce.id);
+    const detail = (await s.pm.browser.get(`${s.base}/change-events/${ce.id}`)).json();
+    expect(detail.status).toBe('converted_to_variation');
+    expect(detail.variations).toHaveLength(1);
+    expect(detail.variations[0]).toMatchObject({ number: 1, amount: '7500.00' });
+    expect(
+      (
+        await post(`contracts/${contract.id}/variations`, {
+          title: 'x',
+          amount: '1.00',
+          changeEventId: 'chg_0000000000000000000000000A',
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    // A commitment raised from the second event moves that one.
+    const second = (await s.pm.browser.get(`${s.base}/change-events`)).json().data[0];
+    expect(second.number).toBe(2);
+    const cc = (await post('cost-codes', { code: '03', description: 'Concrete' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '50000.00' })).json();
+    const cm = await post('commitments', {
+      kind: 'purchase_order',
+      title: 'Extra concrete',
+      changeEventId: second.id,
+      lines: [{ budgetLineId: line.id, description: 'Concrete', amount: '2000.00' }],
+    });
+    expect(cm.statusCode).toBe(201);
+    expect(cm.json().commitment.changeEventId).toBe(second.id);
+    const d2 = (await s.pm.browser.get(`${s.base}/change-events/${second.id}`)).json();
+    expect(d2.status).toBe('converted_to_commitment');
+    expect(d2.commitments).toHaveLength(1);
+
+    // Closing needs a reason; a closed event takes no more work and cannot be edited or closed again.
+    expect((await post(`change-events/${ce.id}/close`, { note: '' })).statusCode).toBe(422);
+    const closed = await post(`change-events/${ce.id}/close`, { note: 'Priced and approved' });
+    expect(closed.json()).toMatchObject({ status: 'closed', closedNote: 'Priced and approved' });
+    expect(
+      (
+        await post(`contracts/${contract.id}/variations`, {
+          title: 'More',
+          amount: '10.00',
+          changeEventId: ce.id,
+        })
+      ).json().code,
+    ).toBe('financials.change_event.closed');
+    expect(
+      (await s.pm.browser.patch(`${s.base}/change-events/${ce.id}`, { title: 'y' })).statusCode,
+    ).toBe(409);
+    expect((await post(`change-events/${ce.id}/close`, { note: 'again' })).statusCode).toBe(409);
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/change-events`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.post(`${s.base}/change-events`, { title: 'z', reason: 'other' }))
         .statusCode,
     ).toBe(403);
   });

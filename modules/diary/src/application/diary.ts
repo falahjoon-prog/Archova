@@ -3,7 +3,7 @@ import { encodeId, uuidv7 } from '@archova/domain';
 import { daysBetween, localDateOf, zonedParts, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   COMPANY_SCOPED_KINDS,
@@ -59,7 +59,7 @@ export const MAX_RANGE_DAYS = 93;
 export interface DiaryDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyExists' | 'projectCompanies'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   /** Days with logged site activity (workforce), read at request time. Absent: no gap flags. */
   siteActivityDays?: (
     scope: TenantScope,
@@ -353,13 +353,27 @@ export function createDiaryService(deps: DiaryDeps) {
           ]);
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach photos uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'daily_log', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -835,6 +849,79 @@ export function createDiaryService(deps: DiaryDeps) {
     return rows;
   }
 
+  /**
+   * Weather on the site diary days in a range, for the EOT register: the day's weather (the site manager's correction
+   * when there is one, else the automatic reading), the weather delay hours logged that day and any stand-down. Null for
+   * a reader limited to their own company, like `delayLines`. At most `limit` + 1 days come back.
+   */
+  async function weatherDays(
+    scope: TenantScope,
+    projectId: string,
+    opts: { from: LocalDate; to: LocalDate; limit: number },
+  ) {
+    if ((await viewer(scope, projectId)).scopedCompanyId) return null;
+    const days = await scope.tx
+      .select({
+        id: entries.id,
+        date: entries.date,
+        status: entries.status,
+        weather: entries.weather,
+        weatherOverride: entries.weatherOverride,
+        weatherStationId: entries.weatherStationId,
+        weatherNotes: entries.weatherNotes,
+      })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.projectId, projectId),
+          gte(entries.date, opts.from),
+          lte(entries.date, opts.to),
+        ),
+      )
+      .orderBy(desc(entries.date))
+      .limit(opts.limit + 1);
+    if (days.length === 0) return [];
+    const ids = days.map((d) => d.id);
+    const delays = await scope.tx
+      .select({ entryId: LINE_TABLES.delay.entryId, hours: LINE_TABLES.delay.hours })
+      .from(LINE_TABLES.delay)
+      .where(
+        and(
+          inArray(LINE_TABLES.delay.entryId, ids),
+          eq(LINE_TABLES.delay.type, 'weather'),
+          isNull(LINE_TABLES.delay.deletedAt),
+        ),
+      );
+    const stands = await scope.tx
+      .select({ entryId: LINE_TABLES.stand_down.entryId, id: LINE_TABLES.stand_down.id })
+      .from(LINE_TABLES.stand_down)
+      .where(
+        and(inArray(LINE_TABLES.stand_down.entryId, ids), isNull(LINE_TABLES.stand_down.deletedAt)),
+      );
+    return days.map((d) => {
+      const w = d.weatherOverride ?? d.weather;
+      const c = w?.conditions;
+      return {
+        entryId: d.id,
+        date: d.date,
+        status: d.status,
+        rainfallMm: w?.rainfallMm ?? null,
+        minTempC: w?.minTempC ?? null,
+        maxTempC: w?.maxTempC ?? null,
+        windKmh: w?.windKmh ?? null,
+        conditions:
+          [c?.am, c?.midday, c?.pm, d.weatherNotes].filter((x) => x && x.trim()).join(' - ') ||
+          null,
+        stationId: d.weatherStationId,
+        corrected: d.weatherOverride !== null,
+        weatherDelayHours: delays
+          .filter((x) => x.entryId === d.id)
+          .reduce((n, x) => n + Number(x.hours), 0),
+        standDowns: stands.filter((x) => x.entryId === d.id).length,
+      };
+    });
+  }
+
   async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
     if (scope.ctx.principalType !== 'member') return [];
     if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return [];
@@ -1269,6 +1356,7 @@ export function createDiaryService(deps: DiaryDeps) {
     aiSources,
     aiAccessScopes,
     delayLines,
+    weatherDays,
     saveHeader,
     submit,
     signOff,

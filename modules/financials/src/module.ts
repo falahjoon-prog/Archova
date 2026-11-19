@@ -1,12 +1,17 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
 import { budgetRoutes } from './api/budgetRoutes';
 import { financialsRoutes } from './api/routes';
+import { cashflowRoutes } from './api/cashflowRoutes';
+import { createCashflowService } from './application/cashflow';
 import { directCostRoutes } from './api/directCostRoutes';
+import { changeEventRoutes } from './api/changeEventRoutes';
+import { createChangeEventsService } from './application/changeEvents';
 import { tmTicketRoutes } from './api/tmRoutes';
 import { createTmTicketsService } from './application/tmTickets';
 import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
 import { createOwnerInvoicesService } from './application/ownerInvoices';
 import { createDirectCostsService } from './application/directCosts';
+import { postPlantCost, costCodeBudgeted } from './application/plantCosts';
 import { createCommitmentsService } from './application/commitments';
 import { productionRoutes } from './api/productionRoutes';
 import { productivityRoutes } from './api/productivityRoutes';
@@ -15,6 +20,7 @@ import { createProductivityService } from './application/productivity';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
+import { approvedClientChanges } from './application/clientChanges';
 import { createReportingSources } from './application/reportingSources';
 import { createRetentionService } from './application/retention';
 import { createTrustService } from './application/trust';
@@ -34,6 +40,13 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     monthlySpend: forecast.monthlySpend,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const cashflow = createCashflowService({
+    access: deps.access,
+    platform: deps.platform,
+    forecast,
+    budget,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const productivity = createProductivityService({
     access: deps.access,
     timesheetMinutes: deps.timesheetMinutes,
@@ -45,6 +58,11 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     ...(deps.now ? { now: deps.now } : {}),
   });
   const commitments = createCommitmentsService({
+    access: deps.access,
+    platform: deps.platform,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const changeEvents = createChangeEventsService({
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
   });
@@ -87,7 +105,9 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     routes: {
       ...financialsRoutes(services.database, service, forecast, commitments, trust, retention),
       ...budgetRoutes(services.database, budget),
+      ...cashflowRoutes(services.database, cashflow),
       ...directCostRoutes(services.database, directCosts),
+      ...changeEventRoutes(services.database, changeEvents),
       ...tmTicketRoutes(services.database, tmTickets),
       ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
@@ -101,6 +121,9 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       contractForQuote: service.contractForQuote,
       /** Retention-trust standing of a project's subcontracts, for the tender-readiness pack (`reporting`). */
       trustSummary: trust.trustSummary,
+      /** Plant hire posted to a project budget as a direct cost (`plant`, scheduled job). */
+      postPlantCost,
+      costCodeBudgeted,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
       /** Material delivery scheduling (`logistics`): look up a purchase order to link a delivery to. */
@@ -109,10 +132,14 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       laborFactsForNova: productivity.laborFacts,
       /** Portfolio dashboard (`reporting`): budget against forecast per project, in cents. */
       budgetSummary: budget.portfolioSummary,
+      /** Time dashboard (`reporting`): a project's cost codes, or null when the caller may not read them. */
+      costCodes: budget.costCodesForReporting,
       /** Nova on the budget (`ai`): the code-found findings and totals, margin never included. */
       budgetReviewFacts: budget.reviewFacts,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */
       reporting: reportingSources,
+      /** Client share link (`ownerportal`): approved head-contract variations, no amounts. Link-authorised only. */
+      approvedClientChanges,
     },
   };
 }

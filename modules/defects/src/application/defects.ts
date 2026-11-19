@@ -22,7 +22,8 @@ import {
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
-import type { FilesModule } from '@archova/mod-files';
+import type { FilesModule, PhotoRefKind } from '@archova/mod-files';
+import { createNotifications } from '@archova/mod-notifications';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   canSeeDefect,
@@ -40,7 +41,7 @@ export interface DefectsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership' | 'projectCompanies'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision'>;
-  files: Pick<FilesModule['api'], 'getFile'>;
+  files: Pick<FilesModule['api'], 'getFile' | 'filePhoto'>;
   now?: () => Date;
 }
 
@@ -272,13 +273,27 @@ export function createDefectService(deps: DefectsDeps) {
     return { drawingRevisionId: rev.id, sheetId: rev.sheetId, pinX: pin.x, pinY: pin.y };
   }
 
-  async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
+  async function checkFiles(
+    scope: TenantScope,
+    projectId: string,
+    fileIds: string[],
+    ref?: { kind: PhotoRefKind; id: string },
+  ) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
       if (f.projectId !== projectId || f.status !== 'ready')
         throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
+      // A standalone site photo attached here is filed under this record's album.
+      if (f.module === 'photos')
+        await deps.files.filePhoto(
+          scope,
+          projectId,
+          fileId,
+          { category: 'punch_list', refKind: ref?.kind ?? null, refId: ref?.id ?? null },
+          'attach',
+        );
     }
   }
 
@@ -503,6 +518,10 @@ export function createDefectService(deps: DefectsDeps) {
       throw new AppError('access.denied', "You can't change this defect.");
     if (defect.version !== expectedVersion) throw versionConflict();
     const values = await fieldValues(scope, projectId, patch);
+    if (values.assigneeUserIds)
+      values.completedUserIds = defect.completedUserIds.filter((u) =>
+        values.assigneeUserIds!.includes(u),
+      );
     checkDelegateDates(
       'approverDelegateFrom' in values ? values.approverDelegateFrom : defect.approverDelegateFrom,
       'approverDelegateUntil' in values
@@ -603,7 +622,7 @@ export function createDefectService(deps: DefectsDeps) {
       );
     }
     if (defect.version !== expectedVersion) throw versionConflict();
-    await checkFiles(scope, projectId, fileIds);
+    await checkFiles(scope, projectId, fileIds, { kind: 'defect', id: defectId });
 
     const at = now();
     const values: Partial<typeof defects.$inferInsert> = { status: result.to };
@@ -619,6 +638,8 @@ export function createDefectService(deps: DefectsDeps) {
       values.closedAt = at;
       values.closedBy = scope.ctx.userId;
     }
+    if (input.action === 'reject' || input.action === 'reopen' || input.action === 'reassign')
+      values.completedUserIds = [];
     if (input.action === 'reject') values.readyForReviewAt = null;
     if (input.action === 'reopen') {
       values.readyForReviewAt = null;
@@ -676,6 +697,80 @@ export function createDefectService(deps: DefectsDeps) {
     return detail(scope, projectId, defectId);
   }
 
+  /**
+   * An assignee says their own part is done. It is a history line and a version bump, not a status change. When
+   * every assignee has said so, the final approver (or the manager when none is named), and the stand-in if there
+   * is one, are told. Saying it twice changes nothing.
+   */
+  async function completePart(scope: TenantScope, projectId: string, defectId: string) {
+    const { defect } = await getVisible(scope, projectId, defectId);
+    if (!(await deps.access.can(scope, 'defects.defects.respond', { projectId })))
+      throw new AppError('access.denied', "You can't mark your part of this defect done.");
+    const me = scope.ctx.userId;
+    if (!defect.assigneeUserIds.includes(me))
+      throw new AppError('defect.not_allowed', 'Only the people it is assigned to can do that.');
+    if (defect.status !== 'open')
+      throw new AppError(
+        'defect.invalid_transition',
+        `A defect that is ${defect.status} can't have its parts marked done.`,
+        undefined,
+        { status: defect.status },
+      );
+    if (defect.completedUserIds.includes(me)) return detail(scope, projectId, defectId);
+    const [row] = await scope.tx
+      .update(defects)
+      .set({
+        completedUserIds: sql`array_append(${defects.completedUserIds}, ${me}::uuid)`,
+        version: sql`${defects.version} + 1`,
+        updatedBy: me,
+        updatedAt: now(),
+      })
+      .where(
+        and(
+          eq(defects.id, defectId),
+          eq(defects.status, 'open'),
+          sql`not (${me}::uuid = any(${defects.completedUserIds}))`,
+        ),
+      )
+      .returning();
+    if (!row) return detail(scope, projectId, defectId);
+    await recordEvent(scope, row, { action: 'partComplete', from: row.status });
+    await changed(scope, row);
+    const allDone = row.assigneeUserIds.every((u) => row.completedUserIds.includes(u));
+    if (allDone) {
+      const approvers = [
+        ...new Set(
+          [row.finalApproverUserId ?? row.managerUserId, row.approverDelegateUserId].filter(
+            (u): u is string => !!u && u !== me,
+          ),
+        ),
+      ];
+      await createNotifications(
+        scope,
+        approvers.map((userId) => ({
+          userId,
+          projectId,
+          kind: 'defect.parts_complete',
+          entityType: 'defect' as const,
+          entityId: row.id,
+          title: `${defectLabel(row.number)} is ready for your sign-off`,
+          body: `Everyone assigned to "${row.title}" has marked their part done.`,
+          // One per round: a reject or reopen clears the parts and bumps the version.
+          dedupeKey: `defect-parts-done:${row.id}:${row.version}`,
+        })),
+      );
+      scope.events.add({
+        type: 'defects.defect.parts_complete.v1',
+        projectId,
+        entityType: 'defect',
+        entityId: defectId,
+        entityVersion: row.version,
+        data: { defectId, notify: approvers },
+      });
+    }
+    return detail(scope, projectId, defectId);
+  }
+
   async function attachedPhotos(scope: TenantScope, defectId: string, purpose: 'before' | 'after') {
     const rows = await scope.tx
       .select({ fileIds: events.fileIds })
@@ -714,7 +809,7 @@ export function createDefectService(deps: DefectsDeps) {
       )
       .limit(1);
     if (have) return { version: defect.version };
-    await checkFiles(scope, projectId, [fileId]);
+    await checkFiles(scope, projectId, [fileId], { kind: 'defect', id: defectId });
     const [row] = await scope.tx.select().from(defects).where(eq(defects.id, defectId));
     await recordEvent(scope, row!, {
       action: 'photo',
@@ -993,6 +1088,7 @@ export function createDefectService(deps: DefectsDeps) {
     detail,
     update,
     transition,
+    completePart,
     attachPhoto,
     openNear,
     openForMeeting,

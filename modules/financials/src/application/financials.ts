@@ -20,6 +20,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
+import { attachChangeEvent } from './changeEvents';
 import { fromCents, toCents } from '../domain/money';
 import { sealMessage, type EvidenceSigner } from '../domain/seal-proof';
 import {
@@ -68,11 +69,14 @@ export interface RecordStatementInput {
 /** The only claim warning so far. It warns; it never suggests withholding (compliance/05 §6, lawyer question open). */
 export type ClaimWarning = 'subcontractor_statement_missing';
 
+import type { WorkflowsService } from '@archova/mod-workflows';
 import type { DayActivity } from './tmTickets';
 
 export interface FinancialsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyIdentity'>;
+  /** Approval chains the organisation configured (`workflows`). Without it every variation uses the single approver. */
+  workflows?: Pick<WorkflowsService, 'start' | 'decide' | 'cancel' | 'forSubject'>;
   now?: () => Date;
   /** Signs each sealed record. Without one, records are sealed by hash only (marked unsigned). */
   signer?: EvidenceSigner;
@@ -158,6 +162,8 @@ export interface CreateVariationInput {
   amount: string;
   timeImpactDays?: number;
   costCodeId?: string;
+  /** The change event this variation prices; moves it to converted_to_variation. */
+  changeEventId?: string;
 }
 
 export interface IssueScheduleInput {
@@ -1509,6 +1515,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
         { path: 'amount', message: 'Must be more than zero' },
       ]);
     if (input.costCodeId) await requireCostCode(scope, projectId, input.costCodeId);
+    if (input.changeEventId)
+      await attachChangeEvent(scope, projectId, input.changeEventId, 'converted_to_variation');
     const [n] = await scope.tx
       .select({ n: sql<number>`coalesce(max(${variations.number}), 0) + 1` })
       .from(variations)
@@ -1527,6 +1535,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         amount: input.amount,
         timeImpactDays: input.timeImpactDays ?? 0,
         costCodeId: input.costCodeId ?? null,
+        changeEventId: input.changeEventId ?? null,
         createdBy: scope.ctx.userId,
       })
       .returning();
@@ -1606,6 +1615,19 @@ export function createFinancialsService(deps: FinancialsDeps) {
         'Give the reason for rejecting this variation.',
         [{ path: 'note', message: 'Required when rejecting' }],
       );
+    // A configured approval chain takes over the decision: each step is someone's call, and only the last approval (or
+    // any rejection) moves the variation itself. Without a chain the single approver decides, as before.
+    if (decide && deps.workflows) {
+      const step = await deps.workflows.decide(scope, {
+        subjectType: 'financials.variation',
+        subjectId: variationId,
+        decision: to === 'approved' ? 'approved' : 'rejected',
+        note,
+      });
+      if (step?.outcome === 'advanced') return withClaimed(scope, row);
+    }
+    if (to === 'withdrawn' && deps.workflows)
+      await deps.workflows.cancel(scope, 'financials.variation', variationId);
     const at = now();
     const [updated] = await scope.tx
       .update(variations)
@@ -1629,7 +1651,24 @@ export function createFinancialsService(deps: FinancialsDeps) {
       entityVersion: updated.version,
       data: { variationId, contractId: row.contractId, number: row.number, amount: row.amount },
     });
+    if (to === 'submitted' && deps.workflows)
+      await deps.workflows.start(scope, {
+        projectId,
+        subjectType: 'financials.variation',
+        subjectId: variationId,
+        amount: row.amount,
+      });
     return withClaimed(scope, updated);
+  }
+
+  /** Where a variation is in its approval chain, or null when no chain applied. */
+  async function getVariationWorkflow(scope: TenantScope, projectId: string, variationId: string) {
+    const { variation } = await getVariation(scope, projectId, variationId);
+    if (!(await viewer(scope, projectId)).isInternal)
+      throw new AppError('financials.variation.not_found');
+    return deps.workflows
+      ? deps.workflows.forSubject(scope, 'financials.variation', variation.id)
+      : null;
   }
 
   /**
@@ -1771,6 +1810,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     listVariations,
     getVariation,
     moveVariation,
+    getVariationWorkflow,
     createContract,
     contractForQuote,
     listContracts,

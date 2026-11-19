@@ -57,6 +57,10 @@ export function usePrefabMutations(projectId: string) {
         source.transition(projectId, v.unitId, v.body),
       onSuccess: refresh,
     }),
+    draftDelivery: useMutation({
+      mutationFn: (unitId: string) => source.draftDelivery(projectId, unitId),
+      onSuccess: refresh,
+    }),
     progress: useMutation({
       mutationFn: (v: { unitId: string; progressPct: number }) =>
         source.update(projectId, v.unitId, { progressPct: v.progressPct }),

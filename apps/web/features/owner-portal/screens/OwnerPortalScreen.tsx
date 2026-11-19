@@ -19,6 +19,7 @@ import {
 import { OwnerPortalIcon } from '@archova/ui/icons';
 import { atLeast } from '@archova/domain/permissions';
 import { useProjectPermissions } from '@/features/projects';
+import { ShareTab } from './ShareTab';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate, formatMoney, formatInstant } from '@/shared/lib/format';
@@ -36,7 +37,9 @@ const TABS = [
   { id: 'progress', label: 'Progress' },
   { id: 'approvals', label: 'Approvals' },
   { id: 'capital', label: 'Capital plan' },
+  { id: 'share', label: 'Client link' },
 ] as const;
+const TEAM_ONLY: readonly string[] = ['share'];
 type TabId = (typeof TABS)[number]['id'];
 
 const money = (cents: number) =>
@@ -89,7 +92,8 @@ export function OwnerPortalScreen() {
   const isTeam = !!p && (admin || atLeast(p.toolLevels.owner_portal, 'standard'));
   const canDecide = !!p && (admin || p.granular.includes('ownerportal.approvals.decide'));
   const [params, setParams] = useUrlState(['tab'] as const);
-  const tab: TabId = TABS.some((t) => t.id === params.tab) ? (params.tab as TabId) : 'progress';
+  const tabs = isTeam ? TABS : TABS.filter((t) => !TEAM_ONLY.includes(t.id));
+  const tab: TabId = tabs.some((t) => t.id === params.tab) ? (params.tab as TabId) : 'progress';
 
   return (
     <>
@@ -100,13 +104,14 @@ export function OwnerPortalScreen() {
       />
       <Tabs
         label="Owner portal"
-        tabs={TABS}
+        tabs={tabs}
         value={tab}
         onValueChange={(id) => setParams({ tab: id === 'progress' ? '' : id })}
       >
         {tab === 'progress' ? <ProgressTab isTeam={isTeam} /> : null}
         {tab === 'approvals' ? <ApprovalsTab isTeam={isTeam} canDecide={canDecide} /> : null}
         {tab === 'capital' ? <CapitalTab isTeam={isTeam} /> : null}
+        {tab === 'share' ? <ShareTab /> : null}
       </Tabs>
     </>
   );

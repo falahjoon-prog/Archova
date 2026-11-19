@@ -66,3 +66,21 @@ export const capitalItems = ownerportalSchema.table('capital_items', {
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const sharedPhotos = ownerportalSchema.table('shared_photos', {
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  caption: text('caption').notNull().default(''),
+  addedBy: uuid('added_by'),
+  addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiddenChanges = ownerportalSchema.table('hidden_changes', {
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  /** `VAR-001` or `DEC-001`: the number the client sees. */
+  reference: text('reference').notNull(),
+  hiddenBy: uuid('hidden_by'),
+  hiddenAt: timestamp('hidden_at', { withTimezone: true }).notNull().defaultNow(),
+});

@@ -4,6 +4,7 @@ import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { AppError, defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createContractPlaybookService } from './application/contract-playbook';
 import { createContractReviewService } from './application/contract-review';
+import { createContractSovService } from './application/contract-sov';
 import { createAdminService } from './application/admin';
 import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
@@ -23,6 +24,7 @@ import { createHelpService } from './application/help';
 import { createBudgetReviewService, type BudgetForReview } from './application/budget-review';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
+import { createVoiceLogService } from './application/voice-log';
 import { createMinutesExtractService, type MeetingForMinutes } from './application/minutes-extract';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
@@ -37,6 +39,8 @@ import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createBidLevelService } from './application/bid-levelling';
+import type { BidsForLevelling } from './domain/bid-levelling';
 import { createLaborProductivityService, type LaborFacts } from './application/labor-productivity';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
@@ -288,6 +292,12 @@ export function createAiModule(
       packageId: string,
       quoteId: string,
     ) => Promise<QuoteForNegotiation>;
+    /** estimating.api.bidsForLevelling: every confirmed bid of a package on its scope schedule, anonymous labels, no company (Nova). */
+    bidsForLevelling: (
+      scope: TenantScope,
+      projectId: string,
+      packageId: string,
+    ) => Promise<BidsForLevelling>;
     /** financials.api.budgetReviewFacts: the code-found budget findings and totals, margin never included (Nova). */
     budgetReviewFacts: (scope: TenantScope, projectId: string) => Promise<BudgetForReview>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
@@ -469,11 +479,23 @@ export function createAiModule(
     readFile: deps.readFile,
     orgTimeZone: deps.orgTimeZone,
   });
+  const contractSov = createContractSovService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const quoteNegotiations = createQuoteNegotiateService({
     database: services.database,
     gateway,
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
+  });
+  const bidLevelling = createBidLevelService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    bids: deps.bidsForLevelling,
   });
   const announcementDrafts = createAnnouncementDraftService({
     database: services.database,
@@ -533,6 +555,7 @@ export function createAiModule(
     gateway,
     meeting: deps.meetingForMinutes,
   });
+  const voiceLog = createVoiceLogService({ database: services.database, gateway });
   const help = createHelpService({ gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
@@ -561,14 +584,17 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      bidLevelling,
       laborProductivity,
       announcementDrafts,
       budgetReviews,
       contractPlaybooks,
       contractReviews,
+      contractSov,
       speech,
       takeoffDetect,
       minutesExtract,
+      voiceLog,
       swmsDrafts,
       hazardScans,
       assist,
@@ -617,6 +643,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova: level every confirmed bid of a tender package, explain the gaps, suggest who to take forward; nothing is saved or awarded. */
+      levelBids: bidLevelling.level,
       /** Nova on the project budget: what the checks mean and what to do about them; nothing is changed. */
       reviewBudget: budgetReviews.review,
       /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
@@ -632,6 +660,8 @@ export function createAiModule(
       summariseDiaryWeek: diaryWeekly.summariseWeek,
       /** F7: proposed minute items from typed meeting notes; `meetings.api.forMinutesDraft` supplies the meeting. */
       extractMinutes: minutesExtract.extract,
+      /** Voice log: a day's dictated transcript split into proposed diary records (note, delays, observations, tasks). */
+      parseVoiceLog: voiceLog.parse,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */

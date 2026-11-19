@@ -792,7 +792,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancel an allocation, freeing the machine for those days. */
+        /**
+         * Cancel an allocation that has not started, or end one that is under way as of yesterday.
+         * @description A finished allocation can't be cancelled (`plant.bad_state`); its days stay on record and are posted to the budget.
+         */
         post: operations["cancelPlantAllocation"];
         delete?: never;
         options?: never;
@@ -1069,6 +1072,195 @@ export interface paths {
         get: operations["getDelayRegister"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/eot-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The contract notice and claim periods and the rain-day rule for delay events (SCH-AC4). Builder staff only. Until a person saves them they are the AS 4000 defaults, to be checked against the contract. */
+        get: operations["getEotSettings"];
+        /** Save the contract periods. `confirmed` records that a person checked them against the contract and its special conditions; until then every deadline is shown as an estimate. */
+        put: operations["putEotSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Delays, RFI time impacts and rain days that could go into a delay event, newest first. Rain days come from the site diary weather by the project rain-day threshold. Evidence already in an event is left out unless `includeAttached`. */
+        get: operations["listDelayEventCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-event-insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova on delay events: notice and claim clocks running down, delays marked as possible EOT that no event covers, events with no evidence, and the days claimed and granted. Found by rules from the contract periods, so it costs nothing and never says an extension is due. */
+        get: operations["getDelayEventInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Delay events on the project, newest first, each with its notice and claim clocks and an evidence summary. */
+        get: operations["listDelayEvents"];
+        put?: never;
+        /** Group delays into an event (SCH-US3). `candidateKeys` from the candidates list are copied in as evidence, each as a snapshot. */
+        post: operations["createDelayEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        /** A delay event with its evidence pack and history. */
+        get: operations["getDelayEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change an event: dates, cause, days claimed, critical-path judgement or a deadline set to match a contract amendment. A closed or withdrawn event must be reopened first. */
+        patch: operations["updateDelayEvent"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add evidence: candidates from the register, notices from correspondence, or a written note. A piece of evidence supports one event at a time. */
+        post: operations["addDelayEventEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+                itemId: components["parameters"]["DelayEventItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a piece of evidence out of an event. The source is untouched and can go into another event. */
+        delete: operations["removeDelayEventEvidence"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that notice was given or the claim sent (optionally linking the correspondence item), the superintendent assessment and days granted, or close, withdraw or reopen the event. This records what a person did; nothing is sent from here. */
+        post: operations["transitionDelayEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nova drafts a notice of delay or an EOT claim from the event and its evidence pack. The draft is text for a person to edit and send; it is not stored as correspondence and nothing is sent. It never says an extension is due. */
+        post: operations["draftDelayEventLetter"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1363,6 +1555,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** The project directory. `q` matches name, email, phone, title, trade or company name. */
         get: operations["listProjectMembers"];
         put?: never;
         /** Add an existing user to the project with a company and permission template. */
@@ -1371,6 +1564,65 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the phone, job title or trade shown for a member in the directory. Null or empty clears a field. */
+        patch: operations["updateProjectMember"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/company-contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** People at companies who have no login. Org-wide, so every project sees the same entry. */
+        get: operations["listCompanyContacts"];
+        put?: never;
+        post: operations["createCompanyContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/company-contacts/{contactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteCompanyContact"];
+        options?: never;
+        head?: never;
+        patch: operations["updateCompanyContact"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove": {
@@ -1550,6 +1802,118 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Page through the project's site photos, newest first, for the Photos tool (feed, timeline and album views).
+         * @description Filter by `album` (an auto album key such as `punch_list`, or a project album id), by filename (`q`) and by a
+         *     capture-date range. Photos nobody has filed carry `needsReview` once they have sat unfiled for 24 hours, and a
+         *     rule-based `suggestion` taken from already-filed photos taken nearby or by the same person at the same time.
+         *     Incident and induction photos are never listed. Links work for 5 minutes.
+         */
+        get: operations["browseProjectPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photos/{fileId}/filing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** File a photo under an album, optionally on the record it belongs to. Accepts a Nova suggestion. */
+        put: operations["filePhoto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The auto albums (by where each photo was taken or filed) with counts, and the project's own albums. */
+        get: operations["listPhotoAlbums"];
+        put?: never;
+        /** Create an album of your own. */
+        post: operations["createPhotoAlbum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an album. The photos stay on the project. */
+        delete: operations["deletePhotoAlbum"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/photo-albums/{albumId}/photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Add a photo to an album. Adding it twice is fine. */
+        put: operations["addPhotoToAlbum"];
+        post?: never;
+        /** Take a photo out of an album. */
+        delete: operations["removePhotoFromAlbum"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1845,10 +2209,74 @@ export interface paths {
         get: operations["getDocument"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Move the document to the recycle bin. Revisions and files are kept; `restoreDocument` undoes it. */
+        delete: operations["deleteDocument"];
         options?: never;
         head?: never;
         patch: operations["updateDocument"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/bin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The recycle bin, most recently deleted last page first; restore with `restoreDocument`. */
+        get: operations["listDeletedDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a document out of the recycle bin. 409 `document.number_taken` if its number was reused. */
+        post: operations["restoreDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Add the document to the caller's own "Items You Are Tracking". Repeating it is a no-op. */
+        put: operations["trackDocument"];
+        post?: never;
+        /** Remove the document from the caller's tracked items. */
+        delete: operations["untrackDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions": {
@@ -3084,6 +3512,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-sov-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova to propose a contract's schedule of values from its PDF.
+         * @description For whoever sets up the contract. Nova reads the PDF text layer of a file uploaded to this project (the
+         *     contract, or its pricing schedule) and proposes Code / Description / Amount lines. Every line carries the page
+         *     and the printed row it came from, and is shown only when code found that row on the page and the amount is
+         *     printed there; a line that fails is dropped and counted in `dropped`. A code the page does not print is left
+         *     blank. Nova never calculates a figure and never adds a balancing line: the lines are totalled by code and set
+         *     against `contractValue` (`totalCheck` is `matches`, `differs` with the signed `difference`, or `no_value`). Nothing is
+         *     saved: the client shows each line for the person to accept, edit or discard, and the contract is created only
+         *     by the usual create-contract call. Scanned pages are not read (`unreadPages`). Costs 3 Nova credits.
+         */
+        post: operations["draftContractSov"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
         parameters: {
             query?: never;
@@ -3165,6 +3623,38 @@ export interface paths {
          *     and only for a confirmed quote of the package.
          */
         post: operations["negotiateQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova levels the confirmed bids of a tender package and suggests who to take forward (EST-AC6).
+         * @description Code puts every confirmed bid on the package's scope schedule, works out what each gap would cost (the median
+         *     of what at least two other bids charge for that line), each bid's normalised total and its rank. Nova then
+         *     explains the gaps, exclusions and risks, suggests where a bid's unmatched lines belong on the schedule and says
+         *     which bid she would take forward, or none when the bids can't be separated. Code removes any bid, scope line or
+         *     unmatched line that doesn't exist and any figure the bids don't hold (`notes` says what it removed), and adds
+         *     renewing the validity as a condition when the recommended bid's has passed. Bids are anonymous ("Bid A"):
+         *     she is never shown a company, contact, internal note or the estimator's allowances. The server keeps no
+         *     conversation; pass `history` from the last answer with the next question. Nothing is saved, sent, matched or
+         *     awarded. She is an AI assistant, not a licensed agent (`disclaimer`). Costs one Nova credit. Builder staff with
+         *     `estimating.quotes.review` only.
+         */
+        post: operations["levelBidsWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3288,6 +3778,39 @@ export interface paths {
          *     week whose entries are empty is 422 `ai.diary.nothing_to_summarise`.
          */
         post: operations["summariseDiaryWeekWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova splits a dictated end-of-day transcript into proposed diary records (mobile F14).
+         * @description The phone turns the person's speech into text on the device; only that text comes here. Nova proposes a diary
+         *     `note`, `delay`s (with a type, and hours only when the words say how long), safety `observation`s (minor or
+         *     serious) and `task`s (with a due date only when the words give one). Each item carries `quote`, the words of
+         *     the transcript it comes from. Code drops an item whose quote is not in the transcript, a number the quote
+         *     does not contain, hours the quote does not state, and a due date the quote does not give. Nova writes nothing:
+         *     the result is a pending suggestion (`task` `voice.log`) that only the person who asked can list or decide,
+         *     and the phone saves the records the person keeps through its own offline commands. The same transcript for
+         *     the same day returns the same suggestion at no cost. Costs 1 Nova credit. A transcript shorter than 15
+         *     characters is 422 `ai.voice_log.nothing_to_file`.
+         */
+        post: operations["parseVoiceLogWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3761,6 +4284,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/my-work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's open RFIs, defects and submittals due across their projects, and recently raised items.
+         * @description The My Work page. Across the active, tender and on-hold projects the caller can see, lists open items that are
+         *     overdue, due today or due in the next 7 days (dates in each project's own time zone), most urgent first, with
+         *     a count per bucket. `recent` is open items raised in the last 14 days, newest first. Every item is read as the
+         *     caller: a project where they cannot read a tool counts in `restrictedProjects` and shows nothing from it.
+         *     Staff only.
+         */
+        get: operations["getMyWork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/portfolio/sustainability": {
         parameters: {
             query?: never;
@@ -3787,6 +4336,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/reports/time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hours worked in one week by employee, project, class and cost code.
+         * @description The company time dashboard (FP Dashboard). One Monday to Sunday week of paid timesheet time (time worked less
+         *     unpaid breaks) across the projects the caller can see, or the projects named in `projectIds`. `weekStart` is any
+         *     date in the week wanted and defaults to this week. Each project's lines are read as the caller: a project where
+         *     the caller may not read timesheets is counted in `restrictedProjects` and left out; where the caller may not
+         *     read cost codes, its hours are grouped as "Cost codes not visible". A class is the top-level cost code above the
+         *     one a line is booked to. Employees and cost codes are the top 50 by hours. Staff only.
+         */
+        get: operations["getTimeDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/search": {
         parameters: {
             query?: never;
@@ -3805,6 +4381,33 @@ export interface paths {
          *     than were returned. A query under two characters returns nothing. Staff only.
          */
         get: operations["searchOrg"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/incident-analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Injury analytics across projects - body map, harm source, injury type, LTIFR and TRIFR, days without an injury.
+         * @description Counts injured people recorded on incidents, for the projects the caller can see. Injury detail is health
+         *     information, so projects where the caller lacks the view_medical permission are counted in
+         *     `projectsRestricted` and left out. Rates are per million hours worked, from submitted, approved and exported
+         *     timesheets; they are null when hours are not available. LTIFR counts lost time injuries (a full day or shift
+         *     or more) and TRIFR counts lost time, restricted work and medical treatment injuries. The range defaults to
+         *     the last 12 months and is limited to five years. `bodyPart` narrows the rows and the totals.
+         */
+        get: operations["getIncidentAnalytics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4070,6 +4673,79 @@ export interface paths {
          *     still being built or if it failed; 410 once it has expired.
          */
         post: operations["createDataExportDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The approval workflows this organisation has set up. */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Set up an approval chain for a kind of record.
+         * @description Today the chain applies to variations. When a variation is submitted, and it is at or above the workflow's
+         *     minimum amount, it goes through the steps in order instead of waiting for any one approver. Only one active
+         *     workflow per kind of record: activating a second one is refused with 409.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/workflows/{workflowId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a workflow. Variations already going through it carry on. */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a workflow, or switch it on or off.
+         * @description Changes apply to variations submitted afterwards. A variation already going through the chain keeps the steps it started with.
+         */
+        patch: operations["updateWorkflow"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a variation is in its approval chain.
+         * @description `run` is null when no workflow applied to the variation.
+         */
+        get: operations["getVariationWorkflow"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5439,6 +6115,27 @@ export interface paths {
         get: operations["getWarrantySummary"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** An assignee marks their own part of an open defect done. When every assignee has, the final approver (or the manager) is told. Saying it twice changes nothing. */
+        post: operations["completeDefectPart"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10514,6 +11211,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The close-out checklist for a project with its progress, Nova's flags and what has been issued to the client. */
+        get: operations["getHandoverPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an item to the checklist. It is numbered HND-0001 per project. */
+        post: operations["createHandoverItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add the standard Australian close-out list. Items already on the checklist (by title) are skipped, so it is safe to repeat. */
+        post: operations["applyHandoverTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's rule-based flags for the close-out (no model): overdue items, nobody responsible, waiting for approval, open defects, empty warranty register, no occupation certificate. */
+        get: operations["listHandoverFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The client copy of the close-out pack, an index of every item with the files that back it, ready to print or save as CSV. */
+        get: operations["getHandoverExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the pack went to the client, keeping a frozen copy of the checklist. Needs `acknowledgeIncomplete` when required items are not yet complete. */
+        post: operations["issueHandoverPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        /** A checklist item with its history. */
+        get: operations["getHandoverItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an item's details or attach files. */
+        patch: operations["updateHandoverItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** request, receive (needs a file), approve, reject (needs a note), markNotApplicable (needs a note) or reopen. */
+        post: operations["transitionHandoverItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts": {
         parameters: {
             query?: never;
@@ -10588,6 +11448,31 @@ export interface paths {
         };
         /** Projected cost to complete and margin, from contracts, approved variations, claims and adjustments. */
         get: operations["getCostForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cashflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Monthly cashflow forecast and work-in-progress (WIP) position, with the risks code found.
+         * @description Rolls claims, retention, the budget's monthly cost forecast and direct costs into cash in and cash out by month
+         *     (ex GST), plus cost-to-cost percent complete, earned revenue and over or under billing. `flags` are found by
+         *     code, never by a model, and carry the amounts they quote. Builder staff only, like the cost forecast.
+         */
+        get: operations["getProjectCashflow"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11428,6 +12313,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Change events, newest first. */
+        get: operations["listChangeEvents"];
+        put?: never;
+        /** Raise a potential change before it is priced. */
+        post: operations["createChangeEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        /** One change event with the variations and commitments raised from it. */
+        get: operations["getChangeEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a change event that is not closed. */
+        patch: operations["updateChangeEvent"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a change event with a reason. Nothing more can be raised from a closed one. */
+        post: operations["closeChangeEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/direct-costs": {
         parameters: {
             query?: never;
@@ -11695,6 +12644,98 @@ export interface paths {
         get: operations["getCommitment"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/contract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Link a subcontract commitment to the contract its payment claims are made on, or clear the link. */
+        put: operations["linkCommitmentContract"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** The commitment's invoices (payment claims on its linked contract) with contract sum, retainage and payments. */
+        get: operations["getCommitmentInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One invoice as a payment application, with its schedule-of-values breakdown and Nova's proofread.
+         * @description Read-only, over the same claim data as the Invoices tab. `findings` is Nova's proofread: every figure is re-added from the claim lines and the dates and the step up on the last period are checked by code, not a model. Nothing is sent or changed from here; the person reads the findings and decides. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        get: operations["getCommitmentInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/invoices/{claimId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The payment application as a PDF, laid out the way the person chooses.
+         * @description A POST only so the notes and amounts stay out of URLs and logs; it changes nothing and stores nothing. Rendered from the current claim data. Leave fields out for the defaults (summary, breakdown and payment; every column). The proofread section is off unless asked for. Needs `financials.commitments.read` as well, and builder staff only.
+         */
+        post: operations["getCommitmentInvoicePdf"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12094,6 +13135,69 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project risk register, highest score first. */
+        get: operations["listProjectRisks"];
+        put?: never;
+        /** Add a risk. It is numbered per project (R-1, R-2 ...). */
+        post: operations["createProjectRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Open risks by level, the risk RAG for the project health model, and the top risks. */
+        get: operations["getProjectRiskSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a risk from the register. */
+        delete: operations["deleteProjectRisk"];
+        options?: never;
+        head?: never;
+        /** Change a risk. Closing it stamps the closed time; reopening clears it. */
+        patch: operations["updateProjectRisk"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
@@ -12538,6 +13642,172 @@ export interface paths {
         patch: operations["updateOwnerCapitalItem"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The read-only client links on this project, newest first, with whether each still works. Tokens are never shown again. */
+        get: operations["listOwnerShareLinks"];
+        put?: never;
+        /** Issue a no-login client link (web `/c/[token]`, X45). The URL is returned once; if a recipient email is given it is also emailed. */
+        post: operations["createOwnerShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a client link working. Takes effect on the next request. */
+        post: operations["revokeOwnerShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The photos picked for the client view, newest first. Nothing is shown to the client unless it is listed here. */
+        get: operations["listOwnerSharedPhotos"];
+        put?: never;
+        /** Pick a project photo for the client view, or change its caption. Up to 60 photos. */
+        post: operations["addOwnerSharedPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a photo off the client view. */
+        delete: operations["removeOwnerSharedPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Exactly what a client link shows right now, so the team can check it before sending. */
+        get: operations["previewOwnerShareView"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Approved variations and decisions that appear on the client link, with whether each is hidden. Titles and descriptions are free text and can contain prices. */
+        get: operations["listOwnerShareChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                reference: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Hide an approved change from the client link, or show it again. */
+        put: operations["setOwnerShareChangeHidden"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/owner-portal-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The client view for the current link session. Photo URLs are short-lived, so reload to refresh them. */
+        get: operations["getOwnerPortalAccess"];
+        put?: never;
+        /**
+         * Exchange a client link token for a read-only session on that link (web `/c/[token]`, X45).
+         * @description Sets the `__Host-opk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, a link whose issuer has lost access, or a plan without the portal returns `access_link.invalid` with no detail about the project.
+         */
+        post: operations["openOwnerPortalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/prefab/units": {
         parameters: {
             query?: never;
@@ -12596,6 +13866,27 @@ export interface paths {
         put?: never;
         /** Move a unit along: start, hold, resume, ready, ship, deliver, install, reject or reopen. Ready and install need the required QA checks passed. */
         post: operations["transitionPrefabUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/prefab/units/{unitId}/draft-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a draft delivery for the unit on the day it is due on site and link it. Needs an install or ship date, and the caller must also be able to manage deliveries. */
+        post: operations["draftPrefabDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13856,6 +15147,61 @@ export interface components {
             /** @description Days late summed over the late activities; divide by `overdue` for the average. */
             lateDays: number;
         };
+        TimeDashboard: {
+            /** Format: date */
+            weekStart: string;
+            /** Format: date */
+            weekEnd: string;
+            /**
+             * Format: date
+             * @description Monday of the week before.
+             */
+            previousWeek: string;
+            /**
+             * Format: date
+             * @description Monday of the week after.
+             */
+            nextWeek: string;
+            totalHours: number;
+            byEmployee: {
+                workerId: string;
+                name: string;
+                hours: number;
+                projects: {
+                    projectId: string;
+                    name: string;
+                    hours: number;
+                }[];
+            }[];
+            byClass: {
+                /** @description Top-level cost code; "none" for time with no cost code, "hidden" where cost codes cannot be read. */
+                key: string;
+                label: string;
+                hours: number;
+                /** @description Share of the week total, one decimal. */
+                percent: number;
+            }[];
+            byProject: {
+                projectId: string;
+                name: string;
+                hours: number;
+                /** @description Hours on timesheets not yet submitted, or sent back. */
+                draft: number;
+                submitted: number;
+                /** @description Approved or exported. */
+                approved: number;
+            }[];
+            byCostCode: {
+                projectId: string;
+                projectName: string;
+                costCodeId: string | null;
+                code: string;
+                description: string;
+                hours: number;
+            }[];
+            restrictedProjects: number;
+            truncated: boolean;
+        };
         /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
         PortfolioBudget: {
             /** @description True when the caller may not read the budget or forecast; figures are then zero. */
@@ -14043,6 +15389,81 @@ export interface components {
             ref: string;
             title: string;
             status: string;
+        };
+        /** @enum {string} */
+        BodyPart: "head" | "eye" | "face" | "neck" | "shoulder" | "upper_arm" | "elbow" | "forearm" | "wrist" | "hand" | "fingers" | "chest" | "upper_back" | "lower_back" | "abdomen" | "hip_groin" | "thigh" | "knee" | "lower_leg" | "ankle" | "foot" | "toes" | "multiple" | "systemic";
+        /** @enum {string} */
+        InjuryType: "fracture" | "laceration" | "sprain_strain" | "contusion" | "burn" | "foreign_body" | "amputation" | "concussion" | "dermatitis" | "hearing_loss" | "respiratory" | "psychological" | "other";
+        /** @enum {string} */
+        HarmSource: "falls_trips_slips" | "hitting_objects" | "being_hit" | "body_stressing" | "vehicle_plant" | "electricity_heat" | "chemicals" | "sound_pressure" | "biological" | "mental_stress" | "other";
+        /** @enum {string} */
+        InjuryOutcome: "first_aid" | "medical_treatment" | "restricted_work" | "lost_time" | "fatality";
+        InjuryCount: {
+            /** @description The category, or `unknown` when it was not recorded. */
+            key: string;
+            count: number;
+        };
+        IncidentAnalyticsSummary: {
+            injuries: number;
+            lostTimeInjuries: number;
+            /** @description Lost time */
+            recordableInjuries: number;
+            daysLost: number;
+            notifiable: number;
+            hoursWorked: number | null;
+            /** @description Lost time injuries per million hours worked. */
+            ltifr: number | null;
+            /** @description Recordable injuries per million hours worked. */
+            trifr: number | null;
+            byBodyPart: components["schemas"]["InjuryCount"][];
+            byHarmSource: components["schemas"]["InjuryCount"][];
+            byInjuryType: components["schemas"]["InjuryCount"][];
+            byOutcome: components["schemas"]["InjuryCount"][];
+        };
+        IncidentAnalyticsRow: {
+            incidentId: string;
+            projectId: string;
+            projectName: string;
+            ref: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /**
+             * Format: date
+             * @description The day it happened in the project's time zone.
+             */
+            localDate: string;
+            personName: string;
+            companyId: string | null;
+            bodyPart: components["schemas"]["BodyPart"] | null;
+            injuryType: components["schemas"]["InjuryType"] | null;
+            harmSource: components["schemas"]["HarmSource"] | null;
+            outcome: components["schemas"]["InjuryOutcome"] | null;
+            daysLost: number;
+            notifiable: boolean;
+        };
+        IncidentAnalytics: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            summary: components["schemas"]["IncidentAnalyticsSummary"];
+            /** @description Days since the latest injury on the projects covered; null when none is recorded. */
+            daysWithoutInjury: number | null;
+            /** @description Days since the latest incident of any type; null when none is recorded. */
+            daysWithoutIncident: number | null;
+            /** @description Projects left out because the caller may not view health information there. */
+            projectsRestricted: number;
+            projectsTruncated: boolean;
+            rowsTruncated: boolean;
+            rows: components["schemas"]["IncidentAnalyticsRow"][];
+            /**
+             * @description Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
+             *     and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
+             *     and daysLost (0 to 3650, only with the lost_time or fatality outcome).
+             */
+            injury?: {
+                [key: string]: unknown;
+            };
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -14252,6 +15673,77 @@ export interface components {
             /** @description Why a failed export failed */
             error: string | null;
         };
+        WorkflowStep: {
+            name: string;
+            /** @description Any one of these people can approve the step. */
+            approverUserIds: string[];
+        };
+        Workflow: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            /** @description Decimal dollars. The chain applies from this amount up; null means every variation. */
+            minAmount: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowList: {
+            data: components["schemas"]["Workflow"][];
+        };
+        CreateWorkflowRequest: {
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            name: string;
+            minAmount?: string | null;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @default true */
+            active: boolean;
+        };
+        UpdateWorkflowRequest: {
+            name?: string;
+            minAmount?: string | null;
+            steps?: components["schemas"]["WorkflowStep"][];
+            active?: boolean;
+        };
+        WorkflowRunDecision: {
+            userId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        WorkflowRunStep: {
+            name: string;
+            approverUserIds: string[];
+            /** @enum {string} */
+            state: "waiting" | "current" | "approved" | "rejected";
+            decision: components["schemas"]["WorkflowRunDecision"] | null;
+        };
+        WorkflowRun: {
+            id: string;
+            /** @enum {string} */
+            subjectType: "financials.variation";
+            subjectId: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "cancelled";
+            /** @description Zero-based index of the step waiting on a decision. */
+            currentStep: number | null;
+            steps: components["schemas"]["WorkflowRunStep"][];
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        VariationWorkflow: {
+            run: components["schemas"]["WorkflowRun"] | null;
+        };
         DataExportList: {
             data: components["schemas"]["DataExport"][];
         };
@@ -14260,6 +15752,34 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             filename: string;
+        };
+        MyWorkItem: {
+            /** @enum {string} */
+            source: "rfis" | "defects" | "submittals";
+            projectId: string;
+            project: string;
+            ref: string;
+            title: string;
+            status: string;
+            /** Format: date */
+            dueDate: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string|null} */
+            bucket: "overdue" | "today" | "next7" | null;
+        };
+        MyWork: {
+            counts: {
+                overdue: number;
+                today: number;
+                next7: number;
+            };
+            items: components["schemas"]["MyWorkItem"][];
+            recent: components["schemas"]["MyWorkItem"][];
+            restrictedProjects: number;
+            truncated: boolean;
+            /** Format: date-time */
+            generatedAt: string;
         };
         AuditLogPage: {
             data: components["schemas"]["AuditEvent"][];
@@ -14484,6 +16004,108 @@ export interface components {
         };
         /** @enum {string} */
         OwnerMilestoneStatus: "done" | "on_track" | "at_risk" | "late";
+        OwnerShareLink: {
+            id: string;
+            label: string | null;
+            recipientEmail: string | null;
+            /** @enum {string} */
+            state: "active" | "expired" | "revoked" | "used_up";
+            /** Format: date-time */
+            expiresAt: string;
+            useCount: number;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        OwnerShareLinkList: {
+            data: components["schemas"]["OwnerShareLink"][];
+        };
+        CreateOwnerShareLinkRequest: {
+            label?: string | null;
+            recipientEmail?: string | null;
+            expiresInDays?: number;
+        };
+        CreatedOwnerShareLink: {
+            link: components["schemas"]["OwnerShareLink"];
+            /** @description The client link. Shown once; only a hash is stored. */
+            url: string;
+            emailed: boolean;
+        };
+        OwnerSharedPhoto: {
+            fileId: string;
+            caption: string;
+            filename: string;
+            url: string;
+            /** Format: date-time */
+            addedAt: string;
+        };
+        OwnerSharedPhotoList: {
+            data: components["schemas"]["OwnerSharedPhoto"][];
+        };
+        AddOwnerSharedPhotoRequest: {
+            fileId: string;
+            caption?: string;
+        };
+        OwnerShareChange: {
+            /** @enum {string} */
+            kind: "variation" | "decision";
+            reference: string;
+            title: string;
+            description: string;
+            timeImpactDays: number;
+            /** Format: date-time */
+            approvedAt: string | null;
+            hidden: boolean;
+        };
+        OwnerShareChangeList: {
+            data: components["schemas"]["OwnerShareChange"][];
+        };
+        SetOwnerShareChangeHiddenRequest: {
+            hidden: boolean;
+        };
+        OwnerPortalAccessUpdate: {
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            percentComplete: number;
+            summary: string;
+            /** Format: date-time */
+            publishedAt: string | null;
+        };
+        /** @description What a client sees on a share link. Never carries amounts, drafts, commitments or correspondence. */
+        OwnerPortalAccess: {
+            project: {
+                name: string;
+                fromOrg: string;
+                timezone: string;
+            };
+            progress: components["schemas"]["OwnerPortalAccessUpdate"] | null;
+            milestones: components["schemas"]["OwnerMilestone"][];
+            updates: components["schemas"]["OwnerPortalAccessUpdate"][];
+            changes: {
+                /** @enum {string} */
+                kind: "variation" | "decision";
+                reference: string;
+                title: string;
+                description: string;
+                timeImpactDays: number;
+                /** Format: date-time */
+                approvedAt: string | null;
+            }[];
+            photos: {
+                caption: string;
+                url: string;
+                /** Format: date-time */
+                addedAt: string;
+            }[];
+            /** Format: date-time */
+            expiresAt: string;
+        };
         OwnerMilestone: {
             name: string;
             /** Format: date */
@@ -14607,6 +16229,77 @@ export interface components {
             items: components["schemas"]["OwnerCapitalItem"][];
             /** @description One row per fiscal year, then the all-years total last. */
             totals: components["schemas"]["OwnerCapitalTotals"][];
+        };
+        /** @enum {string} */
+        RiskCategory: "scope" | "time" | "cost" | "quality" | "safety" | "commercial" | "other";
+        /** @enum {string} */
+        RiskStatus: "open" | "mitigating" | "occurred" | "closed";
+        ProjectRisk: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            /** @description likelihood x impact, 1 to 25 */
+            score: number;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            status: components["schemas"]["RiskStatus"];
+            ownerName: string | null;
+            mitigation: string;
+            /** Format: date */
+            reviewDate: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProjectRiskList: {
+            data: components["schemas"]["ProjectRisk"][];
+        };
+        CreateProjectRiskRequest: {
+            title: string;
+            description?: string;
+            category: components["schemas"]["RiskCategory"];
+            likelihood: number;
+            impact: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        UpdateProjectRiskRequest: {
+            title?: string;
+            description?: string;
+            category?: components["schemas"]["RiskCategory"];
+            likelihood?: number;
+            impact?: number;
+            status?: components["schemas"]["RiskStatus"];
+            ownerName?: string | null;
+            mitigation?: string;
+            /** Format: date */
+            reviewDate?: string | null;
+        };
+        ProjectRiskSummary: {
+            /**
+             * @description Null when no risk has ever been recorded: unknown, never green.
+             * @enum {string|null}
+             */
+            rag: "red" | "amber" | "green" | null;
+            /** @description Risks not yet closed */
+            open: number;
+            high: number;
+            medium: number;
+            low: number;
+            overdueReviews: number;
+            top: components["schemas"]["ProjectRisk"][];
         };
         MeetingSeries: {
             id: string;
@@ -15436,6 +17129,255 @@ export interface components {
             };
             truncated: boolean;
         };
+        /** @enum {string} */
+        EotForm: "as4000" | "as2124" | "as4902" | "other";
+        /** @enum {string} */
+        EotDayBasis: "calendar" | "business";
+        /** @enum {string} */
+        DelayEventStatus: "draft" | "notice_given" | "claimed" | "assessed" | "closed" | "withdrawn";
+        /** @enum {string} */
+        DelayEventItemKind: "diary_delay" | "rfi_impact" | "rfi_late" | "weather_day" | "correspondence" | "note";
+        EotSettings: {
+            form: components["schemas"]["EotForm"];
+            noticeDays: number;
+            claimDays: number;
+            dayBasis: components["schemas"]["EotDayBasis"];
+            noticeClause: string | null;
+            claimClause: string | null;
+            confirmed: boolean;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            rainThresholdMm: number;
+            wetDayAllowance: number | null;
+            isDefault: boolean;
+            version: number;
+        };
+        PutEotSettingsRequest: {
+            form: components["schemas"]["EotForm"];
+            noticeDays: number;
+            claimDays: number;
+            dayBasis: components["schemas"]["EotDayBasis"];
+            noticeClause?: string | null;
+            claimClause?: string | null;
+            confirmed: boolean;
+            rainThresholdMm: number;
+            wetDayAllowance?: number | null;
+        };
+        DelayEventCandidate: {
+            key: string;
+            /** @enum {string} */
+            kind: "diary_delay" | "rfi_impact" | "rfi_late" | "weather_day";
+            cause: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            date: string;
+            label: string;
+            detail: string | null;
+            hours: number | null;
+            days: number | null;
+            rainMm: number | null;
+            possibleEot: boolean;
+            eventId: string | null;
+        };
+        DelayEventCandidateList: {
+            /** Format: date */
+            today: string;
+            rainThresholdMm: number;
+            truncated: boolean;
+            data: components["schemas"]["DelayEventCandidate"][];
+        };
+        DelayEventClock: {
+            /** Format: date */
+            dueOn: string;
+            /** @description Calendar days from today to the due date; negative once it has passed. Null once given. */
+            daysLeft: number | null;
+            /** @enum {string} */
+            state: "met" | "met_late" | "ok" | "due_soon" | "due_today" | "overdue";
+            /** @description A person set this date to match a contract amendment. */
+            overridden: boolean;
+        };
+        DelayEventEvidenceSummary: {
+            items: number;
+            diaryHours: number;
+            rfiDays: number;
+            rainDays: number;
+            rainMm: number;
+            notices: number;
+            /** Format: date */
+            firstDate: string | null;
+            /** Format: date */
+            lastDate: string | null;
+        };
+        DelayEvent: {
+            id: string;
+            number: number;
+            /** @description EOT-001 */
+            ref: string;
+            title: string;
+            cause: components["schemas"]["DiaryDelayType"];
+            status: components["schemas"]["DelayEventStatus"];
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn: string | null;
+            /** Format: date */
+            awareOn: string;
+            /** @description The planner's judgement, not calculated. */
+            criticalPath: boolean | null;
+            summary: string | null;
+            affected: string | null;
+            daysClaimed: number;
+            /** @description Calendar days the event spans, counting both ends. A starting point, not an entitlement. */
+            suggestedDays: number;
+            /**
+             * Format: date
+             * @description A deadline a person set; null means counted from the contract periods.
+             */
+            noticeDueOn: string | null;
+            /** Format: date */
+            claimDueOn: string | null;
+            /** Format: date */
+            noticeSentOn: string | null;
+            noticeRefLabel: string | null;
+            /** Format: date */
+            claimSentOn: string | null;
+            claimRefLabel: string | null;
+            /** Format: date */
+            assessedOn: string | null;
+            daysGranted: number | null;
+            assessmentNote: string | null;
+            noticeClock: components["schemas"]["DelayEventClock"];
+            claimClock: components["schemas"]["DelayEventClock"];
+            evidence: components["schemas"]["DelayEventEvidenceSummary"];
+            version: number;
+        };
+        DelayEventList: {
+            data: components["schemas"]["DelayEvent"][];
+        };
+        DelayEventItem: {
+            id: string;
+            kind: components["schemas"]["DelayEventItemKind"];
+            sourceKey: string | null;
+            /** Format: date */
+            date: string | null;
+            label: string;
+            detail: string | null;
+            hours: number | null;
+            days: number | null;
+            rainMm: number | null;
+        };
+        DelayEventLogEntry: {
+            id: string;
+            kind: string;
+            detail: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DelayEventDetail: {
+            event: components["schemas"]["DelayEvent"];
+            items: components["schemas"]["DelayEventItem"][];
+            history: components["schemas"]["DelayEventLogEntry"][];
+            settings: components["schemas"]["EotSettings"];
+        };
+        CreateDelayEventRequest: {
+            title: string;
+            cause: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /**
+             * Format: date
+             * @description The day the builder became aware of the delay. Starts the notice clock. Defaults to the day it began.
+             */
+            awareOn?: string;
+            criticalPath?: boolean | null;
+            summary?: string | null;
+            affected?: string | null;
+            daysClaimed?: number;
+            /** Format: date */
+            noticeDueOn?: string | null;
+            /** Format: date */
+            claimDueOn?: string | null;
+            candidateKeys?: string[];
+        };
+        UpdateDelayEventRequest: {
+            title?: string;
+            cause?: components["schemas"]["DiaryDelayType"];
+            /** Format: date */
+            startedOn?: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /** Format: date */
+            awareOn?: string;
+            criticalPath?: boolean | null;
+            summary?: string | null;
+            affected?: string | null;
+            daysClaimed?: number;
+            /** Format: date */
+            noticeDueOn?: string | null;
+            /** Format: date */
+            claimDueOn?: string | null;
+        };
+        AddDelayEventEvidenceRequest: {
+            candidateKeys?: string[];
+            correspondenceIds?: string[];
+            notes?: {
+                /** Format: date */
+                date?: string;
+                label: string;
+                detail?: string;
+            }[];
+        };
+        DelayEventTransitionRequest: {
+            /** @enum {string} */
+            action: "give_notice" | "submit_claim" | "record_assessment" | "close" | "withdraw" | "reopen";
+            /**
+             * Format: date
+             * @description The day it happened. Defaults to today in the project zone; not in the future.
+             */
+            on?: string;
+            daysClaimed?: number;
+            daysGranted?: number;
+            note?: string;
+            correspondenceId?: string;
+        };
+        DelayEventDraftRequest: {
+            /** @enum {string} */
+            kind: "notice" | "claim";
+            senderName?: string;
+        };
+        DelayEventDraft: {
+            eventId: string;
+            subject: string;
+            body: string;
+            warnings: string[];
+        };
+        DelayEventFlag: {
+            /** @enum {string} */
+            kind: "notice_overdue" | "notice_due_soon" | "claim_overdue" | "claim_due_soon" | "periods_unconfirmed" | "untracked_delay" | "no_evidence" | "days_over_span" | "wet_days_over_allowance" | "assessment_waiting";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+            eventId: string | null;
+        };
+        DelayEventInsights: {
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date */
+            today: string;
+            flags: components["schemas"]["DelayEventFlag"][];
+            summary: {
+                events: number;
+                open: number;
+                daysClaimed: number;
+                daysGranted: number;
+                awaitingAssessment: number;
+                untrackedDelays: number;
+                wetDays: number;
+                wetDayAllowance: number | null;
+                periodsConfirmed: boolean;
+            };
+        };
         CreateProjectRequest: {
             name: string;
             number?: string;
@@ -15517,6 +17459,9 @@ export interface components {
             version: number;
         };
         ProjectMember: {
+            phone: string | null;
+            jobTitle: string | null;
+            trade: string | null;
             id: string;
             projectId: string;
             userId: string;
@@ -15537,6 +17482,45 @@ export interface components {
             /** @enum {string} */
             kind: "ordinary" | "for_cause" | "wipe_now";
             reason?: string;
+        };
+        UpdateProjectMemberRequest: {
+            phone?: string | null;
+            jobTitle?: string | null;
+            trade?: string | null;
+        };
+        CompanyContact: {
+            id: string;
+            companyId: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            jobTitle: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateCompanyContactRequest: {
+            companyId: string;
+            name: string;
+            email?: components["schemas"]["Email"];
+            phone?: string;
+            jobTitle?: string;
+            notes?: string;
+        };
+        UpdateCompanyContactRequest: {
+            name?: string;
+            /** Format: email */
+            email?: string | null;
+            phone?: string | null;
+            jobTitle?: string | null;
+            notes?: string | null;
+        };
+        CompanyContactPage: {
+            data: components["schemas"]["CompanyContact"][];
+            nextCursor: string | null;
         };
         ProjectMemberPage: {
             data: components["schemas"]["ProjectMember"][];
@@ -15596,7 +17580,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "permit" | "cover" | "warranty_item";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -15717,6 +17701,11 @@ export interface components {
             note: string | null;
             /** @enum {string} */
             status: "active" | "cancelled";
+            /**
+             * Format: date
+             * @description Last day whose hire cost has been posted to the project budget. Only hired machines with a rate and a cost code are posted.
+             */
+            postedThrough: string | null;
             /** @description Days in the allocation times the machine's daily rate. Null without a rate the caller may see. */
             estimatedCostCents: number | null;
         };
@@ -15808,7 +17797,7 @@ export interface components {
         };
         PlantFlag: {
             /** @enum {string} */
-            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "idle";
+            code: "maintenance_overdue" | "maintenance_due_soon" | "certification_expired" | "certification_expiring" | "double_booking" | "booked_while_unavailable" | "service_during_booking" | "hire_not_costed" | "idle";
             /** @enum {string} */
             severity: "critical" | "warning" | "info";
             assetId: string;
@@ -15876,6 +17865,9 @@ export interface components {
         };
         /** @enum {string} */
         AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        VoiceLogRequest: {
+            transcript: string;
+        };
         DraftMinutesRequest: {
             notes: string;
         };
@@ -16220,6 +18212,59 @@ export interface components {
             history: components["schemas"]["NegotiationTurn"][];
             disclaimer: string;
         };
+        BidLevelling: {
+            runId: string;
+            summary: string;
+            /** @description Median of the normalised totals; null under three bids. */
+            medianNormalisedExGst: string | null;
+            /** @description Worked out by code, best normalised price first by `rank`. */
+            bids: {
+                /** @description Bid A, Bid B, ... in the order the quotes were received. */
+                label: string;
+                quoteId: string;
+                totalExGst: string;
+                /** @description The total plus an allowance for each scope line the bid leaves out. */
+                normalisedExGst: string;
+                rank: number;
+                validityExpired: boolean;
+                provisionalExGst: string;
+                gaps: {
+                    scopeKey: string;
+                    /** @enum {string} */
+                    reason: "excluded" | "unpriced";
+                    allowanceExGst: string | null;
+                }[];
+            }[];
+            /** @description Suggested homes on the scope schedule for lines a bid priced outside it; for the estimator to confirm. */
+            mappings: {
+                bid: string;
+                quoteId: string;
+                ref: string;
+                description: string;
+                amountExGst: string;
+                scopeKey: string;
+                reason: string;
+            }[];
+            gaps: {
+                bid: string;
+                scopeKey: string | null;
+                text: string;
+            }[];
+            risks: {
+                bid: string;
+                text: string;
+            }[];
+            recommendation: {
+                bid: string | null;
+                quoteId: string | null;
+                reasoning: string;
+                conditions: string[];
+                isLowestNormalised: boolean | null;
+            };
+            notes: string[];
+            history: components["schemas"]["NegotiationTurn"][];
+            disclaimer: string;
+        };
         NovaTakeoffDetection: {
             runId: string;
             revisionId: string;
@@ -16328,6 +18373,39 @@ export interface components {
             unreadPages: number[];
             /** @description Part of the contract was left out (too long to read in one go). */
             truncated: boolean;
+        };
+        NovaContractSovDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read, so the list may miss lines on them. */
+            unreadPages: number[];
+            /** @description Part of the document was left out (too long to read in one go). */
+            truncated: boolean;
+            lines: {
+                /** @description Blank when the document prints no code for the line. */
+                code: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                source: {
+                    page: number;
+                    quote: string;
+                };
+            }[];
+            /** @enum {string} */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            /** @description The total the document prints, when code found it on a page. */
+            statedTotalExGst: components["schemas"]["FinancialsMoney"] | null;
+            linesTotalExGst: components["schemas"]["FinancialsMoney"];
+            contractValueExGst: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string} */
+            totalCheck: "matches" | "differs" | "no_value";
+            /** @description Lines total less the contract value, signed; null when no value was entered. */
+            difference: string | null;
+            /** @description Lines left out because their words or amount were not on the page. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "items_dropped" | "total_differs" | "no_lines")[];
         };
         NovaContractReview: {
             /** Format: date-time */
@@ -16804,6 +18882,66 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        /** @enum {string} */
+        PhotoCategory: "safety_risk" | "daily_log" | "punch_list" | "drawings" | "inspections" | "rfis" | "unclassified";
+        /** @enum {string} */
+        PhotoRefKind: "rfi" | "defect" | "observation" | "inspection" | "diary_entry" | "drawing_revision";
+        PhotoFilingRequest: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind?: components["schemas"]["PhotoRefKind"] | null;
+            /** @description The record's id; sent with `refKind`. */
+            refId?: string | null;
+            /** @description True when the person accepted Nova's suggestion. */
+            fromSuggestion?: boolean;
+        };
+        PhotoFiling: {
+            fileId: components["schemas"]["FileRef"];
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            /** @enum {string} */
+            source: "attach" | "annotation" | "manual" | "nova";
+        };
+        PhotoFilingSuggestion: {
+            category: components["schemas"]["PhotoCategory"];
+            refKind: components["schemas"]["PhotoRefKind"] | null;
+            refId: string | null;
+            basedOnFileId: components["schemas"]["FileRef"];
+            /** @enum {string} */
+            reason: "same_place" | "same_session";
+        };
+        SitePhoto: {
+            file: components["schemas"]["FileObject"];
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            category: components["schemas"]["PhotoCategory"];
+            filing: components["schemas"]["PhotoFiling"] | null;
+            /** @description Unfiled for 24 hours or more. */
+            needsReview: boolean;
+            suggestion: components["schemas"]["PhotoFilingSuggestion"] | null;
+        };
+        PhotoAlbum: {
+            id: string;
+            name: string;
+            count: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PhotoAlbums: {
+            auto: {
+                category: components["schemas"]["PhotoCategory"];
+                count: number;
+                /** @description Photos unfiled for 24 hours or more (Unclassified only). */
+                needsReview: number;
+                cover: {
+                    url: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                } | null;
+            }[];
+            own: components["schemas"]["PhotoAlbum"][];
+        };
         DownloadLink: {
             url: string;
             /** Format: date-time */
@@ -16825,6 +18963,8 @@ export interface components {
             projectId: string;
             parentId: string | null;
             name: string;
+            /** Format: date-time */
+            createdAt: string;
             isPrivate: boolean;
             allowedUserIds: string[];
             allowedCompanyIds: string[];
@@ -17087,6 +19227,13 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /**
+             * Format: date-time
+             * @description Set only on documents in the recycle bin.
+             */
+            deletedAt?: string | null;
+            /** @description Whether the caller tracks it. Absent in the mobile sync pull. */
+            tracked?: boolean;
             version: number;
         };
         DocumentDetail: {
@@ -19468,6 +21615,8 @@ export interface components {
             assigneeUserId: string | null;
             /** @description Everyone the punch item is assigned to, in the assigned company. */
             assigneeUserIds: string[];
+            /** @description Assignees who have marked their own part done this round. */
+            completedUserIds: string[];
             /** @description Punch Item Manager. */
             managerUserId: string | null;
             /** @description When set, only this person closes, rejects or reopens the item. */
@@ -19954,6 +22103,50 @@ export interface components {
                 [key: string]: components["schemas"]["FinancialsSignedMoney"];
             };
         };
+        ProjectCashflow: {
+            /** Format: date */
+            asOf: string;
+            months: {
+                month: string;
+                /** @enum {string} */
+                kind: "actual" | "current" | "forecast";
+                cashIn: components["schemas"]["FinancialsMoney"];
+                cashOut: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+                cumulative: components["schemas"]["FinancialsSignedMoney"];
+            }[];
+            totals: {
+                cashInToDate: components["schemas"]["FinancialsMoney"];
+                cashOutToDate: components["schemas"]["FinancialsMoney"];
+                forecastCashIn: components["schemas"]["FinancialsMoney"];
+                forecastCashOut: components["schemas"]["FinancialsMoney"];
+                lowestCumulative: components["schemas"]["FinancialsSignedMoney"];
+                lowestMonth: string | null;
+            };
+            wip: {
+                contractValue: components["schemas"]["FinancialsMoney"];
+                estimatedFinalCost: components["schemas"]["FinancialsMoney"];
+                costToDate: components["schemas"]["FinancialsMoney"];
+                percentComplete: string;
+                earnedRevenue: components["schemas"]["FinancialsMoney"];
+                billed: components["schemas"]["FinancialsMoney"];
+                overUnderBilled: components["schemas"]["FinancialsSignedMoney"];
+                earnedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                projectedGrossProfit: components["schemas"]["FinancialsSignedMoney"];
+                receivableOpen: components["schemas"]["FinancialsMoney"];
+                retentionHeld: components["schemas"]["FinancialsMoney"];
+            } | null;
+            flags: {
+                /** @enum {string} */
+                code: "cash_gap" | "negative_cash_now" | "underbilled" | "overbilled" | "overdue_receivable" | "disputed_claims" | "loss_making" | "no_cost_plan" | "unscheduled_cost" | "retention_no_date" | "no_head_contract";
+                /** @enum {string} */
+                severity: "info" | "warn" | "risk";
+                title: string;
+                detail: string;
+                month: string | null;
+                amount: string | null;
+            }[];
+        };
         BudgetForecast: {
             hasBudget: boolean;
             months: string[];
@@ -20105,6 +22298,7 @@ export interface components {
             decidedAt: string | null;
             decisionNote: string | null;
             costCodeId: string | null;
+            changeEventId: string | null;
         };
         SetVariationCostCodeRequest: {
             costCodeId: string | null;
@@ -20253,6 +22447,7 @@ export interface components {
             amount: components["schemas"]["FinancialsMoney"];
             timeImpactDays?: number;
             costCodeId?: string;
+            changeEventId?: string;
         };
         VariationDecisionRequest: {
             note?: string;
@@ -20261,6 +22456,7 @@ export interface components {
         CommitmentStatus: "draft" | "submitted" | "approved" | "rejected" | "void";
         Commitment: {
             id: string;
+            contractId: string | null;
             number: number;
             /** @enum {string} */
             kind: "subcontract" | "purchase_order";
@@ -20269,6 +22465,7 @@ export interface components {
             status: components["schemas"]["CommitmentStatus"];
             total: components["schemas"]["FinancialsMoney"];
             overBudgetOverride: boolean;
+            changeEventId: string | null;
             /** Format: date-time */
             submittedAt: string | null;
             /** Format: date-time */
@@ -20280,9 +22477,194 @@ export interface components {
             description: string;
             amount: components["schemas"]["FinancialsMoney"];
         };
+        LinkCommitmentContractRequest: {
+            /** @description The subcontract to link, or null to clear the link. */
+            contractId: string | null;
+        };
+        CommitmentInvoice: {
+            claimId: string;
+            number: number;
+            /** Format: date */
+            periodStart: string | null;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            status: string;
+            thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsSignedMoney"];
+            earnedLessRetainage: components["schemas"]["FinancialsSignedMoney"];
+            payable: components["schemas"]["FinancialsMoney"];
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            paymentDue: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            paymentDueOn: string | null;
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+            percentComplete: string;
+        };
+        PaymentApplicationRow: {
+            key: string;
+            code: string;
+            description: string;
+            /** @enum {string} */
+            kind: "sov" | "variation";
+            costCode: string | null;
+            scheduledValue: components["schemas"]["FinancialsMoney"];
+            previous: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            percentComplete: string;
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+        };
+        PaymentApplicationFinding: {
+            code: string;
+            /** @enum {string} */
+            severity: "error" | "warning" | "info";
+            message: string;
+            itemCode: string | null;
+        };
+        PaymentApplicationSummary: {
+            originalSum: components["schemas"]["FinancialsMoney"];
+            netChange: components["schemas"]["FinancialsSignedMoney"];
+            revisedSum: components["schemas"]["FinancialsMoney"];
+            completedToDate: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsMoney"];
+            earnedLessRetainage: components["schemas"]["FinancialsMoney"];
+            lessPrevious: components["schemas"]["FinancialsMoney"];
+            thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            currentPaymentDue: components["schemas"]["FinancialsMoney"];
+            scheduledAmount: string | null;
+            paid: components["schemas"]["FinancialsMoney"];
+            balanceToFinish: components["schemas"]["FinancialsSignedMoney"];
+            percentComplete: string;
+        };
+        PaymentApplication: {
+            claimId: string;
+            commitmentTitle: string;
+            contractNumber: number;
+            contractTitle: string;
+            claimNumber: number;
+            status: string;
+            /** Format: date */
+            periodStart: string | null;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** Format: date */
+            scheduleDueOn: string | null;
+            summary: components["schemas"]["PaymentApplicationSummary"];
+            changeOrders: {
+                previousAdditions: components["schemas"]["FinancialsMoney"];
+                previousDeductions: components["schemas"]["FinancialsMoney"];
+                thisAdditions: components["schemas"]["FinancialsMoney"];
+                thisDeductions: components["schemas"]["FinancialsMoney"];
+                net: components["schemas"]["FinancialsSignedMoney"];
+            };
+            retentionPct: string;
+            rows: components["schemas"]["PaymentApplicationRow"][];
+            prior: {
+                number: number;
+                /** Format: date */
+                periodEnd: string;
+                thisPeriod: components["schemas"]["FinancialsSignedMoney"];
+                percentComplete: string;
+            } | null;
+            findings: components["schemas"]["PaymentApplicationFinding"][];
+        };
+        CommitmentInvoicePdfRequest: {
+            sections?: ("g702" | "summary" | "breakdown" | "payment" | "proofread")[];
+            columns?: ("code" | "description" | "scheduledValue" | "previous" | "thisPeriod" | "completedToDate" | "percentComplete" | "balanceToFinish")[];
+            /** @enum {string} */
+            paper?: "a4" | "letter";
+            /** @enum {string} */
+            orientation?: "portrait" | "landscape";
+            notes?: string;
+            signatureBlock?: boolean;
+            /** @description The architect's certified amount for the G702 certificate; Nova flags any difference from the amount applied for. */
+            amountCertified?: string;
+        };
+        CommitmentInvoicePdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        CommitmentInvoiceSummary: {
+            originalSum: components["schemas"]["FinancialsMoney"];
+            netChange: components["schemas"]["FinancialsMoney"];
+            revisedSum: components["schemas"]["FinancialsMoney"];
+            invoiced: components["schemas"]["FinancialsMoney"];
+            retainage: components["schemas"]["FinancialsSignedMoney"];
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            remaining: components["schemas"]["FinancialsMoney"];
+            percentPaid: string;
+            rows: components["schemas"]["CommitmentInvoice"][];
+        };
+        CommitmentInvoices: {
+            linked: boolean;
+            contractId: string | null;
+            summary: components["schemas"]["CommitmentInvoiceSummary"] | null;
+        };
         CommitmentDetail: {
             commitment: components["schemas"]["Commitment"];
             lines: components["schemas"]["CommitmentLine"][];
+        };
+        /** @enum {string} */
+        ChangeEventReason: "design_change" | "latent_condition" | "client_request" | "rfi" | "other";
+        /** @enum {string} */
+        ChangeEventStatus: "open" | "converted_to_variation" | "converted_to_commitment" | "closed";
+        ChangeEvent: {
+            id: string;
+            number: number;
+            title: string;
+            description: string | null;
+            reason: components["schemas"]["ChangeEventReason"];
+            estimate: string | null;
+            status: components["schemas"]["ChangeEventStatus"];
+            closedNote: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ChangeEventList: {
+            data: components["schemas"]["ChangeEvent"][];
+        };
+        ChangeEventDetail: components["schemas"]["ChangeEvent"] & {
+            variations: {
+                id: string;
+                number: number;
+                title: string;
+                status: components["schemas"]["VariationStatus"];
+                amount: components["schemas"]["FinancialsMoney"];
+            }[];
+            commitments: {
+                id: string;
+                number: number;
+                title: string;
+                status: components["schemas"]["CommitmentStatus"];
+                total: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        CreateChangeEventRequest: {
+            title: string;
+            description?: string;
+            reason: components["schemas"]["ChangeEventReason"];
+            estimate?: components["schemas"]["FinancialsMoney"];
+        };
+        UpdateChangeEventRequest: {
+            title?: string;
+            description?: string | null;
+            reason?: components["schemas"]["ChangeEventReason"];
+            estimate?: string | null;
+        };
+        CloseChangeEventRequest: {
+            note: string;
         };
         /** @enum {string} */
         DirectCostCategory: "labour" | "materials" | "plant" | "fees" | "other";
@@ -20550,6 +22932,7 @@ export interface components {
             kind: "subcontract" | "purchase_order";
             title: string;
             vendorCompanyId?: string | null;
+            changeEventId?: string;
             lines: {
                 budgetLineId: string;
                 description: string;
@@ -23668,9 +26051,6 @@ export interface components {
             companyId?: components["schemas"]["CompanyRef"];
             /** @enum {string} */
             role: "injured" | "witness" | "involved";
-            injury?: {
-                [key: string]: unknown;
-            };
         };
         IncidentSource: {
             /** @enum {string} */
@@ -24402,6 +26782,160 @@ export interface components {
             data: components["schemas"]["PermitFlag"][];
         };
         /** @enum {string} */
+        HandoverCategory: "as_built" | "om_manual" | "warranty" | "certificate" | "defect_signoff" | "training" | "keys_access" | "other";
+        /** @enum {string} */
+        HandoverStatus: "outstanding" | "requested" | "received" | "approved" | "not_applicable";
+        /**
+         * @description The stored status, or overdue when an unfinished item is past its due date in the project's own calendar day.
+         * @enum {string}
+         */
+        HandoverState: "outstanding" | "requested" | "received" | "approved" | "not_applicable" | "overdue";
+        HandoverItem: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            description: string | null;
+            required: boolean;
+            status: components["schemas"]["HandoverStatus"];
+            state: components["schemas"]["HandoverState"];
+            responsibleCompanyId: string | null;
+            /** Format: date */
+            dueOn: string | null;
+            /** Format: date */
+            receivedOn: string | null;
+            /** Format: date */
+            approvedOn: string | null;
+            approvedBy: string | null;
+            note: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        HandoverItemEvent: {
+            id: string;
+            action: string;
+            fromStatus: components["schemas"]["HandoverStatus"] | null;
+            toStatus: components["schemas"]["HandoverStatus"];
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        HandoverItemDetail: {
+            item: components["schemas"]["HandoverItem"];
+            events: components["schemas"]["HandoverItemEvent"][];
+        };
+        HandoverCategorySummary: {
+            category: components["schemas"]["HandoverCategory"];
+            total: number;
+            complete: number;
+            requiredOutstanding: number;
+        };
+        HandoverSummary: {
+            total: number;
+            required: number;
+            requiredComplete: number;
+            complete: number;
+            /** @description Received and waiting for approval. */
+            received: number;
+            overdue: number;
+            /** @description Over the required items. */
+            percentComplete: number;
+            byCategory: components["schemas"]["HandoverCategorySummary"][];
+        };
+        HandoverFlag: {
+            /** @enum {string} */
+            kind: "empty_checklist" | "overdue" | "no_responsible" | "awaiting_approval" | "open_defects" | "warranty_register_empty" | "no_occupation_certificate";
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            title: string;
+            detail: string;
+            itemId: string | null;
+        };
+        HandoverFlagList: {
+            data: components["schemas"]["HandoverFlag"][];
+        };
+        HandoverIssue: {
+            id: string;
+            projectId: string;
+            recipientName: string;
+            note: string | null;
+            /** @description Required items that were not complete when it was issued. */
+            incompleteCount: number;
+            issuedBy: string | null;
+            /** Format: date-time */
+            issuedAt: string;
+        };
+        HandoverPack: {
+            items: components["schemas"]["HandoverItem"][];
+            summary: components["schemas"]["HandoverSummary"];
+            /** @description Every required item is approved or not applicable. */
+            readyToIssue: boolean;
+            flags: components["schemas"]["HandoverFlag"][];
+            issues: components["schemas"]["HandoverIssue"][];
+        };
+        HandoverExportFile: {
+            id: string;
+            filename: string;
+            sizeBytes: number;
+        };
+        HandoverExportItem: {
+            numberLabel: string;
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            required: boolean;
+            status: components["schemas"]["HandoverStatus"];
+            files: components["schemas"]["HandoverExportFile"][];
+        };
+        HandoverExport: {
+            projectName: string;
+            /** Format: date-time */
+            generatedAt: string;
+            summary: components["schemas"]["HandoverSummary"];
+            items: components["schemas"]["HandoverExportItem"][];
+        };
+        HandoverTemplateResult: {
+            added: number;
+        };
+        CreateHandoverItemRequest: {
+            category: components["schemas"]["HandoverCategory"];
+            title: string;
+            description?: string | null;
+            required?: boolean;
+            responsibleCompanyId?: string | null;
+            /** Format: date */
+            dueOn?: string | null;
+            note?: string | null;
+            fileIds?: string[];
+        };
+        UpdateHandoverItemRequest: {
+            category?: components["schemas"]["HandoverCategory"];
+            title?: string;
+            description?: string | null;
+            required?: boolean;
+            responsibleCompanyId?: string | null;
+            /** Format: date */
+            dueOn?: string | null;
+            note?: string | null;
+            fileIds?: string[];
+        };
+        HandoverTransitionRequest: {
+            /** @enum {string} */
+            action: "request" | "receive" | "approve" | "reject" | "markNotApplicable" | "reopen";
+            note?: string | null;
+        };
+        IssueHandoverPackRequest: {
+            recipientName: string;
+            note?: string | null;
+            acknowledgeIncomplete?: boolean;
+        };
+        /** @enum {string} */
         SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
         /** @enum {string} */
         SwmsAction: "markReviewed" | "accept" | "reject" | "reopen";
@@ -24829,6 +27363,8 @@ export interface components {
     };
     parameters: {
         LogisticsResourceId: string;
+        DelayEventId: string;
+        DelayEventItemId: string;
         PrefabUnitId: string;
         PrefabCheckId: string;
         DeliveryId: string;
@@ -24863,9 +27399,12 @@ export interface components {
         GeotechTestId: string;
         GeotechEarthworksId: string;
         PermitId: string;
+        HandoverItemId: string;
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
+        RiskId: string;
+        PhotoAlbumId: string;
         FileId: string;
         SpecBookId: string;
         FolderId: string;
@@ -24892,6 +27431,7 @@ export interface components {
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
+        ChangeEventId: string;
         DirectCostId: string;
         TmTicketId: string;
         CommitmentId: string;
@@ -24930,6 +27470,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        WorkflowId: string;
         DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
@@ -26584,6 +29125,331 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getEotSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EotSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putEotSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutEotSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EotSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDelayEventCandidates: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                includeAttached?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventCandidateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelayEventInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDelayEvents: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["DelayEventStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDelayEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDelayEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDelayEventEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDelayEventEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeDelayEventEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+                itemId: components["parameters"]["DelayEventItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionDelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelayEventTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftDelayEventLetter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                eventId: components["parameters"]["DelayEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelayEventDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayEventDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listSchedules: {
         parameters: {
             query?: never;
@@ -27049,6 +29915,9 @@ export interface operations {
             query?: {
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
+                q?: string;
+                companyId?: string;
+                trade?: string;
             };
             header?: never;
             path: {
@@ -27096,6 +29965,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCompanyContacts: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+                q?: string;
+                companyId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of contacts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContactPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCompanyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContact"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCompanyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contactId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContact"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -27361,6 +30366,195 @@ export interface operations {
                         data: components["schemas"]["ProjectPhoto"][];
                     };
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    browseProjectPhotos: {
+        parameters: {
+            query?: {
+                album?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of photos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SitePhoto"][];
+                        /** @description Pass as `cursor` for the next page. */
+                        next: string | null;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    filePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoFilingRequest"];
+            };
+        };
+        responses: {
+            /** @description Filed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoFiling"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPhotoAlbums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Albums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbums"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The album */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAlbum"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePhotoAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPhotoToAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Added */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removePhotoFromAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                albumId: components["parameters"]["PhotoAlbumId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -27914,6 +31108,10 @@ export interface operations {
             query?: {
                 folderId?: string;
                 q?: string;
+                /** @description Only documents registered at or after this instant ("new this week"). */
+                createdSince?: string;
+                /** @description Send `true` for only the documents the caller tracks. */
+                tracked?: "true";
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
             };
@@ -27995,6 +31193,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    deleteDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Moved to the recycle bin */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     updateDocument: {
         parameters: {
             query?: never;
@@ -28024,6 +31248,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeletedDocuments: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of deleted documents in folders the caller can open */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    restoreDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restored */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    trackDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tracked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    untrackDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No longer tracked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -29778,6 +33101,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftContractSov: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    /** @description The contract value ex GST the person has entered, to check the lines against. */
+                    contractValue?: components["schemas"]["FinancialsMoney"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The proposed lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractSovDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     compareContracts: {
         parameters: {
             query?: never;
@@ -29900,6 +33255,38 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    levelBidsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    question?: string;
+                    history?: components["schemas"]["NegotiationTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's levelling */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidLevelling"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     reviewBudgetWithNova: {
         parameters: {
             query?: never;
@@ -30008,6 +33395,36 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    parseVoiceLogWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day being logged, in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceLogRequest"];
+            };
+        };
+        responses: {
+            /** @description The suggestion; `payload` is `{ date, items, dropped, transcriptHash }`. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -30548,6 +33965,29 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getMyWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My Work */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyWork"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getSustainabilityPortfolio: {
         parameters: {
             query?: {
@@ -30568,6 +34008,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SustainabilityPortfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTimeDashboard: {
+        parameters: {
+            query?: {
+                weekStart?: string;
+                /** @description Comma-separated project ids; empty means every project the caller can see. */
+                projectIds?: string;
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeDashboard"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -30594,6 +34062,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getIncidentAnalytics: {
+        parameters: {
+            query?: {
+                projectId?: string;
+                companyId?: components["schemas"]["CompanyRef"];
+                bodyPart?: components["schemas"]["BodyPart"];
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentAnalytics"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -30967,6 +34464,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataExportDownload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                workflowId: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getVariationWorkflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariationWorkflow"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -33415,6 +37037,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WarrantySummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeDefectPart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -42406,6 +46053,255 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getHandoverPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createHandoverItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHandoverItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    applyHandoverTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverTemplateResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHandoverFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHandoverExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    issueHandoverPack: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueHandoverPackRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverIssue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHandoverItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateHandoverItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHandoverItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionHandoverItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                handoverItemId: components["parameters"]["HandoverItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandoverTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverItemDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listContracts: {
         parameters: {
             query?: never;
@@ -42535,6 +46431,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CostForecast"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectCashflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCashflow"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -43905,6 +47825,147 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listChangeEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEventList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEventDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeChangeEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                changeEventId: components["parameters"]["ChangeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseChangeEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listDirectCosts: {
         parameters: {
             query?: never;
@@ -44374,6 +48435,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    linkCommitmentContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkCommitmentContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentInvoices"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentApplication"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitmentInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommitmentInvoicePdfRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentInvoicePdf"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -44989,6 +49160,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectRisks: {
+        parameters: {
+            query?: {
+                status?: "open" | "mitigating" | "occurred" | "closed";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjectRiskSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRiskSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteProjectRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateProjectRisk: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRiskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRisk"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -45779,6 +50086,285 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listOwnerShareLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerShareLink: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerShareLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedOwnerShareLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeOwnerShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerSharedPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addOwnerSharedPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOwnerSharedPhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeOwnerSharedPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSharedPhotoList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    previewOwnerShareView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerShareChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setOwnerShareChangeHidden: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOwnerShareChangeHiddenRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerShareChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerPortalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openOwnerPortalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The client view; `__Host-opk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPortalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listPrefabUnits: {
         parameters: {
             query?: {
@@ -45905,6 +50491,31 @@ export interface operations {
                 "application/json": components["schemas"]["PrefabTransitionRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefabUnit"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftPrefabDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                unitId: components["parameters"]["PrefabUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

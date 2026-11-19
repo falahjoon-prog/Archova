@@ -4,7 +4,7 @@ import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { LocalDate } from '@archova/time';
-import { localDateOf } from '@archova/time';
+import { localDateOf, zonedToUtc } from '@archova/time';
 import {
   GATE,
   TRANSITIONS,
@@ -45,8 +45,26 @@ export interface PrefabDeps {
   platform: Pick<PlatformApi, 'getProject'>;
   /** Looks up a material delivery on the project (`logistics`); null when there is none. */
   delivery: (scope: TenantScope, projectId: string, id: string) => Promise<DeliveryRef | null>;
+  /** Books a delivery on the project (`logistics`), which checks its own permission. Returns the new delivery. */
+  createDelivery: (
+    scope: TenantScope,
+    projectId: string,
+    input: {
+      title: string;
+      supplierName: string;
+      supplierCompanyId?: string | undefined;
+      items: { description: string; quantity?: string | undefined }[];
+      windowStart: Date;
+      windowEnd: Date;
+      needsLift: boolean;
+      accessNotes?: string | undefined;
+    },
+  ) => Promise<DeliveryRef>;
   now?: () => Date;
 }
+
+/** A unit this heavy is assumed to need a crane or hoist when it arrives. */
+const LIFT_FROM_KG = 500;
 
 export interface UnitInput {
   code: string;
@@ -501,6 +519,46 @@ export function createPrefabService(deps: PrefabDeps) {
     return { asOf: at, today, summary: summarise(views, today), flags: computeFlags(views, today) };
   }
 
+  /**
+   * Books a draft delivery for a unit, a 6am to 10am window on the day it is due on site (its install date, else its
+   * ship date), and links the unit to it. The coordinator then adjusts the window and zone in the delivery.
+   */
+  async function draftDelivery(scope: TenantScope, projectId: string, id: string) {
+    await need(scope, 'prefab.units.write', projectId);
+    const cur = await row(scope, projectId, id, true);
+    if (cur.deliveryId)
+      throw new AppError('prefab_unit.bad_state', 'This unit already has a delivery.');
+    if (cur.status === 'on_site' || cur.status === 'installed' || cur.status === 'rejected')
+      throw new AppError('prefab_unit.bad_state', `A ${cur.status} unit cannot be booked in.`);
+    const day = cur.installDate ?? cur.shipDate;
+    if (!day) throw invalid('installDate', 'Set an install or ship date first, or use Plan dates.');
+    const project = await deps.platform.getProject(scope, projectId);
+    const d = await deps.createDelivery(scope, projectId, {
+      title: `${cur.code} ${cur.name}`.slice(0, 120),
+      supplierName: cur.factoryName?.trim() || 'Prefab supplier (to confirm)',
+      ...(cur.supplierCompanyId ? { supplierCompanyId: cur.supplierCompanyId } : {}),
+      items: [{ description: `${cur.code} ${cur.name}`, quantity: '1' }],
+      windowStart: zonedToUtc(day, '06:00', project.timezone),
+      windowEnd: zonedToUtc(day, '10:00', project.timezone),
+      needsLift: (cur.weightKg ?? 0) >= LIFT_FROM_KG,
+      ...(cur.dimensions || cur.weightKg
+        ? {
+            accessNotes: [cur.dimensions, cur.weightKg ? `${cur.weightKg} kg` : null]
+              .filter(Boolean)
+              .join(', '),
+          }
+        : {}),
+    });
+    const label = `Delivery #${d.number} · ${d.title}`;
+    const [u] = await scope.tx
+      .update(units)
+      .set({ deliveryId: d.id, deliveryLabel: label, version: cur.version + 1 })
+      .where(eq(units.id, cur.id))
+      .returning();
+    await event(scope, cur, 'updated', `Draft delivery booked: ${label}`);
+    return (await withQa(scope, [u!]))[0]!;
+  }
+
   async function plan(
     scope: TenantScope,
     projectId: string,
@@ -516,7 +574,18 @@ export function createPrefabService(deps: PrefabDeps) {
     return planDates(input);
   }
 
-  return { list, get, create, update, transition, addCheck, recordCheck, insights, plan };
+  return {
+    list,
+    get,
+    create,
+    update,
+    transition,
+    addCheck,
+    recordCheck,
+    insights,
+    plan,
+    draftDelivery,
+  };
 }
 
 export type PrefabService = ReturnType<typeof createPrefabService>;

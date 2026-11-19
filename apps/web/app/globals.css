@@ -1322,6 +1322,27 @@ main:focus {
   text-align: left;
   border-radius: var(--radius-md);
 }
+.documents-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+.documents-shortcuts {
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--c-border-divider);
+}
+.folder-button__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.icon-filled {
+  fill: currentColor;
+}
 .folder-button[aria-current='true'] {
   color: var(--c-action-primary);
   background: color-mix(in srgb, var(--c-action-primary) 10%, var(--c-surface));
@@ -2067,6 +2088,9 @@ fieldset.worker-card > legend {
   min-height: 100dvh;
   background: var(--c-bg);
 }
+.link-page--wide {
+  max-width: 56rem;
+}
 .link-item {
   flex-direction: row;
   align-items: center;
@@ -2290,6 +2314,30 @@ fieldset.worker-card > legend {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+}
+
+/* Nova levelling the bids: a short table of ranks and totals, numbers right-aligned under their headings. */
+.level__table {
+  min-width: 30rem;
+}
+.level__table th,
+.level__table td {
+  vertical-align: top;
+}
+.table th.level__num,
+.table td.level__num {
+  text-align: right;
+  white-space: nowrap;
+}
+.level__rec {
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+.level__ask {
+  display: grid;
+  gap: var(--space-3);
 }
 
 /* Nova on the quote comparison: clip beside the controls from 768px, stacked below it. */
@@ -4669,4 +4717,230 @@ fieldset.worker-card > legend {
   flex: 1 1 14rem;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* Photos tool: feed, timeline and albums */
+.photo-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .photo-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .photo-tiles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.photo-tiles__tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.photo-tiles__tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-tiles__flag {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.photo-tiles__caption {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .album-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .album-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.album-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.album-tile__open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+.album-tile__cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.album-tile__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.album-tile__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.photo-album-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+/* EOT claims board */
+.eot-nova {
+  gap: var(--space-3);
+}
+.eot-flags,
+.eot-chips,
+.eot-evidence,
+.eot-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.eot-chips {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.eot-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.eot-flag__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eot-ask,
+.eot-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.eot-ask > :first-child,
+.eot-inline > :first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.eot-ask > button {
+  margin-block-start: var(--space-6);
+}
+.eot-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-divider);
+}
+.eot-facts {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.eot-facts dt {
+  color: var(--c-text-secondary);
+}
+.eot-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.eot-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.eot-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.eot-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--c-border-divider);
+}
+.eot-item__main {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eot-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-block-size: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.eot-draft {
+  width: 100%;
+  min-block-size: 16rem;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm, 0.875rem);
+}
+.eot-sub {
+  display: block;
 }

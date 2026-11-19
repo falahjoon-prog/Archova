@@ -2,17 +2,23 @@ import { decodeId } from '@archova/domain';
 import {
   AppError,
   defineRoutes,
+  etag,
+  parseIfMatch,
   requireTenant,
   type Database,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
 import type { DbpService } from '../application/dbp';
+import type { MyWorkService } from '../application/mywork';
 import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
+import type { TimeService } from '../application/time';
 import type { RiskService } from '../application/risk';
 import type { SustainabilityService } from '../application/sustainability';
 import type { ReadinessService } from '../application/readiness';
+import type { IncidentAnalyticsService } from '../application/incident-analytics';
+import type { RiskRegisterService } from '../application/risk-register';
 import type { ReportsService } from '../application/reports';
 
 export function reportingRoutes(
@@ -21,9 +27,13 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  myWork: MyWorkService,
+  time: TimeService,
   audit: AuditService,
   sustainability: SustainabilityService,
   dbp: DbpService,
+  riskRegister: RiskRegisterService,
+  incidentAnalytics: IncidentAnalyticsService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -35,17 +45,81 @@ export function reportingRoutes(
     return v;
   };
 
+  const project = (p: { projectId: string }) => {
+    const v = decodeId('project', p.projectId);
+    if (!v) throw new AppError('project.not_found');
+    return v;
+  };
+  const riskId = (p: { riskId: string }) => {
+    const v = decodeId('projectRisk', p.riskId);
+    if (!v) throw new AppError('risk.not_found');
+    return v;
+  };
+
   return defineRoutes({
+    getMyWork: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => myWork.get(s)),
+    }),
     listAuditLog: async (input) => ({
       status: 200,
       body: await read(input, (s) => audit.list(s, input.query ?? {})),
     }),
+    listProjectRisks: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        riskRegister.list(s, project(input.params), input.query?.status),
+      ),
+    }),
+    getProjectRiskSummary: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => riskRegister.summary(s, project(input.params))),
+    }),
+    createProjectRisk: async (input) => ({
+      status: 201,
+      body: await tx(input, (s) => riskRegister.create(s, project(input.params), input.body)),
+    }),
+    updateProjectRisk: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const body = await tx(input, (s) =>
+        riskRegister.update(s, project(input.params), riskId(input.params), expected, input.body),
+      );
+      return { status: 200, body, headers: { etag: etag(body.version) } };
+    },
+    deleteProjectRisk: async (input) => {
+      await tx(input, (s) => riskRegister.remove(s, project(input.params), riskId(input.params)));
+      return { status: 204 };
+    },
     getPortfolio: async (input) => ({
       status: 200,
       body: await read(input, (s) =>
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
+    getTimeDashboard: async (input) => {
+      const ids = (input.query?.projectIds ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const v = decodeId('project', s);
+          if (!v)
+            throw new AppError('validation_failed', 'Invalid project', [
+              { path: 'projectIds', message: 'Unknown project' },
+            ]);
+          return v;
+        });
+      return {
+        status: 200,
+        body: await read(input, (s) =>
+          time.get(s, {
+            weekStart: input.query?.weekStart,
+            projectIds: ids,
+            includeClosed: input.query?.includeClosed === 'true',
+          }),
+        ),
+      };
+    },
     getDbpInsights: async (input) => ({
       status: 200,
       body: await read(input, (s) =>
@@ -57,6 +131,10 @@ export function reportingRoutes(
       body: await read(input, (s) =>
         sustainability.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
+    }),
+    getIncidentAnalytics: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => incidentAnalytics.get(s, input.query ?? {})),
     }),
     getLateSopaClaimRisk: async (input) => ({
       status: 200,

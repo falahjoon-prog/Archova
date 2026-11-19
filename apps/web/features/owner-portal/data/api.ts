@@ -9,6 +9,11 @@ export type Approval = S['OwnerApproval'];
 export type CreateApproval = S['CreateOwnerApprovalRequest'];
 export type CapitalPlan = S['OwnerCapitalPlan'];
 export type CapitalItemInput = S['OwnerCapitalItemInput'];
+export type ShareLink = S['OwnerShareLink'];
+export type CreatedShareLink = S['CreatedOwnerShareLink'];
+export type SharedPhoto = S['OwnerSharedPhoto'];
+export type ShareChange = S['OwnerShareChange'];
+export type SharePreview = S['OwnerPortalAccess'];
 
 const B = '/v1/orgs/{orgId}/projects/{projectId}/owner-portal';
 const idem = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -17,6 +22,71 @@ const idem = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 export function createOwnerPortalApi(orgId: string) {
   const path = (projectId: string) => ({ orgId, projectId });
   return {
+    async shareLinks(projectId: string): Promise<ShareLink[]> {
+      return unwrap(
+        await api.GET(`${B}/share-links` as const, { params: { path: path(projectId) } }),
+      ).data;
+    },
+    async createShareLink(
+      projectId: string,
+      body: S['CreateOwnerShareLinkRequest'],
+    ): Promise<CreatedShareLink> {
+      return unwrap(
+        await api.POST(`${B}/share-links` as const, {
+          params: { path: path(projectId), header: idem() },
+          body,
+        }),
+      );
+    },
+    async revokeShareLink(projectId: string, linkId: string): Promise<ShareLink> {
+      return unwrap(
+        await api.POST(`${B}/share-links/{linkId}/revoke` as const, {
+          params: { path: { ...path(projectId), linkId } },
+        }),
+      );
+    },
+    async sharePreview(projectId: string): Promise<SharePreview> {
+      return unwrap(
+        await api.GET(`${B}/share-preview` as const, { params: { path: path(projectId) } }),
+      );
+    },
+    async shareChanges(projectId: string): Promise<ShareChange[]> {
+      return unwrap(
+        await api.GET(`${B}/share-changes` as const, { params: { path: path(projectId) } }),
+      ).data;
+    },
+    async setChangeHidden(
+      projectId: string,
+      reference: string,
+      hidden: boolean,
+    ): Promise<ShareChange[]> {
+      return unwrap(
+        await api.PUT(`${B}/share-changes/{reference}` as const, {
+          params: { path: { ...path(projectId), reference } },
+          body: { hidden },
+        }),
+      ).data;
+    },
+    async sharedPhotos(projectId: string): Promise<SharedPhoto[]> {
+      return unwrap(
+        await api.GET(`${B}/shared-photos` as const, { params: { path: path(projectId) } }),
+      ).data;
+    },
+    async sharePhoto(projectId: string, fileId: string, caption: string): Promise<SharedPhoto[]> {
+      return unwrap(
+        await api.POST(`${B}/shared-photos` as const, {
+          params: { path: path(projectId) },
+          body: { fileId, caption },
+        }),
+      ).data;
+    },
+    async unsharePhoto(projectId: string, fileId: string): Promise<SharedPhoto[]> {
+      return unwrap(
+        await api.DELETE(`${B}/shared-photos/{fileId}` as const, {
+          params: { path: { ...path(projectId), fileId } },
+        }),
+      ).data;
+    },
     async updates(projectId: string): Promise<ProgressUpdate[]> {
       return unwrap(
         await api.GET(`${B}/progress-updates` as const, { params: { path: path(projectId) } }),

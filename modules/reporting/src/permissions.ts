@@ -18,6 +18,8 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'read',
     orgRoles: ['member'],
   },
+  // My Work is one person's own page: staff only, and every row is still narrowed by their project permissions.
+  { key: 'reporting.mywork.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   { key: 'reporting.reports.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   {
     key: 'reporting.reports.manage',
@@ -26,6 +28,11 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'standard',
     orgRoles: ['member'],
   },
+  // The project risk register. Held per project through the coordination tool, so subcontractors and clients never
+  // see the builder's risks.
+  { key: 'reporting.risks.read', scope: 'project', tool: 'coordination', level: 'read' },
+  { key: 'reporting.risks.write', scope: 'project', tool: 'coordination', level: 'standard' },
+  { key: 'reporting.risks.manage', scope: 'project', tool: 'coordination', level: 'admin' },
   // No orgRoles: org owners and admins only (they hold every org permission). The log names who did what.
   { key: 'reporting.audit.read', scope: 'org', tool: null, level: 'admin' },
 ];

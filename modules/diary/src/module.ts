@@ -50,6 +50,8 @@ export function createDiaryModule(services: KernelServices, deps: DiaryDeps) {
       aiAccessScopes: service.aiAccessScopes,
       /** The delay register (`scheduling`): delay lines with their days; null for readers limited to their own company. */
       delayLines: service.delayLines,
+      /** The EOT register (`scheduling`): weather and weather-delay hours by diary day; null for readers limited to their own company. */
+      weatherDays: service.weatherDays,
     },
   };
 }
