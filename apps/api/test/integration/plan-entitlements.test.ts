@@ -33,10 +33,10 @@ describe('plan entitlements', () => {
   it('has exactly one published version per plan, and retired history behind it', async () => {
     const live = await published();
     expect([...live.keys()].sort()).toEqual(['business', 'enterprise', 'subcontractor', 'team']);
-    const [{ n }] = (await t.adminDb.db.execute(
+    const [retired] = (await t.adminDb.db.execute(
       sql`select count(*)::int as n from billing.plan_versions where status = 'retired' and plan_code in ('team', 'business', 'enterprise')`,
     )) as unknown as Array<{ n: number }>;
-    expect(n).toBeGreaterThanOrEqual(3);
+    expect(retired?.n ?? 0).toBeGreaterThanOrEqual(3);
   });
 
   it('lists plant, environment and geotech on every paid plan', async () => {
