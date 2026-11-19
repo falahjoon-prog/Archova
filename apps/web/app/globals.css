@@ -340,6 +340,19 @@ main:focus {
     order: 3;
     flex: 1 0 100%;
   }
+  /* Three buttons per row, evenly sized, instead of ragged wrapping. */
+  .app-shell__nav ul {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-shell__nav-link {
+    width: 100%;
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+  .app-shell__nav .app-shell__nav-menu li {
+    display: block;
+  }
   .app-shell__user {
     display: none;
   }
@@ -914,8 +927,6 @@ main:focus {
     border-bottom: 1px solid var(--c-border-divider);
     scroll-snap-type: x proximity;
     scrollbar-width: none;
-    /* A fade on the right edge says there is more to scroll to. */
-    mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
   }
   .project-nav li {
     scroll-snap-align: start;
