@@ -121,7 +121,9 @@ export function UnitDialog({
       {u && step ? (
         <div className="stack">
           <p className="u-m-0">
-            <StatusPill tone={STATUS_TONES[u.status]}>{STATUS_LABELS[u.status]}</StatusPill>
+            <StatusPill className="pfb-pill" tone={STATUS_TONES[u.status]}>
+              {STATUS_LABELS[u.status]}
+            </StatusPill>
             {u.statusReason ? <span className="u-caption"> {u.statusReason}</span> : null}
           </p>
           <dl className="pfb-facts">
@@ -241,7 +243,7 @@ export function UnitDialog({
                         {c.label}
                         {c.required ? null : <span className="u-caption"> (optional)</span>}
                       </span>
-                      <StatusPill tone={RESULT_TONES[c.result]}>
+                      <StatusPill className="pfb-pill" tone={RESULT_TONES[c.result]}>
                         {RESULT_LABELS[c.result]}
                       </StatusPill>
                     </div>
