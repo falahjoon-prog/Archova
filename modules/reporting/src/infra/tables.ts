@@ -26,6 +26,18 @@ export const reports = reportingSchema.table('reports', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
+export const dashboardSnapshots = reportingSchema.table('dashboard_snapshots', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  currentAsOf: date('current_as_of').notNull(),
+  program: text('program'),
+  data: jsonb('data').$type<unknown>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by').notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
 export type RiskCategory =
   'scope' | 'time' | 'cost' | 'quality' | 'safety' | 'commercial' | 'other';
 export type RiskStatus = 'open' | 'mitigating' | 'occurred' | 'closed';

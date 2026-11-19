@@ -139,6 +139,7 @@ export const ID_PREFIXES = {
   delayEventItem: 'dxi',
   delayEventLog: 'dxl',
   report: 'rpt',
+  dashboardSnapshot: 'dsn',
   projectRisk: 'rsk',
   notification: 'ntf',
   bookmark: 'bmk',

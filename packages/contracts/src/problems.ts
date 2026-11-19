@@ -363,6 +363,7 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  'snapshot.not_found': 404,
   // configurable approval workflows
   'workflow.not_found': 404,
   'workflow.active_exists': 409,

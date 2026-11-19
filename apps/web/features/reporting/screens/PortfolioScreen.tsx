@@ -14,7 +14,7 @@ import { usePortfolio, useSustainabilityPortfolio } from '../hooks/useReporting'
 import { SAMPLE_PORTFOLIO } from '../tiles';
 
 /** The layout a company gets until it edits one: the widgets it switched on in Settings → Branding, four to a row. */
-function defaultLayout(widgets: readonly string[]): Tile[] {
+export function defaultLayout(widgets: readonly string[]): Tile[] {
   const tiles: Tile[] = [];
   let col = 0;
   let row = 0;
@@ -42,7 +42,7 @@ function defaultLayout(widgets: readonly string[]): Tile[] {
   return tiles;
 }
 
-const DEFAULT_WIDGETS = [
+export const DEFAULT_WIDGETS = [
   'projects',
   'rfis',
   'defects',

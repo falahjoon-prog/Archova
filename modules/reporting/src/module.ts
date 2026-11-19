@@ -2,6 +2,7 @@ import { defineModule, type Database } from '@archova/kernel';
 import { reportingRoutes } from './api/routes';
 import { createMyWorkService } from './application/mywork';
 import { createAuditService, type AuditDeps } from './application/audit';
+import { createSnapshotService, type SnapshotDeps } from './application/snapshots';
 import { createDbpService } from './application/dbp';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
@@ -21,7 +22,7 @@ import { REPORTING_PERMISSIONS } from './permissions';
  * and row is limited to what the person asking may open on that project.
  */
 export function createReportingModule(
-  deps: ReportingDeps & RiskDeps & AuditDeps & { database: Database },
+  deps: ReportingDeps & RiskDeps & AuditDeps & SnapshotDeps & { database: Database },
 ) {
   const portfolio = createPortfolioService(deps);
   const reports = createReportsService(deps);
@@ -30,6 +31,7 @@ export function createReportingModule(
   const myWork = createMyWorkService(deps);
   const riskRegister = createRiskRegisterService(deps);
   const audit = createAuditService(deps);
+  const snapshots = createSnapshotService(deps, portfolio);
   const sustainability = createSustainabilityService(deps);
   const time = createTimeService(deps);
   const dbp = createDbpService(deps);
@@ -45,6 +47,7 @@ export function createReportingModule(
       myWork,
       time,
       audit,
+      snapshots,
       sustainability,
       dbp,
       riskRegister,

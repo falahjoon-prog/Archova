@@ -69,6 +69,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                       { href: webRoutes.myWork(orgSlug), label: 'My Work' },
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                      { href: webRoutes.snapshots(orgSlug), label: 'Snapshots' },
                       {
                         href: webRoutes.incidentAnalytics(orgSlug),
                         label: 'Injury analytics',

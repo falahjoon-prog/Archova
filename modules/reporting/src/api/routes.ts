@@ -12,6 +12,7 @@ import {
 import type { DbpService } from '../application/dbp';
 import type { MyWorkService } from '../application/mywork';
 import type { AuditService } from '../application/audit';
+import type { SnapshotService } from '../application/snapshots';
 import type { PortfolioService } from '../application/portfolio';
 import type { TimeService } from '../application/time';
 import type { RiskService } from '../application/risk';
@@ -30,6 +31,7 @@ export function reportingRoutes(
   myWork: MyWorkService,
   time: TimeService,
   audit: AuditService,
+  snapshots: SnapshotService,
   sustainability: SustainabilityService,
   dbp: DbpService,
   riskRegister: RiskRegisterService,
@@ -45,6 +47,11 @@ export function reportingRoutes(
     return v;
   };
 
+  const snapshotId = (p: { snapshotId: string }) => {
+    const v = snapshots.decode(p.snapshotId);
+    if (!v) throw new AppError('snapshot.not_found');
+    return v;
+  };
   const project = (p: { projectId: string }) => {
     const v = decodeId('project', p.projectId);
     if (!v) throw new AppError('project.not_found');
@@ -57,6 +64,23 @@ export function reportingRoutes(
   };
 
   return defineRoutes({
+    listDashboardSnapshots: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => snapshots.list(s)),
+    }),
+    // A write transaction: capturing reads the dashboard (which records access to subbie wallets) and inserts the row.
+    createDashboardSnapshot: async (input) => ({
+      status: 201,
+      body: await tx(input, (s) => snapshots.create(s, input.body)),
+    }),
+    getDashboardSnapshot: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => snapshots.get(s, snapshotId(input.params))),
+    }),
+    deleteDashboardSnapshot: async (input) => {
+      await tx(input, (s) => snapshots.remove(s, snapshotId(input.params)));
+      return { status: 204 };
+    },
     getMyWork: async (input) => ({
       status: 200,
       body: await read(input, (s) => myWork.get(s)),

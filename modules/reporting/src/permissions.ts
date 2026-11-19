@@ -28,6 +28,20 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'standard',
     orgRoles: ['member'],
   },
+  {
+    key: 'reporting.snapshots.read',
+    scope: 'org',
+    tool: null,
+    level: 'read',
+    orgRoles: ['member'],
+  },
+  {
+    key: 'reporting.snapshots.manage',
+    scope: 'org',
+    tool: null,
+    level: 'standard',
+    orgRoles: ['member'],
+  },
   // The project risk register. Held per project through the coordination tool, so subcontractors and clients never
   // see the builder's risks.
   { key: 'reporting.risks.read', scope: 'project', tool: 'coordination', level: 'read' },
