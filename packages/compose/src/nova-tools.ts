@@ -55,6 +55,40 @@ export interface NovaToolSources {
       findings: Array<{ summary: string }>;
     }>;
   };
+  quality: {
+    overdueInspections: (
+      s: TenantScope,
+      projectId: string,
+      o: { limit: number },
+    ) => Promise<Listing>;
+    failedInspectionItems: (
+      s: TenantScope,
+      projectId: string,
+      o: { limit: number },
+    ) => Promise<Listing>;
+    inspectionSummaries: (
+      s: TenantScope,
+      projectId: string,
+      ids: readonly string[],
+    ) => Promise<
+      Array<{
+        id: string;
+        ref: string;
+        title: string;
+        status: string;
+        dueDate: string | null;
+        reopenCount: number;
+        summary: {
+          pass: number;
+          fail: number;
+          na: number;
+          answered: number;
+          unanswered: number;
+          total: number;
+        };
+      }>
+    >;
+  };
   /** Created after `ai`, so read lazily. */
   scheduling: () => {
     slipSignals: (
@@ -155,6 +189,66 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
           'There are no open defects.',
           await src.defects.openForMeeting(scope, projectId, { limit: LIMIT }),
         ),
+    },
+    {
+      name: 'overdue_inspections',
+      description: 'Inspections not yet closed that are past their due date, oldest due first.',
+      params: {},
+      run: async (scope, projectId) =>
+        listing(
+          'Overdue inspections',
+          'inspection',
+          'inspections',
+          projectId,
+          'No open inspections are past their due date.',
+          await src.quality.overdueInspections(scope, projectId, { limit: LIMIT }),
+        ),
+    },
+    {
+      name: 'failed_inspection_items',
+      description:
+        'Checklist items marked Fail on inspections that are still open, and whether a defect or observation was raised for each.',
+      params: {},
+      run: async (scope, projectId) =>
+        listing(
+          'Failed inspection items',
+          'inspection',
+          'inspections',
+          projectId,
+          'No open inspection has a failed item.',
+          await src.quality.failedInspectionItems(scope, projectId, { limit: LIMIT }),
+        ),
+    },
+    {
+      name: 'inspection_details',
+      description:
+        'Number, title, status, due date, reopen count and result summary of one inspection.',
+      params: {
+        id: 'The inspection id (starts ins_). Required. Use the open record\'s id when asked about "this".',
+      },
+      run: async (scope, projectId, args) => {
+        const raw = args.id ?? '';
+        const id = decodeId('inspection', raw);
+        if (!id) return [];
+        const [r] = await src.quality.inspectionSummaries(scope, projectId, [id]);
+        if (!r)
+          return [
+            {
+              title: 'Inspection',
+              type: 'inspection',
+              id: raw,
+              text: 'This inspection was not found, or you cannot see it.',
+            },
+          ];
+        return [
+          {
+            title: `${r.ref} ${r.title}`.slice(0, 120),
+            type: 'inspection',
+            id: raw,
+            text: `${r.ref} ${r.title}. Status: ${r.status}. Due: ${r.dueDate ?? 'no due date'}. Reopened ${r.reopenCount} times. Items: ${r.summary.pass} pass, ${r.summary.fail} fail, ${r.summary.na} N/A, ${r.summary.unanswered} not yet answered, of ${r.summary.total}.`,
+          },
+        ];
+      },
     },
     {
       name: 'late_programme_tasks',
