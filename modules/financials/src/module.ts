@@ -4,6 +4,8 @@ import { financialsRoutes } from './api/routes';
 import { cashflowRoutes } from './api/cashflowRoutes';
 import { createCashflowService } from './application/cashflow';
 import { directCostRoutes } from './api/directCostRoutes';
+import { changeEventRoutes } from './api/changeEventRoutes';
+import { createChangeEventsService } from './application/changeEvents';
 import { tmTicketRoutes } from './api/tmRoutes';
 import { createTmTicketsService } from './application/tmTickets';
 import { ownerInvoiceRoutes } from './api/ownerInvoiceRoutes';
@@ -60,6 +62,10 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     platform: deps.platform,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const changeEvents = createChangeEventsService({
+    access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const directCosts = createDirectCostsService({
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
@@ -101,6 +107,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...budgetRoutes(services.database, budget),
       ...cashflowRoutes(services.database, cashflow),
       ...directCostRoutes(services.database, directCosts),
+      ...changeEventRoutes(services.database, changeEvents),
       ...tmTicketRoutes(services.database, tmTickets),
       ...ownerInvoiceRoutes(services.database, ownerInvoices),
       ...productivityRoutes(services.database, productivity),
