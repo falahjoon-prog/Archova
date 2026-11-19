@@ -1327,6 +1327,9 @@ export const GetDbpInsightsParams = z.object({
 export const GetDbpInsightsQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetMyWorkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const GetSustainabilityPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -7650,6 +7653,18 @@ export const operations = {
     contentType: null,
     params: GetDbpInsightsParams,
     query: GetDbpInsightsQuery,
+    body: null,
+  },
+  getMyWork: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/my-work',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.mywork.read",
+    internal: false,
+    contentType: null,
+    params: GetMyWorkParams,
+    query: null,
     body: null,
   },
   getSustainabilityPortfolio: {

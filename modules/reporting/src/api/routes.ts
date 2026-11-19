@@ -10,6 +10,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { DbpService } from '../application/dbp';
+import type { MyWorkService } from '../application/mywork';
 import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
 import type { TimeService } from '../application/time';
@@ -26,6 +27,7 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  myWork: MyWorkService,
   time: TimeService,
   audit: AuditService,
   sustainability: SustainabilityService,
@@ -55,6 +57,10 @@ export function reportingRoutes(
   };
 
   return defineRoutes({
+    getMyWork: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => myWork.get(s)),
+    }),
     listAuditLog: async (input) => ({
       status: 200,
       body: await read(input, (s) => audit.list(s, input.query ?? {})),
