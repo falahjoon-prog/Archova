@@ -6,6 +6,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { OnProgramme } from '@/features/schedule';
 import type { Check } from '../data/api';
+import { CheckPhotos } from './CheckPhotos';
 import { usePrefabDetail, type usePrefabMutations } from '../hooks/usePrefab';
 import {
   ACTION_LABELS,
@@ -113,6 +114,7 @@ export function UnitDialog({
           m.transition.error ??
           m.draftDelivery.error ??
           m.recordCheck.error ??
+          m.checkPhotos.error ??
           m.progress.error ??
           m.addCheck.error
         }
@@ -248,6 +250,12 @@ export function UnitDialog({
                       </StatusPill>
                     </div>
                     {c.note ? <p className="u-m-0 u-caption">{c.note}</p> : null}
+                    <CheckPhotos
+                      unitId={u.id}
+                      check={c}
+                      canWrite={canWrite && u.status !== 'installed' && u.status !== 'rejected'}
+                      m={m}
+                    />
                     {canWrite && u.status !== 'installed' && u.status !== 'rejected' ? (
                       <div className="row-actions">
                         <Button

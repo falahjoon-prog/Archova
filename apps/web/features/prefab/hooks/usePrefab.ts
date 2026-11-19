@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '@archova/query';
+import { uploadFile } from '@/shared/lib/uploads';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { createPrefabApi, type CreateUnit, type PlanRequest, type Transition } from '../data/api';
 
@@ -77,6 +78,25 @@ export function usePrefabMutations(projectId: string) {
           result: v.result,
           ...(v.note ? { note: v.note } : {}),
         }),
+      onSuccess: refresh,
+    }),
+    /** Photos on a check: upload, then store the list of file ids alongside the check's current result and note. */
+    checkPhotos: useMutation({
+      mutationFn: async (v: {
+        unitId: string;
+        check: { id: string; result: 'pending' | 'pass' | 'fail' | 'na'; note: string | null };
+        fileIds: string[];
+        add?: File;
+      }) => {
+        const added = v.add
+          ? await uploadFile(orgId, { file: v.add, projectId, module: 'prefab' })
+          : null;
+        return source.recordCheck(projectId, v.unitId, v.check.id, {
+          result: v.check.result,
+          ...(v.check.note ? { note: v.check.note } : {}),
+          fileIds: added ? [...v.fileIds, added.id] : v.fileIds,
+        });
+      },
       onSuccess: refresh,
     }),
     addCheck: useMutation({

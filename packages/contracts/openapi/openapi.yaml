@@ -20806,7 +20806,7 @@ components:
           items: { $ref: '#/components/schemas/PrefabUnit' }
     PrefabCheck:
       type: object
-      required: [id, stage, label, required, result, note, checkedAt]
+      required: [id, stage, label, required, result, note, fileIds, checkedAt]
       properties:
         id: { type: string, pattern: '^pfc_[0-9A-Za-z]{26}$' }
         stage: { type: string, enum: [factory, site] }
@@ -20814,6 +20814,8 @@ components:
         required: { type: boolean }
         result: { type: string, enum: [pending, pass, fail, na] }
         note: { type: [string, 'null'] }
+        fileIds:
+          { type: array, items: { type: string }, description: 'Photos on the check, as file ids.' }
         checkedAt: { type: [string, 'null'], format: date-time }
     PrefabEvent:
       type: object
@@ -20908,6 +20910,13 @@ components:
       properties:
         result: { type: string, enum: [pending, pass, fail, na] }
         note: { type: string, maxLength: 1000, description: Required when a check fails. }
+        fileIds:
+          {
+            type: array,
+            maxItems: 10,
+            items: { type: string },
+            description: 'Replaces the photos on the check when given; each must be a ready file on the project.',
+          }
     PrefabFlag:
       type: object
       required: [unitId, kind, severity, message, relatedUnitIds]

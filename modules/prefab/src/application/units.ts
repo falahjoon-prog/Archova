@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
+import type { FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { LocalDate } from '@archova/time';
 import { localDateOf, zonedToUtc } from '@archova/time';
@@ -43,6 +44,8 @@ export interface DeliveryRef {
 export interface PrefabDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject'>;
+  /** Photos on QA checks: each must be a ready file on the project. */
+  files: Pick<FilesModule['api'], 'getFile'>;
   /** Looks up a material delivery on the project (`logistics`); null when there is none. */
   delivery: (scope: TenantScope, projectId: string, id: string) => Promise<DeliveryRef | null>;
   /** Books a delivery on the project (`logistics`), which checks its own permission. Returns the new delivery. */
@@ -435,7 +438,7 @@ export function createPrefabService(deps: PrefabDeps) {
     projectId: string,
     unitId: string,
     checkId: string,
-    input: { result: CheckResult; note?: string | undefined },
+    input: { result: CheckResult; note?: string | undefined; fileIds?: string[] | undefined },
   ) {
     await need(scope, 'prefab.units.write', projectId);
     const u = await row(scope, projectId, unitId, true);
@@ -448,11 +451,20 @@ export function createPrefabService(deps: PrefabDeps) {
     if (!cur) throw new AppError('prefab_check.not_found');
     const note = input.note?.trim() || null;
     if (input.result === 'fail' && !note) throw invalid('note', 'Say what failed.');
+    const fileIds = input.fileIds ? [...new Set(input.fileIds)] : undefined;
+    for (const [i, fileId] of (fileIds ?? []).entries()) {
+      const f = await deps.files.getFile(scope, fileId);
+      if (f.projectId !== projectId || f.status !== 'ready')
+        throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
+          { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
+        ]);
+    }
     const [c] = await scope.tx
       .update(qaChecks)
       .set({
         result: input.result,
         note,
+        ...(fileIds ? { fileIds } : {}),
         checkedAt: input.result === 'pending' ? null : now(),
         checkedBy: input.result === 'pending' ? null : scope.ctx.userId,
       })

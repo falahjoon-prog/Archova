@@ -42,6 +42,7 @@ export const toCheckDto = (c: CheckRow) => ({
   required: c.required,
   result: c.result,
   note: c.note,
+  fileIds: c.fileIds.map((f) => encodeId('file', f)),
   checkedAt: iso(c.checkedAt),
 });
 

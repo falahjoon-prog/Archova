@@ -14956,6 +14956,8 @@ export interface components {
             /** @enum {string} */
             result: "pending" | "pass" | "fail" | "na";
             note: string | null;
+            /** @description Photos on the check, as file ids. */
+            fileIds: string[];
             /** Format: date-time */
             checkedAt: string | null;
         };
@@ -15033,6 +15035,8 @@ export interface components {
             result: "pending" | "pass" | "fail" | "na";
             /** @description Required when a check fails. */
             note?: string;
+            /** @description Replaces the photos on the check when given; each must be a ready file on the project. */
+            fileIds?: string[];
         };
         PrefabFlag: {
             unitId: string;
