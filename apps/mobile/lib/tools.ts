@@ -24,6 +24,7 @@ export type ToolId =
   | 'crews'
   | 'equipment'
   | 'deliveries'
+  | 'photos'
   | 'permits'
   | 'environment'
   | 'ownerPortal';
@@ -169,6 +170,12 @@ export const TOOLS: readonly ToolDef[] = [
       'M16 14h5',
     ],
     route: mobileRoutes.crews,
+  },
+  {
+    id: 'photos',
+    label: 'Photos',
+    icon: ['M4 8h3l2-3h6l2 3h3v11H4z', 'M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'],
+    route: mobileRoutes.photos,
   },
   {
     id: 'permits',
