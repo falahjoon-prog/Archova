@@ -3365,6 +3365,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/declaration-readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads an uploaded subcontractor declaration or certificate (PDF) into the register's fields.
+         * @description The PDF is already uploaded to the project. Nova reads its text (a scanned page through OCR) and proposes the
+         *     kind of declaration, who made it, the dates it covers, the insurer or reference, and who signed it, each with the
+         *     page and words it came from (`source`). Code keeps a value only when its words are on that page and, for a date,
+         *     when the date is printed there; anything else comes back null with a `warning`. Nothing is saved: the person
+         *     checks the reading against the PDF and records the declaration. Costs one Nova credit. A PDF with no readable
+         *     text returns 422.
+         */
+        post: operations["readDeclarationWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections": {
         parameters: {
             query?: never;
@@ -14400,6 +14428,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The subcontractor statutory declarations register for a project, with each item's status today. */
+        get: operations["listDeclarations"];
+        put?: never;
+        /** Record a declaration received from a company on the project. It is numbered DEC-0001 per project. */
+        post: operations["createDeclaration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                declarationId: components["parameters"]["DeclarationId"];
+            };
+            cookie?: never;
+        };
+        /** One declaration with its history. */
+        get: operations["getDeclaration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a declaration. Send the ETag in If-Match. */
+        patch: operations["updateDeclaration"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/statements/{declarationId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                declarationId: components["parameters"]["DeclarationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** reject (a note says why) or accept a declaration again. */
+        post: operations["transitionDeclaration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What needs attention across the project's declarations today (rule-based, no model), most urgent first. */
+        get: operations["listDeclarationFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Which declarations this project asks for with every subcontract claim. */
+        get: operations["getDeclarationRequirements"];
+        /** Replace the required set. An empty list switches the claim check off. */
+        put: operations["setDeclarationRequirements"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Open subcontract payment claims with where each stands on the required declarations.
+         * @description A claim is `blocked` when a required declaration is missing, rejected, or does not cover the claim's period end; `cleared` when every required one is on the register or a subcontractor's statement is recorded on the claim. Issuing a payment schedule for money on a blocked claim needs an acknowledgement. The schedule itself is never stopped from being issued in time.
+         */
+        get: operations["listDeclarationClaims"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/declarations/chases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The chase emails sent to subcontractors for missing declarations. */
+        get: operations["listDeclarationChases"];
+        put?: never;
+        /**
+         * Nova drafts, and with `send` sends, a chase email for a company's missing declarations.
+         * @description Without `send` (the default) nothing leaves Archova: the draft is returned for the person to read and edit. With `send` the email goes to the company's email address on file, exactly as given in `subject` and `body` (or the draft when they are left out), and is recorded. The draft asks for the declarations; it never says a claim will be held or reduced. Nothing is sent when nothing is missing (422) or the company has no email (422).
+         */
+        post: operations["chaseDeclarations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/esign/envelopes": {
         parameters: {
             query?: never;
@@ -17624,7 +17804,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item" | "declaration";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -23134,6 +23314,10 @@ export interface components {
         IssuePaymentScheduleRequest: {
             scheduledAmount: components["schemas"]["FinancialsMoney"];
             overallReason?: string;
+            /** @description Needed to schedule money on a subcontract claim while a declaration the project requires is missing (see `listDeclarationClaims`). Needs `declarations.statements.override`. The schedule is not stopped from being issued in time: this puts who went ahead, and why, on the record. */
+            declarationsOverride?: {
+                reason: string;
+            };
             lineReasons?: {
                 sovItemId: string;
                 reason: string;
@@ -26532,6 +26716,238 @@ export interface components {
                 message: string;
             }[];
         };
+        /** @enum {string} */
+        DeclarationKind: "workers_comp" | "payroll_tax" | "wages";
+        /**
+         * @description Derived from the lifecycle and the dates it covers, in the project's own calendar day.
+         * @enum {string}
+         */
+        DeclarationStatus: "current" | "expiring_soon" | "expired" | "not_yet_valid" | "rejected";
+        /** @enum {string} */
+        DeclarationLifecycle: "accepted" | "rejected";
+        Declaration: {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            companyId: string;
+            kind: components["schemas"]["DeclarationKind"];
+            declarantName: string | null;
+            declarantPosition: string | null;
+            /** Format: date */
+            declaredOn: string | null;
+            /** Format: date */
+            validFrom: string;
+            /** Format: date */
+            validTo: string;
+            issuer: string | null;
+            referenceNumber: string | null;
+            /** @description Set when it was given for one payment claim. */
+            claimId: string | null;
+            lifecycle: components["schemas"]["DeclarationLifecycle"];
+            status: components["schemas"]["DeclarationStatus"];
+            /** @description Negative once the period it covers has ended. */
+            daysToEnd: number;
+            notes: string | null;
+            fileIds: string[];
+            readByNova: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DeclarationEvent: {
+            id: string;
+            action: string;
+            fromLifecycle: components["schemas"]["DeclarationLifecycle"] | null;
+            toLifecycle: components["schemas"]["DeclarationLifecycle"];
+            /** Format: date */
+            validTo: string | null;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DeclarationDetail: {
+            declaration: components["schemas"]["Declaration"];
+            events: components["schemas"]["DeclarationEvent"][];
+        };
+        DeclarationPage: {
+            data: components["schemas"]["Declaration"][];
+            nextCursor: string | null;
+        };
+        CreateDeclarationRequest: {
+            kind: components["schemas"]["DeclarationKind"];
+            companyId: string;
+            /** Format: date */
+            validFrom: string;
+            /** Format: date */
+            validTo: string;
+            declarantName?: string | null;
+            declarantPosition?: string | null;
+            /** Format: date */
+            declaredOn?: string | null;
+            issuer?: string | null;
+            referenceNumber?: string | null;
+            claimId?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+            readByNova?: boolean;
+        };
+        UpdateDeclarationRequest: {
+            kind?: components["schemas"]["DeclarationKind"];
+            companyId?: string;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string;
+            declarantName?: string | null;
+            declarantPosition?: string | null;
+            /** Format: date */
+            declaredOn?: string | null;
+            issuer?: string | null;
+            referenceNumber?: string | null;
+            claimId?: string | null;
+            notes?: string | null;
+            fileIds?: string[];
+        };
+        DeclarationTransitionRequest: {
+            /** @enum {string} */
+            action: "reject" | "accept";
+            /** @description Required for reject. */
+            note?: string | null;
+        };
+        DeclarationRequirement: {
+            kind: components["schemas"]["DeclarationKind"];
+            leadDays: number;
+        };
+        DeclarationRequirementList: {
+            data: components["schemas"]["DeclarationRequirement"][];
+        };
+        SetDeclarationRequirementsRequest: {
+            items: components["schemas"]["DeclarationRequirement"][];
+        };
+        /** @enum {string} */
+        DeclarationIssueKind: "missing" | "rejected" | "does_not_cover" | "expired" | "expiring";
+        DeclarationIssue: {
+            kind: components["schemas"]["DeclarationIssueKind"];
+            /** @enum {string} */
+            level: "blocking" | "warning";
+            declarationKind: components["schemas"]["DeclarationKind"];
+            declarationId: string | null;
+            declarationLabel: string | null;
+            /** Format: date */
+            validTo: string | null;
+            daysLeft: number | null;
+            message: string;
+        };
+        DeclarationFlag: {
+            kind: components["schemas"]["DeclarationIssueKind"];
+            /** @enum {string} */
+            severity: "info" | "warn" | "high";
+            companyId: string;
+            title: string;
+            detail: string;
+            declarationId: string | null;
+            declarationKind: components["schemas"]["DeclarationKind"];
+            /** Format: date */
+            validTo: string | null;
+            daysLeft: number | null;
+        };
+        DeclarationFlagList: {
+            data: components["schemas"]["DeclarationFlag"][];
+        };
+        DeclarationClaimStatus: {
+            claimId: string;
+            number: number;
+            contractId: string;
+            contractTitle: string;
+            companyId: string;
+            companyName: string;
+            /** Format: date */
+            periodEnd: string;
+            /** @enum {string} */
+            state: "cleared" | "warning" | "blocked";
+            /** @description A subcontractor's statement is recorded on the claim, which stands for all three declarations. */
+            coveredByStatement: boolean;
+            issues: components["schemas"]["DeclarationIssue"][];
+        };
+        DeclarationClaimList: {
+            /** @description False when the project has set no requirements, so no claim is ever blocked. */
+            requirementsSet: boolean;
+            data: components["schemas"]["DeclarationClaimStatus"][];
+        };
+        ChaseDeclarationsRequest: {
+            companyId: string;
+            /** @description Chase for this open claim; otherwise for what is missing today. */
+            claimId?: string | null;
+            /** @default false */
+            send: boolean;
+            subject?: string | null;
+            body?: string | null;
+        };
+        DeclarationChaseDraft: {
+            subject: string;
+            body: string;
+            kinds: components["schemas"]["DeclarationKind"][];
+        };
+        DeclarationChaseResult: {
+            /** @description Null when nothing is missing. */
+            draft: components["schemas"]["DeclarationChaseDraft"] | null;
+            /** @description The company's email on file. */
+            recipient: string | null;
+            sent: boolean;
+            chaseId: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        DeclarationChase: {
+            id: string;
+            companyId: string;
+            claimId: string | null;
+            kinds: components["schemas"]["DeclarationKind"][];
+            recipient: string;
+            subject: string;
+            body: string;
+            sentBy: string | null;
+            /** Format: date-time */
+            sentAt: string;
+        };
+        DeclarationChaseList: {
+            data: components["schemas"]["DeclarationChase"][];
+        };
+        NovaDeclarationReading: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            fileId: string;
+            pageCount: number;
+            /** @description Pages read by OCR rather than the PDF text layer; check these against the PDF. */
+            scannedPages: number[];
+            skippedPages: number[];
+            truncated: boolean;
+            /** @description Which declaration the document is, or null when Nova could not tell. */
+            kind: components["schemas"]["DeclarationKind"] | null;
+            companyName: components["schemas"]["NovaDeclarationField"];
+            declarantName: components["schemas"]["NovaDeclarationField"];
+            declarantPosition: components["schemas"]["NovaDeclarationField"];
+            declaredOn: components["schemas"]["NovaDeclarationField"];
+            validFrom: components["schemas"]["NovaDeclarationField"];
+            validTo: components["schemas"]["NovaDeclarationField"];
+            issuer: components["schemas"]["NovaDeclarationField"];
+            referenceNumber: components["schemas"]["NovaDeclarationField"];
+            /** @description Whether the document shows a signature or a signed-by line; null when unclear. Nova never checks a signature is genuine. */
+            signed: boolean | null;
+            warnings: string[];
+        };
+        NovaDeclarationField: {
+            /** @description Dates are `YYYY-MM-DD`. */
+            value: string | null;
+            source: {
+                page: number;
+                snippet: string;
+            } | null;
+        };
         UpdateIncidentRequest: {
             title?: string;
             type?: components["schemas"]["IncidentType"];
@@ -27458,6 +27874,7 @@ export interface components {
         EnvironmentConditionId: string;
         EnvironmentDocumentId: string;
         CoverId: string;
+        DeclarationId: string;
         CompanyId: string;
         MonitoringPointId: string;
         EnvironmentReadingId: string;
@@ -32957,6 +33374,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaQuoteReading"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    readDeclarationWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                };
+            };
+        };
+        responses: {
+            /** @description The reading */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaDeclarationReading"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -51476,6 +51923,315 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoverDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeclarations: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["DeclarationKind"];
+                companyId?: string;
+                status?: components["schemas"]["DeclarationStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDeclaration: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeclarationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDeclaration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                declarationId: components["parameters"]["DeclarationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDeclaration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                declarationId: components["parameters"]["DeclarationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeclarationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionDeclaration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                declarationId: components["parameters"]["DeclarationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclarationTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeclarationFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationFlagList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDeclarationRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setDeclarationRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDeclarationRequirementsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationRequirementList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeclarationClaims: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationClaimList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDeclarationChases: {
+        parameters: {
+            query?: {
+                companyId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationChaseList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    chaseDeclarations: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChaseDeclarationsRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft, and whether it was sent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeclarationChaseResult"];
                 };
             };
             default: components["responses"]["Problem"];

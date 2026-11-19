@@ -44,6 +44,7 @@ import type { BidsForLevelling } from './domain/bid-levelling';
 import { createLaborProductivityService, type LaborFacts } from './application/labor-productivity';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
+import { createDeclarationReadService } from './application/declaration-read';
 import { createTakeoffDetectService } from './application/takeoff-detect';
 import {
   createDrawingCompareService,
@@ -473,6 +474,12 @@ export function createAiModule(
     readFile: deps.readFile,
     quotePackage: deps.quotePackage,
   });
+  const declarationReads = createDeclarationReadService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const contractPlaybooks = createContractPlaybookService();
   const contractReviews = createContractReviewService({
     database: services.database,
@@ -586,6 +593,7 @@ export function createAiModule(
       defectTags,
       importMappings,
       quoteReads,
+      declarationReads,
       quoteNegotiations,
       bidLevelling,
       laborProductivity,
@@ -644,6 +652,8 @@ export function createAiModule(
       suggestImportMapping: importMappings.suggest,
       /** F22: a subcontractor's PDF quote read into lines, exclusions and qualifications; no quote is saved. */
       readQuote: quoteReads.read,
+      /** A subcontractor's declaration or certificate PDF read into the register's fields; nothing is recorded. */
+      readDeclaration: declarationReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
       /** Nova: level every confirmed bid of a tender package, explain the gaps, suggest who to take forward; nothing is saved or awarded. */

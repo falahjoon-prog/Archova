@@ -26,6 +26,7 @@ import { announcementDraftSuite } from './suites/announcement-draft';
 import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { bidLevelSuite } from './suites/bid-levelling';
 import { quoteReadSuite } from './suites/quote-read';
+import { declarationReadSuite } from './suites/declaration-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
 import { voiceLogSuite } from './suites/voice-log';
 import { rfiAnswerSuite } from './suites/rfi-answer';
@@ -62,6 +63,7 @@ export const SUITES: readonly AnySuite[] = [
   captureScanSuite,
   importMappingSuite,
   quoteReadSuite,
+  declarationReadSuite,
   quoteNegotiateSuite,
   bidLevelSuite,
   laborProductivitySuite,
