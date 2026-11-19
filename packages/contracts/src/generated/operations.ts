@@ -1333,6 +1333,14 @@ export const GetSustainabilityPortfolioParams = z.object({
 export const GetSustainabilityPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetTimeDashboardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetTimeDashboardQuery = z.object({
+  "weekStart": z.string().date().optional(),
+  "projectIds": z.string().optional(),
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
 export const SearchOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -7614,6 +7622,18 @@ export const operations = {
     contentType: null,
     params: GetSustainabilityPortfolioParams,
     query: GetSustainabilityPortfolioQuery,
+    body: null,
+  },
+  getTimeDashboard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/time',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: GetTimeDashboardParams,
+    query: GetTimeDashboardQuery,
     body: null,
   },
   searchOrg: {

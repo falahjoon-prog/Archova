@@ -132,6 +132,10 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         monthly: [],
       }),
     },
+    time: {
+      timeForReporting: async () => ({ restricted: true, truncated: false, lines: [] }),
+      costCodes: async () => null,
+    },
     access: { can: async () => true },
     precon: {
       readinessSummary: async () => ({

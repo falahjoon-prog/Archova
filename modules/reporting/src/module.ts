@@ -6,6 +6,7 @@ import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createSustainabilityService } from './application/sustainability';
 import { createReadinessService } from './application/readiness';
+import { createTimeService } from './application/time';
 import { createIncidentAnalyticsService } from './application/incident-analytics';
 import { createRiskRegisterService } from './application/risk-register';
 import { createReportsService } from './application/reports';
@@ -28,6 +29,7 @@ export function createReportingModule(
   const riskRegister = createRiskRegisterService(deps);
   const audit = createAuditService(deps);
   const sustainability = createSustainabilityService(deps);
+  const time = createTimeService(deps);
   const dbp = createDbpService(deps);
   const incidentAnalytics = createIncidentAnalyticsService(deps);
   return {
@@ -38,6 +40,7 @@ export function createReportingModule(
       reports,
       risk,
       readiness,
+      time,
       audit,
       sustainability,
       dbp,
