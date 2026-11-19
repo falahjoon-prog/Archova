@@ -69,10 +69,11 @@ export function FactoriesDialog({
                   <Button
                     size="sm"
                     variant="secondary"
+                    aria-label={`Remove ${f.name}`}
                     loading={m.removeFactory.isPending && m.removeFactory.variables === f.id}
                     onClick={() => m.removeFactory.mutate(f.id)}
                   >
-                    Remove {f.name}
+                    Remove
                   </Button>
                 ) : null}
               </li>

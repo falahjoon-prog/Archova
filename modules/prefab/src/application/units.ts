@@ -641,7 +641,8 @@ export function createPrefabService(deps: PrefabDeps) {
         and(eq(factories.projectId, projectId), sql`lower(${factories.name}) = lower(${name})`),
       )
       .limit(1);
-    if (dupe) throw new AppError('prefab_factory.name_taken');
+    if (dupe)
+      throw new AppError('prefab_factory.name_taken', 'That factory is already on this project.');
     const [f] = await scope.tx
       .insert(factories)
       .values({
