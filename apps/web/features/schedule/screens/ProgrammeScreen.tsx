@@ -14,7 +14,7 @@ import {
   TextField,
   ToggleGroup,
 } from '@archova/ui';
-import { Plus, ProgrammeIcon } from '@archova/ui/icons';
+import { Download, Plus, ProgrammeIcon } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -33,8 +33,18 @@ import {
   useSchedules,
 } from '../hooks/useProgramme';
 import { openItemsByActivity } from '../lib/links';
+import { buildMspXml, mspFileName } from '../lib/mspXml';
 import { SOURCE_NAMES } from '../lib/labels';
 import type { Zoom } from '../lib/gantt';
+
+function downloadXml(name: string, xml: string) {
+  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const ZOOM_OPTIONS = [
   { value: 'day' as const, label: 'Days' },
@@ -188,6 +198,14 @@ export function ProgrammeScreen() {
                     onValueChange={setZoom}
                   />
                   <div className="row-actions">
+                    {d?.activities.length ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => downloadXml(mspFileName(d.schedule.name), buildMspXml(d))}
+                      >
+                        <Download size={16} aria-hidden="true" /> Export to MS Project
+                      </Button>
+                    ) : null}
                     {canWrite && d?.activities.length ? (
                       <Button
                         variant="secondary"
