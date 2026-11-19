@@ -55,7 +55,9 @@ export function NovaPrefabPanel({
         <ul className="pfb-flags">
           {flags.slice(0, 8).map((f) => (
             <li key={`${f.unitId}-${f.kind}`} className="pfb-flag">
-              <StatusPill tone={SEVERITY_TONE[f.severity]}>{FLAG_LABELS[f.kind]}</StatusPill>
+              <StatusPill className="pfb-pill" tone={SEVERITY_TONE[f.severity]}>
+                {FLAG_LABELS[f.kind]}
+              </StatusPill>
               <span className="pfb-flag__text">{f.message}</span>
               {byId.has(f.unitId) ? (
                 <Button size="sm" variant="secondary" onClick={() => onOpen(f.unitId)}>

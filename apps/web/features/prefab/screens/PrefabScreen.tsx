@@ -80,27 +80,41 @@ export function PrefabScreen() {
       header: 'Unit',
       rowHeader: true,
       sortValue: (u) => u.installSequence ?? Number.MAX_SAFE_INTEGER,
-      cell: (u) => (
-        <>
-          <Button size="sm" variant="tertiary" onClick={() => setOpen(u.id)}>
-            {u.code}
-          </Button>{' '}
-          {u.name}
-          <span className="u-caption">
-            {' '}
-            · {KIND_LABELS[u.kind]}
-            {u.location ? ` · ${u.location}` : ''}
-          </span>
-        </>
-      ),
+      cell: (u) => {
+        // The kind is only worth saying when the name does not already say it ("Level 3 bathroom pod").
+        const kind = KIND_LABELS[u.kind];
+        const detail = [u.name.toLowerCase().includes(kind.toLowerCase()) ? null : kind, u.location]
+          .filter(Boolean)
+          .join(' · ');
+        return (
+          <>
+            <Button
+              size="sm"
+              variant="tertiary"
+              className="pfb-unit__code"
+              onClick={() => setOpen(u.id)}
+            >
+              {u.code}
+            </Button>
+            <div>{u.name}</div>
+            {detail ? <div className="u-caption">{detail}</div> : null}
+          </>
+        );
+      },
     },
     {
       id: 'status',
       header: 'Status',
       cell: (u) => (
         <>
-          <StatusPill tone={STATUS_TONES[u.status]}>{STATUS_LABELS[u.status]}</StatusPill>
-          {flagged.has(u.id) ? <StatusPill tone="danger">Needs attention</StatusPill> : null}
+          <StatusPill className="pfb-pill" tone={STATUS_TONES[u.status]}>
+            {STATUS_LABELS[u.status]}
+          </StatusPill>
+          {flagged.has(u.id) ? (
+            <StatusPill className="pfb-pill" tone="danger">
+              Needs attention
+            </StatusPill>
+          ) : null}
         </>
       ),
     },

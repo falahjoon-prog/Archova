@@ -4664,6 +4664,11 @@ fieldset.worker-card > legend {
 .pfb-chips {
   flex-direction: row;
   flex-wrap: wrap;
+  gap: 0 var(--space-3);
+}
+/* The same corners as the buttons beside them, not a full pill. */
+.pfb-pill {
+  border-radius: var(--radius-md);
 }
 .pfb-flag {
   display: flex;
@@ -4681,7 +4686,7 @@ fieldset.worker-card > legend {
 .pfb-addcheck {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--space-3);
 }
 .pfb-ask > :first-child,
@@ -4689,11 +4694,6 @@ fieldset.worker-card > legend {
 .pfb-addcheck > :first-child {
   flex: 1 1 14rem;
   min-width: 0;
-}
-.pfb-ask > button,
-.pfb-progress > button,
-.pfb-addcheck > button {
-  margin-block-start: var(--space-6);
 }
 .pfb-plan {
   display: flex;
@@ -4965,4 +4965,8 @@ fieldset.worker-card > legend {
 }
 .eot-sub {
   display: block;
+}
+
+.pfb-unit__code {
+  white-space: nowrap;
 }
