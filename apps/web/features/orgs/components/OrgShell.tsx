@@ -66,8 +66,13 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   {
                     label: 'Portfolio',
                     items: [
+                      { href: webRoutes.myWork(orgSlug), label: 'My Work' },
                       { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                       { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                      {
+                        href: webRoutes.incidentAnalytics(orgSlug),
+                        label: 'Injury analytics',
+                      },
                       { href: webRoutes.dbpInsights(orgSlug), label: 'DBP Act insights' },
                       ...(membership.role === 'owner' || membership.role === 'admin'
                         ? [{ href: webRoutes.auditLog(orgSlug), label: 'Audit log' }]

@@ -5,7 +5,7 @@ import { unwrap, type ApiClient } from '@archova/api-client';
 import { uuidv7, type DelayType } from '@archova/domain';
 import type { LocalDate } from '@archova/time';
 import type { SqliteSyncStore } from '../../lib/db/sync-store';
-import { reportIncident } from '../incidents';
+import { reportIncident } from '../incidents/commands';
 import {
   addDiaryLine,
   getDiaryDay,

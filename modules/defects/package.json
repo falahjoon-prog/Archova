@@ -18,6 +18,7 @@
     "@archova/mod-access": "workspace:*",
     "@archova/mod-documents": "workspace:*",
     "@archova/mod-files": "workspace:*",
+    "@archova/mod-notifications": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/time": "workspace:*",
     "drizzle-orm": "^0.45.2"

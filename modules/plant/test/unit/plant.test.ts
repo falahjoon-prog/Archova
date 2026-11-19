@@ -73,7 +73,14 @@ describe('Nova flags', () => {
       ...base,
       assets: [asset({ ownership: 'owned' })],
       allocations: [
-        { id: 'l1', assetId: 'a1', projectId: 'p1', startsOn: '2026-11-01', endsOn: '2026-12-30' },
+        {
+          id: 'l1',
+          assetId: 'a1',
+          projectId: 'p1',
+          costCodeId: 'c1',
+          startsOn: '2026-11-01',
+          endsOn: '2026-12-30',
+        },
       ],
       plans: [
         {
@@ -102,7 +109,14 @@ describe('Nova flags', () => {
       ...base,
       assets: [asset()],
       allocations: [
-        { id: 'l1', assetId: 'a1', projectId: 'p1', startsOn: '2026-11-01', endsOn: '2026-12-30' },
+        {
+          id: 'l1',
+          assetId: 'a1',
+          projectId: 'p1',
+          costCodeId: 'c1',
+          startsOn: '2026-11-01',
+          endsOn: '2026-12-30',
+        },
       ],
       plans: [
         {
@@ -123,8 +137,22 @@ describe('Nova flags', () => {
       ...base,
       assets: [asset()],
       allocations: [
-        { id: 'l1', assetId: 'a1', projectId: 'p1', startsOn: '2026-11-05', endsOn: '2026-11-12' },
-        { id: 'l2', assetId: 'a1', projectId: 'p2', startsOn: '2026-11-12', endsOn: '2026-11-20' },
+        {
+          id: 'l1',
+          assetId: 'a1',
+          projectId: 'p1',
+          costCodeId: 'c1',
+          startsOn: '2026-11-05',
+          endsOn: '2026-11-12',
+        },
+        {
+          id: 'l2',
+          assetId: 'a1',
+          projectId: 'p2',
+          costCodeId: 'c1',
+          startsOn: '2026-11-12',
+          endsOn: '2026-11-20',
+        },
       ],
     });
     expect(flags).toHaveLength(1);
@@ -136,7 +164,14 @@ describe('Nova flags', () => {
       ...base,
       assets: [asset({ status: 'maintenance' })],
       allocations: [
-        { id: 'l1', assetId: 'a1', projectId: 'p1', startsOn: '2026-11-10', endsOn: '2026-11-12' },
+        {
+          id: 'l1',
+          assetId: 'a1',
+          projectId: 'p1',
+          costCodeId: 'c1',
+          startsOn: '2026-11-10',
+          endsOn: '2026-11-12',
+        },
       ],
     });
     expect(flags.map((f) => f.code)).toEqual(['booked_while_unavailable']);
@@ -147,7 +182,14 @@ describe('Nova flags', () => {
       ...base,
       assets: [asset()],
       allocations: [
-        { id: 'l1', assetId: 'a1', projectId: 'p1', startsOn: '2026-11-05', endsOn: '2026-11-30' },
+        {
+          id: 'l1',
+          assetId: 'a1',
+          projectId: 'p1',
+          costCodeId: 'c1',
+          startsOn: '2026-11-05',
+          endsOn: '2026-11-30',
+        },
       ],
       plans: [
         { id: 's1', assetId: 'a1', title: 'Service', kind: 'service', nextDueOn: '2026-11-15' },
@@ -180,6 +222,7 @@ describe('Nova flags', () => {
           id: 'l1',
           assetId: 'hired',
           projectId: 'p1',
+          costCodeId: 'c1',
           startsOn: '2026-10-01',
           endsOn: '2026-10-20',
         },
@@ -187,6 +230,7 @@ describe('Nova flags', () => {
           id: 'l2',
           assetId: 'busy',
           projectId: 'p1',
+          costCodeId: 'c1',
           startsOn: '2026-10-01',
           endsOn: '2026-11-09',
         },

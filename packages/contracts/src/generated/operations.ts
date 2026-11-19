@@ -256,6 +256,75 @@ export const GetDelayRegisterQuery = z.object({
   "source": z.enum(["diary", "rfi"]).optional(),
   "eotOnly": z.enum(["true", "false"]).optional(),
 });
+export const GetEotSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PutEotSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const PutEotSettingsBody = s.PutEotSettingsRequestSchema;
+export const ListDelayEventCandidatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventCandidatesQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+  "includeAttached": z.enum(["true", "false"]).optional(),
+});
+export const GetDelayEventInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDelayEventsQuery = z.object({
+  "status": s.DelayEventStatusSchema.optional(),
+});
+export const CreateDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDelayEventBody = s.CreateDelayEventRequestSchema;
+export const GetDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDelayEventBody = s.UpdateDelayEventRequestSchema;
+export const AddDelayEventEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const AddDelayEventEvidenceBody = s.AddDelayEventEvidenceRequestSchema;
+export const RemoveDelayEventEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^dxi_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDelayEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDelayEventBody = s.DelayEventTransitionRequestSchema;
+export const DraftDelayEventLetterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "eventId": z.string().regex(new RegExp("^dxe_[0-9A-Za-z]{26}$")),
+});
+export const DraftDelayEventLetterBody = s.DelayEventDraftRequestSchema;
 export const ListSchedulesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1265,10 +1334,21 @@ export const GetDbpInsightsParams = z.object({
 export const GetDbpInsightsQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetMyWorkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const GetSustainabilityPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const GetSustainabilityPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const GetTimeDashboardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetTimeDashboardQuery = z.object({
+  "weekStart": z.string().date().optional(),
+  "projectIds": z.string().optional(),
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
 export const SearchOrgParams = z.object({
@@ -1277,6 +1357,16 @@ export const SearchOrgParams = z.object({
 export const SearchOrgQuery = z.object({
   "q": z.string().min(1).max(200),
   "perType": z.coerce.number().int().min(1).max(25).default(8),
+});
+export const GetIncidentAnalyticsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetIncidentAnalyticsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+  "bodyPart": s.BodyPartSchema.optional(),
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
 });
 export const GetLateSopaClaimRiskParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1845,6 +1935,11 @@ export const ListWarrantyClaimsQuery = z.object({
 export const GetWarrantySummaryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CompleteDefectPartParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const TransitionDefectParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3975,6 +4070,32 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const ListChangeEventsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateChangeEventBody = s.CreateChangeEventRequestSchema;
+export const GetChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateChangeEventBody = s.UpdateChangeEventRequestSchema;
+export const CloseChangeEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "changeEventId": z.string().regex(new RegExp("^chg_[0-9A-Za-z]{26}$")),
+});
+export const CloseChangeEventBody = s.CloseChangeEventRequestSchema;
 export const ListDirectCostsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4406,6 +4527,49 @@ export const DeleteOwnerCapitalItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
+export const ListOwnerShareLinksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerShareLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerShareLinkBody = s.CreateOwnerShareLinkRequestSchema;
+export const RevokeOwnerShareLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^lnk_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerSharedPhotosParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddOwnerSharedPhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddOwnerSharedPhotoBody = s.AddOwnerSharedPhotoRequestSchema;
+export const RemoveOwnerSharedPhotoParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const PreviewOwnerShareViewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerShareChangesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SetOwnerShareChangeHiddenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "reference": z.string().regex(new RegExp("^(VAR|DEC)-[0-9]{3,}$")),
+});
+export const SetOwnerShareChangeHiddenBody = s.SetOwnerShareChangeHiddenRequestSchema;
+export const OpenOwnerPortalAccessBody = s.OpenInductionAccessRequestSchema;
 export const ListPrefabUnitsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5530,6 +5694,150 @@ export const operations = {
     params: GetDelayRegisterParams,
     query: GetDelayRegisterQuery,
     body: null,
+  },
+  getEotSettings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/eot-settings',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetEotSettingsParams,
+    query: null,
+    body: null,
+  },
+  putEotSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/eot-settings',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: PutEotSettingsParams,
+    query: null,
+    body: PutEotSettingsBody,
+  },
+  listDelayEventCandidates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListDelayEventCandidatesParams,
+    query: ListDelayEventCandidatesQuery,
+    body: null,
+  },
+  getDelayEventInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-event-insights',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayEventInsightsParams,
+    query: null,
+    body: null,
+  },
+  listDelayEvents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListDelayEventsParams,
+    query: ListDelayEventsQuery,
+    body: null,
+  },
+  createDelayEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDelayEventParams,
+    query: null,
+    body: CreateDelayEventBody,
+  },
+  getDelayEvent: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayEventParams,
+    query: null,
+    body: null,
+  },
+  updateDelayEvent: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDelayEventParams,
+    query: null,
+    body: UpdateDelayEventBody,
+  },
+  addDelayEventEvidence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddDelayEventEvidenceParams,
+    query: null,
+    body: AddDelayEventEvidenceBody,
+  },
+  removeDelayEventEvidence: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: RemoveDelayEventEvidenceParams,
+    query: null,
+    body: null,
+  },
+  transitionDelayEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionDelayEventParams,
+    query: null,
+    body: TransitionDelayEventBody,
+  },
+  draftDelayEventLetter: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: DraftDelayEventLetterParams,
+    query: null,
+    body: DraftDelayEventLetterBody,
   },
   listSchedules: {
     method: 'GET',
@@ -7428,6 +7736,18 @@ export const operations = {
     query: GetDbpInsightsQuery,
     body: null,
   },
+  getMyWork: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/my-work',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.mywork.read",
+    internal: false,
+    contentType: null,
+    params: GetMyWorkParams,
+    query: null,
+    body: null,
+  },
   getSustainabilityPortfolio: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/portfolio/sustainability',
@@ -7440,6 +7760,18 @@ export const operations = {
     query: GetSustainabilityPortfolioQuery,
     body: null,
   },
+  getTimeDashboard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/time',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: GetTimeDashboardParams,
+    query: GetTimeDashboardQuery,
+    body: null,
+  },
   searchOrg: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/search',
@@ -7450,6 +7782,18 @@ export const operations = {
     contentType: null,
     params: SearchOrgParams,
     query: SearchOrgQuery,
+    body: null,
+  },
+  getIncidentAnalytics: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/incident-analytics',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetIncidentAnalyticsParams,
+    query: GetIncidentAnalyticsQuery,
     body: null,
   },
   getLateSopaClaimRisk: {
@@ -8736,6 +9080,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetWarrantySummaryParams,
+    query: null,
+    body: null,
+  },
+  completeDefectPart: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.respond",
+    internal: false,
+    contentType: null,
+    params: CompleteDefectPartParams,
     query: null,
     body: null,
   },
@@ -13303,6 +13659,66 @@ export const operations = {
     query: null,
     body: null,
   },
+  listChangeEvents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.read",
+    internal: false,
+    contentType: null,
+    params: ListChangeEventsParams,
+    query: null,
+    body: null,
+  },
+  createChangeEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateChangeEventParams,
+    query: null,
+    body: CreateChangeEventBody,
+  },
+  getChangeEvent: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.read",
+    internal: false,
+    contentType: null,
+    params: GetChangeEventParams,
+    query: null,
+    body: null,
+  },
+  updateChangeEvent: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateChangeEventParams,
+    query: null,
+    body: UpdateChangeEventBody,
+  },
+  closeChangeEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/change-events/{changeEventId}/close',
+    module: "financials",
+    auth: "required",
+    permission: "financials.change_events.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CloseChangeEventParams,
+    query: null,
+    body: CloseChangeEventBody,
+  },
   listDirectCosts: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/direct-costs',
@@ -14214,6 +14630,138 @@ export const operations = {
     params: DeleteOwnerCapitalItemParams,
     query: null,
     body: null,
+  },
+  listOwnerShareLinks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerShareLinksParams,
+    query: null,
+    body: null,
+  },
+  createOwnerShareLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerShareLinkParams,
+    query: null,
+    body: CreateOwnerShareLinkBody,
+  },
+  revokeOwnerShareLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: RevokeOwnerShareLinkParams,
+    query: null,
+    body: null,
+  },
+  listOwnerSharedPhotos: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerSharedPhotosParams,
+    query: null,
+    body: null,
+  },
+  addOwnerSharedPhoto: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddOwnerSharedPhotoParams,
+    query: null,
+    body: AddOwnerSharedPhotoBody,
+  },
+  removeOwnerSharedPhoto: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: RemoveOwnerSharedPhotoParams,
+    query: null,
+    body: null,
+  },
+  previewOwnerShareView: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-preview',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: PreviewOwnerShareViewParams,
+    query: null,
+    body: null,
+  },
+  listOwnerShareChanges: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: null,
+    params: ListOwnerShareChangesParams,
+    query: null,
+    body: null,
+  },
+  setOwnerShareChangeHidden: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-changes/{reference}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.share.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetOwnerShareChangeHiddenParams,
+    query: null,
+    body: SetOwnerShareChangeHiddenBody,
+  },
+  getOwnerPortalAccess: {
+    method: 'GET',
+    path: '/v1/owner-portal-access',
+    module: "ownerportal",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openOwnerPortalAccess: {
+    method: 'POST',
+    path: '/v1/owner-portal-access',
+    module: "ownerportal",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenOwnerPortalAccessBody,
   },
   listPrefabUnits: {
     method: 'GET',

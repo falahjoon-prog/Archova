@@ -3,3 +3,4 @@ export { DelayRegisterScreen } from './screens/DelayRegisterScreen';
 export { KeyDatesCard } from './components/KeyDatesCard';
 export { ProgrammeScreen } from './screens/ProgrammeScreen';
 export { OnProgramme } from './components/OnProgramme';
+export { EotScreen } from './screens/EotScreen';

@@ -351,6 +351,12 @@ export const PROBLEM_CODES = {
   'schedule.link_exists': 409,
   'schedule.item_link_not_found': 404,
   'schedule.item_link_exists': 409,
+  // scheduling (delay events and EOT claims)
+  'delay_event.not_found': 404,
+  'delay_event.bad_state': 409,
+  'delay_event.evidence_taken': 409,
+  'delay_event.evidence_not_found': 404,
+  'delay_event.source_not_found': 422,
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
@@ -419,6 +425,9 @@ export const PROBLEM_CODES = {
   'financials.direct_cost.not_found': 404,
   'financials.direct_cost.already_void': 409,
   'financials.direct_cost.reason_required': 422,
+  'financials.change_event.not_found': 404,
+  'financials.change_event.closed': 409,
+  'financials.change_event.reason_required': 422,
   'financials.tm_ticket.not_found': 404,
   'financials.tm_ticket.bad_state': 409,
   'financials.tm_ticket.duplicate_source': 409,

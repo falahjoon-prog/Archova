@@ -28,6 +28,7 @@ const ENTITY_KIND: Record<NotificationEntity, IdKind> = {
   permit: 'permit',
   cover: 'cover',
   declaration: 'declaration',
+  defect: 'defect',
 };
 
 type Row = typeof notifications.$inferSelect;

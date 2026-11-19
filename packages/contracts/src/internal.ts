@@ -39,6 +39,11 @@ export const PLAN_MODULE_KEYS = [
   'ownerportal',
   'bim',
   'esign',
+  'environment',
+  'plant',
+  'financials',
+  'reporting',
+  'search',
   'ai',
 ] as const;
 export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];

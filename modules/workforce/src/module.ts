@@ -124,12 +124,16 @@ export function createWorkforceModule(
       getInductionVersion: inductions.versionForAi,
       /** For `reporting` (Nova project risk): subcontractor insurance read through live wallet grants. */
       insuranceSignals: grants.insuranceSignals,
+      /** For `reporting` (incident analytics): hours on submitted timesheets, the denominator of LTIFR and TRIFR. */
+      hoursWorked: sheets.hoursWorked,
       /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
       credentialSummary: wallet.readinessSummary,
       /** For `permits` (Nova flags): licences in the wallet that have lapsed or are about to. */
       lapsedLicences: wallet.lapsedLicences,
       /** For `financials` (labor productivity): worked minutes per cost code from approved-ready timesheets. */
       timesheetMinutesByCostCode: sheets.minutesByCostCode,
+      /** For `reporting` (time dashboard): paid time per timesheet line, by project and date range. */
+      timeForReporting: sheets.timeForReporting,
       /** For `financials` (T&M tickets): the day's worked hours and equipment logs. */
       dayActivity: sheets.dayActivity,
       /** For `diary` (daily log gaps): days with a sign-in or an equipment log. */

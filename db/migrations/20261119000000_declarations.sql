@@ -1,4 +1,4 @@
--- Composed from modules/declarations/db/migrations/20261118170000_declarations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/declarations/db/migrations/20261119000000_declarations.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- declarations: the project register of subcontractor statutory declarations (workers' compensation currency, payroll
 -- tax and wages/remuneration) a builder collects with each payment claim. The register records what was received and the
 -- period it covers; whether a claim may be paid is worked out from it, never stored. Documents stay in `files`.

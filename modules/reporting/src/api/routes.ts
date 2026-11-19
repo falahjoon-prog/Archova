@@ -10,11 +10,14 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { DbpService } from '../application/dbp';
+import type { MyWorkService } from '../application/mywork';
 import type { AuditService } from '../application/audit';
 import type { PortfolioService } from '../application/portfolio';
+import type { TimeService } from '../application/time';
 import type { RiskService } from '../application/risk';
 import type { SustainabilityService } from '../application/sustainability';
 import type { ReadinessService } from '../application/readiness';
+import type { IncidentAnalyticsService } from '../application/incident-analytics';
 import type { RiskRegisterService } from '../application/risk-register';
 import type { ReportsService } from '../application/reports';
 
@@ -24,10 +27,13 @@ export function reportingRoutes(
   reports: ReportsService,
   risk: RiskService,
   readiness: ReadinessService,
+  myWork: MyWorkService,
+  time: TimeService,
   audit: AuditService,
   sustainability: SustainabilityService,
   dbp: DbpService,
   riskRegister: RiskRegisterService,
+  incidentAnalytics: IncidentAnalyticsService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -51,6 +57,10 @@ export function reportingRoutes(
   };
 
   return defineRoutes({
+    getMyWork: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => myWork.get(s)),
+    }),
     listAuditLog: async (input) => ({
       status: 200,
       body: await read(input, (s) => audit.list(s, input.query ?? {})),
@@ -86,6 +96,30 @@ export function reportingRoutes(
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
+    getTimeDashboard: async (input) => {
+      const ids = (input.query?.projectIds ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const v = decodeId('project', s);
+          if (!v)
+            throw new AppError('validation_failed', 'Invalid project', [
+              { path: 'projectIds', message: 'Unknown project' },
+            ]);
+          return v;
+        });
+      return {
+        status: 200,
+        body: await read(input, (s) =>
+          time.get(s, {
+            weekStart: input.query?.weekStart,
+            projectIds: ids,
+            includeClosed: input.query?.includeClosed === 'true',
+          }),
+        ),
+      };
+    },
     getDbpInsights: async (input) => ({
       status: 200,
       body: await read(input, (s) =>
@@ -97,6 +131,10 @@ export function reportingRoutes(
       body: await read(input, (s) =>
         sustainability.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
+    }),
+    getIncidentAnalytics: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => incidentAnalytics.get(s, input.query ?? {})),
     }),
     getLateSopaClaimRisk: async (input) => ({
       status: 200,

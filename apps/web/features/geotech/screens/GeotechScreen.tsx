@@ -416,12 +416,30 @@ function EarthworksTab({
         ]
       : []),
   ];
+  const vol = (v: number) => v.toLocaleString('en-AU');
   const balanceColumns: DataTableColumn<(typeof zones)[number]>[] = [
-    { id: 'zone', header: 'Zone', rowHeader: true, cell: (z) => z.zone },
-    { id: 'cut', header: 'Cut', align: 'end', cell: (z) => m3(z.cut) },
-    { id: 'fill', header: 'Fill', align: 'end', cell: (z) => m3(z.fill) },
-    { id: 'import', header: 'Imported', align: 'end', cell: (z) => m3(z.imported) },
-    { id: 'export', header: 'Exported', align: 'end', cell: (z) => m3(z.exported) },
+    {
+      id: 'zone',
+      header: 'Zone',
+      rowHeader: true,
+      cell: (z) => (
+        <>
+          {z.zone}
+          {z.imported > 0 || z.exported > 0 ? (
+            <div className="u-muted">
+              {[
+                z.imported > 0 ? `In ${vol(z.imported)}` : '',
+                z.exported > 0 ? `Out ${vol(z.exported)}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+          ) : null}
+        </>
+      ),
+    },
+    { id: 'cut', header: 'Cut', align: 'end', cell: (z) => vol(z.cut) },
+    { id: 'fill', header: 'Fill', align: 'end', cell: (z) => vol(z.fill) },
     {
       id: 'balance',
       header: 'Balance',
@@ -429,7 +447,7 @@ function EarthworksTab({
       cell: (z) => (
         <StatusPill tone={z.balance < 0 ? 'warning' : 'neutral'}>
           {z.balance > 0 ? '+' : ''}
-          {m3(z.balance)}
+          {vol(z.balance)}
         </StatusPill>
       ),
     },
@@ -451,7 +469,8 @@ function EarthworksTab({
             title="Balance by zone"
             actions={
               <span className="u-muted">
-                Cut + imported − fill − exported. Negative means short of material.
+                All volumes in m³. Balance is cut + import − fill − export; negative means short of
+                material.
               </span>
             }
           >
