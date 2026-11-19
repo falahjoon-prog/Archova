@@ -395,7 +395,7 @@ export const ListScheduleLinksForItemParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const ListScheduleLinksForItemQuery = z.object({
-  "kind": z.enum(["rfi", "submittal"]),
+  "kind": z.enum(["rfi", "submittal", "prefab_unit"]),
   "targetId": z.string(),
 });
 export const ListScheduleLinksParams = z.object({

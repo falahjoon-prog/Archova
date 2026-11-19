@@ -559,6 +559,34 @@ export function createPrefabService(deps: PrefabDeps) {
     return (await withQa(scope, [u!]))[0]!;
   }
 
+  /**
+   * Programme links (`scheduling`): headline details of the units among `ids` the caller may see. Empty when the caller
+   * cannot read prefab units. `dueDate` is the day the unit is due on site.
+   */
+  async function summariesByIds(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'prefab.units.view', { projectId })))
+      return [];
+    const rows = await scope.tx
+      .select({
+        id: units.id,
+        code: units.code,
+        name: units.name,
+        status: units.status,
+        installDate: units.installDate,
+        shipDate: units.shipDate,
+      })
+      .from(units)
+      .where(and(eq(units.projectId, projectId), inArray(units.id, [...ids])));
+    return rows.map((r) => ({
+      id: r.id,
+      ref: r.code,
+      title: r.name,
+      status: r.status as string,
+      dueDate: r.installDate ?? r.shipDate,
+      scheduleImpactDays: null as number | null,
+    }));
+  }
+
   async function plan(
     scope: TenantScope,
     projectId: string,
@@ -585,6 +613,7 @@ export function createPrefabService(deps: PrefabDeps) {
     insights,
     plan,
     draftDelivery,
+    summariesByIds,
   };
 }
 

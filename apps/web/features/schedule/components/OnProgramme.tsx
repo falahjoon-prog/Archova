@@ -16,7 +16,7 @@ export function OnProgramme({
   itemId,
   headingClass = 'panel-heading',
 }: {
-  kind: 'rfi' | 'submittal';
+  kind: 'rfi' | 'submittal' | 'prefab_unit';
   itemId: string;
   /** The host page's section heading class, so the card matches its neighbours. */
   headingClass?: string;

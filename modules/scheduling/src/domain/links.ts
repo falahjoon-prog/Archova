@@ -1,7 +1,7 @@
 // Pure side of the activity links: turning stored links plus whatever the rfis/submittals modules let the caller
 // see into the answer. An item the caller can't see (or that has gone) comes back with `visible: false` and no details.
 
-export type LinkKind = 'rfi' | 'submittal';
+export type LinkKind = 'rfi' | 'submittal' | 'prefab_unit';
 
 export interface LinkRow {
   id: string;

@@ -22,7 +22,8 @@ export function openItemsByActivity(
 ): Map<string, OpenItems> {
   const out = new Map<string, OpenItems>();
   for (const l of links) {
-    if (!l.visible || !l.status) continue;
+    // Prefab units are shown on the activity but are not an answer the work waits for.
+    if (!l.visible || !l.status || l.kind === 'prefab_unit') continue;
     const open = l.kind === 'rfi' ? RFI_OPEN.has(l.status) : !SUBMITTAL_DONE.has(l.status);
     if (!open) continue;
     const cur = out.get(l.activityId) ?? { rfis: 0, submittals: 0, atRisk: false };

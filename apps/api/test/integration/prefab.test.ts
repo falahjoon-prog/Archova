@@ -161,4 +161,44 @@ describe('Prefabricated and modular units', () => {
       409,
     );
   });
+
+  it('ties a unit to a programme activity and shows it from both sides', async () => {
+    const s = await setup('pfpg');
+    const root = s.base.replace(/\/prefab$/, '');
+    const unit = (
+      await s.sm.browser.post(`${s.base}/units`, {
+        code: 'WP-9',
+        name: 'Level 2 wall panel',
+        kind: 'wall_panel',
+        installDate: '2030-03-07',
+      })
+    ).json();
+    const sched = (await s.pm.browser.post(`${root}/schedules`, { name: 'Master' })).json();
+    const act = (
+      await s.pm.browser.post(`${root}/schedules/${sched.schedule.id}/activities`, {
+        name: 'Erect panels',
+        start: '2030-03-07',
+        finish: '2030-03-08',
+      })
+    ).json().activities[0];
+    const url = `${root}/schedules/${sched.schedule.id}/activities/${act.id}/links`;
+    const link = await s.pm.browser.post(url, { kind: 'prefab_unit', targetId: unit.id });
+    expect(link.statusCode).toBe(201);
+    expect(link.json()).toMatchObject({
+      kind: 'prefab_unit',
+      visible: true,
+      ref: 'WP-9',
+      title: 'Level 2 wall panel',
+      status: 'planned',
+      dueDate: '2030-03-07',
+    });
+    expect(
+      (await s.pm.browser.post(url, { kind: 'prefab_unit', targetId: unit.id })).statusCode,
+    ).toBe(409);
+    const back = (
+      await s.pm.browser.get(`${root}/schedule-links?kind=prefab_unit&targetId=${unit.id}`)
+    ).json();
+    expect(back.data).toHaveLength(1);
+    expect(back.data[0].activityName).toBe('Erect panels');
+  });
 });

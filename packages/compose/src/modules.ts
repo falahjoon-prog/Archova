@@ -63,7 +63,7 @@ import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
 import { createRecentsModule } from '@archova/mod-recents';
 import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
-import { PREFAB_PERMISSIONS, createPrefabModule } from '@archova/mod-prefab';
+import { PREFAB_PERMISSIONS, createPrefabModule, type PrefabModule } from '@archova/mod-prefab';
 import { PLANT_PERMISSIONS, createPlantModule } from '@archova/mod-plant';
 import { createPlatformModule } from '@archova/mod-platform';
 import {
@@ -466,6 +466,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  let prefabApi: PrefabModule['api'] | null = null;
   const precon = createPreconModule(services, { platform: platform.api });
 
   const estimating = createEstimatingModule(services, {
@@ -576,6 +577,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary: diary.api,
     rfis: rfis.api,
     submittals: submittals.api,
+    // Prefab is built later (it books through logistics), so it is reached through the late-bound reference.
+    prefab: {
+      summariesByIds: (scope, projectId, ids) => prefabApi!.summariesByIds(scope, projectId, ids),
+    },
     correspondence: correspondence.api,
     platform: platform.api,
     access: access.api,
@@ -641,6 +646,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     createDelivery: (scope, projectId, input) =>
       logistics.api.createDelivery(scope, projectId, input),
   });
+  prefabApi = prefab.api;
 
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
