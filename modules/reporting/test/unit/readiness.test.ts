@@ -132,6 +132,10 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         monthly: [],
       }),
     },
+    time: {
+      timeForReporting: async () => ({ restricted: true, truncated: false, lines: [] }),
+      costCodes: async () => null,
+    },
     access: { can: async () => true },
     precon: {
       readinessSummary: async () => ({
@@ -145,6 +149,7 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
       }),
     },
     workforce: {
+      hoursWorked: async () => null,
       credentialSummary: async () => ({
         counts: { current: 1, expiring: 0, expired: 1, no_expiry: 0 },
         items: [
@@ -160,6 +165,12 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
       }),
     },
     safety: {
+      injuryRows: async () => ({
+        restricted: true,
+        rows: [],
+        lastInjuryOn: null,
+        lastIncidentOn: null,
+      }),
       readinessSummary: async (_s, id) =>
         id === 'b'
           ? {

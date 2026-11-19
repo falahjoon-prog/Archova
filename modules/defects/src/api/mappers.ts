@@ -31,6 +31,7 @@ export const toDefectDto = (r: DefectView, viewer: DefectViewer): Defect => ({
   assigneeCompanyId: companyOrNull(r.assigneeCompanyId),
   assigneeUserId: userOrNull(r.assigneeUserId),
   assigneeUserIds: r.assigneeUserIds.map((u) => encodeId('user', u)),
+  completedUserIds: r.completedUserIds.map((u) => encodeId('user', u)),
   managerUserId: userOrNull(r.managerUserId),
   finalApproverUserId: userOrNull(r.finalApproverUserId),
   distributionUserIds: r.distributionUserIds.map((u) => encodeId('user', u)),

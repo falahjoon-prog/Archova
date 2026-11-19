@@ -28,6 +28,17 @@ export function usePlantData(from: string, to: string) {
   };
 }
 
+/** The project's cost codes, for tagging an allocation. Empty when the caller can't read the project's budget. */
+export function useCostCodes(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useMemo(() => createPlantApi(orgId), [orgId]);
+  return useQuery({
+    queryKey: key(orgId, 'cost-codes', projectId),
+    queryFn: () => source.costCodes(projectId).catch(() => []),
+    enabled: projectId !== '',
+  });
+}
+
 export function usePlantUtilisation(from: string, to: string) {
   const { orgId } = useCurrentOrg();
   const source = useMemo(() => createPlantApi(orgId), [orgId]);

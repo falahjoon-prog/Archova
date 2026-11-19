@@ -58,7 +58,7 @@ describe('GeotechScreen', () => {
     nav.search = 'tab=earthworks';
     renderInProject(<GeotechScreen />);
     const balance = await screen.findByRole('table', { name: 'Earthworks balance by zone' });
-    expect(within(balance).getByText('-300 m³')).toBeTruthy();
+    expect(within(balance).getByText('-300')).toBeTruthy();
     await user.click(screen.getAllByRole('button', { name: /Add volume/ })[0]!);
     const dialog = screen.getByRole('dialog');
     await enterText(user, within(dialog).getByLabelText('Zone'), 'Lot B');
@@ -72,8 +72,8 @@ describe('GeotechScreen', () => {
       const row = within(screen.getByRole('table', { name: 'Earthworks balance by zone' }))
         .getByText('Lot B')
         .closest('tr')!;
-      expect(within(row).getByText('0 m³', { selector: 'span' }).textContent).toBe('0 m³');
-      expect(row.textContent).toContain('700 m³');
+      expect(within(row).getByText('0', { selector: 'span' }).textContent).toBe('0');
+      expect(row.textContent).toContain('700');
     });
   });
 });

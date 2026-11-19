@@ -1,3 +1,4 @@
+import type { InjuryRecord } from '@archova/domain';
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { DbpInspection, DbpObservation } from '../domain/dbp';
@@ -11,6 +12,7 @@ import {
   type SourceRow,
   type ToolCounts,
 } from '../domain/report';
+import type { CostCodeRef, TimeLine } from '../domain/time';
 
 interface SourceRows {
   rows: readonly SourceRow[];
@@ -51,6 +53,15 @@ export interface ReportingDeps {
   budget: {
     portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
   };
+  /** For the time dashboard: paid timesheet time per project (`workforce`) and the cost codes it is booked to (`financials`). */
+  time: {
+    timeForReporting(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string; limit: number },
+    ): Promise<{ restricted: boolean; truncated: boolean; lines: TimeLine[] }>;
+    costCodes(scope: TenantScope, projectId: string): Promise<CostCodeRef[] | null>;
+  };
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {
     can(
@@ -71,6 +82,11 @@ export interface ReportingDeps {
     }>;
   };
   workforce: {
+    hoursWorked(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string; companyId?: string },
+    ): Promise<number | null>;
     credentialSummary(scope: TenantScope): Promise<{
       counts: { current: number; expiring: number; expired: number; no_expiry: number };
       items: readonly {
@@ -84,6 +100,16 @@ export interface ReportingDeps {
     }>;
   };
   safety: {
+    injuryRows(
+      scope: TenantScope,
+      projectId: string,
+      filters: { from?: string; to?: string; companyId?: string },
+    ): Promise<{
+      restricted: boolean;
+      rows: readonly InjuryRecord[];
+      lastInjuryOn: string | null;
+      lastIncidentOn: string | null;
+    }>;
     readinessSummary(
       scope: TenantScope,
       projectId: string,

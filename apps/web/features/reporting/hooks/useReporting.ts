@@ -36,6 +36,14 @@ export function useDbpInsights(includeClosed: boolean) {
   });
 }
 
+const myWorkKey = (orgId: string) => ['orgs', orgId, 'my-work'] as const;
+
+export function useMyWork() {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({ queryKey: myWorkKey(orgId), queryFn: () => api.myWork() });
+}
+
 export function useSustainabilityPortfolio(includeClosed: boolean, enabled: boolean) {
   const { orgId } = useCurrentOrg();
   const api = useApi();

@@ -978,7 +978,7 @@ export async function seedExtra(ctx: ExtraContext) {
   });
 
   await step('site diary', async () => {
-    const have = await count(`${pp}/diary`);
+    const have = await count(`${pp}/diary?from=${day(-10)}&to=${day(0)}`);
     if (have >= 8) return 'already there';
     const notes = [
       [

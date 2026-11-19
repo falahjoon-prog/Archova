@@ -44,6 +44,7 @@ beforeEach(() => {
         endsOn: '2026-11-12',
         note: null,
         status: 'active',
+        postedThrough: null,
         estimatedCostCents: 135000,
       },
     ],
@@ -92,6 +93,11 @@ beforeEach(() => {
       },
     ],
     projects: [{ projectId: 'prj_1', bookedDays: 12, costCents: 540000 }],
+  }));
+  fake.on('GET', '/v1/orgs/{orgId}/projects/{projectId}/cost-codes', () => ({
+    data: [
+      { id: 'ccd_1', code: '3100', description: 'Plant hire', parentId: null, archived: false },
+    ],
   }));
   fake.on('GET', '/v1/orgs/{orgId}/projects', () => ({
     data: [{ id: 'prj_1', name: 'Harbour St Tower' }],

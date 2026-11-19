@@ -40,7 +40,9 @@ interface Store {
 const DAY = 86_400_000;
 const TZ = 'Australia/Sydney';
 const dayNo = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / DAY);
-const plus = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+/** A date n days from today in the project's own zone, so seed data agrees with the dates derived from `todayIn`. */
+const plus = (n: number) =>
+  new Date(Date.parse(`${todayIn(TZ)}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 const label = (n: number) => `PMT-${String(n).padStart(4, '0')}`;
 
 function derive(r: Row, lead = 30): Row {
