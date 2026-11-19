@@ -347,8 +347,9 @@ main:focus {
   }
   .app-shell__nav-link {
     width: 100%;
-    justify-content: center;
-    padding-inline: var(--space-2);
+    /* Left-aligned so every label starts on the same line, with or without a caret. */
+    justify-content: flex-start;
+    padding-inline: var(--space-3);
   }
   .app-shell__nav .app-shell__nav-menu li {
     display: block;
