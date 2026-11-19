@@ -1,4 +1,4 @@
--- Composed from modules/plant/db/migrations/20261118180000_plant_posting_guards.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/plant/db/migrations/20261119200000_plant_posting_guards.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- plant: guards on the hire cost postings. A posting is a financial record: it can be added but never changed or
 -- removed (and the retention guard holds it 7 years once tagged). `posted_through` only moves forward, and once any
 -- day of an allocation is posted its machine, project, cost code and start are frozen and it can't be cancelled or
