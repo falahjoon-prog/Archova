@@ -27,7 +27,17 @@ beforeEach(() => {
   fake.on('GET', `${P}/production/report`, () => ({
     asOf: '2026-11-07',
     items: [
-      { item, actual: 300, pctComplete: 0.3, plannedToDate: 450, variance: -150, status: 'behind' },
+      {
+        item,
+        actual: 300,
+        pctComplete: 0.3,
+        plannedToDate: 450,
+        variance: -150,
+        status: 'behind',
+        trailingRate: 5,
+        requiredRate: 12,
+        forecastFinish: '2027-03-01',
+      },
     ],
     curves: [
       {

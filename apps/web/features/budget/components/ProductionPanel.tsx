@@ -101,6 +101,34 @@ export function ProductionPanel({ canManage }: { canManage: boolean }) {
       ),
     },
     {
+      id: 'forecast',
+      header: 'Forecast finish',
+      cell: (x) =>
+        x.status === 'complete' ? (
+          <span className="u-muted">Done</span>
+        ) : (
+          <span className="u-nowrap">
+            {x.forecastFinish ? (
+              <>
+                {x.forecastFinish}
+                {x.forecastFinish > x.item.plannedFinish ? (
+                  <span className="u-danger"> (after plan {x.item.plannedFinish})</span>
+                ) : null}
+              </>
+            ) : (
+              <span className="u-muted">Not enough data</span>
+            )}
+            {x.requiredRate !== null ? (
+              <span className="u-muted">
+                {' '}
+                · needs {num(x.requiredRate)} {x.item.uom}/day
+                {x.trailingRate !== null ? `, doing ${num(x.trailingRate)}` : ''}
+              </span>
+            ) : null}
+          </span>
+        ),
+    },
+    {
       id: 'status',
       header: 'Status',
       cell: (x) => <StatusPill tone={STATUS[x.status].tone}>{STATUS[x.status].label}</StatusPill>,

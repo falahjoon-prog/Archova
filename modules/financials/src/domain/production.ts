@@ -69,6 +69,58 @@ export function itemProgress(item: Item, actual: number, today: LocalDate): Item
   };
 }
 
+export interface ItemForecast {
+  /** Units per working day over the last 28 days, or null with fewer than MIN_FORECAST_DAYS days of work. */
+  trailingRate: number | null;
+  /** Units per working day still needed from tomorrow to hit the planned finish; null once finished or past due. */
+  requiredRate: number | null;
+  /** Date the item finishes if the trailing rate holds; null when complete or no usable rate. */
+  forecastFinish: LocalDate | null;
+}
+
+/** Distinct days with quantity in the trailing window before a forecast means anything. */
+export const MIN_FORECAST_DAYS = 3;
+const FORECAST_WINDOW_DAYS = 28;
+
+function addWorkingDays(from: LocalDate, n: number): LocalDate {
+  let d = from;
+  for (let left = n; left > 0;) {
+    d = addDays(d, 1);
+    if (isoWeekday(d) <= 5) left--;
+  }
+  return d;
+}
+
+/**
+ * Where an item will finish at its recent pace, and the pace it needs to still hit plan. Both are in units per
+ * working day (Mon-Fri); weekend work counts toward quantity, not the day count. Rule-based, no model call.
+ */
+export function itemForecast(
+  item: Item,
+  entries: readonly Entry[],
+  actual: number,
+  today: LocalDate,
+): ItemForecast {
+  const remaining = item.plannedQuantity - actual;
+  if (remaining <= 0) return { trailingRate: null, requiredRate: null, forecastFinish: null };
+  const from = addDays(today, -(FORECAST_WINDOW_DAYS - 1));
+  const mine = entries.filter(
+    (e) => e.itemId === item.id && e.loggedOn >= from && e.loggedOn <= today,
+  );
+  const days = new Set(mine.filter((e) => e.quantity > 0).map((e) => e.loggedOn));
+  const workDays = workingDays(from, today);
+  const total = mine.reduce((a, e) => a + e.quantity, 0);
+  const trailingRate =
+    days.size >= MIN_FORECAST_DAYS && workDays > 0 && total > 0 ? total / workDays : null;
+  const left = item.plannedFinish > today ? workingDays(addDays(today, 1), item.plannedFinish) : 0;
+  return {
+    trailingRate: trailingRate === null ? null : r2(trailingRate),
+    requiredRate: left > 0 ? r2(remaining / left) : null,
+    forecastFinish:
+      trailingRate === null ? null : addWorkingDays(today, Math.ceil(remaining / trailingRate)),
+  };
+}
+
 export interface CurvePoint {
   /** End of each week, plus `today` so the actual line reaches the present. */
   date: LocalDate;

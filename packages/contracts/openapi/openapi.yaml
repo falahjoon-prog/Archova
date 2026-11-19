@@ -32254,7 +32254,18 @@ components:
         note: { type: [string, 'null'], maxLength: 300 }
     ProductionItemRow:
       type: object
-      required: [item, actual, pctComplete, plannedToDate, variance, status]
+      required:
+        [
+          item,
+          actual,
+          pctComplete,
+          plannedToDate,
+          variance,
+          status,
+          trailingRate,
+          requiredRate,
+          forecastFinish,
+        ]
       properties:
         item: { $ref: '#/components/schemas/ProductionItem' }
         actual: { type: number }
@@ -32264,6 +32275,22 @@ components:
         variance:
           { type: number, description: 'Installed minus planned to date; negative is behind.' }
         status: { type: string, enum: [not_started, on_track, behind, complete] }
+        trailingRate:
+          {
+            type: [number, 'null'],
+            description: 'Units per working day over the last 28 days; null with fewer than 3 days of work.',
+          }
+        requiredRate:
+          {
+            type: [number, 'null'],
+            description: 'Units per working day needed from tomorrow to hit the planned finish; null when finished or past due.',
+          }
+        forecastFinish:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'Finish date if the trailing rate holds; null when complete or no usable rate.',
+          }
     ProductionCurvePoint:
       type: object
       required: [date, planned, actual]

@@ -9427,6 +9427,9 @@ export const ProductionItemRowSchema = z.object({
   "plannedToDate": z.number(),
   "variance": z.number(),
   "status": z.enum(["not_started", "on_track", "behind", "complete"]),
+  "trailingRate": z.number().nullable(),
+  "requiredRate": z.number().nullable(),
+  "forecastFinish": z.string().date().nullable(),
 });
 export type ProductionItemRow = z.infer<typeof ProductionItemRowSchema>;
 

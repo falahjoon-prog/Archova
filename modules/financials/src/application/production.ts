@@ -5,6 +5,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { isLocalDate, localDateOf } from '@archova/time';
 import {
+  itemForecast,
   itemProgress,
   productionCurve,
   rateFlags,
@@ -261,7 +262,10 @@ export function createProductionService(deps: ProductionDeps) {
 
     const rowsOut = rows.map((row, i) => ({
       row,
-      progress: itemProgress(items[i]!, actualBy.get(row.id) ?? 0, asOf),
+      progress: {
+        ...itemProgress(items[i]!, actualBy.get(row.id) ?? 0, asOf),
+        ...itemForecast(items[i]!, entries, actualBy.get(row.id) ?? 0, asOf),
+      },
     }));
     const uoms = [...new Set(items.map((i) => i.uom))].sort();
     const rollup = (key: 'trade' | 'location') => {
