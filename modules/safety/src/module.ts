@@ -5,6 +5,7 @@ import { createReportingSources } from './application/reportingSources';
 import { createAnalyticsSource } from './application/analytics';
 import { createClearanceService } from './application/clearance';
 import { createToolboxService } from './application/toolbox';
+import { createPretaskService } from './application/pretask';
 import { createReadinessService } from './application/readiness';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -16,13 +17,14 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const swms = createSwmsService(deps);
   const incidents = createIncidentService(deps);
   const toolbox = createToolboxService(deps);
+  const pretask = createPretaskService(deps);
   const readiness = createReadinessService(deps);
   const clearance = createClearanceService(deps);
   const reportingSources = createReportingSources(deps);
   const analytics = createAnalyticsSource(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
-    routes: safetyRoutes(services.database, swms, incidents, toolbox),
+    routes: safetyRoutes(services.database, swms, incidents, toolbox, pretask),
     api: {
       /** What the mobile pull reads (modules/sync). */
       syncSource: incidentSyncSource(incidents),

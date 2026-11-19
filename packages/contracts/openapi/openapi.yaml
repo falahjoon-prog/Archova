@@ -14888,6 +14888,273 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ToolboxTalkDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPretaskPlans
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.read
+      summary: Pre-task plans, newest first. People who are not builder staff see the plans they started, their company's, and ones they are on. With unreviewed, only closed plans nobody has reviewed yet.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PretaskStatus' } }
+        - { name: workDate, in: query, schema: { type: string, format: date } }
+        - { name: unreviewed, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Start a pre-task plan for today's task, with its hazards, controls and crew.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePretaskPlanRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: suggestPretaskHazards
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.read
+      summary: Nova suggests hazards and controls to put on a plan, from rules over this project (hazards that keep coming up on recent plans, the linked SWMS, and recent incidents for builder staff only). No model is called and nothing is created.
+      parameters:
+        - { name: swmsId, in: query, schema: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' } }
+        - { name: planId, in: query, schema: { type: string, pattern: '^ptk_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskSuggestionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    get:
+      operationId: getPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.read
+      summary: A plan with its hazards, crew, warnings for a supervisor to look at, and the record trail.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Change an open plan. Hazards and the linked SWMS can only change while nobody has signed.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePretaskPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deletePretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Delete an open plan that nobody has signed.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    post:
+      operationId: transitionPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Close the plan (needs hazards with controls, none still extreme, and everyone signed or removed) or reopen it (needs the review permission).
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PretaskTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    post:
+      operationId: reviewPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: The supervisor signs off a closed plan, with an optional note.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewPretaskPlanRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    post:
+      operationId: addPretaskCrew
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Add people to an open plan.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddPretaskCrewRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+      - $ref: '#/components/parameters/PretaskCrewId'
+    delete:
+      operationId: removePretaskCrew
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Remove an unsigned person from an open plan.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}/signature:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+      - $ref: '#/components/parameters/PretaskCrewId'
+    put:
+      operationId: signPretaskCrew
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: One person signs on with a signature drawn on the device and uploaded as an image to this project. Their induction status is noted at that moment.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignPretaskCrewRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: clearPretaskSignature
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Clear one person's signature so it can be signed again.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20233,6 +20500,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tba_[0-9A-Za-z]{26}$' }
+    PretaskPlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ptk_[0-9A-Za-z]{26}$' }
+    PretaskCrewId:
+      name: crewId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ptw_[0-9A-Za-z]{26}$' }
     IncidentId:
       name: incidentId
       in: path
@@ -39493,6 +39770,245 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/ToolboxSuggestion' }
+    PretaskStatus:
+      type: string
+      enum: [open, closed]
+    PretaskRiskLevel:
+      type: string
+      enum: [low, medium, high, extreme]
+    PretaskHazard:
+      type: object
+      additionalProperties: false
+      required: [hazard, riskBefore, controls, riskAfter]
+      properties:
+        hazard: { type: string, minLength: 1, maxLength: 300 }
+        riskBefore: { $ref: '#/components/schemas/PretaskRiskLevel' }
+        controls:
+          {
+            type: string,
+            maxLength: 2000,
+            description: How the crew will control it. Needed before the plan can close.,
+          }
+        riskAfter: { $ref: '#/components/schemas/PretaskRiskLevel' }
+    PretaskInductionState:
+      type: string
+      enum: [current, not_inducted, needs_reinduction, expired, unknown]
+    PretaskPlan:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          taskTitle,
+          workDate,
+          location,
+          companyId,
+          swmsId,
+          supervisorName,
+          hazards,
+          status,
+          closedAt,
+          reviewedAt,
+          reviewedBy,
+          reviewNote,
+          crewCount,
+          signedCount,
+          createdBy,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: PTP-0001 }
+        taskTitle: { type: string }
+        workDate: { type: string, format: date }
+        location: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+        swmsId: { type: [string, 'null'] }
+        supervisorName: { type: string }
+        hazards:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+        status: { $ref: '#/components/schemas/PretaskStatus' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        reviewedBy: { type: [string, 'null'] }
+        reviewNote: { type: [string, 'null'] }
+        crewCount: { type: integer }
+        signedCount: { type: integer }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    PretaskPlanPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskPlan' }
+        nextCursor: { type: [string, 'null'] }
+    PretaskCrew:
+      type: object
+      required:
+        [id, personName, companyId, userId, signedAt, signatureFileId, inductionStatus, swmsRead]
+      properties:
+        id: { type: string }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+        signedAt: { type: [string, 'null'], format: date-time }
+        signatureFileId: { type: [string, 'null'] }
+        inductionStatus:
+          description: What the induction register said when this person signed. Null until they sign, or when they have no login.
+          oneOf:
+            - { $ref: '#/components/schemas/PretaskInductionState' }
+            - { type: 'null' }
+        swmsRead:
+          {
+            type: [boolean, 'null'],
+            description: Whether this person has read the linked accepted SWMS at its current revision. Null when it does not apply.,
+          }
+    PretaskSwmsRef:
+      type: object
+      required: [id, number, numberLabel, title, status, expired]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        title: { type: string }
+        status: { type: string }
+        expired: { type: boolean }
+    PretaskWarning:
+      type: object
+      description: Something for the supervisor to look at. Never blocks the plan.
+      required: [code, message, personName]
+      properties:
+        code: { type: string, enum: [swms_not_accepted, swms_expired, induction, swms_not_read] }
+        message: { type: string }
+        personName: { type: [string, 'null'] }
+    PretaskEvent:
+      type: object
+      required: [id, action, note, actor, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        note: { type: [string, 'null'] }
+        actor: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    PretaskPlanDetail:
+      type: object
+      required: [plan, crew, swms, closeBlockers, warnings, events, canEdit, canReview]
+      properties:
+        plan: { $ref: '#/components/schemas/PretaskPlan' }
+        crew:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskCrew' }
+        swms:
+          oneOf:
+            - { $ref: '#/components/schemas/PretaskSwmsRef' }
+            - { type: 'null' }
+        closeBlockers:
+          type: array
+          description: What stops the plan closing now. Empty when it can close.
+          items: { type: string }
+        warnings:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskWarning' }
+        events:
+          type: array
+          description: The record trail, oldest first. Append-only.
+          items: { $ref: '#/components/schemas/PretaskEvent' }
+        canEdit: { type: boolean }
+        canReview: { type: boolean }
+    PretaskCrewInput:
+      type: object
+      additionalProperties: false
+      required: [personName]
+      properties:
+        personName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+    CreatePretaskPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [taskTitle, workDate, supervisorName]
+      properties:
+        taskTitle: { type: string, minLength: 1, maxLength: 200 }
+        workDate: { type: string, format: date }
+        location: { type: [string, 'null'], maxLength: 200 }
+        companyId: { type: [string, 'null'] }
+        swmsId: { type: [string, 'null'] }
+        supervisorName: { type: string, minLength: 1, maxLength: 200 }
+        hazards:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+        crew:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PretaskCrewInput' }
+    UpdatePretaskPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        taskTitle: { type: string, minLength: 1, maxLength: 200 }
+        workDate: { type: string, format: date }
+        location: { type: [string, 'null'], maxLength: 200 }
+        companyId: { type: [string, 'null'] }
+        swmsId: { type: [string, 'null'] }
+        supervisorName: { type: string, minLength: 1, maxLength: 200 }
+        hazards:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+    PretaskTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [close, reopen] }
+    ReviewPretaskPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: [string, 'null'], maxLength: 2000 }
+    AddPretaskCrewRequest:
+      type: object
+      additionalProperties: false
+      required: [crew]
+      properties:
+        crew:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PretaskCrewInput' }
+    SignPretaskCrewRequest:
+      type: object
+      additionalProperties: false
+      required: [signatureFileId]
+      properties:
+        signatureFileId: { type: string, description: A ready image uploaded to this project. }
+    PretaskSuggestion:
+      type: object
+      required: [reason, hazard, controls, riskBefore, because]
+      properties:
+        reason: { type: string, enum: [from_swms, recurring, recent_incident] }
+        hazard: { type: string }
+        controls: { type: string }
+        riskBefore: { $ref: '#/components/schemas/PretaskRiskLevel' }
+        because:
+          { type: string, description: One plain sentence with the facts behind the suggestion. }
+    PretaskSuggestionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskSuggestion' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

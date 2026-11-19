@@ -19,6 +19,7 @@ import type {
 } from '../domain/incident';
 import type { SwmsContent, SwmsStatus } from '../domain/swms';
 import type { TalkStatus, TopicCategory } from '../domain/toolbox';
+import type { InductionState, PretaskHazard, PretaskStatus } from '../domain/pretask';
 
 export const safetySchema = pgSchema('safety');
 
@@ -219,4 +220,57 @@ export const toolboxAttendees = safetySchema.table('toolbox_attendees', {
   signedBy: uuid('signed_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const pretaskPlans = safetySchema.table('pretask_plans', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  taskTitle: text('task_title').notNull(),
+  workDate: date('work_date').notNull(),
+  location: text('location'),
+  companyId: uuid('company_id'),
+  swmsId: uuid('swms_id'),
+  supervisorName: text('supervisor_name').notNull(),
+  hazards: jsonb('hazards').$type<PretaskHazard[]>().notNull().default([]),
+  status: text('status').$type<PretaskStatus>().notNull().default('open'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedBy: uuid('closed_by'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  reviewedBy: uuid('reviewed_by'),
+  reviewNote: text('review_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const pretaskCrew = safetySchema.table('pretask_crew', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  planId: uuid('plan_id').notNull(),
+  personName: text('person_name').notNull(),
+  companyId: uuid('company_id'),
+  userId: uuid('user_id'),
+  signedAt: timestamp('signed_at', { withTimezone: true }),
+  signatureFileId: uuid('signature_file_id'),
+  signedBy: uuid('signed_by'),
+  inductionStatus: text('induction_status').$type<InductionState>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const pretaskEvents = safetySchema.table('pretask_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  planId: uuid('plan_id').notNull(),
+  action: text('action').notNull(),
+  note: text('note'),
+  actorId: uuid('actor_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });

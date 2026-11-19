@@ -10891,6 +10891,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Pre-task plans, newest first. People who are not builder staff see the plans they started, their company's, and ones they are on. With unreviewed, only closed plans nobody has reviewed yet. */
+        get: operations["listPretaskPlans"];
+        put?: never;
+        /** Start a pre-task plan for today's task, with its hazards, controls and crew. */
+        post: operations["createPretaskPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggests hazards and controls to put on a plan, from rules over this project (hazards that keep coming up on recent plans, the linked SWMS, and recent incidents for builder staff only). No model is called and nothing is created. */
+        get: operations["suggestPretaskHazards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        /** A plan with its hazards, crew, warnings for a supervisor to look at, and the record trail. */
+        get: operations["getPretaskPlan"];
+        put?: never;
+        post?: never;
+        /** Delete an open plan that nobody has signed. */
+        delete: operations["deletePretaskPlan"];
+        options?: never;
+        head?: never;
+        /** Change an open plan. Hazards and the linked SWMS can only change while nobody has signed. */
+        patch: operations["updatePretaskPlan"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the plan (needs hazards with controls, none still extreme, and everyone signed or removed) or reopen it (needs the review permission). */
+        post: operations["transitionPretaskPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The supervisor signs off a closed plan, with an optional note. */
+        post: operations["reviewPretaskPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add people to an open plan. */
+        post: operations["addPretaskCrew"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+                crewId: components["parameters"]["PretaskCrewId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an unsigned person from an open plan. */
+        delete: operations["removePretaskCrew"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/crew/{crewId}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+                crewId: components["parameters"]["PretaskCrewId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** One person signs on with a signature drawn on the device and uploaded as an image to this project. Their induction status is noted at that moment. */
+        put: operations["signPretaskCrew"];
+        post?: never;
+        /** Clear one person's signature so it can be signed again. */
+        delete: operations["clearPretaskSignature"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
         parameters: {
             query?: never;
@@ -26637,6 +26809,151 @@ export interface components {
         ToolboxSuggestionList: {
             data: components["schemas"]["ToolboxSuggestion"][];
         };
+        /** @enum {string} */
+        PretaskStatus: "open" | "closed";
+        /** @enum {string} */
+        PretaskRiskLevel: "low" | "medium" | "high" | "extreme";
+        PretaskHazard: {
+            hazard: string;
+            riskBefore: components["schemas"]["PretaskRiskLevel"];
+            /** @description How the crew will control it. Needed before the plan can close. */
+            controls: string;
+            riskAfter: components["schemas"]["PretaskRiskLevel"];
+        };
+        /** @enum {string} */
+        PretaskInductionState: "current" | "not_inducted" | "needs_reinduction" | "expired" | "unknown";
+        PretaskPlan: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description PTP-0001 */
+            numberLabel: string;
+            taskTitle: string;
+            /** Format: date */
+            workDate: string;
+            location: string | null;
+            companyId: string | null;
+            swmsId: string | null;
+            supervisorName: string;
+            hazards: components["schemas"]["PretaskHazard"][];
+            status: components["schemas"]["PretaskStatus"];
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            reviewedBy: string | null;
+            reviewNote: string | null;
+            crewCount: number;
+            signedCount: number;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        PretaskPlanPage: {
+            data: components["schemas"]["PretaskPlan"][];
+            nextCursor: string | null;
+        };
+        PretaskCrew: {
+            id: string;
+            personName: string;
+            companyId: string | null;
+            userId: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            signatureFileId: string | null;
+            /** @description What the induction register said when this person signed. Null until they sign, or when they have no login. */
+            inductionStatus: components["schemas"]["PretaskInductionState"] | null;
+            /** @description Whether this person has read the linked accepted SWMS at its current revision. Null when it does not apply. */
+            swmsRead: boolean | null;
+        };
+        PretaskSwmsRef: {
+            id: string;
+            number: number;
+            numberLabel: string;
+            title: string;
+            status: string;
+            expired: boolean;
+        };
+        /** @description Something for the supervisor to look at. Never blocks the plan. */
+        PretaskWarning: {
+            /** @enum {string} */
+            code: "swms_not_accepted" | "swms_expired" | "induction" | "swms_not_read";
+            message: string;
+            personName: string | null;
+        };
+        PretaskEvent: {
+            id: string;
+            action: string;
+            note: string | null;
+            actor: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        PretaskPlanDetail: {
+            plan: components["schemas"]["PretaskPlan"];
+            crew: components["schemas"]["PretaskCrew"][];
+            swms: components["schemas"]["PretaskSwmsRef"] | null;
+            /** @description What stops the plan closing now. Empty when it can close. */
+            closeBlockers: string[];
+            warnings: components["schemas"]["PretaskWarning"][];
+            /** @description The record trail, oldest first. Append-only. */
+            events: components["schemas"]["PretaskEvent"][];
+            canEdit: boolean;
+            canReview: boolean;
+        };
+        PretaskCrewInput: {
+            personName: string;
+            companyId?: string | null;
+            userId?: string | null;
+        };
+        CreatePretaskPlanRequest: {
+            taskTitle: string;
+            /** Format: date */
+            workDate: string;
+            location?: string | null;
+            companyId?: string | null;
+            swmsId?: string | null;
+            supervisorName: string;
+            hazards?: components["schemas"]["PretaskHazard"][];
+            crew?: components["schemas"]["PretaskCrewInput"][];
+        };
+        UpdatePretaskPlanRequest: {
+            taskTitle?: string;
+            /** Format: date */
+            workDate?: string;
+            location?: string | null;
+            companyId?: string | null;
+            swmsId?: string | null;
+            supervisorName?: string;
+            hazards?: components["schemas"]["PretaskHazard"][];
+        };
+        PretaskTransitionRequest: {
+            /** @enum {string} */
+            action: "close" | "reopen";
+        };
+        ReviewPretaskPlanRequest: {
+            note?: string | null;
+        };
+        AddPretaskCrewRequest: {
+            crew: components["schemas"]["PretaskCrewInput"][];
+        };
+        SignPretaskCrewRequest: {
+            /** @description A ready image uploaded to this project. */
+            signatureFileId: string;
+        };
+        PretaskSuggestion: {
+            /** @enum {string} */
+            reason: "from_swms" | "recurring" | "recent_incident";
+            hazard: string;
+            controls: string;
+            riskBefore: components["schemas"]["PretaskRiskLevel"];
+            /** @description One plain sentence with the facts behind the suggestion. */
+            because: string;
+        };
+        PretaskSuggestionList: {
+            data: components["schemas"]["PretaskSuggestion"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -27973,6 +28290,8 @@ export interface components {
         ToolboxTopicId: string;
         ToolboxTalkId: string;
         ToolboxAttendeeId: string;
+        PretaskPlanId: string;
+        PretaskCrewId: string;
         IncidentId: string;
         IncidentActionId: string;
         GeotechInvestigationId: string;
@@ -45959,6 +46278,372 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ToolboxTalkDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPretaskPlans: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PretaskStatus"];
+                workDate?: string;
+                unreviewed?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPretaskPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePretaskPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestPretaskHazards: {
+        parameters: {
+            query?: {
+                swmsId?: string;
+                planId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskSuggestionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPretaskPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deletePretaskPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePretaskPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePretaskPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionPretaskPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PretaskTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewPretaskPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewPretaskPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addPretaskCrew: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPretaskCrewRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removePretaskCrew: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+                crewId: components["parameters"]["PretaskCrewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signPretaskCrew: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+                crewId: components["parameters"]["PretaskCrewId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignPretaskCrewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearPretaskSignature: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+                crewId: components["parameters"]["PretaskCrewId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
                 };
             };
             default: components["responses"]["Problem"];

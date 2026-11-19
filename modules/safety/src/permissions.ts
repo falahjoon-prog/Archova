@@ -16,4 +16,8 @@ export const SAFETY_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'safety.toolbox.read', scope: 'project', tool: 'inspections', level: 'read' },
   { key: 'safety.toolbox.run', scope: 'project', tool: 'inspections', level: 'standard' },
   { key: 'safety.toolbox.manage', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Pre-task plans: anyone on site makes and signs one; the builder's admin reviews, signs off and reopens.
+  { key: 'safety.pretask.read', scope: 'project', tool: 'inspections', level: 'read' },
+  { key: 'safety.pretask.run', scope: 'project', tool: 'inspections', level: 'standard' },
+  { key: 'safety.pretask.review', scope: 'project', tool: 'inspections', level: 'admin' },
 ];

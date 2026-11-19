@@ -74,6 +74,7 @@ export {
   Eye as ObservationsIcon,
   ListChecks as ActionPlansIcon,
   ClipboardList as InspectionsIcon,
+  ClipboardPen as PretaskIcon,
   FileWarning as SwmsIcon,
   TriangleAlert as IncidentsIcon,
   Megaphone as ToolboxIcon,

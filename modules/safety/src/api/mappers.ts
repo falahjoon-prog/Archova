@@ -4,6 +4,10 @@ import type {
   IncidentAction,
   IncidentActionFromSource,
   IncidentDetail,
+  PretaskCrew,
+  PretaskPlan,
+  PretaskPlanDetail,
+  PretaskSuggestion,
   Swms,
   SwmsDetail,
   ToolboxAttendee,
@@ -16,6 +20,8 @@ import { incidentLabel } from '../domain/incident';
 import type { IncidentService } from '../application/incidents';
 import { swmsLabel, type HrcwCategory } from '../domain/swms';
 import type { SwmsService, SwmsView } from '../application/swms';
+import { pretaskLabel, type HazardSuggestion } from '../domain/pretask';
+import type { CrewView, PlanRow, PretaskService } from '../application/pretask';
 import { toolboxLabel, type TopicSuggestion } from '../domain/toolbox';
 import type { AttendeeView, TalkRow, ToolboxService, TopicRow } from '../application/toolbox';
 
@@ -261,3 +267,78 @@ export const toSuggestionDto = (s: TopicSuggestion): ToolboxSuggestion => ({
   because: s.because,
   hrcwCategory: s.hrcwCategory,
 });
+
+export const toPlanDto = (
+  p: PlanRow & { crewCount: number; signedCount: number },
+): PretaskPlan => ({
+  id: encodeId('pretaskPlan', p.id),
+  projectId: encodeId('project', p.projectId),
+  number: p.number,
+  numberLabel: pretaskLabel(p.number),
+  taskTitle: p.taskTitle,
+  workDate: p.workDate,
+  location: p.location,
+  companyId: p.companyId ? encodeId('company', p.companyId) : null,
+  swmsId: p.swmsId ? encodeId('swms', p.swmsId) : null,
+  supervisorName: p.supervisorName,
+  hazards: p.hazards,
+  status: p.status,
+  closedAt: isoOrNull(p.closedAt),
+  reviewedAt: isoOrNull(p.reviewedAt),
+  reviewedBy: userOrNull(p.reviewedBy),
+  reviewNote: p.reviewNote,
+  crewCount: p.crewCount,
+  signedCount: p.signedCount,
+  createdBy: userOrNull(p.createdBy),
+  createdAt: p.createdAt.toISOString(),
+  version: p.version,
+});
+
+const toCrewDto = (c: CrewView): PretaskCrew => ({
+  id: encodeId('pretaskCrew', c.id),
+  personName: c.personName,
+  companyId: c.companyId ? encodeId('company', c.companyId) : null,
+  userId: userOrNull(c.userId),
+  signedAt: isoOrNull(c.signedAt),
+  signatureFileId: c.signatureFileId ? encodeId('file', c.signatureFileId) : null,
+  inductionStatus: c.inductionStatus,
+  swmsRead: c.swmsRead,
+});
+
+export const toPlanDetail = (
+  d: Awaited<ReturnType<PretaskService['detail']>>,
+): PretaskPlanDetail => ({
+  plan: toPlanDto({
+    ...d.plan,
+    crewCount: d.crew.length,
+    signedCount: d.crew.filter((c) => c.signedAt).length,
+  }),
+  crew: d.crew.map(toCrewDto),
+  swms: d.swms
+    ? {
+        id: encodeId('swms', d.swms.id),
+        number: d.swms.number,
+        numberLabel: swmsLabel(d.swms.number),
+        title: d.swms.title,
+        status: d.swms.status,
+        expired: d.swms.expired,
+      }
+    : null,
+  closeBlockers: d.closeBlockers,
+  warnings: d.warnings.map((w) => ({
+    code: w.code,
+    message: w.message,
+    personName: 'personName' in w ? w.personName : null,
+  })),
+  events: d.events.map((e) => ({
+    id: e.id,
+    action: e.action,
+    note: e.note,
+    actor: userOrNull(e.actorId),
+    at: e.at.toISOString(),
+  })),
+  canEdit: d.canEdit,
+  canReview: d.canReview,
+});
+
+export const toHazardSuggestionDto = (s: HazardSuggestion): PretaskSuggestion => ({ ...s });

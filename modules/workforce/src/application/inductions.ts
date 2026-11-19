@@ -1121,6 +1121,45 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     return out;
   }
 
+  /**
+   * Where each person (by login) stands on the project's induction today. For `safety` pre-task plans, which show it
+   * beside a crew member's name; read-only, and the caller has already authorised the viewer. People without a worker
+   * record, or on a project with no published induction, are `unknown`.
+   */
+  async function statusForUsers(
+    scope: TenantScope,
+    projectId: string,
+    userIds: string[],
+  ): Promise<
+    Map<string, 'current' | 'not_inducted' | 'needs_reinduction' | 'expired' | 'unknown'>
+  > {
+    const out = new Map<
+      string,
+      'current' | 'not_inducted' | 'needs_reinduction' | 'expired' | 'unknown'
+    >(userIds.map((u) => [u, 'unknown']));
+    if (!userIds.length) return out;
+    const induction = await activeInduction(scope, projectId, null);
+    if (!induction) return out;
+    const required = requiredVersion(await versionsOf(scope, [induction.id]), now());
+    if (!required) return out;
+    const project = await deps.platform.getProject(scope, projectId);
+    const today = localDateOf(now(), project.timezone);
+    const people = await scope.tx
+      .select({ id: workers.id, userId: workers.userId })
+      .from(workers)
+      .where(and(inArray(workers.userId, userIds), eq(workers.kind, 'worker')));
+    const best = await bestCompletions(
+      scope,
+      induction.id,
+      people.map((w) => w.id),
+    );
+    for (const w of people) {
+      const st = completionStatus(best.get(w.id) ?? null, required.number, today);
+      out.set(w.userId!, st === 'in_progress' ? 'not_inducted' : st);
+    }
+    return out;
+  }
+
   /** G2 site induction and G3 white card recorded (compliance/04 §5), registered with the X54 interface. */
   const gateSource: ComplianceSource = async (scope, q) => {
     if (q.worker.kind !== 'worker') return { reasons: [], sources: [] };
@@ -1250,6 +1289,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     sightCredential,
     sign,
     gateSource,
+    statusForUsers,
     register,
   };
 }
