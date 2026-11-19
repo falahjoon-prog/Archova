@@ -7265,6 +7265,51 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Estimate' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/send-to-budget:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    post:
+      operationId: sendEstimateToBudget
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.issue
+      summary: Turn an issued estimate into the project's draft budget, once.
+      description: |
+        Makes a budget line per estimate section (cost code `EST-nn`, or the one given in `codes`), plus a contingency
+        and a margin line, so the budget adds up to the issued total ex GST. Starts the budget if the project has
+        none. Refused when the estimate is not issued (`estimate.not_issued`), was already sent
+        (`estimate.already_sent`), or the budget is locked or already has a line on one of the codes. All or none.
+        Also needs `financials.budget.manage`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                codes:
+                  type: object
+                  description: Section id (or `unsectioned`) to the cost code the budget line uses.
+                  additionalProperties: { type: string, minLength: 1, maxLength: 30 }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estimate, imported]
+                properties:
+                  estimate: { $ref: '#/components/schemas/Estimate' }
+                  imported: { type: integer }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -31076,6 +31121,7 @@ components:
               status,
               issuedAt,
               issuedBy,
+              sentToBudgetAt,
               lines,
               totals,
               createdAt,
@@ -31091,6 +31137,7 @@ components:
             status: { type: string, enum: [draft, issued] }
             issuedAt: { type: [string, 'null'], format: date-time }
             issuedBy: { type: [string, 'null'] }
+            sentToBudgetAt: { type: [string, 'null'], format: date-time }
             lines:
               type: array
               items: { $ref: '#/components/schemas/EstimateLine' }

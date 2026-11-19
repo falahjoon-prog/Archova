@@ -475,6 +475,21 @@ export function estimatingRoutes(
           ),
         ),
       ),
+    sendEstimateToBudget: async (input) => {
+      const r = await tx(input, (s) =>
+        estimates.sendToBudget(
+          s,
+          project(input.params),
+          estimateIdOf(input.params),
+          input.body?.codes ?? {},
+        ),
+      );
+      return {
+        status: 200,
+        body: { estimate: toEstimateDto(r.sheet), imported: r.imported },
+        headers: { etag: etag(r.sheet.estimate.version) },
+      };
+    },
     listTakeoffMeasurements: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

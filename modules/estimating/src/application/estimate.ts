@@ -8,6 +8,7 @@ import {
   versionConflict,
   type TenantScope,
 } from '@archova/kernel';
+import type { FinancialsModule } from '@archova/mod-financials';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import {
@@ -24,6 +25,7 @@ import {
   takeoffMeasurements,
   type MarginBasis,
 } from '../infra/tables';
+import { planBudgetRows, rowsTotalCents } from '../domain/budget-handoff';
 import type { LibraryService } from './library';
 
 export type EstimateRow = typeof estimates.$inferSelect;
@@ -32,6 +34,7 @@ export type LineRow = typeof estimateLines.$inferSelect;
 export interface EstimateDeps {
   platform: Pick<PlatformApi, 'getProject'>;
   library: LibraryService;
+  financials: Pick<FinancialsModule['api'], 'importEstimateBudget'>;
   now?: () => Date;
 }
 
@@ -498,7 +501,69 @@ export function createEstimateService(deps: EstimateDeps) {
     return build(scope, updated);
   }
 
-  return { list, get, create, update, remove, addLine, updateLine, removeLine, issue };
+  /**
+   * Turns an issued estimate into the project's draft budget: a line per section plus contingency and margin, adding up
+   * to the issued total ex GST. Once only; `codes` maps a section id (or `unsectioned`) to the builder's cost code.
+   */
+  async function sendToBudget(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    codes: Record<string, string> = {},
+  ) {
+    const e = await load(scope, projectId, id);
+    if (e.status !== 'issued')
+      throw new AppError(
+        'estimate.not_issued',
+        'Issue the estimate before sending it to the budget.',
+      );
+    if (e.sentToBudgetAt)
+      throw new AppError(
+        'estimate.already_sent',
+        'This estimate has already been sent to the budget.',
+      );
+    const sheet = await build(scope, e);
+    const { rows, problems } = planBudgetRows(sheet.lines, sheet.totals, codes);
+    if (problems.length > 0)
+      throw new AppError('validation_failed', 'Each section needs its own cost code.', problems);
+    if (rows.length === 0) throw invalid('lines', 'Nothing to send: no priced lines');
+    if (rowsTotalCents(rows) !== BigInt(sheet.totals.totalExGst.replace('.', '')))
+      throw invalid('lines', 'The budget lines do not add up to the issued total');
+    const result = await deps.financials.importEstimateBudget(scope, projectId, rows);
+    const [updated] = await scope.tx
+      .update(estimates)
+      .set({
+        sentToBudgetAt: now(),
+        sentToBudgetBy: scope.ctx.userId,
+        version: e.version + 1,
+        updatedAt: now(),
+      })
+      .where(and(eq(estimates.id, id), eq(estimates.version, e.version)))
+      .returning();
+    if (!updated) throw versionConflict();
+    scope.events.add({
+      type: 'estimating.estimate.sent_to_budget.v1',
+      projectId,
+      entityType: 'estimate',
+      entityId: id,
+      entityVersion: updated.version,
+      data: { estimateId: id, lines: result.imported, totalExGst: sheet.totals.totalExGst },
+    });
+    return { sheet: await build(scope, updated), imported: result.imported };
+  }
+
+  return {
+    list,
+    get,
+    create,
+    update,
+    remove,
+    addLine,
+    updateLine,
+    removeLine,
+    issue,
+    sendToBudget,
+  };
 }
 
 export type EstimateService = ReturnType<typeof createEstimateService>;

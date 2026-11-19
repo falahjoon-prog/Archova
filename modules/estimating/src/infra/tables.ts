@@ -231,6 +231,8 @@ export const estimates = estimatingSchema.table('estimates', {
   issuedAt: timestamp('issued_at', { withTimezone: true }),
   issuedBy: uuid('issued_by'),
   totalExGst: numeric('total_ex_gst', { precision: 18, scale: 2 }),
+  sentToBudgetAt: timestamp('sent_to_budget_at', { withTimezone: true }),
+  sentToBudgetBy: uuid('sent_to_budget_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),

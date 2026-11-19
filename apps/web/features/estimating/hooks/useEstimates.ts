@@ -121,6 +121,10 @@ export function useEstimateMutations(estimateId?: string) {
         apiClient.issue(projectId, estimate),
       onSuccess: accept,
     }),
+    sendToBudget: useMutation({
+      mutationFn: (estimateId: string) => apiClient.sendToBudget(projectId, estimateId),
+      onSuccess: (r) => accept(r.estimate),
+    }),
     /** Several lines from takeoff in one go; the last response is the finished sheet. */
     addLines: useMutation({
       mutationFn: async (input: { estimateId: string; lines: EstimateLineInput[] }) => {

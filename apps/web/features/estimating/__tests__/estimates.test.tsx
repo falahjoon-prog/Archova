@@ -49,6 +49,7 @@ const sheet = (over: Record<string, unknown> = {}) => ({
   gstPct: '10.00',
   issuedAt: null,
   issuedBy: null,
+  sentToBudgetAt: null,
   lines: [line()],
   totals: {
     subtotal: '4250.00',
