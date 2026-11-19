@@ -61,3 +61,14 @@ export const unitEvents = prefabSchema.table('unit_events', {
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
   byUser: uuid('by_user'),
 });
+
+export const factories = prefabSchema.table('factories', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  location: text('location'),
+  contact: text('contact'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

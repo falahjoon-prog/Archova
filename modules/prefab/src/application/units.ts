@@ -24,11 +24,12 @@ import {
   type UnitStatus,
   type UnitView,
 } from '../domain/prefab';
-import { qaChecks, unitEvents, units } from '../infra/tables';
+import { factories, qaChecks, unitEvents, units } from '../infra/tables';
 
 export type UnitRow = typeof units.$inferSelect;
 export type CheckRow = typeof qaChecks.$inferSelect;
 export type EventRow = typeof unitEvents.$inferSelect;
+export type FactoryRow = typeof factories.$inferSelect;
 export interface QaTally {
   total: number;
   done: number;
@@ -614,7 +615,61 @@ export function createPrefabService(deps: PrefabDeps) {
     return planDates(input);
   }
 
+  async function listFactories(scope: TenantScope, projectId: string) {
+    await need(scope, 'prefab.units.view', projectId);
+    return scope.tx
+      .select()
+      .from(factories)
+      .where(eq(factories.projectId, projectId))
+      .orderBy(asc(factories.name))
+      .limit(500);
+  }
+
+  async function addFactory(
+    scope: TenantScope,
+    projectId: string,
+    input: { name: string; location?: string | undefined; contact?: string | undefined },
+  ) {
+    await need(scope, 'prefab.units.write', projectId);
+    await deps.platform.getProject(scope, projectId);
+    const name = input.name.trim();
+    if (!name) throw invalid('name', 'Give the factory a name.');
+    const [dupe] = await scope.tx
+      .select({ id: factories.id })
+      .from(factories)
+      .where(
+        and(eq(factories.projectId, projectId), sql`lower(${factories.name}) = lower(${name})`),
+      )
+      .limit(1);
+    if (dupe) throw new AppError('prefab_factory.name_taken');
+    const [f] = await scope.tx
+      .insert(factories)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        name,
+        location: text(input.location),
+        contact: text(input.contact),
+        createdBy: scope.ctx.userId,
+      })
+      .returning();
+    return f!;
+  }
+
+  async function removeFactory(scope: TenantScope, projectId: string, factoryId: string) {
+    await need(scope, 'prefab.units.write', projectId);
+    const gone = await scope.tx
+      .delete(factories)
+      .where(and(eq(factories.id, factoryId), eq(factories.projectId, projectId)))
+      .returning({ id: factories.id });
+    if (gone.length === 0) throw new AppError('prefab_factory.not_found');
+  }
+
   return {
+    listFactories,
+    addFactory,
+    removeFactory,
     list,
     get,
     create,

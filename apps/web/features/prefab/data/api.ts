@@ -16,6 +16,8 @@ export type DatePlan = S['PrefabDatePlan'];
 export type CreateUnit = S['CreatePrefabUnitRequest'];
 export type UpdateUnit = S['UpdatePrefabUnitRequest'];
 export type Transition = S['PrefabTransitionRequest'];
+export type Factory = S['PrefabFactory'];
+export type CreateFactory = S['CreatePrefabFactoryRequest'];
 export type PlanRequest = S['PrefabPlanDatesRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/prefab' as const;
@@ -27,6 +29,24 @@ export function createPrefabApi(orgId: string) {
   return {
     async list(projectId: string): Promise<Unit[]> {
       return unwrap(await api.GET(`${P}/units`, { params: { path: path(projectId) } })).data;
+    },
+    async listFactories(projectId: string): Promise<Factory[]> {
+      return unwrap(await api.GET(`${P}/factories`, { params: { path: path(projectId) } })).data;
+    },
+    async createFactory(projectId: string, body: CreateFactory): Promise<Factory> {
+      return unwrap(
+        await api.POST(`${P}/factories`, {
+          params: { path: path(projectId), header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async deleteFactory(projectId: string, factoryId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${P}/factories/{factoryId}`, {
+          params: { path: { ...path(projectId), factoryId } },
+        }),
+      );
     },
     async get(projectId: string, unitId: string): Promise<UnitDetail> {
       return unwrap(

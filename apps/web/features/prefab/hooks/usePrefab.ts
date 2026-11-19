@@ -5,7 +5,13 @@ import { useMemo } from 'react';
 import { queryKeys } from '@archova/query';
 import { uploadFile } from '@/shared/lib/uploads';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { createPrefabApi, type CreateUnit, type PlanRequest, type Transition } from '../data/api';
+import {
+  createPrefabApi,
+  type CreateFactory,
+  type CreateUnit,
+  type PlanRequest,
+  type Transition,
+} from '../data/api';
 
 function usePrefabApi() {
   const { orgId } = useCurrentOrg();
@@ -18,6 +24,15 @@ export function usePrefabUnits(projectId: string) {
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'prefab', { view: 'list' }),
     queryFn: () => source.list(projectId),
+  });
+}
+
+export function usePrefabFactories(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = usePrefabApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'prefab', { view: 'factories' }),
+    queryFn: () => source.listFactories(projectId),
   });
 }
 
@@ -51,6 +66,14 @@ export function usePrefabMutations(projectId: string) {
   return {
     create: useMutation({
       mutationFn: (body: CreateUnit) => source.create(projectId, body),
+      onSuccess: refresh,
+    }),
+    addFactory: useMutation({
+      mutationFn: (body: CreateFactory) => source.createFactory(projectId, body),
+      onSuccess: refresh,
+    }),
+    removeFactory: useMutation({
+      mutationFn: (factoryId: string) => source.deleteFactory(projectId, factoryId),
       onSuccess: refresh,
     }),
     transition: useMutation({

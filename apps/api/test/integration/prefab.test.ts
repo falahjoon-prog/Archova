@@ -236,4 +236,43 @@ describe('Prefabricated and modular units', () => {
       422,
     );
   });
+
+  it('keeps a factory list per project and leaves units with the name they were given', async () => {
+    const s = await setup('pfac');
+    const f = `${s.base}/factories`;
+    const made = await s.sm.browser.post(f, { name: 'PodWorks', location: 'Wacol QLD' });
+    expect(made.statusCode).toBe(201);
+    expect(made.json()).toMatchObject({ name: 'PodWorks', location: 'Wacol QLD', contact: null });
+    // The same name in any case is refused.
+    expect((await s.sm.browser.post(f, { name: 'podworks' })).statusCode).toBe(409);
+    expect((await s.sm.browser.post(f, { name: 'Panel Co' })).statusCode).toBe(201);
+    const list = (await s.sm.browser.get(f)).json().data;
+    expect(list.map((x: { name: string }) => x.name)).toEqual(['Panel Co', 'PodWorks']);
+
+    const unit = await s.sm.browser.post(`${s.base}/units`, {
+      code: 'WP-01',
+      name: 'Wall panel',
+      kind: 'wall_panel',
+      factoryName: 'PodWorks',
+    });
+    expect(unit.statusCode).toBe(201);
+
+    // Removing a factory leaves the unit's factory name alone, and a second removal is a 404.
+    const del = await s.sm.browser.del(`${f}/${made.json().id}`);
+    expect(del.statusCode).toBe(204);
+    expect((await s.sm.browser.del(`${f}/${made.json().id}`)).statusCode).toBe(404);
+    expect(
+      (await s.sm.browser.get(`${s.base}/units/${unit.json().id}`)).json().unit.factoryName,
+    ).toBe('PodWorks');
+
+    // Another project does not see this list.
+    const other = await createProject(s.pm.browser, s.base.split('/')[3]!, {
+      name: 'Other',
+      state: 'QLD',
+    });
+    const theirs = await s.pm.browser.get(
+      `/v1/orgs/${s.base.split('/')[3]}/projects/${other.id}/prefab/factories`,
+    );
+    expect(theirs.json().data).toEqual([]);
+  });
 });

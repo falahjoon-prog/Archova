@@ -18990,6 +18990,57 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PrefabCheck' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/factories:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPrefabFactories
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.view
+      summary: 'The factories this project builds units at, by name.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabFactoryList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrefabFactory
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Add a factory to the project list. Names are unique per project, ignoring case.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrefabFactoryRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrefabFactory' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/prefab/factories/{factoryId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PrefabFactoryId'
+    delete:
+      operationId: deletePrefabFactory
+      tags: [prefab]
+      x-module: workforce
+      x-permission: prefab.units.write
+      summary: 'Remove a factory from the list. Units keep the factory name they were given.'
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/prefab/insights:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20093,6 +20144,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^pfu_[0-9A-Za-z]{26}$' }
+    PrefabFactoryId:
+      name: factoryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pff_[0-9A-Za-z]{26}$' }
     PrefabCheckId:
       name: checkId
       in: path
@@ -20804,6 +20860,29 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PrefabUnit' }
+    PrefabFactory:
+      type: object
+      required: [id, name, location, contact]
+      properties:
+        id: { type: string, pattern: '^pff_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        location: { type: [string, 'null'] }
+        contact: { type: [string, 'null'] }
+    PrefabFactoryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PrefabFactory' }
+    CreatePrefabFactoryRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        location: { type: string, maxLength: 200 }
+        contact: { type: string, maxLength: 200 }
     PrefabCheck:
       type: object
       required: [id, stage, label, required, result, note, fileIds, checkedAt]

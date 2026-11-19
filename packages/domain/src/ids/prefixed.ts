@@ -92,6 +92,7 @@ export const ID_PREFIXES = {
   logisticsResource: 'lgr',
   prefabUnit: 'pfu',
   prefabCheck: 'pfc',
+  prefabFactory: 'pff',
   prefabEvent: 'pfe',
   materialDelivery: 'dlv',
   materialDeliveryEvent: 'dle',

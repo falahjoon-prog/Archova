@@ -3408,6 +3408,13 @@ export const CreatePlantMaintenancePlanRequestSchema = z.object({
 }).strict();
 export type CreatePlantMaintenancePlanRequest = z.infer<typeof CreatePlantMaintenancePlanRequestSchema>;
 
+export const CreatePrefabFactoryRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "location": z.string().max(200).optional(),
+  "contact": z.string().max(200).optional(),
+}).strict();
+export type CreatePrefabFactoryRequest = z.infer<typeof CreatePrefabFactoryRequestSchema>;
+
 export const PrefabUnitKindSchema = z.enum(["bathroom_pod", "wall_panel", "floor_cassette", "volumetric_module", "roof_truss", "facade_panel", "services_riser", "other"]);
 export type PrefabUnitKind = z.infer<typeof PrefabUnitKindSchema>;
 
@@ -9185,6 +9192,19 @@ export const PrefabEventSchema = z.object({
   "at": z.string().datetime({ offset: true }),
 });
 export type PrefabEvent = z.infer<typeof PrefabEventSchema>;
+
+export const PrefabFactorySchema = z.object({
+  "id": z.string().regex(new RegExp("^pff_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "location": z.string().nullable(),
+  "contact": z.string().nullable(),
+});
+export type PrefabFactory = z.infer<typeof PrefabFactorySchema>;
+
+export const PrefabFactoryListSchema = z.object({
+  "data": z.array(PrefabFactorySchema),
+});
+export type PrefabFactoryList = z.infer<typeof PrefabFactoryListSchema>;
 
 export const PrefabFlagSchema = z.object({
   "unitId": z.string().regex(new RegExp("^pfu_[0-9A-Za-z]{26}$")),

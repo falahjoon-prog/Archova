@@ -4,10 +4,11 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, Dialog, Select, Textarea, TextField } from '@archova/ui';
 import { NovaIcon } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import type { CreateUnit, DatePlan, UnitKind } from '../data/api';
+import type { CreateUnit, DatePlan, Factory, UnitKind } from '../data/api';
 import type { usePrefabMutations } from '../hooks/usePrefab';
 import { KIND_LABELS, fmtDate } from '../lib/units';
 
+const OTHER = '__other';
 const KINDS = Object.entries(KIND_LABELS) as [UnitKind, string][];
 
 export interface DeliveryOption {
@@ -20,11 +21,13 @@ export function AddUnitDialog({
   open,
   onClose,
   deliveries,
+  factories,
   m,
 }: {
   open: boolean;
   onClose: () => void;
   deliveries: readonly DeliveryOption[];
+  factories: readonly Factory[];
   m: ReturnType<typeof usePrefabMutations>;
 }) {
   const [code, setCode] = useState('');
@@ -140,8 +143,32 @@ export function AddUnitDialog({
           />
         </div>
         <TextField label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
+        {factories.length > 0 && factory !== '' && !factories.some((f) => f.name === factory) ? (
+          <TextField
+            label="Factory name"
+            value={factory.trimStart()}
+            onChange={(e) => setFactory(e.target.value || ' ')}
+          />
+        ) : null}
         <div className="form-row">
-          <TextField label="Factory" value={factory} onChange={(e) => setFactory(e.target.value)} />
+          {factories.length > 0 ? (
+            <Select
+              label="Factory"
+              value={factories.some((f) => f.name === factory) ? factory : factory ? OTHER : ''}
+              onChange={(e) => setFactory(e.target.value === OTHER ? ' ' : e.target.value)}
+              options={[
+                { value: '', label: 'Not decided' },
+                ...factories.map((f) => ({ value: f.name, label: f.name })),
+                { value: OTHER, label: 'Another factory…' },
+              ]}
+            />
+          ) : (
+            <TextField
+              label="Factory"
+              value={factory}
+              onChange={(e) => setFactory(e.target.value)}
+            />
+          )}
           <TextField
             label="Location on site"
             value={location}
