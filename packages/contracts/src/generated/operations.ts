@@ -1456,6 +1456,11 @@ export const GetBidBoardQuery = z.object({
   "trade": z.string().max(100).optional(),
   "projectId": z.string().optional(),
 });
+export const ReplayWebhookDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^whd_[0-9A-Za-z]{26}$")),
+});
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7985,6 +7990,18 @@ export const operations = {
     contentType: null,
     params: GetBidBoardParams,
     query: GetBidBoardQuery,
+    body: null,
+  },
+  replayWebhookDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ReplayWebhookDeliveryParams,
+    query: null,
     body: null,
   },
   listTenderPackages: {
