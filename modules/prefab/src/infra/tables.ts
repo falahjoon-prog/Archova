@@ -45,6 +45,7 @@ export const qaChecks = prefabSchema.table('qa_checks', {
   required: boolean('required').notNull().default(true),
   result: text('result').$type<CheckResult>().notNull().default('pending'),
   note: text('note'),
+  fileIds: uuid('file_ids').array().notNull().default([]),
   checkedAt: timestamp('checked_at', { withTimezone: true }),
   checkedBy: uuid('checked_by'),
   sortOrder: integer('sort_order').notNull().default(0),

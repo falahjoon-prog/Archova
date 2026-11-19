@@ -9161,6 +9161,7 @@ export const PrefabCheckSchema = z.object({
   "required": z.boolean(),
   "result": z.enum(["pending", "pass", "fail", "na"]),
   "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
   "checkedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PrefabCheck = z.infer<typeof PrefabCheckSchema>;
@@ -10065,6 +10066,7 @@ export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionRe
 export const RecordPrefabCheckRequestSchema = z.object({
   "result": z.enum(["pending", "pass", "fail", "na"]),
   "note": z.string().max(1000).optional(),
+  "fileIds": z.array(z.string()).max(10).optional(),
 }).strict();
 export type RecordPrefabCheckRequest = z.infer<typeof RecordPrefabCheckRequestSchema>;
 

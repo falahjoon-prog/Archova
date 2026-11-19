@@ -11,6 +11,7 @@ export function createPrefabModule(
   deps: {
     access: AccessService;
     platform: Pick<PlatformApi, 'getProject'>;
+    files: PrefabDeps['files'];
     delivery: PrefabDeps['delivery'];
     createDelivery: PrefabDeps['createDelivery'];
     now?: () => Date;

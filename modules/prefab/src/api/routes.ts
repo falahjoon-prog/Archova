@@ -115,7 +115,14 @@ export function prefabRoutes(database: Database, svc: PrefabService) {
             project(input.params),
             unit(input.params),
             id('prefabCheck', input.params.checkId, 'prefab_check.not_found'),
-            input.body,
+            {
+              ...input.body,
+              ...(input.body.fileIds
+                ? {
+                    fileIds: input.body.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)),
+                  }
+                : {}),
+            },
           ),
         ),
       ),

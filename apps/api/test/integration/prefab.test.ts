@@ -5,6 +5,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  uploadFile,
   type TestContext,
 } from './helpers';
 
@@ -200,5 +201,39 @@ describe('Prefabricated and modular units', () => {
     ).json();
     expect(back.data).toHaveLength(1);
     expect(back.data[0].activityName).toBe('Erect panels');
+  });
+
+  it('keeps photos on a QA check, and refuses a file from another project', async () => {
+    const s = await setup('pfph');
+    const [, , , orgId, , projectId] = s.base.split('/');
+    const unit = (
+      await s.sm.browser.post(`${s.base}/units`, {
+        code: 'BP-1',
+        name: 'Pod',
+        kind: 'bathroom_pod',
+      })
+    ).json();
+    const check = (await s.sm.browser.get(`${s.base}/units/${unit.id}`)).json().checks[0];
+    const url = `${s.base}/units/${unit.id}/checks/${check.id}`;
+
+    const photo = await uploadFile(t, s.sm.browser, orgId!, projectId!, 'pod.jpg', 'prefab');
+    const withPhoto = await s.sm.browser.patch(url, { result: 'pass', fileIds: [photo] });
+    expect(withPhoto.statusCode).toBe(200);
+    expect(withPhoto.json().fileIds).toEqual([photo]);
+
+    // Recording again without a list leaves the photos alone; an empty list clears them.
+    expect((await s.sm.browser.patch(url, { result: 'na' })).json().fileIds).toEqual([photo]);
+    expect((await s.sm.browser.patch(url, { result: 'na', fileIds: [] })).json().fileIds).toEqual(
+      [],
+    );
+
+    // A file uploaded to another project of the same org is not attachable here, even by someone who can see both.
+    const other = await createProject(s.pm.browser, orgId!, { name: 'Other', state: 'QLD' });
+    const foreign = await uploadFile(t, s.pm.browser, orgId!, other.id, 'x.pdf');
+    const bad = await s.pm.browser.patch(url, { result: 'pass', fileIds: [foreign] });
+    expect(bad.statusCode).toBe(422);
+    expect((await s.sm.browser.patch(url, { result: 'pass', fileIds: ['nope'] })).statusCode).toBe(
+      422,
+    );
   });
 });

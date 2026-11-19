@@ -262,6 +262,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       submittals: 'submittals.submittals.submit',
       // A subcontractor attaches supporting records to a notice or reply.
       correspondence: 'correspondence.items.respond',
+      // Photos on a prefab unit's QA checks.
+      prefab: 'prefab.units.write',
     },
   });
   filesApi = files.api;
@@ -642,6 +644,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const prefab = createPrefabModule(services, {
     access: access.api,
     platform: platform.api,
+    files: files.api,
     delivery: (scope, projectId, id) => logistics.api.deliveryRef(scope, projectId, id),
     createDelivery: (scope, projectId, input) =>
       logistics.api.createDelivery(scope, projectId, input),
