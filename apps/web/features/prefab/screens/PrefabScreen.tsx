@@ -82,7 +82,10 @@ export function PrefabScreen() {
       sortValue: (u) => u.installSequence ?? Number.MAX_SAFE_INTEGER,
       cell: (u) => (
         <>
-          <strong>{u.code}</strong> {u.name}
+          <Button size="sm" variant="tertiary" onClick={() => setOpen(u.id)}>
+            {u.code}
+          </Button>{' '}
+          {u.name}
           <span className="u-caption">
             {' '}
             · {KIND_LABELS[u.kind]}
@@ -91,7 +94,6 @@ export function PrefabScreen() {
         </>
       ),
     },
-    { id: 'factory', header: 'Factory', cell: (u) => u.factoryName ?? '—' },
     {
       id: 'status',
       header: 'Status',
@@ -102,6 +104,7 @@ export function PrefabScreen() {
         </>
       ),
     },
+    { id: 'factory', header: 'Factory', cell: (u) => u.factoryName ?? '—' },
     {
       id: 'progress',
       header: 'Fabrication',
