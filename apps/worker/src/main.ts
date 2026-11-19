@@ -38,6 +38,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { warrantyExpiry } from './jobs/warranty-expiry';
+import { plantHireCosts } from './jobs/plant-hire-costs';
 import { walletRetention } from './jobs/wallet-retention';
 import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
@@ -130,6 +131,7 @@ async function main() {
     walletExpiry(walletExpiryNotices),
     walletRetention(),
     warrantyExpiry,
+    plantHireCosts,
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

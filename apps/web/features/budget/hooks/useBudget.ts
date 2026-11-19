@@ -73,6 +73,15 @@ export function useForecast(projectId: string) {
   });
 }
 
+export function useCashflow(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { cashflow: true }),
+    queryFn: () => source.cashflow(projectId),
+  });
+}
+
 export function useSaveForecast(projectId: string) {
   const { orgId } = useCurrentOrg();
   const source = useBudgetApi();

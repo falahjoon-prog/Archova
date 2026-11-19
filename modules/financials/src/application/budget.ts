@@ -586,6 +586,28 @@ export function createBudgetService(
     };
   }
 
+  /**
+   * Cost codes for the time dashboard (`reporting`): the code, its name and its parent, so hours can be grouped under
+   * the top-level code. Needs the budget read permission and builder staff; otherwise `null`, and hours stay ungrouped.
+   */
+  async function costCodesForReporting(scope: TenantScope, projectId: string) {
+    const ok =
+      scope.ctx.principalType === 'member' &&
+      (await deps.access.can(scope, 'financials.budget.read', { projectId }));
+    if (!ok) return null;
+    const rows = await scope.tx
+      .select({
+        id: costCodes.id,
+        code: costCodes.code,
+        description: costCodes.description,
+        parentId: costCodes.parentId,
+      })
+      .from(costCodes)
+      .where(eq(costCodes.projectId, projectId))
+      .orderBy(asc(costCodes.code));
+    return rows;
+  }
+
   async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
     await need(scope, 'financials.forecast.read', projectId);
     const { budget, lines } = await getBudget(scope, projectId);
@@ -875,6 +897,7 @@ export function createBudgetService(
     budgetVsForecastFor,
     reviewFacts,
     portfolioSummary,
+    costCodesForReporting,
     listCostCodes,
     createCostCode,
     updateCostCode,

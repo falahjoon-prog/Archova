@@ -44,6 +44,7 @@ tags:
   - name: insurance
   - name: safety
   - name: permits
+  - name: handover
   - name: geotech
   - name: estimating
   - name: integrations
@@ -935,7 +936,8 @@ paths:
       tags: [plant]
       x-module: plant
       x-permission: plant.allocations.manage
-      summary: Cancel an allocation, freeing the machine for those days.
+      summary: Cancel an allocation that has not started, or end one that is under way as of yesterday.
+      description: A finished allocation can't be cancelled (`plant.bad_state`); its days stay on record and are posted to the budget.
       responses:
         '200':
           description: OK
@@ -1331,6 +1333,249 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DelayRegister' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/eot-settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getEotSettings
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'The contract notice and claim periods and the rain-day rule for delay events (SCH-AC4). Builder staff only. Until a person saves them they are the AS 4000 defaults, to be checked against the contract.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EotSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: putEotSettings
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Save the contract periods. `confirmed` records that a person checked them against the contract and its special conditions; until then every deadline is shown as an estimate.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutEotSettingsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EotSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-event-candidates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDelayEventCandidates
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Delays, RFI time impacts and rain days that could go into a delay event, newest first. Rain days come from the site diary weather by the project rain-day threshold. Evidence already in an event is left out unless `includeAttached`.'
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - {
+            name: includeAttached,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventCandidateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-event-insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDelayEventInsights
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Nova on delay events: notice and claim clocks running down, delays marked as possible EOT that no event covers, events with no evidence, and the days claimed and granted. Found by rules from the contract periods, so it costs nothing and never says an extension is due.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDelayEvents
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Delay events on the project, newest first, each with its notice and claim clocks and an evidence summary.'
+      parameters:
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/DelayEventStatus' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Group delays into an event (SCH-US3). `candidateKeys` from the candidates list are copied in as evidence, each as a snapshot.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDelayEventRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    get:
+      operationId: getDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'A delay event with its evidence pack and history.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Change an event: dates, cause, days claimed, critical-path judgement or a deadline set to match a contract amendment. A closed or withdrawn event must be reopened first.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDelayEventRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: addDelayEventEvidence
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Add evidence: candidates from the register, notices from correspondence, or a written note. A piece of evidence supports one event at a time.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddDelayEventEvidenceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/evidence/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+      - $ref: '#/components/parameters/DelayEventItemId'
+    delete:
+      operationId: removeDelayEventEvidence
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Take a piece of evidence out of an event. The source is untouched and can go into another event.'
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: transitionDelayEvent
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Record that notice was given or the claim sent (optionally linking the correspondence item), the superintendent assessment and days granted, or close, withdraw or reopen the event. This records what a person did; nothing is sent from here.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelayEventTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-events/{eventId}/drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DelayEventId'
+    post:
+      operationId: draftDelayEventLetter
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Nova drafts a notice of delay or an EOT claim from the event and its evidence pack. The draft is text for a person to edit and send; it is not stored as correspondence and nothing is sent. It never says an extension is due.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelayEventDraftRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayEventDraft' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules:
     parameters:
@@ -4602,6 +4847,49 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: levelBidsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.quotes.review
+      summary: Nova levels the confirmed bids of a tender package and suggests who to take forward (EST-AC6).
+      description: |
+        Code puts every confirmed bid on the package's scope schedule, works out what each gap would cost (the median
+        of what at least two other bids charge for that line), each bid's normalised total and its rank. Nova then
+        explains the gaps, exclusions and risks, suggests where a bid's unmatched lines belong on the schedule and says
+        which bid she would take forward, or none when the bids can't be separated. Code removes any bid, scope line or
+        unmatched line that doesn't exist and any figure the bids don't hold (`notes` says what it removed), and adds
+        renewing the validity as a condition when the recommended bid's has passed. Bids are anonymous ("Bid A"):
+        she is never shown a company, contact, internal note or the estimator's allowances. The server keeps no
+        conversation; pass `history` from the last answer with the next question. Nothing is saved, sent, matched or
+        awarded. She is an AI assistant, not a licensed agent (`disclaimer`). Costs one Nova credit. Builder staff with
+        `estimating.quotes.review` only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [packageId]
+              properties:
+                packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/NegotiationTurn' }
+      responses:
+        '200':
+          description: Nova's levelling
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidLevelling' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/budget-reviews:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4740,6 +5028,43 @@ paths:
       responses:
         '200':
           description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-voice-log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day being logged, in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: parseVoiceLogWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.write
+      summary: Nova splits a dictated end-of-day transcript into proposed diary records (mobile F14).
+      description: |
+        The phone turns the person's speech into text on the device; only that text comes here. Nova proposes a diary
+        `note`, `delay`s (with a type, and hours only when the words say how long), safety `observation`s (minor or
+        serious) and `task`s (with a due date only when the words give one). Each item carries `quote`, the words of
+        the transcript it comes from. Code drops an item whose quote is not in the transcript, a number the quote
+        does not contain, hours the quote does not state, and a due date the quote does not give. Nova writes nothing:
+        the result is a pending suggestion (`task` `voice.log`) that only the person who asked can list or decide,
+        and the phone saves the records the person keeps through its own offline commands. The same transcript for
+        the same day returns the same suggestion at no cost. Costs 1 Nova credit. A transcript shorter than 15
+        characters is 422 `ai.voice_log.nothing_to_file`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoiceLogRequest' }
+      responses:
+        '200':
+          description: The suggestion; `payload` is `{ date, items, dropped, transcriptHash }`.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
@@ -5363,6 +5688,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SustainabilityPortfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/time:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getTimeDashboard
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Hours worked in one week by employee, project, class and cost code.
+      description: |
+        The company time dashboard (FP Dashboard). One Monday to Sunday week of paid timesheet time (time worked less
+        unpaid breaks) across the projects the caller can see, or the projects named in `projectIds`. `weekStart` is any
+        date in the week wanted and defaults to this week. Each project's lines are read as the caller: a project where
+        the caller may not read timesheets is counted in `restrictedProjects` and left out; where the caller may not
+        read cost codes, its hours are grouped as "Cost codes not visible". A class is the top-level cost code above the
+        one a line is booked to. Employees and cost codes are the top 50 by hours. Staff only.
+      parameters:
+        - { name: weekStart, in: query, required: false, schema: { type: string, format: date } }
+        - {
+            name: projectIds,
+            in: query,
+            required: false,
+            description: Comma-separated project ids; empty means every project the caller can see.,
+            schema: { type: string },
+          }
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The week
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimeDashboard' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/search:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5397,6 +5760,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SearchResults' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/incident-analytics:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getIncidentAnalytics
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Injury analytics across projects - body map, harm source, injury type, LTIFR and TRIFR, days without an injury.
+      description: |
+        Counts injured people recorded on incidents, for the projects the caller can see. Injury detail is health
+        information, so projects where the caller lacks the view_medical permission are counted in
+        `projectsRestricted` and left out. Rates are per million hours worked, from submitted, approved and exported
+        timesheets; they are null when hours are not available. LTIFR counts lost time injuries (a full day or shift
+        or more) and TRIFR counts lost time, restricted work and medical treatment injuries. The range defaults to
+        the last 12 months and is limited to five years. `bodyPart` narrows the rows and the totals.
+      parameters:
+        - { name: projectId, in: query, schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+        - { name: bodyPart, in: query, schema: { $ref: '#/components/schemas/BodyPart' } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: The analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentAnalytics' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/risk/late-sopa-claims:
     parameters:
@@ -7706,6 +8098,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WarrantySummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/complete-part:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    post:
+      operationId: completeDefectPart
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.respond
+      summary: >-
+        An assignee marks their own part of an open defect done. When every assignee has, the final approver (or
+        the manager) is told. Saying it twice changes nothing.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
     parameters:
@@ -14953,6 +15365,193 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PermitDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHandoverPack
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: The close-out checklist for a project with its progress, Nova's flags and what has been issued to the client.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverPack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Add an item to the checklist. It is numbered HND-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateHandoverItemRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/template:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: applyHandoverTemplate
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Add the standard Australian close-out list. Items already on the checklist (by title) are skipped, so it is safe to repeat.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverTemplateResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listHandoverFlags
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: "Nova's rule-based flags for the close-out (no model): overdue items, nobody responsible, waiting for approval, open defects, empty warranty register, no occupation certificate."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverFlagList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHandoverExport
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: The client copy of the close-out pack, an index of every item with the files that back it, ready to print or save as CSV.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: issueHandoverPack
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Record that the pack went to the client, keeping a frozen copy of the checklist. Needs `acknowledgeIncomplete` when required items are not yet complete.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueHandoverPackRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverIssue' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/HandoverItemId'
+    get:
+      operationId: getHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.read
+      summary: A checklist item with its history.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: Edit an item's details or attach files.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateHandoverItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/handover/items/{handoverItemId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/HandoverItemId'
+    post:
+      operationId: transitionHandoverItem
+      tags: [handover]
+      x-module: handover
+      x-permission: handover.items.manage
+      summary: request, receive (needs a file), approve, reject (needs a note), markNotApplicable (needs a note) or reopen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HandoverTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HandoverItemDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15050,6 +15649,27 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CostForecast' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cashflow:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectCashflow
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.forecast.read
+      summary: Monthly cashflow forecast and work-in-progress (WIP) position, with the risks code found.
+      description: |
+        Rolls claims, retention, the budget's monthly cost forecast and direct costs into cash in and cash out by month
+        (ex GST), plus cost-to-cost percent complete, earned revenue and over or under billing. `flags` are found by
+        code, never by a model, and carry the amounts they quote. Builder staff only, like the cost forecast.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectCashflow' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments:
     parameters:
@@ -17712,6 +18332,150 @@ paths:
       responses:
         '204': { description: Removed }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerShareLinks
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'The read-only client links on this project, newest first, with whether each still works. Tokens are never shown again.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerShareLink
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Issue a no-login client link (web `/c/[token]`, X45). The URL is returned once; if a recipient email is given it is also emailed.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerShareLinkRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatedOwnerShareLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/share-links/{linkId}/revoke:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^lnk_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: revokeOwnerShareLink
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Stop a client link working. Takes effect on the next request.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerShareLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerSharedPhotos
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'The photos picked for the client view, newest first. Nothing is shown to the client unless it is listed here.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addOwnerSharedPhoto
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Pick a project photo for the client view, or change its caption. Up to 60 photos.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddOwnerSharedPhotoRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/shared-photos/{fileId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/FileId' }
+    delete:
+      operationId: removeOwnerSharedPhoto
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.share.manage
+      summary: 'Take a photo off the client view.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerSharedPhotoList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/owner-portal-access:
+    post:
+      operationId: openOwnerPortalAccess
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-auth: none
+      summary: Exchange a client link token for a read-only session on that link (web `/c/[token]`, X45).
+      description: 'Sets the `__Host-opk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, a link whose issuer has lost access, or a plan without the portal returns `access_link.invalid` with no detail about the project.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The client view; `__Host-opk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerPortalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getOwnerPortalAccess
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-auth: none
+      summary: The client view for the current link session. Photo URLs are short-lived, so reload to refresh them.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerPortalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/prefab/units:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18733,6 +19497,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^lgr_[0-9A-Za-z]{26}$' }
+    DelayEventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxi_[0-9A-Za-z]{26}$' }
     PrefabUnitId:
       name: unitId
       in: path
@@ -18903,6 +19677,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^pmt_[0-9A-Za-z]{26}$' }
+    HandoverItemId:
+      name: handoverItemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^hoi_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -20119,6 +20898,90 @@ components:
                 type: integer,
                 description: 'Days late summed over the late activities; divide by `overdue` for the average.',
               }
+    TimeDashboard:
+      type: object
+      required:
+        [
+          weekStart,
+          weekEnd,
+          previousWeek,
+          nextWeek,
+          totalHours,
+          byEmployee,
+          byClass,
+          byProject,
+          byCostCode,
+          restrictedProjects,
+          truncated,
+        ]
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        previousWeek: { type: string, format: date, description: 'Monday of the week before.' }
+        nextWeek: { type: string, format: date, description: 'Monday of the week after.' }
+        totalHours: { type: number }
+        byEmployee:
+          type: array
+          items:
+            type: object
+            required: [workerId, name, hours, projects]
+            properties:
+              workerId: { type: string }
+              name: { type: string }
+              hours: { type: number }
+              projects:
+                type: array
+                items:
+                  type: object
+                  required: [projectId, name, hours]
+                  properties:
+                    projectId: { type: string }
+                    name: { type: string }
+                    hours: { type: number }
+        byClass:
+          type: array
+          items:
+            type: object
+            required: [key, label, hours, percent]
+            properties:
+              key:
+                {
+                  type: string,
+                  description: 'Top-level cost code; "none" for time with no cost code, "hidden" where cost codes cannot be read.',
+                }
+              label: { type: string }
+              hours: { type: number }
+              percent: { type: number, description: 'Share of the week total, one decimal.' }
+        byProject:
+          type: array
+          items:
+            type: object
+            required: [projectId, name, hours, draft, submitted, approved]
+            properties:
+              projectId: { type: string }
+              name: { type: string }
+              hours: { type: number }
+              draft:
+                {
+                  type: number,
+                  description: 'Hours on timesheets not yet submitted, or sent back.',
+                }
+              submitted: { type: number }
+              approved: { type: number, description: 'Approved or exported.' }
+        byCostCode:
+          type: array
+          items:
+            type: object
+            required: [projectId, projectName, costCodeId, code, description, hours]
+            properties:
+              projectId: { type: string }
+              projectName: { type: string }
+              costCodeId: { type: [string, 'null'] }
+              code: { type: string }
+              description: { type: string }
+              hours: { type: number }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
     PortfolioBudget:
       type: object
       required:
@@ -20479,6 +21342,192 @@ components:
         ref: { type: string, description: 'Human reference such as RFI-012.' }
         title: { type: string }
         status: { type: string }
+    BodyPart:
+      type: string
+      enum:
+        [
+          head,
+          eye,
+          face,
+          neck,
+          shoulder,
+          upper_arm,
+          elbow,
+          forearm,
+          wrist,
+          hand,
+          fingers,
+          chest,
+          upper_back,
+          lower_back,
+          abdomen,
+          hip_groin,
+          thigh,
+          knee,
+          lower_leg,
+          ankle,
+          foot,
+          toes,
+          multiple,
+          systemic,
+        ]
+    InjuryType:
+      type: string
+      enum:
+        [
+          fracture,
+          laceration,
+          sprain_strain,
+          contusion,
+          burn,
+          foreign_body,
+          amputation,
+          concussion,
+          dermatitis,
+          hearing_loss,
+          respiratory,
+          psychological,
+          other,
+        ]
+    HarmSource:
+      type: string
+      enum:
+        [
+          falls_trips_slips,
+          hitting_objects,
+          being_hit,
+          body_stressing,
+          vehicle_plant,
+          electricity_heat,
+          chemicals,
+          sound_pressure,
+          biological,
+          mental_stress,
+          other,
+        ]
+    InjuryOutcome:
+      type: string
+      enum: [first_aid, medical_treatment, restricted_work, lost_time, fatality]
+    InjuryCount:
+      type: object
+      required: [key, count]
+      properties:
+        key: { type: string, description: 'The category, or `unknown` when it was not recorded.' }
+        count: { type: integer }
+    IncidentAnalyticsSummary:
+      type: object
+      required:
+        [
+          injuries,
+          lostTimeInjuries,
+          recordableInjuries,
+          daysLost,
+          notifiable,
+          hoursWorked,
+          ltifr,
+          trifr,
+          byBodyPart,
+          byHarmSource,
+          byInjuryType,
+          byOutcome,
+        ]
+      properties:
+        injuries: { type: integer }
+        lostTimeInjuries: { type: integer }
+        recordableInjuries:
+          { type: integer, description: Lost time, restricted work and medical treatment injuries. }
+        daysLost: { type: integer }
+        notifiable: { type: integer }
+        hoursWorked: { type: [number, 'null'] }
+        ltifr: { type: [number, 'null'], description: Lost time injuries per million hours worked. }
+        trifr:
+          { type: [number, 'null'], description: Recordable injuries per million hours worked. }
+        byBodyPart: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byHarmSource: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byInjuryType: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+        byOutcome: { type: array, items: { $ref: '#/components/schemas/InjuryCount' } }
+    IncidentAnalyticsRow:
+      type: object
+      required:
+        [
+          incidentId,
+          projectId,
+          projectName,
+          ref,
+          occurredAt,
+          localDate,
+          personName,
+          companyId,
+          bodyPart,
+          injuryType,
+          harmSource,
+          outcome,
+          daysLost,
+          notifiable,
+        ]
+      properties:
+        incidentId: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        ref: { type: string }
+        occurredAt: { type: string, format: date-time }
+        localDate:
+          {
+            type: string,
+            format: date,
+            description: The day it happened in the project's time zone.,
+          }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        bodyPart: { oneOf: [{ $ref: '#/components/schemas/BodyPart' }, { type: 'null' }] }
+        injuryType: { oneOf: [{ $ref: '#/components/schemas/InjuryType' }, { type: 'null' }] }
+        harmSource: { oneOf: [{ $ref: '#/components/schemas/HarmSource' }, { type: 'null' }] }
+        outcome: { oneOf: [{ $ref: '#/components/schemas/InjuryOutcome' }, { type: 'null' }] }
+        daysLost: { type: integer }
+        notifiable: { type: boolean }
+    IncidentAnalytics:
+      type: object
+      required:
+        [
+          from,
+          to,
+          summary,
+          daysWithoutInjury,
+          daysWithoutIncident,
+          projectsRestricted,
+          projectsTruncated,
+          rowsTruncated,
+          rows,
+        ]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/IncidentAnalyticsSummary' }
+        daysWithoutInjury:
+          {
+            type: [integer, 'null'],
+            description: Days since the latest injury on the projects covered; null when none is recorded.,
+          }
+        daysWithoutIncident:
+          {
+            type: [integer, 'null'],
+            description: Days since the latest incident of any type; null when none is recorded.,
+          }
+        projectsRestricted:
+          {
+            type: integer,
+            description: Projects left out because the caller may not view health information there.,
+          }
+        projectsTruncated: { type: boolean }
+        rowsTruncated: { type: boolean }
+        rows: { type: array, items: { $ref: '#/components/schemas/IncidentAnalyticsRow' } }
+        injury:
+          type: object
+          additionalProperties: true
+          description: |
+            Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
+            and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
+            and daysLost (0 to 3650, only with the lost_time or fatality outcome).
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -21317,6 +22366,118 @@ components:
     OwnerMilestoneStatus:
       type: string
       enum: [done, on_track, at_risk, late]
+    OwnerShareLink:
+      type: object
+      required:
+        [id, label, recipientEmail, state, expiresAt, useCount, lastUsedAt, createdAt, revokedAt]
+      properties:
+        id: { type: string }
+        label: { type: [string, 'null'] }
+        recipientEmail: { type: [string, 'null'] }
+        state: { type: string, enum: [active, expired, revoked, used_up] }
+        expiresAt: { type: string, format: date-time }
+        useCount: { type: integer }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    OwnerShareLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerShareLink' }
+    CreateOwnerShareLinkRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label: { type: [string, 'null'], maxLength: 100 }
+        recipientEmail: { type: [string, 'null'], maxLength: 254 }
+        expiresInDays: { type: integer, minimum: 1, maximum: 90 }
+    CreatedOwnerShareLink:
+      type: object
+      required: [link, url, emailed]
+      properties:
+        link: { $ref: '#/components/schemas/OwnerShareLink' }
+        url: { type: string, description: 'The client link. Shown once; only a hash is stored.' }
+        emailed: { type: boolean }
+    OwnerSharedPhoto:
+      type: object
+      required: [fileId, caption, filename, url, addedAt]
+      properties:
+        fileId: { type: string }
+        caption: { type: string }
+        filename: { type: string }
+        url: { type: string }
+        addedAt: { type: string, format: date-time }
+    OwnerSharedPhotoList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerSharedPhoto' }
+    AddOwnerSharedPhotoRequest:
+      type: object
+      additionalProperties: false
+      required: [fileId]
+      properties:
+        fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        caption: { type: string, maxLength: 300 }
+    OwnerPortalAccessUpdate:
+      type: object
+      required: [title, periodStart, periodEnd, percentComplete, summary, publishedAt]
+      properties:
+        title: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        summary: { type: string }
+        publishedAt: { type: [string, 'null'], format: date-time }
+    OwnerPortalAccess:
+      type: object
+      description: 'What a client sees on a share link. Never carries amounts, drafts, commitments or correspondence.'
+      required: [project, progress, milestones, updates, changes, photos, expiresAt]
+      properties:
+        project:
+          type: object
+          required: [name, fromOrg, timezone]
+          properties:
+            name: { type: string }
+            fromOrg: { type: string }
+            timezone: { type: string }
+        progress:
+          oneOf:
+            - { $ref: '#/components/schemas/OwnerPortalAccessUpdate' }
+            - { type: 'null' }
+        milestones:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+        updates:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerPortalAccessUpdate' }
+        changes:
+          type: array
+          items:
+            type: object
+            required: [kind, reference, title, description, timeImpactDays, approvedAt]
+            properties:
+              kind: { type: string, enum: [variation, decision] }
+              reference: { type: string }
+              title: { type: string }
+              description: { type: string }
+              timeImpactDays: { type: integer }
+              approvedAt: { type: [string, 'null'], format: date-time }
+        photos:
+          type: array
+          items:
+            type: object
+            required: [caption, url, addedAt]
+            properties:
+              caption: { type: string }
+              url: { type: string }
+              addedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
     OwnerMilestone:
       type: object
       additionalProperties: false
@@ -22861,6 +24022,377 @@ components:
             diaryHours: { type: number }
             rfiDays: { type: integer }
         truncated: { type: boolean }
+    EotForm:
+      type: string
+      enum: [as4000, as2124, as4902, other]
+    EotDayBasis:
+      type: string
+      enum: [calendar, business]
+    DelayEventStatus:
+      type: string
+      enum: [draft, notice_given, claimed, assessed, closed, withdrawn]
+    DelayEventItemKind:
+      type: string
+      enum: [diary_delay, rfi_impact, rfi_late, weather_day, correspondence, note]
+    EotSettings:
+      type: object
+      required:
+        [
+          form,
+          noticeDays,
+          claimDays,
+          dayBasis,
+          noticeClause,
+          claimClause,
+          confirmed,
+          confirmedAt,
+          rainThresholdMm,
+          wetDayAllowance,
+          isDefault,
+          version,
+        ]
+      properties:
+        form: { $ref: '#/components/schemas/EotForm' }
+        noticeDays: { type: integer }
+        claimDays: { type: integer }
+        dayBasis: { $ref: '#/components/schemas/EotDayBasis' }
+        noticeClause: { type: [string, 'null'] }
+        claimClause: { type: [string, 'null'] }
+        confirmed: { type: boolean }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        rainThresholdMm: { type: number }
+        wetDayAllowance: { type: [integer, 'null'] }
+        isDefault: { type: boolean }
+        version: { type: integer }
+    PutEotSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [form, noticeDays, claimDays, dayBasis, confirmed, rainThresholdMm]
+      properties:
+        form: { $ref: '#/components/schemas/EotForm' }
+        noticeDays: { type: integer, minimum: 0, maximum: 365 }
+        claimDays: { type: integer, minimum: 0, maximum: 365 }
+        dayBasis: { $ref: '#/components/schemas/EotDayBasis' }
+        noticeClause: { type: [string, 'null'], maxLength: 100 }
+        claimClause: { type: [string, 'null'], maxLength: 100 }
+        confirmed: { type: boolean }
+        rainThresholdMm: { type: number, minimum: 0, maximum: 1000 }
+        wetDayAllowance: { type: [integer, 'null'], minimum: 0, maximum: 1000 }
+    DelayEventCandidate:
+      type: object
+      required: [key, kind, cause, date, label, detail, hours, days, rainMm, possibleEot, eventId]
+      properties:
+        key: { type: string }
+        kind: { type: string, enum: [diary_delay, rfi_impact, rfi_late, weather_day] }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        date: { type: string, format: date }
+        label: { type: string }
+        detail: { type: [string, 'null'] }
+        hours: { type: [number, 'null'] }
+        days: { type: [number, 'null'] }
+        rainMm: { type: [number, 'null'] }
+        possibleEot: { type: boolean }
+        eventId: { type: [string, 'null'], pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventCandidateList:
+      type: object
+      required: [today, rainThresholdMm, truncated, data]
+      properties:
+        today: { type: string, format: date }
+        rainThresholdMm: { type: number }
+        truncated: { type: boolean }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventCandidate' }
+    DelayEventClock:
+      type: object
+      required: [dueOn, daysLeft, state, overridden]
+      properties:
+        dueOn: { type: string, format: date }
+        daysLeft:
+          {
+            type: [integer, 'null'],
+            description: 'Calendar days from today to the due date; negative once it has passed. Null once given.',
+          }
+        state: { type: string, enum: [met, met_late, ok, due_soon, due_today, overdue] }
+        overridden:
+          { type: boolean, description: 'A person set this date to match a contract amendment.' }
+    DelayEventEvidenceSummary:
+      type: object
+      required: [items, diaryHours, rfiDays, rainDays, rainMm, notices, firstDate, lastDate]
+      properties:
+        items: { type: integer }
+        diaryHours: { type: number }
+        rfiDays: { type: number }
+        rainDays: { type: integer }
+        rainMm: { type: number }
+        notices: { type: integer }
+        firstDate: { type: [string, 'null'], format: date }
+        lastDate: { type: [string, 'null'], format: date }
+    DelayEvent:
+      type: object
+      required:
+        [
+          id,
+          number,
+          ref,
+          title,
+          cause,
+          status,
+          startedOn,
+          endedOn,
+          awareOn,
+          criticalPath,
+          summary,
+          affected,
+          daysClaimed,
+          suggestedDays,
+          noticeDueOn,
+          claimDueOn,
+          noticeSentOn,
+          noticeRefLabel,
+          claimSentOn,
+          claimRefLabel,
+          assessedOn,
+          daysGranted,
+          assessmentNote,
+          noticeClock,
+          claimClock,
+          evidence,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        ref: { type: string, description: 'EOT-001' }
+        title: { type: string }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        status: { $ref: '#/components/schemas/DelayEventStatus' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn: { type: string, format: date }
+        criticalPath:
+          { type: [boolean, 'null'], description: "The planner's judgement, not calculated." }
+        summary: { type: [string, 'null'] }
+        affected: { type: [string, 'null'] }
+        daysClaimed: { type: integer }
+        suggestedDays:
+          {
+            type: integer,
+            description: 'Calendar days the event spans, counting both ends. A starting point, not an entitlement.',
+          }
+        noticeDueOn:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'A deadline a person set; null means counted from the contract periods.',
+          }
+        claimDueOn: { type: [string, 'null'], format: date }
+        noticeSentOn: { type: [string, 'null'], format: date }
+        noticeRefLabel: { type: [string, 'null'] }
+        claimSentOn: { type: [string, 'null'], format: date }
+        claimRefLabel: { type: [string, 'null'] }
+        assessedOn: { type: [string, 'null'], format: date }
+        daysGranted: { type: [integer, 'null'] }
+        assessmentNote: { type: [string, 'null'] }
+        noticeClock: { $ref: '#/components/schemas/DelayEventClock' }
+        claimClock: { $ref: '#/components/schemas/DelayEventClock' }
+        evidence: { $ref: '#/components/schemas/DelayEventEvidenceSummary' }
+        version: { type: integer }
+    DelayEventList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEvent' }
+    DelayEventItem:
+      type: object
+      required: [id, kind, sourceKey, date, label, detail, hours, days, rainMm]
+      properties:
+        id: { type: string, pattern: '^dxi_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/DelayEventItemKind' }
+        sourceKey: { type: [string, 'null'] }
+        date: { type: [string, 'null'], format: date }
+        label: { type: string }
+        detail: { type: [string, 'null'] }
+        hours: { type: [number, 'null'] }
+        days: { type: [number, 'null'] }
+        rainMm: { type: [number, 'null'] }
+    DelayEventLogEntry:
+      type: object
+      required: [id, kind, detail, at]
+      properties:
+        id: { type: string, pattern: '^dxl_[0-9A-Za-z]{26}$' }
+        kind: { type: string }
+        detail: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DelayEventDetail:
+      type: object
+      required: [event, items, history, settings]
+      properties:
+        event: { $ref: '#/components/schemas/DelayEvent' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventItem' }
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventLogEntry' }
+        settings: { $ref: '#/components/schemas/EotSettings' }
+    CreateDelayEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title, cause, startedOn]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn:
+          {
+            type: string,
+            format: date,
+            description: 'The day the builder became aware of the delay. Starts the notice clock. Defaults to the day it began.',
+          }
+        criticalPath: { type: [boolean, 'null'] }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        affected: { type: [string, 'null'], maxLength: 1000 }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        noticeDueOn: { type: [string, 'null'], format: date }
+        claimDueOn: { type: [string, 'null'], format: date }
+        candidateKeys:
+          type: array
+          maxItems: 200
+          items: { type: string, maxLength: 100 }
+    UpdateDelayEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        startedOn: { type: string, format: date }
+        endedOn: { type: [string, 'null'], format: date }
+        awareOn: { type: string, format: date }
+        criticalPath: { type: [boolean, 'null'] }
+        summary: { type: [string, 'null'], maxLength: 4000 }
+        affected: { type: [string, 'null'], maxLength: 1000 }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        noticeDueOn: { type: [string, 'null'], format: date }
+        claimDueOn: { type: [string, 'null'], format: date }
+    AddDelayEventEvidenceRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        candidateKeys:
+          type: array
+          maxItems: 200
+          items: { type: string, maxLength: 100 }
+        correspondenceIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
+        notes:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [label]
+            properties:
+              date: { type: string, format: date }
+              label: { type: string, minLength: 1, maxLength: 400 }
+              detail: { type: string, maxLength: 2000 }
+    DelayEventTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          {
+            type: string,
+            enum: [give_notice, submit_claim, record_assessment, close, withdraw, reopen],
+          }
+        on:
+          {
+            type: string,
+            format: date,
+            description: 'The day it happened. Defaults to today in the project zone; not in the future.',
+          }
+        daysClaimed: { type: integer, minimum: 0, maximum: 3650 }
+        daysGranted: { type: integer, minimum: 0, maximum: 3650 }
+        note: { type: string, maxLength: 2000 }
+        correspondenceId: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
+    DelayEventDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [notice, claim] }
+        senderName: { type: string, maxLength: 200 }
+    DelayEventDraft:
+      type: object
+      required: [eventId, subject, body, warnings]
+      properties:
+        eventId: { type: string, pattern: '^dxe_[0-9A-Za-z]{26}$' }
+        subject: { type: string }
+        body: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    DelayEventFlag:
+      type: object
+      required: [kind, severity, message, eventId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [
+              notice_overdue,
+              notice_due_soon,
+              claim_overdue,
+              claim_due_soon,
+              periods_unconfirmed,
+              untracked_delay,
+              no_evidence,
+              days_over_span,
+              wet_days_over_allowance,
+              assessment_waiting,
+            ]
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+        eventId: { type: [string, 'null'], pattern: '^dxe_[0-9A-Za-z]{26}$' }
+    DelayEventInsights:
+      type: object
+      required: [asOf, today, flags, summary]
+      properties:
+        asOf: { type: string, format: date-time }
+        today: { type: string, format: date }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/DelayEventFlag' }
+        summary:
+          type: object
+          required:
+            [
+              events,
+              open,
+              daysClaimed,
+              daysGranted,
+              awaitingAssessment,
+              untrackedDelays,
+              wetDays,
+              wetDayAllowance,
+              periodsConfirmed,
+            ]
+          properties:
+            events: { type: integer }
+            open: { type: integer }
+            daysClaimed: { type: integer }
+            daysGranted: { type: integer }
+            awaitingAssessment: { type: integer }
+            untrackedDelays: { type: integer }
+            wetDays: { type: integer }
+            wetDayAllowance: { type: [integer, 'null'] }
+            periodsConfirmed: { type: boolean }
     CreateProjectRequest:
       type: object
       additionalProperties: false
@@ -23169,6 +24701,7 @@ components:
                 compliance_document,
                 conversation,
                 announcement,
+                defect,
                 permit,
                 cover,
                 warranty_item,
@@ -23328,7 +24861,18 @@ components:
     PlantAllocation:
       type: object
       required:
-        [id, assetId, projectId, costCodeId, startsOn, endsOn, note, status, estimatedCostCents]
+        [
+          id,
+          assetId,
+          projectId,
+          costCodeId,
+          startsOn,
+          endsOn,
+          note,
+          status,
+          postedThrough,
+          estimatedCostCents,
+        ]
       properties:
         id: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
         assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
@@ -23338,6 +24882,10 @@ components:
         endsOn: { type: string, format: date }
         note: { type: [string, 'null'] }
         status: { type: string, enum: [active, cancelled] }
+        postedThrough:
+          type: [string, 'null']
+          format: date
+          description: Last day whose hire cost has been posted to the project budget. Only hired machines with a rate and a cost code are posted.
         estimatedCostCents:
           type: [integer, 'null']
           description: Days in the allocation times the machine's daily rate. Null without a rate the caller may see.
@@ -23468,6 +25016,7 @@ components:
               double_booking,
               booked_while_unavailable,
               service_during_booking,
+              hire_not_costed,
               idle,
             ]
         severity: { type: string, enum: [critical, warning, info] }
@@ -23578,6 +25127,12 @@ components:
     AiSuggestionStatus:
       type: string
       enum: [pending, accepted, edited, rejected]
+    VoiceLogRequest:
+      type: object
+      additionalProperties: false
+      required: [transcript]
+      properties:
+        transcript: { type: string, minLength: 1, maxLength: 12000 }
     DraftMinutesRequest:
       type: object
       additionalProperties: false
@@ -24169,6 +25724,114 @@ components:
         counterExGst: { type: [string, 'null'] }
         counterReason: { type: string }
         draftMessage: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
+        disclaimer: { type: string }
+    BidLevelling:
+      type: object
+      required:
+        [
+          runId,
+          summary,
+          medianNormalisedExGst,
+          bids,
+          mappings,
+          gaps,
+          risks,
+          recommendation,
+          notes,
+          history,
+          disclaimer,
+        ]
+      properties:
+        runId: { type: string }
+        summary: { type: string }
+        medianNormalisedExGst:
+          {
+            type: [string, 'null'],
+            description: Median of the normalised totals; null under three bids.,
+          }
+        bids:
+          type: array
+          description: Worked out by code, best normalised price first by `rank`.
+          items:
+            type: object
+            required:
+              [
+                label,
+                quoteId,
+                totalExGst,
+                normalisedExGst,
+                rank,
+                validityExpired,
+                provisionalExGst,
+                gaps,
+              ]
+            properties:
+              label:
+                {
+                  type: string,
+                  description: 'Bid A, Bid B, ... in the order the quotes were received.',
+                }
+              quoteId: { type: string }
+              totalExGst: { type: string }
+              normalisedExGst:
+                {
+                  type: string,
+                  description: The total plus an allowance for each scope line the bid leaves out.,
+                }
+              rank: { type: integer, minimum: 1 }
+              validityExpired: { type: boolean }
+              provisionalExGst: { type: string }
+              gaps:
+                type: array
+                items:
+                  type: object
+                  required: [scopeKey, reason, allowanceExGst]
+                  properties:
+                    scopeKey: { type: string }
+                    reason: { type: string, enum: [excluded, unpriced] }
+                    allowanceExGst: { type: [string, 'null'] }
+        mappings:
+          type: array
+          description: Suggested homes on the scope schedule for lines a bid priced outside it; for the estimator to confirm.
+          items:
+            type: object
+            required: [bid, quoteId, ref, description, amountExGst, scopeKey, reason]
+            properties:
+              bid: { type: string }
+              quoteId: { type: string }
+              ref: { type: string }
+              description: { type: string }
+              amountExGst: { type: string }
+              scopeKey: { type: string }
+              reason: { type: string }
+        gaps:
+          type: array
+          items:
+            type: object
+            required: [bid, scopeKey, text]
+            properties:
+              bid: { type: string }
+              scopeKey: { type: [string, 'null'] }
+              text: { type: string }
+        risks:
+          type: array
+          items:
+            type: object
+            required: [bid, text]
+            properties:
+              bid: { type: string }
+              text: { type: string }
+        recommendation:
+          type: object
+          required: [bid, quoteId, reasoning, conditions, isLowestNormalised]
+          properties:
+            bid: { type: [string, 'null'] }
+            quoteId: { type: [string, 'null'] }
+            reasoning: { type: string }
+            conditions: { type: array, items: { type: string } }
+            isLowestNormalised: { type: [boolean, 'null'] }
         notes: { type: array, items: { type: string } }
         history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
         disclaimer: { type: string }
@@ -29402,6 +31065,7 @@ components:
           assigneeCompanyId,
           assigneeUserId,
           assigneeUserIds,
+          completedUserIds,
           managerUserId,
           finalApproverUserId,
           distributionUserIds,
@@ -29443,6 +31107,10 @@ components:
         assigneeUserIds:
           type: array
           description: Everyone the punch item is assigned to, in the assigned company.
+          items: { type: string }
+        completedUserIds:
+          type: array
+          description: Assignees who have marked their own part done this round.
           items: { type: string }
         managerUserId: { type: [string, 'null'], description: 'Punch Item Manager.' }
         finalApproverUserId:
@@ -30210,6 +31878,94 @@ components:
         figures:
           type: object
           additionalProperties: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    ProjectCashflow:
+      type: object
+      required: [asOf, months, totals, wip, flags]
+      properties:
+        asOf: { type: string, format: date }
+        months:
+          type: array
+          items:
+            type: object
+            required: [month, kind, cashIn, cashOut, net, cumulative]
+            properties:
+              month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+              kind: { type: string, enum: [actual, current, forecast] }
+              cashIn: { $ref: '#/components/schemas/FinancialsMoney' }
+              cashOut: { $ref: '#/components/schemas/FinancialsMoney' }
+              net: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+              cumulative: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        totals:
+          type: object
+          required:
+            [
+              cashInToDate,
+              cashOutToDate,
+              forecastCashIn,
+              forecastCashOut,
+              lowestCumulative,
+              lowestMonth,
+            ]
+          properties:
+            cashInToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            cashOutToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            forecastCashIn: { $ref: '#/components/schemas/FinancialsMoney' }
+            forecastCashOut: { $ref: '#/components/schemas/FinancialsMoney' }
+            lowestCumulative: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            lowestMonth: { type: [string, 'null'], pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        wip:
+          type: [object, 'null']
+          required:
+            [
+              contractValue,
+              estimatedFinalCost,
+              costToDate,
+              percentComplete,
+              earnedRevenue,
+              billed,
+              overUnderBilled,
+              earnedGrossProfit,
+              projectedGrossProfit,
+              receivableOpen,
+              retentionHeld,
+            ]
+          properties:
+            contractValue: { $ref: '#/components/schemas/FinancialsMoney' }
+            estimatedFinalCost: { $ref: '#/components/schemas/FinancialsMoney' }
+            costToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+            percentComplete: { type: string, pattern: '^\d{1,3}\.\d{2}$' }
+            earnedRevenue: { $ref: '#/components/schemas/FinancialsMoney' }
+            billed: { $ref: '#/components/schemas/FinancialsMoney' }
+            overUnderBilled: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            earnedGrossProfit: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            projectedGrossProfit: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+            receivableOpen: { $ref: '#/components/schemas/FinancialsMoney' }
+            retentionHeld: { $ref: '#/components/schemas/FinancialsMoney' }
+        flags:
+          type: array
+          items:
+            type: object
+            required: [code, severity, title, detail, month, amount]
+            properties:
+              code:
+                type: string
+                enum:
+                  - cash_gap
+                  - negative_cash_now
+                  - underbilled
+                  - overbilled
+                  - overdue_receivable
+                  - disputed_claims
+                  - loss_making
+                  - no_cost_plan
+                  - unscheduled_cost
+                  - retention_no_date
+                  - no_head_contract
+              severity: { type: string, enum: [info, warn, risk] }
+              title: { type: string }
+              detail: { type: string }
+              month: { type: [string, 'null'], pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+              amount: { type: [string, 'null'] }
     BudgetForecast:
       type: object
       required: [hasBudget, months, lines]
@@ -36511,7 +38267,6 @@ components:
         personName: { type: string, minLength: 1, maxLength: 200 }
         companyId: { $ref: '#/components/schemas/CompanyRef' }
         role: { type: string, enum: [injured, witness, involved] }
-        injury: { type: object, additionalProperties: true }
     IncidentSource:
       type: object
       additionalProperties: false
@@ -37651,6 +39406,254 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PermitFlag' }
+    HandoverCategory:
+      type: string
+      enum:
+        [as_built, om_manual, warranty, certificate, defect_signoff, training, keys_access, other]
+    HandoverStatus:
+      type: string
+      enum: [outstanding, requested, received, approved, not_applicable]
+    HandoverState:
+      type: string
+      description: The stored status, or overdue when an unfinished item is past its due date in the project's own calendar day.
+      enum: [outstanding, requested, received, approved, not_applicable, overdue]
+    HandoverItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          category,
+          title,
+          description,
+          required,
+          status,
+          state,
+          responsibleCompanyId,
+          dueOn,
+          receivedOn,
+          approvedOn,
+          approvedBy,
+          note,
+          fileIds,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        required: { type: boolean }
+        status: { $ref: '#/components/schemas/HandoverStatus' }
+        state: { $ref: '#/components/schemas/HandoverState' }
+        responsibleCompanyId: { type: [string, 'null'] }
+        dueOn: { type: [string, 'null'], format: date }
+        receivedOn: { type: [string, 'null'], format: date }
+        approvedOn: { type: [string, 'null'], format: date }
+        approvedBy: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    HandoverItemEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { oneOf: [{ $ref: '#/components/schemas/HandoverStatus' }, { type: 'null' }] }
+        toStatus: { $ref: '#/components/schemas/HandoverStatus' }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    HandoverItemDetail:
+      type: object
+      required: [item, events]
+      properties:
+        item: { $ref: '#/components/schemas/HandoverItem' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverItemEvent' }
+    HandoverCategorySummary:
+      type: object
+      required: [category, total, complete, requiredOutstanding]
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        total: { type: integer }
+        complete: { type: integer }
+        requiredOutstanding: { type: integer }
+    HandoverSummary:
+      type: object
+      required:
+        [
+          total,
+          required,
+          requiredComplete,
+          complete,
+          received,
+          overdue,
+          percentComplete,
+          byCategory,
+        ]
+      properties:
+        total: { type: integer }
+        required: { type: integer }
+        requiredComplete: { type: integer }
+        complete: { type: integer }
+        received: { type: integer, description: Received and waiting for approval. }
+        overdue: { type: integer }
+        percentComplete:
+          { type: integer, minimum: 0, maximum: 100, description: Over the required items. }
+        byCategory:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverCategorySummary' }
+    HandoverFlag:
+      type: object
+      required: [kind, severity, title, detail, itemId]
+      properties:
+        kind:
+          type: string
+          enum:
+            [
+              empty_checklist,
+              overdue,
+              no_responsible,
+              awaiting_approval,
+              open_defects,
+              warranty_register_empty,
+              no_occupation_certificate,
+            ]
+        severity: { type: string, enum: [info, warn, high] }
+        title: { type: string }
+        detail: { type: string }
+        itemId: { type: [string, 'null'] }
+    HandoverFlagList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverFlag' }
+    HandoverIssue:
+      type: object
+      required: [id, projectId, recipientName, note, incompleteCount, issuedBy, issuedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        recipientName: { type: string }
+        note: { type: [string, 'null'] }
+        incompleteCount:
+          { type: integer, description: Required items that were not complete when it was issued. }
+        issuedBy: { type: [string, 'null'] }
+        issuedAt: { type: string, format: date-time }
+    HandoverPack:
+      type: object
+      required: [items, summary, readyToIssue, flags, issues]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverItem' }
+        summary: { $ref: '#/components/schemas/HandoverSummary' }
+        readyToIssue:
+          { type: boolean, description: Every required item is approved or not applicable. }
+        flags:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverFlag' }
+        issues:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverIssue' }
+    HandoverExportFile:
+      type: object
+      required: [id, filename, sizeBytes]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        sizeBytes: { type: integer }
+    HandoverExportItem:
+      type: object
+      required: [numberLabel, category, title, required, status, files]
+      properties:
+        numberLabel: { type: string }
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string }
+        required: { type: boolean }
+        status: { $ref: '#/components/schemas/HandoverStatus' }
+        files:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverExportFile' }
+    HandoverExport:
+      type: object
+      required: [projectName, generatedAt, summary, items]
+      properties:
+        projectName: { type: string }
+        generatedAt: { type: string, format: date-time }
+        summary: { $ref: '#/components/schemas/HandoverSummary' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HandoverExportItem' }
+    HandoverTemplateResult:
+      type: object
+      required: [added]
+      properties:
+        added: { type: integer }
+    CreateHandoverItemRequest:
+      type: object
+      additionalProperties: false
+      required: [category, title]
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        required: { type: boolean }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        dueOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    UpdateHandoverItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        category: { $ref: '#/components/schemas/HandoverCategory' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        required: { type: boolean }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        dueOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 4000 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    HandoverTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          { type: string, enum: [request, receive, approve, reject, markNotApplicable, reopen] }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    IssueHandoverPackRequest:
+      type: object
+      additionalProperties: false
+      required: [recipientName]
+      properties:
+        recipientName: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        acknowledgeIncomplete: { type: boolean }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]

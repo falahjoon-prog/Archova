@@ -10,6 +10,7 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectMembers } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
+import type { BidLevelAnswer } from '../lib/bid-level';
 import type { NegotiateAnswer, NegotiateTopic } from '../lib/negotiate';
 import type { Quote, QuoteLine, QuoteNote, ScopeLine, TenderPackage } from '../lib/quote-types';
 import type { QuotesSource } from './quotes-source';
@@ -463,6 +464,53 @@ export function createQuotesApi(orgId: string): QuotesSource {
         counterCents: cents(advice.counterExGst),
         counterReason: advice.counterReason,
         draftMessage: advice.draftMessage,
+      };
+      return answer;
+    },
+
+    async levelBids(projectId, packageId, { question }) {
+      await ensureCsrfToken();
+      const r = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/bid-levellings', {
+          params: { path: { orgId, projectId } },
+          body: {
+            packageId,
+            question: question?.trim()
+              ? question.trim().slice(0, 1000)
+              : 'Level these bids and tell me who you would take forward.',
+          },
+        }),
+      );
+      const cents = (s: string | null) => (s === null ? null : toCents(s));
+      const answer: BidLevelAnswer = {
+        summary: r.summary,
+        medianNormalisedCents: cents(r.medianNormalisedExGst),
+        bids: r.bids.map((b) => ({
+          label: b.label,
+          quoteId: b.quoteId,
+          totalCents: toCents(b.totalExGst),
+          normalisedCents: toCents(b.normalisedExGst),
+          rank: b.rank,
+          validityExpired: b.validityExpired,
+          gaps: b.gaps.map((g) => ({
+            scopeKey: g.scopeKey,
+            reason: g.reason,
+            allowanceCents: cents(g.allowanceExGst),
+          })),
+        })),
+        mappings: r.mappings.map((m) => ({
+          bid: m.bid,
+          quoteId: m.quoteId,
+          description: m.description,
+          amountCents: toCents(m.amountExGst),
+          scopeKey: m.scopeKey,
+          reason: m.reason,
+        })),
+        gaps: r.gaps.map((g) => ({ bid: g.bid, scopeKey: g.scopeKey, text: g.text })),
+        risks: r.risks.map((x) => ({ bid: x.bid, text: x.text })),
+        recommendation: r.recommendation,
+        notes: r.notes,
+        history: r.history,
       };
       return answer;
     },

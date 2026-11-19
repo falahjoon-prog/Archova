@@ -21,6 +21,15 @@ export interface Sheet {
   lines: LineRow[];
 }
 
+export interface TimeLine {
+  workerId: string;
+  workerName: string;
+  localDate: string;
+  status: string;
+  minutes: number;
+  costCodeId: string | null;
+}
+
 export interface TimesheetDeps {
   access: AccessService;
   attendance: Pick<AttendanceService, 'viewer'>;
@@ -377,6 +386,7 @@ export function createTimesheetService(deps: TimesheetDeps) {
           ),
         );
     return {
+      timeForReporting,
       filename: `timesheets-${range.from}-to-${range.to}.csv`,
       csv: `${out.join('\r\n')}\r\n`,
       count: sheets.length,
@@ -465,7 +475,87 @@ export function createTimesheetService(deps: TimesheetDeps) {
     };
   }
 
+  /**
+   * Hours on submitted, approved and exported timesheets of a project between two local dates, for safety rates
+   * (`reporting`). Null when the caller may not view attendance there. A total only; no worker is named.
+   */
+  async function hoursWorked(
+    scope: TenantScope,
+    projectId: string,
+    range: { from: string; to: string; companyId?: string },
+  ): Promise<number | null> {
+    if (!(await deps.access.can(scope, 'workforce.attendance.view', { projectId }))) return null;
+    const [row] = await scope.tx
+      .select({
+        minutes: sql<string>`coalesce(sum(${timesheetLines.minutes} - ${timesheetLines.breakMinutes}), 0)`,
+      })
+      .from(timesheetLines)
+      .innerJoin(timesheets, eq(timesheets.id, timesheetLines.timesheetId))
+      .where(
+        and(
+          eq(timesheets.projectId, projectId),
+          gte(timesheets.localDate, range.from),
+          lte(timesheets.localDate, range.to),
+          inArray(timesheets.status, ['submitted', 'approved', 'exported']),
+          ...(range.companyId ? [eq(timesheets.companyId, range.companyId)] : []),
+        ),
+      );
+    return Number(row?.minutes ?? 0) / 60;
+  }
+
+  /**
+   * Paid time per timesheet line for one project and date range, for the time dashboard (`reporting`). Builder staff
+   * only and needs the timesheet view permission on the project; anyone else reads as `restricted` with no lines.
+   * Capped, newest first, so a very large range can't pull the whole table.
+   */
+  async function timeForReporting(
+    scope: TenantScope,
+    projectId: string,
+    range: { from: string; to: string; limit: number },
+  ) {
+    const ok =
+      scope.ctx.principalType === 'member' &&
+      (await deps.access.can(scope, 'workforce.timesheets.view', { projectId }));
+    if (!ok) return { restricted: true, truncated: false, lines: [] as TimeLine[] };
+    const rows = await scope.tx
+      .select({
+        workerId: timesheets.workerId,
+        workerName: workers.fullName,
+        localDate: timesheets.localDate,
+        status: timesheets.status,
+        minutes: timesheetLines.minutes,
+        breakMinutes: timesheetLines.breakMinutes,
+        costCodeId: timesheetLines.costCodeId,
+      })
+      .from(timesheetLines)
+      .innerJoin(timesheets, eq(timesheets.id, timesheetLines.timesheetId))
+      .innerJoin(workers, eq(workers.id, timesheets.workerId))
+      .where(
+        and(
+          eq(timesheets.projectId, projectId),
+          gte(timesheets.localDate, range.from),
+          lte(timesheets.localDate, range.to),
+        ),
+      )
+      .orderBy(sql`${timesheets.localDate} desc`)
+      .limit(range.limit + 1);
+    const truncated = rows.length > range.limit;
+    return {
+      restricted: false,
+      truncated,
+      lines: rows.slice(0, range.limit).map((r) => ({
+        workerId: r.workerId,
+        workerName: r.workerName,
+        localDate: r.localDate,
+        status: r.status,
+        minutes: payable(r),
+        costCodeId: r.costCodeId,
+      })),
+    };
+  }
+
   return {
+    timeForReporting,
     list,
     get,
     generate,
@@ -477,6 +567,7 @@ export function createTimesheetService(deps: TimesheetDeps) {
     exportCsv,
     minutesByCostCode,
     dayActivity,
+    hoursWorked,
   };
 }
 

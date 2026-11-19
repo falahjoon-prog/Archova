@@ -106,6 +106,43 @@ describe('OwnerPortalScreen', () => {
     expect(screen.queryByRole('button', { name: 'New progress update' })).toBeNull();
   });
 
+  it('hides the client link tab from the client and shows it to the builder', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderInProject(<OwnerPortalScreen />);
+    await screen.findByText('October progress');
+    expect(screen.queryByRole('tab', { name: 'Client link' })).toBeNull();
+    unmount();
+
+    nav.search = 'tab=share';
+    fake.on('GET', PERMS, () =>
+      perms({ toolLevels: { owner_portal: 'standard' }, granular: [], isExternal: false }),
+    );
+    fake.on('GET', `${B}/share-links`, () => ({
+      data: [
+        {
+          id: 'lnk_00000000000000000000000001',
+          label: 'Harbour board',
+          recipientEmail: null,
+          state: 'active',
+          expiresAt: '2026-12-18T00:00:00Z',
+          useCount: 1,
+          lastUsedAt: null,
+          createdAt: '2026-11-18T00:00:00Z',
+          revokedAt: null,
+        },
+      ],
+    }));
+    fake.on('GET', `${B}/shared-photos`, () => ({ data: [] }));
+    fake.on('POST', `${B}/share-links/{linkId}/revoke`, () => ({}));
+    renderInProject(<OwnerPortalScreen />);
+    expect(await screen.findByText('Harbour board')).toBeTruthy();
+    expect(screen.getByText('No photos shared')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Turn off Harbour board' }));
+    await waitFor(() =>
+      expect(fake.callsTo('POST', `${B}/share-links/{linkId}/revoke`)).toHaveLength(1),
+    );
+  });
+
   it('lets the builder save a draft update', async () => {
     const user = userEvent.setup();
     fake.on('GET', PERMS, () =>
