@@ -259,3 +259,18 @@ export function rateFlags(
   }
   return flags.sort((a, b) => b.dropPct - a.dropPct || a.name.localeCompare(b.name));
 }
+
+const rate = (n: number) => String(Math.round(n * 100) / 100);
+
+/**
+ * A draft daily-log note for a rate drop. Plain facts only: the cause is left for the person to fill in, and nothing
+ * here is posted anywhere. Rule-based, no model call.
+ */
+export function diaryDraft(flag: RateFlag, today: LocalDate): string {
+  const who = flag.kind === 'crew' ? `Crew ${flag.name}` : `${flag.name} trade`;
+  return (
+    `Production note ${today}: ${who} installed ${rate(flag.recentRate)} ${flag.uom} per working day over the last 7 days, ` +
+    `down ${Math.round(flag.dropPct * 100)}% from ${rate(flag.baselineRate)} per working day over the previous four weeks. ` +
+    `Reason for the drop: [to be filled in].`
+  );
+}

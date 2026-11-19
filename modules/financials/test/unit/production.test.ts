@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  diaryDraft,
   itemForecast,
   itemProgress,
   plannedFraction,
@@ -174,5 +175,24 @@ describe('itemForecast', () => {
       forecastFinish: null,
     });
     expect(itemForecast(fItem, [], 10, '2026-12-01').requiredRate).toBeNull();
+  });
+});
+
+describe('diaryDraft', () => {
+  it('states the facts and leaves the reason blank', () => {
+    const text = diaryDraft(
+      {
+        kind: 'crew',
+        name: 'Crew 2',
+        uom: 'panels',
+        recentRate: 6,
+        baselineRate: 10,
+        dropPct: 0.4,
+      },
+      '2026-11-07',
+    );
+    expect(text).toContain('Crew Crew 2 installed 6 panels per working day');
+    expect(text).toContain('down 40% from 10 per working day');
+    expect(text).toContain('[to be filled in]');
   });
 });

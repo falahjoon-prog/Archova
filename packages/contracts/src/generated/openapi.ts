@@ -22265,6 +22265,8 @@ export interface components {
             baselineRate: number;
             /** @description Fall from the baseline, 0..1. */
             dropPct: number;
+            /** @description Drafted daily-log note stating the drop. Never posted by the server; a person reads, edits and logs it. */
+            diaryDraft: string;
         };
         ProductionReport: {
             /**

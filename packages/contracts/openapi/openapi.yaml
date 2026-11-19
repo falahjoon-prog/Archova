@@ -32322,7 +32322,7 @@ components:
         actual: { type: number }
     ProductionRateFlag:
       type: object
-      required: [kind, name, uom, recentRate, baselineRate, dropPct]
+      required: [kind, name, uom, recentRate, baselineRate, dropPct, diaryDraft]
       properties:
         kind: { type: string, enum: [trade, crew] }
         name: { type: string }
@@ -32331,6 +32331,11 @@ components:
         baselineRate:
           { type: number, description: 'Units per working day over the 28 days before that.' }
         dropPct: { type: number, description: 'Fall from the baseline, 0..1.' }
+        diaryDraft:
+          {
+            type: string,
+            description: 'Drafted daily-log note stating the drop. Never posted by the server; a person reads, edits and logs it.',
+          }
     ProductionReport:
       type: object
       required: [asOf, items, curves, byTrade, byLocation, flags]
