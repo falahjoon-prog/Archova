@@ -9449,6 +9449,7 @@ export const ProductionRateFlagSchema = z.object({
   "recentRate": z.number(),
   "baselineRate": z.number(),
   "dropPct": z.number(),
+  "diaryDraft": z.string(),
 });
 export type ProductionRateFlag = z.infer<typeof ProductionRateFlagSchema>;
 

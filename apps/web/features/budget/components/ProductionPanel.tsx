@@ -10,6 +10,7 @@ import {
   Select,
   SkeletonRows,
   StatusPill,
+  Textarea,
   type DataTableColumn,
 } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -35,6 +36,46 @@ const STATUS: Record<
 /** Nova's plain-words reading of one rate flag. Rule-based; the numbers come straight from the report. */
 const flagText = (f: ProductionRateFlag) =>
   `${f.kind === 'crew' ? 'Crew' : 'Trade'} ${f.name} is installing ${num(f.recentRate)} ${f.uom} a working day this week, ${pct(f.dropPct)} down on its ${num(f.baselineRate)} average over the previous four weeks.`;
+
+/** Nova's drafted daily-log note for one flag. Editable and copyable; nothing is posted from here. */
+function DiaryDraft({ flag }: { flag: ProductionRateFlag }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(flag.diaryDraft);
+  const [copied, setCopied] = useState(false);
+  if (!open) {
+    return (
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        Draft diary note for {flag.name}
+      </Button>
+    );
+  }
+  return (
+    <div className="stack-sm">
+      <Textarea
+        label={`Draft diary note for ${flag.name}`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+      />
+      <div className="form-row">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            void navigator.clipboard?.writeText(text).then(() => setCopied(true));
+          }}
+        >
+          Copy note
+        </Button>
+        <span className="u-muted">
+          {copied
+            ? 'Copied. Paste it into the daily log.'
+            : 'A draft only. Fill in the reason, then add it to the daily log yourself.'}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Production tracking: custom units (panels installed, LF of conduit, CY of concrete) with a planned quantity over a
@@ -151,7 +192,10 @@ export function ProductionPanel({ canManage }: { canManage: boolean }) {
         <Alert tone="warning" title="Nova: production rate is slipping">
           <ul className="stack-sm u-m-0">
             {r.flags.map((f) => (
-              <li key={`${f.kind}:${f.name}:${f.uom}`}>{flagText(f)}</li>
+              <li key={`${f.kind}:${f.name}:${f.uom}`} className="stack-sm">
+                <span>{flagText(f)}</span>
+                <DiaryDraft flag={f} />
+              </li>
             ))}
           </ul>
         </Alert>

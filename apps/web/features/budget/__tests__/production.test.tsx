@@ -59,6 +59,8 @@ beforeEach(() => {
         recentRate: 6,
         baselineRate: 10,
         dropPct: 0.4,
+        diaryDraft:
+          'Production note 2026-11-07: Crew Crew 2 installed 6 panels per working day over the last 7 days, down 40% from 10 per working day over the previous four weeks. Reason for the drop: [to be filled in].',
       },
     ],
   }));
@@ -76,6 +78,20 @@ describe('ProductionPanel', () => {
       screen.getByRole('table', { name: 'Planned and installed panels by week' }),
     ).toBeTruthy();
     expect(screen.getByRole('table', { name: 'Installed by trade' })).toBeTruthy();
+  });
+
+  it('offers an editable drafted diary note for a rate drop and posts nothing', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    renderInProject(<ProductionPanel canManage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Draft diary note for Crew 2/ }),
+    );
+    const box = (await screen.findByLabelText(
+      /Draft diary note for Crew 2/,
+    )) as HTMLTextAreaElement;
+    expect(box.value).toMatch(/down 40% from 10 per working day/);
+    expect(box.value).toMatch(/\[to be filled in\]/);
+    expect(fake.calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
   });
 
   it('asks for the report again when a trade is chosen and hides setup from non-managers', async () => {

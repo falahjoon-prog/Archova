@@ -5,6 +5,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { isLocalDate, localDateOf } from '@archova/time';
 import {
+  diaryDraft,
   itemForecast,
   itemProgress,
   productionCurve,
@@ -297,7 +298,10 @@ export function createProductionService(deps: ProductionDeps) {
       })),
       byTrade: rollup('trade'),
       byLocation: rollup('location'),
-      flags: rateFlags(items, entries, asOf),
+      flags: rateFlags(items, entries, asOf).map((f) => ({
+        ...f,
+        diaryDraft: diaryDraft(f, asOf),
+      })),
     };
   }
 
