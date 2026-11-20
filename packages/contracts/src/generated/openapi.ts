@@ -23571,6 +23571,15 @@ export interface components {
         /** @enum {string} */
         PaymentClaimStatus: "submitted" | "scheduled" | "paid" | "disputed" | "adjudication" | "withdrawn";
         PaymentClaim: {
+            /** @description The one open SOPA step that needs a look now (overdue or due within 3 days), or null. Rule-based from the claim timeline. */
+            attention: {
+                label: string;
+                /** Format: date */
+                dueOn: string;
+                /** @enum {string} */
+                status: "overdue" | "due_soon";
+                note: string | null;
+            } | null;
             id: string;
             contractId: string;
             number: number;

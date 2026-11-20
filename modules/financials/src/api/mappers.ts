@@ -40,7 +40,19 @@ export const toContractDto = (c: ContractRow) => ({
   paymentDays: c.paymentDays,
 });
 
-export const toClaimDto = (c: ClaimRow, today: string, scheduled: boolean) => ({
+type AttentionStep = {
+  key: string;
+  label: string;
+  dueOn: string | null;
+  status: 'overdue' | 'due_soon' | string;
+  note: string | null;
+};
+export const toClaimDto = (
+  c: ClaimRow,
+  today: string,
+  scheduled: boolean,
+  attention: AttentionStep | null = null,
+) => ({
   id: encodeId('paymentClaim', c.id),
   contractId: encodeId('contract', c.contractId),
   number: c.number,
@@ -63,6 +75,14 @@ export const toClaimDto = (c: ClaimRow, today: string, scheduled: boolean) => ({
   rulesReviewed: c.rulesReviewed,
   status: c.status as 'submitted',
   daysToScheduleDue: c.scheduleDueOn && !scheduled ? daysBetween(today, c.scheduleDueOn) : null,
+  attention: attention
+    ? {
+        label: attention.label,
+        dueOn: attention.dueOn!,
+        status: attention.status as 'overdue' | 'due_soon',
+        note: attention.note,
+      }
+    : null,
 });
 
 export const toVariationDto = (v: { variation: VariationRow; claimedToDate: string }) => ({

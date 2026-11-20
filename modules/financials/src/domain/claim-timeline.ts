@@ -166,3 +166,14 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
   }
   return steps;
 }
+
+/** The one step a person should look at now: overdue before due soon, then the earliest date. Null when all is calm. */
+export function mostUrgentStep(steps: readonly TimelineStep[]): TimelineStep | null {
+  const hot = steps.filter((s) => s.status === 'overdue' || s.status === 'due_soon');
+  hot.sort(
+    (a, b) =>
+      Number(b.status === 'overdue') - Number(a.status === 'overdue') ||
+      compareLocalDates(a.dueOn ?? '9999-12-31', b.dueOn ?? '9999-12-31'),
+  );
+  return hot[0] ?? null;
+}
