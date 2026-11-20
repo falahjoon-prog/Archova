@@ -22,8 +22,8 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
-import { usePlanList, usePretaskMutations } from '../hooks/usePretask';
-import { STATUS_LABELS, type Plan } from '../lib/types';
+import { useInsights, usePlanList, usePretaskMutations, useTemplates } from '../hooks/usePretask';
+import { STATUS_LABELS, type Insights, type Plan, type Template } from '../lib/types';
 import { PretaskDetailView } from './PretaskDetailView';
 import { NewPlanDialog } from './dialogs';
 
@@ -34,26 +34,25 @@ export function PretaskScreen() {
     <PretaskDetailView id={params.id} />
   ) : (
     <PretaskHome
-      view={params.view === 'review' ? 'review' : 'all'}
+      view={VIEWS.includes(params.view as View) ? (params.view as View) : 'all'}
       setView={(v) => setParams({ view: v === 'all' ? null : v })}
     />
   );
 }
 
+type View = 'all' | 'review' | 'templates' | 'insights';
+const VIEWS: View[] = ['all', 'review', 'templates', 'insights'];
+
 const needsReview = (p: Plan) => p.status === 'closed' && !p.reviewedAt;
 
-function PretaskHome({
-  view,
-  setView,
-}: {
-  view: 'all' | 'review';
-  setView: (v: 'all' | 'review') => void;
-}) {
+function PretaskHome({ view, setView }: { view: View; setView: (v: View) => void }) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const dir = useProjectDirectory();
   const plans = usePlanList();
   const m = usePretaskMutations();
+  const templates = useTemplates();
+  const insights = useInsights();
   const [creating, setCreating] = useState(false);
   usePublishAssistantScope({
     projectId: project.projectId,
@@ -125,13 +124,22 @@ function PretaskHome({
         tabs={[
           { id: 'all', label: 'All plans', count: all.length },
           { id: 'review', label: 'To review', count: queue.length },
+          { id: 'templates', label: 'Templates', count: (templates.data ?? []).length },
+          ...(insights.data ? [{ id: 'insights', label: 'Insights' }] : []),
         ]}
         value={view}
-        onValueChange={(v) => setView(v as 'all' | 'review')}
+        onValueChange={(v) => setView(v as View)}
       >
         <div className="stack">
           <ErrorAlert error={plans.error} title="We couldn't load pre-task plans" />
-          {plans.isPending ? (
+          {view === 'templates' ? (
+            <TemplatesTable
+              templates={templates.data ?? []}
+              onToggle={(t) => m.setTemplateActive.mutate({ template: t, isActive: !t.isActive })}
+            />
+          ) : view === 'insights' && insights.data ? (
+            <InsightsPanel data={insights.data} companyName={dir.companyName} />
+          ) : plans.isPending ? (
             <SkeletonRows label="Loading pre-task plans…" />
           ) : rows.length === 0 ? (
             <EmptyState
@@ -165,5 +173,115 @@ function PretaskHome({
         />
       ) : null}
     </>
+  );
+}
+
+function TemplatesTable({
+  templates,
+  onToggle,
+}: {
+  templates: Template[];
+  onToggle: (t: Template) => void;
+}) {
+  if (templates.length === 0) {
+    return (
+      <EmptyState
+        icon={PretaskIcon}
+        title="No templates yet"
+        description="Open a plan and choose Save as template. New plans can then start from its task, SWMS and hazards."
+      />
+    );
+  }
+  const columns: DataTableColumn<Template>[] = [
+    { id: 'name', header: 'Template', rowHeader: true, cell: (t) => t.name },
+    { id: 'task', header: 'Task', cell: (t) => t.taskTitle },
+    { id: 'hazards', header: 'Hazards', cell: (t) => String(t.hazards.length) },
+    {
+      id: 'state',
+      header: 'State',
+      cell: (t) => (
+        <StatusPill tone={t.isActive ? 'success' : 'neutral'}>
+          {t.isActive ? 'In use' : 'Retired'}
+        </StatusPill>
+      ),
+    },
+    {
+      id: 'action',
+      header: <span className="sr-only">Actions</span>,
+      cell: (t) => (
+        <Button variant="secondary" onClick={() => onToggle(t)}>
+          {t.isActive ? 'Retire' : 'Restore'}
+        </Button>
+      ),
+    },
+  ];
+  return (
+    <DataTable
+      caption="Pre-task plan templates"
+      columns={columns}
+      rows={templates}
+      getRowId={(t) => t.id}
+    />
+  );
+}
+
+function InsightsPanel({
+  data,
+  companyName,
+}: {
+  data: Insights;
+  companyName: (id: string) => string;
+}) {
+  const hazardColumns: DataTableColumn<Insights['topHazards'][number]>[] = [
+    { id: 'hazard', header: 'Hazard', rowHeader: true, cell: (h) => h.hazard },
+    { id: 'plans', header: 'Plans', sortValue: (h) => h.plans, cell: (h) => String(h.plans) },
+    {
+      id: 'high',
+      header: 'High risk',
+      sortValue: (h) => h.highRiskPlans,
+      cell: (h) => String(h.highRiskPlans),
+    },
+    { id: 'last', header: 'Last seen', cell: (h) => h.lastSeen },
+  ];
+  const companyColumns: DataTableColumn<Insights['byCompany'][number]>[] = [
+    {
+      id: 'company',
+      header: 'Company',
+      rowHeader: true,
+      cell: (c) => (c.companyId ? companyName(c.companyId) : 'Not recorded'),
+    },
+    { id: 'plans', header: 'Plans', sortValue: (c) => c.plans, cell: (c) => String(c.plans) },
+    { id: 'closed', header: 'Closed', cell: (c) => String(c.closed) },
+    { id: 'high', header: 'High-risk hazards', cell: (c) => String(c.highRiskHazards) },
+  ];
+  return (
+    <div className="stack">
+      <p className="u-muted u-m-0">
+        Last {data.days} days: {data.plans} plans, {data.closed} closed, {data.reviewed} reviewed,{' '}
+        {data.toReview} waiting for review.
+      </p>
+      {data.topHazards.length ? (
+        <DataTable
+          caption="Hazards that keep coming up"
+          columns={hazardColumns}
+          rows={data.topHazards}
+          getRowId={(h) => h.hazard}
+        />
+      ) : (
+        <EmptyState
+          icon={PretaskIcon}
+          title="No hazards recorded yet"
+          description="Once plans are started, the hazards that recur show up here."
+        />
+      )}
+      {data.byCompany.length ? (
+        <DataTable
+          caption="Plans by company"
+          columns={companyColumns}
+          rows={data.byCompany}
+          getRowId={(c) => c.companyId ?? 'none'}
+        />
+      ) : null}
+    </div>
   );
 }

@@ -12,6 +12,7 @@ import {
 import {
   RECURRING_WINDOW_DAYS,
   closeBlockers,
+  hazardInsights,
   planWarnings,
   suggestHazards,
   type PretaskHazard,
@@ -24,6 +25,7 @@ import {
   pretaskCrew,
   pretaskEvents,
   pretaskPlans,
+  pretaskTemplates,
   swms,
 } from '../infra/tables';
 import type { SafetyDeps } from './swms';
@@ -31,6 +33,7 @@ import type { SafetyDeps } from './swms';
 export type PlanRow = typeof pretaskPlans.$inferSelect;
 export type CrewRow = typeof pretaskCrew.$inferSelect;
 export type PlanEventRow = typeof pretaskEvents.$inferSelect;
+export type TemplateRow = typeof pretaskTemplates.$inferSelect;
 export type CrewView = CrewRow & { swmsRead: boolean | null };
 
 export interface PlanFields {
@@ -677,7 +680,165 @@ export function createPretaskService(deps: SafetyDeps) {
     });
   }
 
+  // --- Copy, templates and insights ---------------------------------------------------------------------------
+
+  /** A new open plan from an earlier one: same task, hazards and people, nobody signed. Today's date unless given. */
+  async function copy(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    input: { workDate?: string },
+  ) {
+    const { row } = await getVisible(scope, projectId, id);
+    const project = await deps.platform.getProject(scope, projectId);
+    const crew = await scope.tx
+      .select()
+      .from(pretaskCrew)
+      .where(eq(pretaskCrew.planId, id))
+      .orderBy(asc(pretaskCrew.createdAt), asc(pretaskCrew.id));
+    return create(scope, projectId, {
+      taskTitle: row.taskTitle,
+      workDate: input.workDate ?? localDateOf(now(), project.timezone),
+      supervisorName: row.supervisorName,
+      location: row.location,
+      companyId: row.companyId,
+      swmsId: row.swmsId,
+      hazards: row.hazards,
+      crew: crew.map((c) => ({
+        personName: c.personName,
+        companyId: c.companyId,
+        userId: c.userId,
+      })),
+    });
+  }
+
+  async function requireReview(scope: TenantScope, projectId: string) {
+    if (!(await canReview(scope, projectId)))
+      throw new AppError(
+        'access.denied',
+        "You can't manage pre-task plan templates on this project.",
+      );
+  }
+
+  async function listTemplates(
+    scope: TenantScope,
+    projectId: string,
+    opts: { includeInactive: boolean },
+  ) {
+    return scope.tx
+      .select()
+      .from(pretaskTemplates)
+      .where(
+        and(
+          eq(pretaskTemplates.projectId, projectId),
+          opts.includeInactive ? undefined : eq(pretaskTemplates.isActive, true),
+        ),
+      )
+      .orderBy(asc(pretaskTemplates.name), asc(pretaskTemplates.id));
+  }
+
+  async function createTemplate(
+    scope: TenantScope,
+    projectId: string,
+    input: { name: string; taskTitle: string; swmsId?: string | null; hazards: PretaskHazard[] },
+  ) {
+    await requireReview(scope, projectId);
+    await deps.platform.getProject(scope, projectId);
+    if (input.swmsId) await checkSwms(scope, projectId, input.swmsId);
+    const [row] = await scope.tx
+      .insert(pretaskTemplates)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        name: input.name.trim(),
+        taskTitle: input.taskTitle.trim(),
+        swmsId: input.swmsId ?? null,
+        hazards: cleanHazards(input.hazards),
+        createdBy: scope.ctx.userId,
+        updatedBy: scope.ctx.userId,
+      })
+      .returning();
+    return row!;
+  }
+
+  async function setTemplateActive(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    expected: number,
+    isActive: boolean,
+  ) {
+    await requireReview(scope, projectId);
+    const [cur] = await scope.tx
+      .select()
+      .from(pretaskTemplates)
+      .where(and(eq(pretaskTemplates.id, id), eq(pretaskTemplates.projectId, projectId)))
+      .limit(1);
+    if (!cur) throw new AppError('pretask.template_not_found');
+    if (cur.version !== expected) throw versionConflict();
+    const [row] = await scope.tx
+      .update(pretaskTemplates)
+      .set({ isActive, updatedAt: now(), updatedBy: scope.ctx.userId, version: cur.version + 1 })
+      .where(and(eq(pretaskTemplates.id, id), eq(pretaskTemplates.version, expected)))
+      .returning();
+    if (!row) throw versionConflict();
+    return row;
+  }
+
+  /** What keeps coming up on this project and who is raising it. For the supervisor, so it needs the review permission. */
+  async function insights(scope: TenantScope, projectId: string, days: number) {
+    if (!(await canReview(scope, projectId)))
+      throw new AppError('access.denied', "You can't see pre-task insights on this project.");
+    const project = await deps.platform.getProject(scope, projectId);
+    const from = localDateOf(new Date(now().getTime() - days * DAY_MS), project.timezone);
+    const rows = await scope.tx
+      .select()
+      .from(pretaskPlans)
+      .where(
+        and(
+          eq(pretaskPlans.projectId, projectId),
+          isNull(pretaskPlans.deletedAt),
+          gte(pretaskPlans.workDate, from),
+        ),
+      )
+      .orderBy(desc(pretaskPlans.workDate))
+      .limit(2000);
+    const ids = rows.map((r) => r.id);
+    const counts = ids.length
+      ? await scope.tx
+          .select({
+            planId: pretaskCrew.planId,
+            total: sql<number>`count(*)::int`,
+            signed: sql<number>`count(${pretaskCrew.signedAt})::int`,
+          })
+          .from(pretaskCrew)
+          .where(inArray(pretaskCrew.planId, ids))
+          .groupBy(pretaskCrew.planId)
+      : [];
+    const by = new Map(counts.map((c) => [c.planId, c]));
+    return {
+      days,
+      ...hazardInsights(
+        rows.map((r) => ({
+          companyId: r.companyId,
+          status: r.status,
+          reviewed: r.reviewedAt !== null,
+          workDate: r.workDate,
+          hazards: r.hazards,
+          crewCount: by.get(r.id)?.total ?? 0,
+          signedCount: by.get(r.id)?.signed ?? 0,
+        })),
+      ),
+    };
+  }
+
   return {
+    copy,
+    listTemplates,
+    createTemplate,
+    setTemplateActive,
+    insights,
     list,
     detail,
     create,

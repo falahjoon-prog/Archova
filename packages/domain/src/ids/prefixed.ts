@@ -181,6 +181,7 @@ export const ID_PREFIXES = {
   toolboxAttendee: 'tba',
   pretaskPlan: 'ptk',
   pretaskCrew: 'ptw',
+  pretaskTemplate: 'ptt',
   environmentPlan: 'epl',
   environmentCondition: 'ecn',
   environmentDocument: 'edc',

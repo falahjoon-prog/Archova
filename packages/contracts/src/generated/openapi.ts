@@ -11385,6 +11385,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Reusable plan templates on the project. Retired ones only with includeInactive. */
+        get: operations["listPretaskTemplates"];
+        put?: never;
+        /** Save the hazards and controls a kind of task usually has, so a plan can start from them. Needs the review permission. */
+        post: operations["createPretaskTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["PretaskTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Retire or restore a template. */
+        patch: operations["updatePretaskTemplate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person. */
+        get: operations["getPretaskInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a new open plan from an earlier one with the same task, hazards, SWMS and people, and nobody signed. Today's date unless workDate is given. */
+        post: operations["copyPretaskPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
         parameters: {
             query?: never;
@@ -27497,6 +27580,55 @@ export interface components {
         PretaskSuggestionList: {
             data: components["schemas"]["PretaskSuggestion"][];
         };
+        PretaskTemplate: {
+            id: string;
+            name: string;
+            taskTitle: string;
+            swmsId: string | null;
+            hazards: components["schemas"]["PretaskHazard"][];
+            isActive: boolean;
+            version: number;
+        };
+        PretaskTemplateList: {
+            data: components["schemas"]["PretaskTemplate"][];
+        };
+        CreatePretaskTemplateRequest: {
+            name: string;
+            taskTitle: string;
+            swmsId?: string | null;
+            hazards: components["schemas"]["PretaskHazard"][];
+        };
+        UpdatePretaskTemplateRequest: {
+            isActive: boolean;
+        };
+        CopyPretaskPlanRequest: {
+            /** Format: date */
+            workDate?: string;
+        };
+        PretaskInsightHazard: {
+            hazard: string;
+            plans: number;
+            /** @description Plans where this hazard started at high or extreme risk. */
+            highRiskPlans: number;
+            /** Format: date */
+            lastSeen: string;
+            companyIds: string[];
+        };
+        PretaskInsightCompany: {
+            companyId: string | null;
+            plans: number;
+            closed: number;
+            highRiskHazards: number;
+        };
+        PretaskInsights: {
+            days: number;
+            plans: number;
+            closed: number;
+            reviewed: number;
+            toReview: number;
+            topHazards: components["schemas"]["PretaskInsightHazard"][];
+            byCompany: components["schemas"]["PretaskInsightCompany"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -28835,6 +28967,7 @@ export interface components {
         ToolboxTalkId: string;
         ToolboxAttendeeId: string;
         PretaskPlanId: string;
+        PretaskTemplateId: string;
         PretaskCrewId: string;
         IncidentId: string;
         IncidentActionId: string;
@@ -47676,6 +47809,154 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPretaskTemplates: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPretaskTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePretaskTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePretaskTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["PretaskTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePretaskTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPretaskInsights: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    copyPretaskPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CopyPretaskPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
                 headers: {
                     ETag: components["headers"]["ETag"];
                     [name: string]: unknown;

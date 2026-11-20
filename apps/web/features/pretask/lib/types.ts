@@ -127,3 +127,36 @@ export const ACTION_LABELS: Record<string, string> = {
   reviewed: 'Reviewed by supervisor',
   deleted: 'Deleted',
 };
+
+export interface Template {
+  id: string;
+  name: string;
+  taskTitle: string;
+  swmsId: string | null;
+  hazards: Hazard[];
+  isActive: boolean;
+  version: number;
+}
+
+export interface TemplateInput {
+  name: string;
+  taskTitle: string;
+  swmsId?: string;
+  hazards: Hazard[];
+}
+
+export interface Insights {
+  days: number;
+  plans: number;
+  closed: number;
+  reviewed: number;
+  toReview: number;
+  topHazards: {
+    hazard: string;
+    plans: number;
+    highRiskPlans: number;
+    lastSeen: string;
+    companyIds: string[];
+  }[];
+  byCompany: { companyId: string | null; plans: number; closed: number; highRiskHazards: number }[];
+}

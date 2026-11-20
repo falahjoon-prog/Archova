@@ -3735,6 +3735,37 @@ export const ClearPretaskSignatureParams = z.object({
   "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
   "crewId": z.string().regex(new RegExp("^ptw_[0-9A-Za-z]{26}$")),
 });
+export const ListPretaskTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPretaskTemplatesQuery = z.object({
+  "includeInactive": z.enum(["true", "false"]).optional(),
+});
+export const CreatePretaskTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePretaskTemplateBody = s.CreatePretaskTemplateRequestSchema;
+export const UpdatePretaskTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^ptt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePretaskTemplateBody = s.UpdatePretaskTemplateRequestSchema;
+export const GetPretaskInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetPretaskInsightsQuery = z.object({
+  "days": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const CopyPretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const CopyPretaskPlanBody = s.CopyPretaskPlanRequestSchema;
 export const ListIncidentActionsFromSourceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -13196,6 +13227,66 @@ export const operations = {
     params: ClearPretaskSignatureParams,
     query: null,
     body: null,
+  },
+  listPretaskTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.read",
+    internal: false,
+    contentType: null,
+    params: ListPretaskTemplatesParams,
+    query: ListPretaskTemplatesQuery,
+    body: null,
+  },
+  createPretaskTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePretaskTemplateParams,
+    query: null,
+    body: CreatePretaskTemplateBody,
+  },
+  updatePretaskTemplate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePretaskTemplateParams,
+    query: null,
+    body: UpdatePretaskTemplateBody,
+  },
+  getPretaskInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: null,
+    params: GetPretaskInsightsParams,
+    query: GetPretaskInsightsQuery,
+    body: null,
+  },
+  copyPretaskPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: CopyPretaskPlanParams,
+    query: null,
+    body: CopyPretaskPlanBody,
   },
   listIncidentActionsFromSource: {
     method: 'GET',

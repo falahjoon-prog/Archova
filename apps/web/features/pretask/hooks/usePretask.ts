@@ -8,7 +8,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createPretaskApi } from '../data/api';
 import { pretaskPreview, type PretaskSource } from '../data/source';
-import type { Hazard, PlanDetail, PlanInput } from '../lib/types';
+import type { Hazard, PlanDetail, PlanInput, Template, TemplateInput } from '../lib/types';
 
 function useSource(): PretaskSource {
   const { orgId } = useCurrentOrg();
@@ -50,6 +50,24 @@ export function useHazardSuggestions(opts: { planId?: string; swmsId?: string })
   });
 }
 
+export function useTemplates() {
+  const source = useSource();
+  const { orgId, projectId } = useScope();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'pretask', { view: 'templates' }),
+    queryFn: () => source.listTemplates(projectId),
+  });
+}
+
+export function useInsights() {
+  const source = useSource();
+  const { orgId, projectId } = useScope();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'pretask', { view: 'insights' }),
+    queryFn: () => source.insights(projectId),
+  });
+}
+
 export function useSwmsOptions() {
   const source = useSource();
   const { orgId, projectId } = useScope();
@@ -72,6 +90,23 @@ export function usePretaskMutations() {
   return {
     createPlan: useMutation({
       mutationFn: async (input: PlanInput) => settle(await source.createPlan(projectId, input)),
+    }),
+    copyPlan: useMutation({
+      mutationFn: async (d: PlanDetail) => settle(await source.copyPlan(projectId, d)),
+    }),
+    createTemplate: useMutation({
+      mutationFn: async (input: TemplateInput) => {
+        const t = await source.createTemplate(projectId, input);
+        await qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'pretask') });
+        return t;
+      },
+    }),
+    setTemplateActive: useMutation({
+      mutationFn: async (v: { template: Template; isActive: boolean }) => {
+        const t = await source.setTemplateActive(projectId, v.template, v.isActive);
+        await qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'pretask') });
+        return t;
+      },
     }),
     setHazards: useMutation({
       mutationFn: async (v: { detail: PlanDetail; hazards: Hazard[] }) =>

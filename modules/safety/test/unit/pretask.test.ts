@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   closeBlockers,
+  hazardInsights,
   hazardLines,
   planWarnings,
   pretaskLabel,
@@ -81,5 +82,44 @@ describe('Nova hazard suggestions', () => {
     expect(s[0]!.controls).toBe('Matting');
     expect(s[0]!.because).toMatch(/2 plans/);
     expect(s[1]!.controls).toBe('Wet cutting; Ear muffs');
+  });
+});
+
+describe('hazard insights', () => {
+  const plan = (
+    companyId: string | null,
+    workDate: string,
+    hazards: PretaskHazard[],
+    over: { status?: 'open' | 'closed'; reviewed?: boolean } = {},
+  ) => ({
+    companyId,
+    status: over.status ?? 'closed',
+    reviewed: over.reviewed ?? false,
+    workDate,
+    hazards,
+    crewCount: 2,
+    signedCount: 2,
+  });
+
+  it('counts hazards once per plan, ignoring case and punctuation, with the high-risk share', () => {
+    const i = hazardInsights([
+      plan('c1', '2026-11-18', [h('Wet ground!'), h('Noise', { riskBefore: 'low' })]),
+      plan('c2', '2026-11-19', [h('wet ground'), h('wet  ground')], { reviewed: true }),
+      plan(null, '2026-11-17', [h('Noise', { riskBefore: 'low' })], { status: 'open' }),
+    ]);
+    expect(i).toMatchObject({ plans: 3, closed: 2, reviewed: 1, toReview: 1 });
+    expect(i.topHazards[0]).toEqual({
+      hazard: 'Wet ground!',
+      plans: 2,
+      highRiskPlans: 2,
+      lastSeen: '2026-11-19',
+      companyIds: ['c1', 'c2'],
+    });
+    expect(i.topHazards[1]).toMatchObject({ hazard: 'Noise', plans: 2, highRiskPlans: 0 });
+    expect(i.byCompany.map((c) => [c.companyId, c.plans, c.highRiskHazards])).toEqual([
+      ['c1', 1, 1],
+      ['c2', 1, 1],
+      [null, 1, 0],
+    ]);
   });
 });

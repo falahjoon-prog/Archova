@@ -12,7 +12,7 @@ import {
 } from '@archova/ui';
 import { localDateOf } from '@archova/time';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { useSwmsOptions } from '../hooks/usePretask';
+import { useSwmsOptions, useTemplates } from '../hooks/usePretask';
 import { signatureToPng } from '../lib/signature';
 import type { Hazard, PlanInput, Suggestion } from '../lib/types';
 import { HazardEditor, blankHazard } from './HazardEditor';
@@ -54,6 +54,8 @@ export function NewPlanDialog({
   onSave: (input: PlanInput) => void;
 }) {
   const swms = useSwmsOptions();
+  const templates = useTemplates();
+  const [templateId, setTemplateId] = useState('');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(() => localDateOf(new Date(), timeZone));
   const [by, setBy] = useState(supervisor);
@@ -99,6 +101,24 @@ export function NewPlanDialog({
       }
     >
       <div className="stack">
+        {(templates.data ?? []).some((t) => t.isActive) ? (
+          <Select
+            label="Start from a template"
+            value={templateId}
+            placeholder="Blank plan"
+            options={(templates.data ?? [])
+              .filter((t) => t.isActive)
+              .map((t) => ({ value: t.id, label: t.name }))}
+            onChange={(e) => {
+              const t = (templates.data ?? []).find((x) => x.id === e.target.value);
+              setTemplateId(e.target.value);
+              if (!t) return;
+              setTitle(t.taskTitle);
+              setSwmsId(t.swmsId ?? '');
+              setHazards(t.hazards.length ? t.hazards.map((h) => ({ ...h })) : [blankHazard()]);
+            }}
+          />
+        ) : null}
         <TextField label="Task" value={title} onChange={(e) => setTitle(e.target.value)} />
         <TextField
           label="Work date"
@@ -343,6 +363,45 @@ export function ReviewDialog({
       <div className="stack">
         <Textarea label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         <ErrorAlert error={error} title="We couldn't save the review" />
+      </div>
+    </Dialog>
+  );
+}
+
+export function SaveTemplateDialog({
+  defaultName,
+  pending,
+  error,
+  onClose,
+  onSave,
+}: {
+  defaultName: string;
+  pending: boolean;
+  error: unknown;
+  onClose: () => void;
+  onSave: (name: string) => void;
+}) {
+  const [name, setName] = useState(defaultName);
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Save as template"
+      description="The task, SWMS and hazards are kept so the next plan starts from them. Crew and signatures are not copied."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={!name.trim() || pending} onClick={() => onSave(name.trim())}>
+            Save template
+          </Button>
+        </>
+      }
+    >
+      <div className="stack">
+        <TextField label="Template name" value={name} onChange={(e) => setName(e.target.value)} />
+        <ErrorAlert error={error} title="We couldn't save the template" />
       </div>
     </Dialog>
   );

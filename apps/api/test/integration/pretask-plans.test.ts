@@ -275,4 +275,68 @@ describe('Pre-task plans', () => {
     const forSub = (await s.sub.browser.get(`${s.base}/pretask-plans/suggestions`)).json().data;
     expect(forSub.some((x: { reason: string }) => x.reason === 'recent_incident')).toBe(false);
   });
+
+  it('copies a plan, keeps templates for supervisors, and shows insights to the supervisor only', async () => {
+    const s = await setup();
+    const first = await s.pm.browser.post(`${s.base}/pretask-plans`, {
+      taskTitle: 'Formwork day',
+      workDate: today(),
+      supervisorName: 'Pat',
+      hazards: [hazard({ hazard: 'Wet slippery ground' })],
+      crew: [{ personName: 'Sam' }, { personName: 'Lee' }],
+    });
+    const a = first.json();
+    // Sign one, then copy: the copy has the same people, unsigned, and its own number.
+    const copy = await s.pm.browser.post(`${s.base}/pretask-plans/${a.plan.id}/copy`, {});
+    expect(copy.statusCode).toBe(201);
+    const c = copy.json();
+    expect(c.plan).toMatchObject({
+      numberLabel: 'PTP-0002',
+      taskTitle: 'Formwork day',
+      status: 'open',
+      signedCount: 0,
+    });
+    expect(c.crew.map((x: { personName: string }) => x.personName)).toEqual(['Sam', 'Lee']);
+    expect(c.plan.hazards).toEqual(a.plan.hazards);
+    expect(c.events.map((e: { action: string }) => e.action)).toEqual(['created']);
+
+    // Templates: the supervisor keeps them; a subcontractor can read but not add.
+    const tpl = await s.pm.browser.post(`${s.base}/pretask-templates`, {
+      name: 'Formwork',
+      taskTitle: 'Formwork',
+      hazards: [hazard({ hazard: 'Wet slippery ground' })],
+    });
+    expect(tpl.statusCode).toBe(201);
+    expect(
+      (
+        await s.sub.browser.post(`${s.base}/pretask-templates`, {
+          name: 'x',
+          taskTitle: 'x',
+          hazards: [],
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect((await s.sub.browser.get(`${s.base}/pretask-templates`)).json().data).toHaveLength(1);
+    const retired = await s.pm.browser.patch(
+      `${s.base}/pretask-templates/${tpl.json().id}`,
+      { isActive: false },
+      { 'if-match': etagOf(tpl) },
+    );
+    expect(retired.json().isActive).toBe(false);
+    expect((await s.pm.browser.get(`${s.base}/pretask-templates`)).json().data).toEqual([]);
+    expect(
+      (await s.pm.browser.get(`${s.base}/pretask-templates?includeInactive=true`)).json().data,
+    ).toHaveLength(1);
+
+    // Insights: counts by hazard and company, for the supervisor only.
+    const ins = await s.pm.browser.get(`${s.base}/pretask-plans/insights?days=7`);
+    expect(ins.statusCode).toBe(200);
+    expect(ins.json()).toMatchObject({ days: 7, plans: 2, closed: 0, toReview: 0 });
+    expect(ins.json().topHazards[0]).toMatchObject({
+      hazard: 'Wet slippery ground',
+      plans: 2,
+      highRiskPlans: 2,
+    });
+    expect((await s.sub.browser.get(`${s.base}/pretask-plans/insights`)).statusCode).toBe(403);
+  });
 });

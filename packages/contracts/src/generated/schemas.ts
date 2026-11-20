@@ -2049,6 +2049,11 @@ export const CoordinationIssueListSchema = z.object({
 });
 export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
 
+export const CopyPretaskPlanRequestSchema = z.object({
+  "workDate": z.string().date().optional(),
+}).strict();
+export type CopyPretaskPlanRequest = z.infer<typeof CopyPretaskPlanRequestSchema>;
+
 export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
 export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
 
@@ -3599,6 +3604,14 @@ export const CreatePretaskPlanRequestSchema = z.object({
   "crew": z.array(PretaskCrewInputSchema).max(100).optional(),
 }).strict();
 export type CreatePretaskPlanRequest = z.infer<typeof CreatePretaskPlanRequestSchema>;
+
+export const CreatePretaskTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "taskTitle": z.string().min(1).max(200),
+  "swmsId": z.string().nullable().optional(),
+  "hazards": z.array(PretaskHazardSchema).max(50),
+}).strict();
+export type CreatePretaskTemplateRequest = z.infer<typeof CreatePretaskTemplateRequestSchema>;
 
 export const CreateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80),
@@ -9601,6 +9614,34 @@ export const PretaskEventSchema = z.object({
 });
 export type PretaskEvent = z.infer<typeof PretaskEventSchema>;
 
+export const PretaskInsightCompanySchema = z.object({
+  "companyId": z.string().nullable(),
+  "plans": z.number().int(),
+  "closed": z.number().int(),
+  "highRiskHazards": z.number().int(),
+});
+export type PretaskInsightCompany = z.infer<typeof PretaskInsightCompanySchema>;
+
+export const PretaskInsightHazardSchema = z.object({
+  "hazard": z.string(),
+  "plans": z.number().int(),
+  "highRiskPlans": z.number().int(),
+  "lastSeen": z.string().date(),
+  "companyIds": z.array(z.string()),
+});
+export type PretaskInsightHazard = z.infer<typeof PretaskInsightHazardSchema>;
+
+export const PretaskInsightsSchema = z.object({
+  "days": z.number().int(),
+  "plans": z.number().int(),
+  "closed": z.number().int(),
+  "reviewed": z.number().int(),
+  "toReview": z.number().int(),
+  "topHazards": z.array(PretaskInsightHazardSchema),
+  "byCompany": z.array(PretaskInsightCompanySchema),
+});
+export type PretaskInsights = z.infer<typeof PretaskInsightsSchema>;
+
 export const PretaskStatusSchema = z.enum(["open", "closed"]);
 export type PretaskStatus = z.infer<typeof PretaskStatusSchema>;
 
@@ -9677,6 +9718,22 @@ export const PretaskSuggestionListSchema = z.object({
   "data": z.array(PretaskSuggestionSchema),
 });
 export type PretaskSuggestionList = z.infer<typeof PretaskSuggestionListSchema>;
+
+export const PretaskTemplateSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "taskTitle": z.string(),
+  "swmsId": z.string().nullable(),
+  "hazards": z.array(PretaskHazardSchema),
+  "isActive": z.boolean(),
+  "version": z.number().int(),
+});
+export type PretaskTemplate = z.infer<typeof PretaskTemplateSchema>;
+
+export const PretaskTemplateListSchema = z.object({
+  "data": z.array(PretaskTemplateSchema),
+});
+export type PretaskTemplateList = z.infer<typeof PretaskTemplateListSchema>;
 
 export const PretaskTransitionRequestSchema = z.object({
   "action": z.enum(["close", "reopen"]),
@@ -12780,6 +12837,11 @@ export const UpdatePretaskPlanRequestSchema = z.object({
   "hazards": z.array(PretaskHazardSchema).max(50).optional(),
 }).strict();
 export type UpdatePretaskPlanRequest = z.infer<typeof UpdatePretaskPlanRequestSchema>;
+
+export const UpdatePretaskTemplateRequestSchema = z.object({
+  "isActive": z.boolean(),
+}).strict();
+export type UpdatePretaskTemplateRequest = z.infer<typeof UpdatePretaskTemplateRequestSchema>;
 
 export const UpdateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80).optional(),
