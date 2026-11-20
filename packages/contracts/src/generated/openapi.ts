@@ -912,6 +912,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the machine's contractor about a flagged service, inspection or certificate.
+         * @description Queues an email to the contractor address on the machine; no Archova account is needed. The text is built from the
+         *     plan (machine, job, due date) plus the optional note. Refused with `plant.bad_state` when the machine has no
+         *     contractor email, the plan has nothing flagged, or the contractor was already notified about it in the last 24 hours.
+         */
+        post: operations["createPlantContractorNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/contractor-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Notices sent to contractors in the last 90 days, newest first. */
+        get: operations["listPlantContractorNotices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/plant/flags": {
         parameters: {
             query?: never;
@@ -18238,6 +18282,10 @@ export interface components {
             dailyRateCents: number | null;
             status: components["schemas"]["PlantAssetStatus"];
             notes: string | null;
+            /** @description Who services the machine. */
+            contractorName: string | null;
+            /** @description Where notices about flagged maintenance are sent. The contractor needs no Archova account. */
+            contractorEmail: string | null;
             version: number;
         };
         PlantAssetList: {
@@ -18255,6 +18303,8 @@ export interface components {
             serialNumber?: string;
             dailyRateCents?: number;
             notes?: string;
+            contractorName?: string;
+            contractorEmail?: string;
         };
         UpdatePlantAssetRequest: {
             name?: string;
@@ -18267,6 +18317,9 @@ export interface components {
             serialNumber?: string;
             dailyRateCents?: number;
             notes?: string;
+            contractorName?: string;
+            /** @description Empty clears it. */
+            contractorEmail?: string;
             status?: components["schemas"]["PlantAssetStatus"];
         };
         PlantAllocation: {
@@ -18374,6 +18427,31 @@ export interface components {
                 bookedDays: number;
                 costCents: number | null;
             }[];
+        };
+        PlantContractorNotice: {
+            id: string;
+            assetId: string;
+            planId: string;
+            recipientName: string;
+            recipientEmail: string;
+            subject: string;
+            issue: string;
+            /** Format: date */
+            dueOn: string;
+            message: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "failed";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        PlantContractorNoticeList: {
+            data: components["schemas"]["PlantContractorNotice"][];
+        };
+        CreatePlantContractorNoticeRequest: {
+            planId: string;
+            message?: string;
         };
         PlantFlag: {
             /** @enum {string} */
@@ -29799,6 +29877,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlantUtilisation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantContractorNotice: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantContractorNoticeRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantContractorNotice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantContractorNotices: {
+        parameters: {
+            query?: {
+                assetId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantContractorNoticeList"];
                 };
             };
             default: components["responses"]["Problem"];

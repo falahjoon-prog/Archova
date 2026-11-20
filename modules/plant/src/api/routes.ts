@@ -8,7 +8,14 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { PlantService } from '../application/plant';
-import { toAllocationDto, toAssetDto, toFlagDto, toPlanDto, toRecordDto } from './mappers';
+import {
+  toAllocationDto,
+  toAssetDto,
+  toFlagDto,
+  toNoticeDto,
+  toPlanDto,
+  toRecordDto,
+} from './mappers';
 
 const id = (kind: IdKind, value: string, notFound: ProblemCode) => {
   const uuid = decodeId(kind, value);
@@ -152,6 +159,31 @@ export function plantRoutes(database: Database, svc: PlantService) {
         },
       };
     },
+    createPlantContractorNotice: async (input) => ({
+      status: 201,
+      body: toNoticeDto(
+        await tx(input, (s) =>
+          svc.notifyContractor(s, assetId(input.params), {
+            planId: ref('plantPlan', input.body.planId, 'planId'),
+            message: input.body.message,
+          }),
+        ),
+      ),
+    }),
+    listPlantContractorNotices: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            svc.listNotices(s, {
+              ...(input.query.assetId
+                ? { assetId: ref('plantAsset', input.query.assetId, 'assetId') }
+                : {}),
+            }),
+          )
+        ).map(toNoticeDto),
+      },
+    }),
     listPlantFlags: async (input) => ({
       status: 200,
       body: {

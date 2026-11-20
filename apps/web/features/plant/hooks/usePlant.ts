@@ -25,6 +25,7 @@ export function usePlantData(from: string, to: string) {
     }),
     plans: useQuery({ queryKey: key(orgId, 'plans'), queryFn: () => source.plans() }),
     flags: useQuery({ queryKey: key(orgId, 'flags'), queryFn: () => source.flags() }),
+    notices: useQuery({ queryKey: key(orgId, 'notices'), queryFn: () => source.notices() }),
   };
 }
 
@@ -61,6 +62,22 @@ export function usePlantMutations() {
     setStatus: useMutation({
       mutationFn: (v: { assetId: string; status: PlantAssetStatus }) =>
         source.setStatus(v.assetId, v.status),
+      onSuccess: refresh,
+    }),
+    setContractor: useMutation({
+      mutationFn: (v: { assetId: string; contractorName: string; contractorEmail: string }) =>
+        source.setContractor(v.assetId, {
+          contractorName: v.contractorName,
+          contractorEmail: v.contractorEmail,
+        }),
+      onSuccess: refresh,
+    }),
+    notifyContractor: useMutation({
+      mutationFn: (v: { assetId: string; planId: string; message?: string }) =>
+        source.notifyContractor(v.assetId, {
+          planId: v.planId,
+          ...(v.message ? { message: v.message } : {}),
+        }),
       onSuccess: refresh,
     }),
     allocate: useMutation({

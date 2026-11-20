@@ -3414,8 +3414,16 @@ export const CreatePlantAssetRequestSchema = z.object({
   "serialNumber": z.string().min(1).max(100).optional(),
   "dailyRateCents": z.number().int().min(0).optional(),
   "notes": z.string().min(1).max(2000).optional(),
+  "contractorName": z.string().min(1).max(200).optional(),
+  "contractorEmail": z.string().min(3).max(254).optional(),
 }).strict();
 export type CreatePlantAssetRequest = z.infer<typeof CreatePlantAssetRequestSchema>;
+
+export const CreatePlantContractorNoticeRequestSchema = z.object({
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "message": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreatePlantContractorNoticeRequest = z.infer<typeof CreatePlantContractorNoticeRequestSchema>;
 
 export const PlantPlanKindSchema = z.enum(["service", "inspection", "certification"]);
 export type PlantPlanKind = z.infer<typeof PlantPlanKindSchema>;
@@ -9128,6 +9136,8 @@ export const PlantAssetSchema = z.object({
   "dailyRateCents": z.number().int().nullable(),
   "status": PlantAssetStatusSchema,
   "notes": z.string().nullable(),
+  "contractorName": z.string().nullable(),
+  "contractorEmail": z.string().nullable(),
   "version": z.number().int(),
 });
 export type PlantAsset = z.infer<typeof PlantAssetSchema>;
@@ -9136,6 +9146,27 @@ export const PlantAssetListSchema = z.object({
   "data": z.array(PlantAssetSchema),
 });
 export type PlantAssetList = z.infer<typeof PlantAssetListSchema>;
+
+export const PlantContractorNoticeSchema = z.object({
+  "id": z.string().regex(new RegExp("^pcn_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "recipientName": z.string(),
+  "recipientEmail": z.string(),
+  "subject": z.string(),
+  "issue": z.string(),
+  "dueOn": z.string().date(),
+  "message": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "failed"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type PlantContractorNotice = z.infer<typeof PlantContractorNoticeSchema>;
+
+export const PlantContractorNoticeListSchema = z.object({
+  "data": z.array(PlantContractorNoticeSchema),
+});
+export type PlantContractorNoticeList = z.infer<typeof PlantContractorNoticeListSchema>;
 
 export const PlantFlagSchema = z.object({
   "code": z.enum(["maintenance_overdue", "maintenance_due_soon", "certification_expired", "certification_expiring", "double_booking", "booked_while_unavailable", "service_during_booking", "hire_not_costed", "idle"]),
@@ -12596,6 +12627,8 @@ export const UpdatePlantAssetRequestSchema = z.object({
   "serialNumber": z.string().max(100).optional(),
   "dailyRateCents": z.number().int().min(0).optional(),
   "notes": z.string().max(2000).optional(),
+  "contractorName": z.string().max(200).optional(),
+  "contractorEmail": z.string().max(254).optional(),
   "status": PlantAssetStatusSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdatePlantAssetRequest = z.infer<typeof UpdatePlantAssetRequestSchema>;

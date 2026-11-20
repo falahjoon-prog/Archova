@@ -26,6 +26,8 @@ export const assets = plantSchema.table('assets', {
   dailyRateCents: bigint('daily_rate_cents', { mode: 'number' }),
   status: text('status').$type<AssetStatus>().notNull().default('active'),
   notes: text('notes'),
+  contractorName: text('contractor_name'),
+  contractorEmail: text('contractor_email'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
@@ -99,4 +101,30 @@ export const maintenanceRecords = plantSchema.table('maintenance_records', {
   costCents: bigint('cost_cents', { mode: 'number' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export const contractorNotices = plantSchema.table('contractor_notices', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => maintenancePlans.id),
+  senderId: uuid('sender_id').notNull(),
+  recipientName: text('recipient_name').notNull(),
+  recipientEmail: text('recipient_email').notNull(),
+  subject: text('subject').notNull(),
+  issue: text('issue').notNull(),
+  dueOn: date('due_on').notNull(),
+  message: text('message').notNull().default(''),
+  status: text('status')
+    .$type<'queued' | 'sending' | 'sent' | 'failed'>()
+    .notNull()
+    .default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
 });

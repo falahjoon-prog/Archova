@@ -278,3 +278,43 @@ export function computeFlags(input: {
       x.assetId.localeCompare(y.assetId),
   );
 }
+
+export interface NoticePlan {
+  title: string;
+  kind: PlanKind;
+  nextDueOn: string | null;
+  active: boolean;
+}
+
+/** A notice to the machine's contractor is not sent twice for one plan inside this many hours. */
+export const NOTICE_COOLDOWN_HOURS = 24;
+
+/**
+ * What a notice to the contractor says about a plan Nova has flagged: the subject, the issue in a sentence and the due
+ * date. Null when there is nothing to notify about: the plan is finished, has no due date, is not yet due soon, or the
+ * machine is retired. The text names the machine and the job only, so it is safe to send outside the organisation.
+ */
+export function contractorNoticeFor(
+  asset: Pick<FlagAsset, 'name' | 'assetNumber' | 'status'>,
+  plan: NoticePlan,
+  today: string,
+): { subject: string; issue: string; dueOn: string; state: 'due_soon' | 'overdue' } | null {
+  if (!plan.active || !plan.nextDueOn || asset.status === 'retired') return null;
+  const state = dueState(plan.nextDueOn, today, plan.kind);
+  if (state === 'ok') return null;
+  const days = daysBetween(today, plan.nextDueOn);
+  const what = plan.kind === 'certification' ? 'certificate' : plan.kind;
+  const when =
+    days < 0
+      ? `${plural(-days, 'day')} overdue`
+      : days === 0
+        ? 'due today'
+        : `due in ${plural(days, 'day')}`;
+  const name = label(asset as FlagAsset);
+  return {
+    subject: `${state === 'overdue' ? 'Overdue' : 'Upcoming'} ${what}: ${name}`.slice(0, 200),
+    issue: `${plan.title} for ${name} is ${when} (due ${plan.nextDueOn}).`,
+    dueOn: plan.nextDueOn,
+    state,
+  };
+}
