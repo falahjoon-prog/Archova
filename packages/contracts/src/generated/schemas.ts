@@ -3416,6 +3416,7 @@ export const CreatePlantAssetRequestSchema = z.object({
   "notes": z.string().min(1).max(2000).optional(),
   "contractorName": z.string().min(1).max(200).optional(),
   "contractorEmail": z.string().min(3).max(254).optional(),
+  "contractorPhone": z.string().min(1).max(30).optional(),
 }).strict();
 export type CreatePlantAssetRequest = z.infer<typeof CreatePlantAssetRequestSchema>;
 
@@ -3434,6 +3435,7 @@ export type CreatePlantConditionCheckRequest = z.infer<typeof CreatePlantConditi
 export const CreatePlantContractorNoticeRequestSchema = z.object({
   "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
   "message": z.string().min(1).max(1000).optional(),
+  "channel": z.enum(["email", "sms", "phone"]).optional(),
 }).strict();
 export type CreatePlantContractorNoticeRequest = z.infer<typeof CreatePlantContractorNoticeRequestSchema>;
 
@@ -9150,6 +9152,7 @@ export const PlantAssetSchema = z.object({
   "notes": z.string().nullable(),
   "contractorName": z.string().nullable(),
   "contractorEmail": z.string().nullable(),
+  "contractorPhone": z.string().nullable(),
   "version": z.number().int(),
 });
 export type PlantAsset = z.infer<typeof PlantAssetSchema>;
@@ -9181,7 +9184,10 @@ export const PlantContractorNoticeSchema = z.object({
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
   "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
   "recipientName": z.string(),
-  "recipientEmail": z.string(),
+  "channel": z.enum(["email", "sms", "phone"]),
+  "recipientEmail": z.string().nullable(),
+  "recipientPhone": z.string().nullable(),
+  "text": z.string(),
   "subject": z.string(),
   "issue": z.string(),
   "dueOn": z.string().date(),
@@ -12658,6 +12664,7 @@ export const UpdatePlantAssetRequestSchema = z.object({
   "notes": z.string().max(2000).optional(),
   "contractorName": z.string().max(200).optional(),
   "contractorEmail": z.string().max(254).optional(),
+  "contractorPhone": z.string().max(30).optional(),
   "status": PlantAssetStatusSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdatePlantAssetRequest = z.infer<typeof UpdatePlantAssetRequestSchema>;

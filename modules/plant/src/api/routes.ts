@@ -194,6 +194,7 @@ export function plantRoutes(database: Database, svc: PlantService, condition: Co
           svc.notifyContractor(s, assetId(input.params), {
             planId: ref('plantPlan', input.body.planId, 'planId'),
             message: input.body.message,
+            channel: input.body.channel,
           }),
         ),
       ),

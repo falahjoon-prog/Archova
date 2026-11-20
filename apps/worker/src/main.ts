@@ -39,6 +39,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { warrantyExpiry } from './jobs/warranty-expiry';
+import { createTwilioSender } from './sms';
 import { plantContractorNotices } from './jobs/plant-contractor-notices';
 import { plantHireCosts } from './jobs/plant-hire-costs';
 import { walletRetention } from './jobs/wallet-retention';
@@ -135,7 +136,7 @@ async function main() {
     walletRetention(),
     warrantyExpiry,
     plantHireCosts,
-    plantContractorNotices(emailSender),
+    plantContractorNotices(emailSender, config.sms ? createTwilioSender({ ...config.sms }) : null),
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

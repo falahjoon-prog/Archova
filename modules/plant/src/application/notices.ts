@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { TenantScope } from '@archova/kernel';
+import { noticeSmsText } from '../domain/plant';
 
 /** A queued contractor notice with the sender's name, ready to email. */
 export interface QueuedContractorNotice {
@@ -7,7 +8,8 @@ export interface QueuedContractorNotice {
   assetName: string;
   senderName: string;
   recipientName: string;
-  recipientEmail: string;
+  recipientEmail: string | null;
+  recipientPhone: string | null;
   subject: string;
   issue: string;
   message: string;
@@ -19,7 +21,7 @@ const MAX_ATTEMPTS = 3;
 /** Claims queued notices (and ones whose worker went away) so a second worker skips them. Send after commit, then finish. */
 export async function claimContractorNotices(
   scope: TenantScope,
-  opts: { now: Date; limit: number },
+  opts: { now: Date; limit: number; channel: 'email' | 'sms' },
 ): Promise<QueuedContractorNotice[]> {
   const stale = new Date(opts.now.getTime() - STALE_CLAIM_MS).toISOString();
   const r = await scope.tx.execute<{
@@ -27,14 +29,15 @@ export async function claimContractorNotices(
     asset_name: string;
     sender_name: string | null;
     recipient_name: string;
-    recipient_email: string;
+    recipient_email: string | null;
+    recipient_phone: string | null;
     subject: string;
     issue: string;
     message: string;
   }>(sql`
     with picked as (
       select id from plant.contractor_notices
-       where attempts < ${MAX_ATTEMPTS}
+       where attempts < ${MAX_ATTEMPTS} and channel = ${opts.channel}
          and (status = 'queued' or (status = 'sending' and claimed_at < ${stale}::timestamptz))
        order by created_at
        limit ${opts.limit}
@@ -46,7 +49,7 @@ export async function claimContractorNotices(
        where n.id = picked.id
       returning n.*
     )
-    select c.id, a.name as asset_name, s.name as sender_name, c.recipient_name, c.recipient_email,
+    select c.id, a.name as asset_name, s.name as sender_name, c.recipient_name, c.recipient_email, c.recipient_phone,
            c.subject, c.issue, c.message
       from claimed c
       join plant.assets a on a.id = c.asset_id
@@ -58,6 +61,7 @@ export async function claimContractorNotices(
     senderName: x.sender_name ?? 'Your customer',
     recipientName: x.recipient_name,
     recipientEmail: x.recipient_email,
+    recipientPhone: x.recipient_phone,
     subject: x.subject,
     issue: x.issue,
     message: x.message,
@@ -67,7 +71,13 @@ export async function claimContractorNotices(
 /** Records how the sends went: sent ones are done; failed ones are retried until they run out of tries. */
 export async function finishContractorNotices(
   scope: TenantScope,
-  result: { sent: readonly string[]; failed: readonly string[]; now: Date },
+  result: {
+    sent: readonly string[];
+    failed: readonly string[];
+    /** Will never send (for example the SMS provider isn't set up): failed for good, not retried. */
+    abandoned?: readonly string[];
+    now: Date;
+  },
 ) {
   const uuids = (ids: readonly string[]) =>
     sql.join(
@@ -78,6 +88,10 @@ export async function finishContractorNotices(
     await scope.tx.execute(sql`
       update plant.contractor_notices set status = 'sent', sent_at = ${result.now.toISOString()}::timestamptz
        where id in (${uuids(result.sent)})`);
+  if (result.abandoned?.length)
+    await scope.tx.execute(sql`
+      update plant.contractor_notices set status = 'failed'
+       where id in (${uuids(result.abandoned)})`);
   if (result.failed.length)
     await scope.tx.execute(sql`
       update plant.contractor_notices
@@ -95,9 +109,12 @@ const esc = (s: string) =>
 export function renderContractorNotice(n: QueuedContractorNotice) {
   const note = n.message ? `\n\nNote from ${n.senderName}: ${n.message}` : '';
   return {
-    to: n.recipientEmail,
+    to: n.recipientEmail ?? '',
     subject: n.subject,
     text: `Hi ${n.recipientName},\n\n${n.senderName} is asking you to arrange this:\n${n.issue}${note}\n\nPlease contact ${n.senderName} directly to book it in.\n\nSent through Archova.\n`,
     html: `<p>Hi ${esc(n.recipientName)},</p><p>${esc(n.senderName)} is asking you to arrange this:<br><strong>${esc(n.issue)}</strong></p>${n.message ? `<p>Note from ${esc(n.senderName)}: ${esc(n.message)}</p>` : ''}<p>Please contact ${esc(n.senderName)} directly to book it in.</p><p>Sent through Archova.</p>`,
   };
 }
+
+/** The text message for a queued notice; same words as the text a sender gets for their own phone. */
+export const contractorSmsBody = (n: QueuedContractorNotice) => noticeSmsText(n.issue, n.message);

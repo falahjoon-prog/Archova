@@ -48,7 +48,7 @@ export function createPlantApi(orgId: string) {
     },
     async setContractor(
       assetId: string,
-      contractor: { contractorName: string; contractorEmail: string },
+      contractor: { contractorName: string; contractorEmail: string; contractorPhone: string },
     ): Promise<PlantAsset> {
       return unwrap(
         await api.PATCH('/v1/orgs/{orgId}/plant/assets/{assetId}', {
@@ -66,12 +66,12 @@ export function createPlantApi(orgId: string) {
     },
     async notifyContractor(
       assetId: string,
-      body: { planId: string; message?: string },
+      body: { planId: string; message?: string; channel?: 'email' | 'sms' | 'phone' },
     ): Promise<PlantContractorNotice> {
       return unwrap(
         await api.POST('/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices', {
           params: { path: { ...org, assetId }, header: idempotencyKey() },
-          body,
+          body: { ...body, channel: body.channel ?? 'email' },
         }),
       );
     },

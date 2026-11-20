@@ -18310,6 +18310,8 @@ export interface components {
             contractorName: string | null;
             /** @description Where notices about flagged maintenance are sent. The contractor needs no Archova account. */
             contractorEmail: string | null;
+            /** @description Contractor mobile or landline, in international form (+61...). */
+            contractorPhone: string | null;
             version: number;
         };
         PlantAssetList: {
@@ -18329,6 +18331,7 @@ export interface components {
             notes?: string;
             contractorName?: string;
             contractorEmail?: string;
+            contractorPhone?: string;
         };
         UpdatePlantAssetRequest: {
             name?: string;
@@ -18344,6 +18347,8 @@ export interface components {
             contractorName?: string;
             /** @description Empty clears it. */
             contractorEmail?: string;
+            /** @description Empty clears it. */
+            contractorPhone?: string;
             status?: components["schemas"]["PlantAssetStatus"];
         };
         PlantAllocation: {
@@ -18481,7 +18486,15 @@ export interface components {
             assetId: string;
             planId: string;
             recipientName: string;
-            recipientEmail: string;
+            /**
+             * @description `phone` means the sender texted from their own phone.
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "phone";
+            recipientEmail: string | null;
+            recipientPhone: string | null;
+            /** @description The text message for this notice */
+            text: string;
             subject: string;
             issue: string;
             /** Format: date */
@@ -18500,6 +18513,12 @@ export interface components {
         CreatePlantContractorNoticeRequest: {
             planId: string;
             message?: string;
+            /**
+             * @description `email` and `sms` are sent by Archova (`sms` needs the SMS provider); `phone` records that the sender texted from their own phone.
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "phone";
         };
         PlantFlag: {
             /** @enum {string} */

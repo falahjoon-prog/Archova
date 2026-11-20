@@ -5,6 +5,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   DataTable,
   EmptyState,
   PageHeader,
@@ -22,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { queries } from '@/shared/lib/api';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
+import { useFeatureFlag } from '@/shared/hooks/useFeatureFlag';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { ConditionPhotos } from '../components/ConditionPhotos';
 import type {
@@ -466,6 +468,13 @@ const NOTIFIABLE = new Set([
   'certification_expiring',
 ]);
 
+type Channel = 'email' | 'sms' | 'phone';
+const CHANNEL_NAME: Record<Channel, string> = {
+  email: 'email',
+  sms: 'text from Archova',
+  phone: 'text from your phone',
+};
+
 function FlagRow({
   flag,
   asset,
@@ -479,69 +488,124 @@ function FlagRow({
   canManage: boolean;
   m: Mutations;
 }) {
+  const archovaTexts = useFeatureFlag('plant.sms');
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [picked, setPicked] = useState<Channel[]>(['email']);
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
   const notifiable = canManage && NOTIFIABLE.has(flag.code) && flag.subjectId && asset;
-  const last = notices.find((n) => n.planId === flag.subjectId);
-  function send(e: FormEvent) {
+  const sent = notices.filter((n) => n.planId === flag.subjectId);
+  const channels: { id: Channel; label: string; hint: string; available: boolean }[] = asset
+    ? [
+        {
+          id: 'email',
+          label: 'Email',
+          hint: asset.contractorEmail ?? 'Add a contractor email on the Fleet tab',
+          available: !!asset.contractorEmail,
+        },
+        {
+          id: 'phone',
+          label: 'Text from my phone',
+          hint: asset.contractorPhone
+            ? `Opens your phone's messages to ${asset.contractorPhone}; you press send`
+            : 'Add a contractor phone number on the Fleet tab',
+          available: !!asset.contractorPhone,
+        },
+        ...(archovaTexts
+          ? [
+              {
+                id: 'sms' as const,
+                label: 'Text from Archova',
+                hint: asset.contractorPhone ?? 'Add a contractor phone number on the Fleet tab',
+                available: !!asset.contractorPhone,
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const toggle = (c: Channel) =>
+    setPicked((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));
+  async function send(e: FormEvent) {
     e.preventDefault();
     if (!asset || !flag.subjectId) return;
-    m.notifyContractor.mutate(
-      { assetId: asset.id, planId: flag.subjectId, message: message.trim() },
-      {
-        onSuccess: () => {
-          setOpen(false);
-          setMessage('');
-        },
-      },
-    );
+    const chosen = picked.filter((c) => channels.find((x) => x.id === c)?.available);
+    if (chosen.length === 0) return setError(new Error('Choose how to notify them.'));
+    setBusy(true);
+    setError(null);
+    try {
+      for (const channel of chosen) {
+        const n = await m.notifyContractor.mutateAsync({
+          assetId: asset.id,
+          planId: flag.subjectId,
+          message: message.trim(),
+          channel,
+        });
+        // Their own phone sends it: hand the ready-made text to the messages app.
+        if (channel === 'phone' && n.recipientPhone)
+          window.location.href = `sms:${n.recipientPhone}?&body=${encodeURIComponent(n.text)}`;
+      }
+      setOpen(false);
+      setMessage('');
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <li className="stack-sm">
       <Alert tone={SEVERITY[flag.severity]}>{flag.message}</Alert>
-      {last ? (
-        <p className="u-muted" role="status">
-          Contractor notified {formatLocalDate(last.createdAt.slice(0, 10))} ({last.recipientEmail}
-          {last.status === 'failed' ? ', the email could not be delivered' : ''}).
+      {sent.map((n) => (
+        <p className="u-muted" role="status" key={n.id}>
+          Contractor notified by {CHANNEL_NAME[n.channel]}{' '}
+          {formatLocalDate(n.createdAt.slice(0, 10))}
+          {n.status === 'failed' ? ', but it could not be delivered' : ''}.
         </p>
-      ) : null}
-      {notifiable && !last ? (
-        asset.contractorEmail ? (
-          open ? (
-            <form className="stack-sm" onSubmit={send}>
-              <p className="u-muted">
-                Emails {asset.contractorName ?? 'the contractor'} ({asset.contractorEmail}) the
-                machine, the job and the due date. They don&apos;t need an Archova account.
-              </p>
-              <Textarea
-                label="Note (optional)"
-                value={message}
-                maxLength={1000}
-                onChange={(e) => setMessage(e.target.value)}
+      ))}
+      {notifiable ? (
+        open ? (
+          <form className="stack-sm" onSubmit={send}>
+            <p className="u-muted">
+              Tells {asset.contractorName ?? 'the contractor'} the machine, the job and the due
+              date. They don&apos;t need an Archova account.
+            </p>
+            {channels.map((c) => (
+              <Checkbox
+                key={c.id}
+                label={c.label}
+                hint={c.hint}
+                disabled={!c.available}
+                checked={picked.includes(c.id) && c.available}
+                onChange={() => toggle(c.id)}
               />
-              <ErrorAlert
-                error={m.notifyContractor.error}
-                title="We couldn't notify the contractor"
-              />
-              <div className="row-actions">
-                <Button type="submit" disabled={m.notifyContractor.isPending}>
-                  {m.notifyContractor.isPending ? 'Sending…' : 'Send to contractor'}
-                </Button>
-                <Button type="button" variant="tertiary" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          ) : (
+            ))}
+            <Textarea
+              label="Note (optional)"
+              value={message}
+              maxLength={1000}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <ErrorAlert error={error} title="We couldn't notify the contractor" />
             <div className="row-actions">
-              <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
-                Notify contractor
+              <Button type="submit" disabled={busy}>
+                {busy ? 'Sending…' : 'Send to contractor'}
+              </Button>
+              <Button type="button" variant="tertiary" onClick={() => setOpen(false)}>
+                Cancel
               </Button>
             </div>
-          )
+          </form>
+        ) : channels.some((c) => c.available) ? (
+          <div className="row-actions">
+            <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+              Notify contractor
+            </Button>
+          </div>
         ) : (
           <p className="u-muted">
-            Add a contractor email to {asset.name} on the Fleet tab to notify them from here.
+            Add a contractor email or phone number to {asset.name} on the Fleet tab to notify them
+            from here.
           </p>
         )
       ) : null}
@@ -561,18 +625,21 @@ function ContractorCell({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(asset.contractorName ?? '');
   const [email, setEmail] = useState(asset.contractorEmail ?? '');
+  const [phone, setPhone] = useState(asset.contractorPhone ?? '');
   const [error, setError] = useState<string | null>(null);
   if (!editing)
     return (
       <div className="stack-sm">
         <span>
-          {asset.contractorEmail
-            ? `${asset.contractorName ? `${asset.contractorName}, ` : ''}${asset.contractorEmail}`
+          {asset.contractorEmail || asset.contractorPhone
+            ? [asset.contractorName, asset.contractorEmail, asset.contractorPhone]
+                .filter(Boolean)
+                .join(', ')
             : '—'}
         </span>
         {canManage ? (
           <Button type="button" variant="tertiary" onClick={() => setEditing(true)}>
-            {asset.contractorEmail ? 'Edit contractor' : 'Add contractor'}
+            {asset.contractorEmail || asset.contractorPhone ? 'Edit contractor' : 'Add contractor'}
             <span className="u-visually-hidden"> for {asset.name}</span>
           </Button>
         ) : null}
@@ -584,7 +651,12 @@ function ContractorCell({
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       return setError('Enter a valid email address.');
     m.setContractor.mutate(
-      { assetId: asset.id, contractorName: name.trim(), contractorEmail: email.trim() },
+      {
+        assetId: asset.id,
+        contractorName: name.trim(),
+        contractorEmail: email.trim(),
+        contractorPhone: phone.trim(),
+      },
       { onSuccess: () => setEditing(false) },
     );
   }
@@ -596,6 +668,12 @@ function ContractorCell({
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+      />
+      <TextField
+        label="Contractor mobile"
+        type="tel"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
       />
       {error ? <Alert tone="danger">{error}</Alert> : null}
       <ErrorAlert error={m.setContractor.error} title="We couldn't save the contractor" />
@@ -620,6 +698,7 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
   const [rate, setRate] = useState('');
   const [contractorName, setContractorName] = useState('');
   const [contractorEmail, setContractorEmail] = useState('');
+  const [contractorPhone, setContractorPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   function save(e: FormEvent) {
     e.preventDefault();
@@ -639,6 +718,7 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
         ...(canSeeRates && rate ? { dailyRateCents: dollarsToCents(rate) } : {}),
         ...(contractorName.trim() ? { contractorName: contractorName.trim() } : {}),
         ...(contractorEmail.trim() ? { contractorEmail: contractorEmail.trim() } : {}),
+        ...(contractorPhone.trim() ? { contractorPhone: contractorPhone.trim() } : {}),
       },
       {
         onSuccess: () => {
@@ -648,6 +728,7 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
           setRate('');
           setContractorName('');
           setContractorEmail('');
+          setContractorPhone('');
         },
       },
     );
@@ -709,6 +790,14 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
             type="email"
             value={contractorEmail}
             onChange={(e) => setContractorEmail(e.target.value)}
+          />
+        </div>
+        <div className="form-row">
+          <TextField
+            label="Contractor mobile (optional)"
+            type="tel"
+            value={contractorPhone}
+            onChange={(e) => setContractorPhone(e.target.value)}
           />
         </div>
         {error ? <Alert tone="danger">{error}</Alert> : null}

@@ -25998,6 +25998,7 @@ components:
           notes,
           contractorName,
           contractorEmail,
+          contractorPhone,
           version,
         ]
       properties:
@@ -26020,6 +26021,11 @@ components:
           {
             type: [string, 'null'],
             description: Where notices about flagged maintenance are sent. The contractor needs no Archova account.,
+          }
+        contractorPhone:
+          {
+            type: [string, 'null'],
+            description: 'Contractor mobile or landline, in international form (+61...).',
           }
         version: { type: integer }
     PlantAssetList:
@@ -26046,6 +26052,7 @@ components:
         notes: { type: string, minLength: 1, maxLength: 2000 }
         contractorName: { type: string, minLength: 1, maxLength: 200 }
         contractorEmail: { type: string, minLength: 3, maxLength: 254 }
+        contractorPhone: { type: string, minLength: 1, maxLength: 30 }
     UpdatePlantAssetRequest:
       type: object
       additionalProperties: false
@@ -26062,6 +26069,7 @@ components:
         notes: { type: string, maxLength: 2000 }
         contractorName: { type: string, maxLength: 200 }
         contractorEmail: { type: string, maxLength: 254, description: Empty clears it. }
+        contractorPhone: { type: string, maxLength: 30, description: Empty clears it. }
         status: { $ref: '#/components/schemas/PlantAssetStatus' }
     PlantAllocation:
       type: object
@@ -26244,7 +26252,10 @@ components:
           assetId,
           planId,
           recipientName,
+          channel,
           recipientEmail,
+          recipientPhone,
+          text,
           subject,
           issue,
           dueOn,
@@ -26258,7 +26269,15 @@ components:
         assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
         planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
         recipientName: { type: string }
-        recipientEmail: { type: string }
+        channel:
+          {
+            type: string,
+            enum: [email, sms, phone],
+            description: '`phone` means the sender texted from their own phone.',
+          }
+        recipientEmail: { type: [string, 'null'] }
+        recipientPhone: { type: [string, 'null'] }
+        text: { type: string, description: The text message for this notice, ready to send. }
         subject: { type: string }
         issue: { type: string }
         dueOn: { type: string, format: date }
@@ -26280,6 +26299,13 @@ components:
       properties:
         planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
         message: { type: string, minLength: 1, maxLength: 1000 }
+        channel:
+          {
+            type: string,
+            enum: [email, sms, phone],
+            default: email,
+            description: '`email` and `sms` are sent by Archova (`sms` needs the SMS provider); `phone` records that the sender texted from their own phone.',
+          }
     PlantFlag:
       type: object
       required: [code, severity, assetId, subjectId, message, date]

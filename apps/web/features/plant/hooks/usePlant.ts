@@ -78,18 +78,30 @@ export function usePlantMutations() {
       onSuccess: refresh,
     }),
     setContractor: useMutation({
-      mutationFn: (v: { assetId: string; contractorName: string; contractorEmail: string }) =>
+      mutationFn: (v: {
+        assetId: string;
+        contractorName: string;
+        contractorEmail: string;
+        contractorPhone: string;
+      }) =>
         source.setContractor(v.assetId, {
           contractorName: v.contractorName,
           contractorEmail: v.contractorEmail,
+          contractorPhone: v.contractorPhone,
         }),
       onSuccess: refresh,
     }),
     notifyContractor: useMutation({
-      mutationFn: (v: { assetId: string; planId: string; message?: string }) =>
+      mutationFn: (v: {
+        assetId: string;
+        planId: string;
+        message?: string;
+        channel?: 'email' | 'sms' | 'phone';
+      }) =>
         source.notifyContractor(v.assetId, {
           planId: v.planId,
           ...(v.message ? { message: v.message } : {}),
+          ...(v.channel ? { channel: v.channel } : {}),
         }),
       onSuccess: refresh,
     }),

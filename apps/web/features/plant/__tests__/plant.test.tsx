@@ -29,6 +29,7 @@ const asset = {
   notes: null,
   contractorName: 'Hunter Plant Services',
   contractorEmail: 'service@hunterplant.example',
+  contractorPhone: '+61412345678',
   version: 1,
 };
 
@@ -144,16 +145,22 @@ describe('PlantScreen', () => {
     await user.type(screen.getByLabelText(/Note/), 'Please book before Friday');
     await user.click(screen.getByRole('button', { name: 'Send to contractor' }));
     await vi.waitFor(() =>
-      expect(body).toMatchObject({ planId: 'ppn_1', message: 'Please book before Friday' }),
+      expect(body).toMatchObject({
+        planId: 'ppn_1',
+        message: 'Please book before Friday',
+        channel: 'email',
+      }),
     );
   });
 
   it('asks for a contractor email when the machine has none', async () => {
     fake.on('GET', `${P}/assets`, () => ({
-      data: [{ ...asset, contractorEmail: null, contractorName: null }],
+      data: [{ ...asset, contractorEmail: null, contractorName: null, contractorPhone: null }],
     }));
     renderInProject(<PlantScreen />);
-    expect(await screen.findByText(/Add a contractor email to 20t excavator/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Add a contractor email or phone number to 20t excavator/),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Notify contractor' })).toBeNull();
   });
 
