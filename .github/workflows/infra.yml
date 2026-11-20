@@ -237,7 +237,7 @@ jobs:
           fi
       - name: Post plan on the PR
         if: env.ACCOUNT != '' && github.event_name == 'pull_request' && hashFiles(format('infra/envs/{0}/plan.txt', matrix.env)) != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
