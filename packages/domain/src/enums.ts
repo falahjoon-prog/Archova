@@ -37,7 +37,7 @@ export type OrgKind = (typeof ORG_KINDS)[number];
  * Modules that are part of every plan. Licensed modules come from `billing` entitlements. `sync` carries the
  * mobile offline store; each scope it pulls and each command it pushes is licensed by its own module (john, 2 Oct).
  */
-// `integrations` is core: imports are part of every plan (integrations/07). `conversations`, `links` and `announcements` are core: Project home cards and related items on every tool.
+// `integrations` is core: imports are part of every plan (integrations/07). `conversations`, `links` and `announcements` are core: Project home cards and related items on every tool. `contractors` is core: the free contractor tier (X64) is on every plan.
 export const CORE_MODULES = [
   'platform',
   'access',
@@ -48,6 +48,7 @@ export const CORE_MODULES = [
   'conversations',
   'links',
   'announcements',
+  'contractors',
 ] as const;
 
 /**

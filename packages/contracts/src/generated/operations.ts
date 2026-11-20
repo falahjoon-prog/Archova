@@ -129,6 +129,54 @@ export const DeleteBookmarkParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "bookmarkId": z.string().regex(new RegExp("^bmk_[0-9A-Za-z]{26}$")),
 });
+export const SaveMyContractorProfileBody = s.ContractorProfileInputSchema;
+export const SearchContractorCompaniesQuery = z.object({
+  "q": z.string().min(3).max(100),
+});
+export const ListMyContractorLinksQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "status": s.ContractorLinkStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RequestContractorLinkBody = z.object({
+  "listingId": z.string().regex(new RegExp("^cls_[0-9A-Za-z]{26}$")),
+}).strict();
+export const RemoveMyContractorLinkParams = z.object({
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContractorsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContractorsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "status": s.ContractorLinkStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const GetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingBody = s.ContractorListingSchema;
+export const BlockContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const AcceptContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const RejectContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const EndContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
 export const ListPlantAssetsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5566,6 +5614,162 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteBookmarkParams,
+    query: null,
+    body: null,
+  },
+  getMyContractorProfile: {
+    method: 'GET',
+    path: '/v1/me/contractor',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  saveMyContractorProfile: {
+    method: 'PUT',
+    path: '/v1/me/contractor',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: SaveMyContractorProfileBody,
+  },
+  searchContractorCompanies: {
+    method: 'GET',
+    path: '/v1/me/contractor/companies',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: SearchContractorCompaniesQuery,
+    body: null,
+  },
+  listMyContractorLinks: {
+    method: 'GET',
+    path: '/v1/me/contractor/links',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: ListMyContractorLinksQuery,
+    body: null,
+  },
+  requestContractorLink: {
+    method: 'POST',
+    path: '/v1/me/contractor/links',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: RequestContractorLinkBody,
+  },
+  removeMyContractorLink: {
+    method: 'DELETE',
+    path: '/v1/me/contractor/links/{linkId}',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RemoveMyContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  listCompanyContractors: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/contractors',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListCompanyContractorsParams,
+    query: ListCompanyContractorsQuery,
+    body: null,
+  },
+  getContractorListing: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetContractorListingParams,
+    query: null,
+    body: null,
+  },
+  setContractorListing: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SetContractorListingParams,
+    query: null,
+    body: SetContractorListingBody,
+  },
+  blockContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/block',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: BlockContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  acceptContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/accept',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: AcceptContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  rejectContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/reject',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RejectContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  endContractorLink: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: EndContractorLinkParams,
     query: null,
     body: null,
   },

@@ -82,7 +82,10 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   },
                   {
                     label: 'Operations',
-                    items: [{ href: webRoutes.plant(orgSlug), label: 'Plant and equipment' }],
+                    items: [
+                      { href: webRoutes.plant(orgSlug), label: 'Plant and equipment' },
+                      { href: webRoutes.contractors(orgSlug), label: 'Contractors' },
+                    ],
                   },
                   {
                     label: 'Tendering',

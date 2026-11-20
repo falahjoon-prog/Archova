@@ -23,6 +23,12 @@ export function SignupScreen({ next }: { next?: string }) {
           Sign in
         </Link>
       </p>
+      <p className="u-center">
+        Working for a company as a contractor?{' '}
+        <Link className="link" href={webRoutes.signup(webRoutes.contractor())}>
+          Create a free contractor account
+        </Link>
+      </p>
     </>
   );
 }

@@ -335,6 +335,14 @@ export const PROBLEM_CODES = {
   // bookmarks
   'bookmark.invalid_target': 422,
   'bookmark.limit_reached': 409,
+  // contractors (X64)
+  'contractor.no_profile': 404,
+  'contractor.profile_required': 403,
+  'contractor_link.not_found': 404,
+  'contractor_link.rejected_recently': 409,
+  'contractor_link.too_many_requests': 409,
+  'contractor_link.company_busy': 409,
+  'contractor.email_unverified': 403,
   // recents
   'recent.invalid_target': 422,
   // logistics (material deliveries)

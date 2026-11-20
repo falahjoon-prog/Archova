@@ -59,6 +59,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: bookmarks
+  - name: contractors
   - name: recents
   - name: plant
   - name: reporting
@@ -812,6 +813,238 @@ paths:
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor:
+    get:
+      operationId: getMyContractorProfile
+      tags: [contractors]
+      x-module: contractors
+      summary: The caller's contractor profile (404 `contractor.no_profile` if they have not set one up).
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorProfile' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveMyContractorProfile
+      tags: [contractors]
+      x-module: contractors
+      summary: Create or update the caller's contractor profile (free tier; no organisation needed).
+      description: |
+        A contractor is a normal account (`POST /v1/auth/signup`) plus this profile. Any profession. The profile is
+        private: companies see only the name and profession on a link request, and the phone once they accept.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractorProfileInput' }
+      responses:
+        '200':
+          description: The saved profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorProfile' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/companies:
+    get:
+      operationId: searchContractorCompanies
+      tags: [contractors]
+      x-module: contractors
+      summary: Find a company by name (at least 3 characters; 10 results at most; rate limited).
+      description: |
+        Returns only the name, the last three ABN digits and the caller's own link status. There is no public
+        page and no count or paging, so the list cannot be walked. Needs a contractor profile.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 3, maxLength: 100 }
+      responses:
+        '200':
+          description: Matching companies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorCompanyList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/links:
+    get:
+      operationId: listMyContractorLinks
+      tags: [contractors]
+      x-module: contractors
+      summary: The companies the caller has asked to work for or works for, newest first. Searchable and paged.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: The links
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorLinkPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: requestContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Ask a company to add the caller as a contractor (idempotent).
+      description: |
+        `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` after the company
+        rejected the caller (30 days) or blocked them (for good); the text never says which. `409
+        contractor_link.too_many_requests` at 50 open requests; `409 contractor_link.company_busy` when the company
+        has 100 waiting. `403 contractor.email_unverified` where verified email is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [listingId]
+              properties:
+                listingId: { type: string, pattern: '^cls_[0-9A-Za-z]{26}$' }
+      responses:
+        '201':
+          description: The link (status `requested`, or the existing one)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/ContractorLinkId'
+    delete:
+      operationId: removeMyContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Cancel a pending request or end an accepted link (idempotent; the row stays, as a status change).
+      responses:
+        '204':
+          description: Done
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCompanyContractors
+      tags: [contractors]
+      x-module: contractors
+      summary: Contractors who asked to work for, or work for, this company. Org owners and admins only.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: The links
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractorPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/listing:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getContractorListing
+      tags: [contractors]
+      x-module: contractors
+      summary: Whether contractors can find this company by name. Org owners and admins only.
+      responses:
+        '200':
+          description: The setting
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorListing' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setContractorListing
+      tags: [contractors]
+      x-module: contractors
+      summary: Turn name search on or off. Off by default; a company is invisible to contractors until it opts in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractorListing' }
+      responses:
+        '200':
+          description: The setting
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorListing' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/block:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: blockContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Block a contractor for good (idempotent). They see it as a rejection. Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: acceptContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Accept a pending contractor request (idempotent). Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: rejectContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Reject a pending contractor request (idempotent). Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    delete:
+      operationId: endContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: End an accepted link (idempotent). Org owners and admins only.
+      responses:
+        '204':
+          description: Ended
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/assets:
     parameters:
@@ -21007,6 +21240,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
+    ContractorLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
     AccountingProvider:
       name: provider
       in: path
@@ -25955,6 +26193,103 @@ components:
         projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
         title: { type: string, minLength: 1, maxLength: 200 }
         subtitle: { type: string, maxLength: 200 }
+    ContractorLinkStatus:
+      type: string
+      enum: [requested, accepted, rejected, ended, cancelled, blocked]
+    ContractorListing:
+      type: object
+      additionalProperties: false
+      required: [listed]
+      properties:
+        listed: { type: boolean }
+    ContractorProfileInput:
+      type: object
+      additionalProperties: false
+      required: [displayName, profession]
+      properties:
+        displayName:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 120,
+            description: The business or trading name companies see.,
+          }
+        profession:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 80,
+            description: 'Free text, any profession (electrician, architect, certifier).',
+          }
+        phone: { type: [string, 'null'], maxLength: 30 }
+    ContractorProfile:
+      type: object
+      required: [displayName, profession, phone]
+      properties:
+        displayName: { type: string }
+        profession: { type: string }
+        phone: { type: [string, 'null'] }
+    ContractorCompany:
+      type: object
+      required: [id, name, abnLast3, linkStatus]
+      properties:
+        id:
+          {
+            type: string,
+            pattern: '^cls_[0-9A-Za-z]{26}$',
+            description: An opaque listing id,
+            not the organisation id.,
+          }
+        name: { type: string }
+        abnLast3: { type: [string, 'null'] }
+        linkStatus:
+          oneOf:
+            - $ref: '#/components/schemas/ContractorLinkStatus'
+            - type: 'null'
+    ContractorCompanyList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ContractorCompany' }
+    ContractorLink:
+      type: object
+      required: [id, companyName, status, requestedAt, decidedAt]
+      properties:
+        id: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
+        companyName: { type: string }
+        status: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        requestedAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    ContractorLinkPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ContractorLink' }
+        nextCursor: { type: [string, 'null'] }
+    CompanyContractor:
+      type: object
+      required: [id, displayName, profession, phone, status, requestedAt, decidedAt]
+      properties:
+        id: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
+        displayName: { type: string }
+        profession: { type: string }
+        phone: { type: [string, 'null'], description: Only once the link is accepted. }
+        status: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        requestedAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    CompanyContractorPage:
+      type: object
+      required: [data, nextCursor, pendingCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CompanyContractor' }
+        nextCursor: { type: [string, 'null'] }
+        pendingCount: { type: integer, minimum: 0 }
     Bookmark:
       type: object
       required: [id, entityType, entityId, projectId, title, subtitle, createdAt]
