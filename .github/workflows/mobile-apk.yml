@@ -1,4 +1,4 @@
-# Installable Android test build (no Expo account needed). Run it by hand from the Actions tab; the APK is the
+# Installable Android test build (no Expo account needed). Runs on John's PC runner when CI_RUNNER is set. Run it by hand from the Actions tab; the APK is the
 # "archova-android-apk" artifact on the run page. Signed with the debug key, so it is for testing only, never a store
 # upload. The API and web addresses default to the demo tunnel; enter new ones if the tunnel restarted.
 name: Mobile APK
@@ -19,7 +19,8 @@ permissions:
 jobs:
   apk:
     name: Build Android APK
-    runs-on: ubuntu-latest
+    # Same runner switch as ci.yml: CI_RUNNER set means John's own PC, unset means GitHub-hosted.
+    runs-on: ${{ vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 60
     env:
       APP_VARIANT: preview
@@ -36,6 +37,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # GitHub-hosted runners already have the Android SDK; this installs it on a self-hosted one.
+      - uses: android-actions/setup-android@v3
       - run: pnpm install --frozen-lockfile
       - name: Generate the native Android project
         working-directory: apps/mobile
