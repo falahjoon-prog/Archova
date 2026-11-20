@@ -321,3 +321,25 @@ export function contractorNoticeFor(
     state,
   };
 }
+
+/**
+ * A mobile or landline number typed by staff, as the international form (`+61412345678`). Australian numbers may start
+ * with 0 or 61; anything else must already start with + and a country code. Null when it can't be a phone number.
+ */
+export function normalisePhone(raw: string): string | null {
+  const t = raw.trim();
+  if (!/^\+?[\d\s()-]+$/.test(t)) return null;
+  const digits = t.replace(/\D/g, '');
+  let intl: string;
+  if (t.startsWith('+')) intl = digits;
+  else if (digits.startsWith('0')) intl = `61${digits.slice(1)}`;
+  else if (digits.startsWith('61')) intl = digits;
+  else return null;
+  return intl.length >= 9 && intl.length <= 15 ? `+${intl}` : null;
+}
+
+/** The text message for a contractor notice: the issue, the sender's note and a line asking them to reply. */
+export function noticeSmsText(issue: string, message: string): string {
+  const note = message.trim() ? ` Note: ${message.trim()}` : '';
+  return `${issue}${note} Please reply to book it in.`.slice(0, 600);
+}

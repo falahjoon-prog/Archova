@@ -1,7 +1,7 @@
 import { encodeId } from '@archova/domain';
 import type { ConditionRow } from '../application/condition';
 import type { AllocationRow, AssetRow, NoticeRow, PlanRow, RecordRow } from '../application/plant';
-import type { DueState, PlantFlag } from '../domain/plant';
+import { noticeSmsText, type DueState, type PlantFlag } from '../domain/plant';
 
 export const toAssetDto = (a: AssetRow) => ({
   id: encodeId('plantAsset', a.id),
@@ -18,6 +18,7 @@ export const toAssetDto = (a: AssetRow) => ({
   notes: a.notes,
   contractorName: a.contractorName,
   contractorEmail: a.contractorEmail,
+  contractorPhone: a.contractorPhone,
   version: a.version,
 });
 
@@ -80,7 +81,10 @@ export const toNoticeDto = (n: NoticeRow) => ({
   assetId: encodeId('plantAsset', n.assetId),
   planId: encodeId('plantPlan', n.planId),
   recipientName: n.recipientName,
+  channel: n.channel,
   recipientEmail: n.recipientEmail,
+  recipientPhone: n.recipientPhone,
+  text: noticeSmsText(n.issue, n.message),
   subject: n.subject,
   issue: n.issue,
   dueOn: n.dueOn,

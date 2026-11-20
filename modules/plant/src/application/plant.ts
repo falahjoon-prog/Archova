@@ -9,6 +9,7 @@ import {
   computeFlags,
   contractorNoticeFor,
   NOTICE_COOLDOWN_HOURS,
+  normalisePhone,
   nextDueAfter,
   spanDays,
   spansOverlap,
@@ -67,10 +68,23 @@ export interface AssetInput {
   /** Who services the machine; the address that Nova's maintenance flags can be sent to. */
   contractorName?: string | undefined;
   contractorEmail?: string | undefined;
+  /** Mobile or landline; stored in international form (+61...). */
+  contractorPhone?: string | undefined;
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean = (s: string | undefined) => s?.trim() || null;
+/** A phone number typed into the register; empty clears it. Stored as +61... */
+const phone = (s: string | undefined) => {
+  const v = clean(s);
+  if (!v) return null;
+  const n = normalisePhone(v);
+  if (!n)
+    throw new AppError('validation_failed', 'Enter a valid phone number.', [
+      { path: 'contractorPhone', message: 'Must be a phone number' },
+    ]);
+  return n;
+};
 /** An address typed into the register; empty clears it. Anything else must look like an email address. */
 const address = (s: string | undefined) => {
   const v = clean(s);
@@ -147,6 +161,7 @@ export function createPlantService(deps: PlantDeps) {
         notes: clean(input.notes),
         contractorName: clean(input.contractorName),
         contractorEmail: address(input.contractorEmail),
+        contractorPhone: phone(input.contractorPhone),
         createdBy: scope.ctx.userId,
       })
       .returning();
@@ -193,6 +208,9 @@ export function createPlantService(deps: PlantDeps) {
         ...(patch.notes !== undefined ? { notes: clean(patch.notes) } : {}),
         ...(patch.contractorName !== undefined
           ? { contractorName: clean(patch.contractorName) }
+          : {}),
+        ...(patch.contractorPhone !== undefined
+          ? { contractorPhone: phone(patch.contractorPhone) }
           : {}),
         ...(patch.contractorEmail !== undefined
           ? { contractorEmail: address(patch.contractorEmail) }
@@ -555,14 +573,25 @@ export function createPlantService(deps: PlantDeps) {
   async function notifyContractor(
     scope: TenantScope,
     assetId: string,
-    input: { planId: string; message?: string | undefined },
+    input: {
+      planId: string;
+      message?: string | undefined;
+      /** `email` and `sms` are queued for the worker; `phone` is recorded as sent: the caller texts from their own phone. */
+      channel?: 'email' | 'sms' | 'phone' | undefined;
+    },
   ) {
     await need(scope, 'plant.assets.manage');
+    const channel = input.channel ?? 'email';
     const a = await assetRow(scope, assetId);
-    if (!a.contractorEmail)
+    if (channel === 'email' && !a.contractorEmail)
       throw new AppError(
         'plant.bad_state',
         `${a.name} has no contractor email. Add one to the machine first.`,
+      );
+    if (channel !== 'email' && !a.contractorPhone)
+      throw new AppError(
+        'plant.bad_state',
+        `${a.name} has no contractor phone number. Add one to the machine first.`,
       );
     const [plan] = await scope.tx
       .select()
@@ -581,12 +610,18 @@ export function createPlantService(deps: PlantDeps) {
     const [recent] = await scope.tx
       .select({ id: contractorNotices.id })
       .from(contractorNotices)
-      .where(and(eq(contractorNotices.planId, plan.id), gte(contractorNotices.createdAt, since)))
+      .where(
+        and(
+          eq(contractorNotices.planId, plan.id),
+          eq(contractorNotices.channel, channel),
+          gte(contractorNotices.createdAt, since),
+        ),
+      )
       .limit(1);
     if (recent)
       throw new AppError(
         'plant.bad_state',
-        'The contractor was already notified about this job in the last day.',
+        'The contractor was already notified about this job this way in the last day.',
       );
     const [r] = await scope.tx
       .insert(contractorNotices)
@@ -597,7 +632,11 @@ export function createPlantService(deps: PlantDeps) {
         planId: plan.id,
         senderId: scope.ctx.userId,
         recipientName: a.contractorName ?? a.supplier ?? 'there',
-        recipientEmail: a.contractorEmail,
+        channel,
+        recipientEmail: channel === 'email' ? a.contractorEmail : null,
+        recipientPhone: channel === 'email' ? null : a.contractorPhone,
+        // Texted from the sender's own phone: nothing for the worker to send.
+        ...(channel === 'phone' ? { status: 'sent' as const, sentAt: now() } : {}),
         subject: notice.subject,
         issue: notice.issue,
         dueOn: notice.dueOn,

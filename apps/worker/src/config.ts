@@ -18,6 +18,8 @@ export interface WorkerConfig {
     /** Base URL of the web app, for links in emails. */
     appBaseUrl: string;
   };
+  /** Twilio for texts; unset leaves texting off and queued texts are marked failed. */
+  sms: { accountSid: string; authToken: string; from: string; region: string } | null;
   /** RFC 3161 authority (https) for sealed claim evidence; unset leaves timestamping off. */
   evidenceTimestampUrl: string | null;
   /** PEM file of the authority's pinned certificates (root and any intermediates); required with the URL. */
@@ -86,6 +88,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
       replyTo: env.WORKER_EMAIL_REPLY_TO || undefined,
       appBaseUrl: env.WORKER_APP_BASE_URL ?? 'https://app.archova.com.au',
     },
+    sms:
+      env.WORKER_TWILIO_ACCOUNT_SID && env.WORKER_TWILIO_AUTH_TOKEN && env.WORKER_TWILIO_FROM
+        ? {
+            accountSid: env.WORKER_TWILIO_ACCOUNT_SID,
+            authToken: env.WORKER_TWILIO_AUTH_TOKEN,
+            from: env.WORKER_TWILIO_FROM,
+            region: env.WORKER_TWILIO_REGION ?? 'au1',
+          }
+        : null,
     evidenceTimestampUrl: env.WORKER_EVIDENCE_TSA_URL || null,
     evidenceTimestampCaFile: env.WORKER_EVIDENCE_TSA_CA_FILE || null,
     evidenceStore: {

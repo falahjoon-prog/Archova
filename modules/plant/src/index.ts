@@ -5,6 +5,7 @@ export { postHireCosts, type PostPlantCost } from './application/postings';
 export { PLANT_TIME_ZONE } from './application/plant';
 export {
   claimContractorNotices,
+  contractorSmsBody,
   finishContractorNotices,
   renderContractorNotice,
   type QueuedContractorNotice,
