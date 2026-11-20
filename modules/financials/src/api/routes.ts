@@ -126,7 +126,7 @@ export function financialsRoutes(
     recordedAt: r.recordedAt.toISOString(),
   });
   const claimBody = (d: Awaited<ReturnType<FinancialsService['claimDetail']>>) => ({
-    claim: toClaimDto(d.claim, d.today, d.schedule !== null),
+    claim: toClaimDto(d.claim, d.today, d.schedule !== null, d.attention),
     lines: d.lines.map(toLineDto),
     schedule: d.schedule ? toScheduleDto(d.schedule) : null,
     statement: d.statement ? toStatementDto(d.statement) : null,
@@ -628,7 +628,11 @@ export function financialsRoutes(
       );
       return {
         status: 200,
-        body: { data: r.rows.map((c) => toClaimDto(c, r.today, c.status !== 'submitted')) },
+        body: {
+          data: r.rows.map((c) =>
+            toClaimDto(c, r.today, c.status !== 'submitted', r.attention.get(c.id) ?? null),
+          ),
+        },
       };
     },
     getPaymentClaim: async (input) => ({

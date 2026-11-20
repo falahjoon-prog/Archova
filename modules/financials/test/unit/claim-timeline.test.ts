@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { claimTimeline, type TimelineInput } from '../../src/domain/claim-timeline';
+import { claimTimeline, mostUrgentStep, type TimelineInput } from '../../src/domain/claim-timeline';
 
 // NSW head claim served Wed 14 Oct 2026 (compliance/02 N1): schedule due 28 Oct, payment due 4 Nov.
 const base: TimelineInput = {
@@ -74,5 +74,23 @@ describe('claimTimeline', () => {
       today: '2027-02-02',
     });
     expect(step(t, 'adjudication_apply')).toMatchObject({ dueOn: '2027-03-15' });
+  });
+});
+
+describe('mostUrgentStep', () => {
+  it('is null when nothing is due soon or overdue', () => {
+    expect(mostUrgentStep(claimTimeline(base))).toBeNull();
+  });
+
+  it('picks an overdue step over one that is only due soon', () => {
+    // 30 Oct: the schedule (28 Oct) is overdue; the no-schedule notice window is far off.
+    expect(mostUrgentStep(claimTimeline({ ...base, today: '2026-10-30' }))).toMatchObject({
+      key: 'schedule',
+      status: 'overdue',
+    });
+    expect(mostUrgentStep(claimTimeline({ ...base, today: '2026-10-26' }))).toMatchObject({
+      key: 'schedule',
+      status: 'due_soon',
+    });
   });
 });

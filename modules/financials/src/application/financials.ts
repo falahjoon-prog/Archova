@@ -19,7 +19,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
-import { claimTimeline } from '../domain/claim-timeline';
+import { claimTimeline, mostUrgentStep } from '../domain/claim-timeline';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { attachChangeEvent } from './changeEvents';
 import { fromCents, toCents } from '../domain/money';
@@ -589,7 +589,51 @@ export function createFinancialsService(deps: FinancialsDeps) {
         ),
       )
       .orderBy(sql`${paymentClaims.scheduleDueOn} asc nulls last`, asc(paymentClaims.number));
-    return { rows: rows.map((r) => r.claim), today: localToday };
+    // The most urgent open step per claim, for the "needs attention" panel (rule-based, no model).
+    const claimRows = rows.map((r) => r.claim);
+    const ids = claimRows.map((c) => c.id);
+    const [schedules, paidRows] = ids.length
+      ? await Promise.all([
+          scope.tx.select().from(paymentSchedules).where(inArray(paymentSchedules.claimId, ids)),
+          scope.tx
+            .select({
+              claimId: payments.claimId,
+              total: sql<string>`coalesce(sum(${payments.amount}), 0)`,
+            })
+            .from(payments)
+            .where(inArray(payments.claimId, ids))
+            .groupBy(payments.claimId),
+        ])
+      : [[], []];
+    const scheduleBy = new Map(schedules.map((x) => [x.claimId, x]));
+    const paidBy = new Map(paidRows.map((x) => [x.claimId, toSignedCents(x.total)]));
+    const timeZone = (await deps.platform.getProject(scope, projectId)).timezone;
+    const attention = new Map(
+      claimRows.map((c) => {
+        const sch = scheduleBy.get(c.id);
+        const open = c.status !== 'withdrawn' && c.status !== 'paid';
+        const step = open
+          ? mostUrgentStep(
+              claimTimeline({
+                ruleState: c.ruleState,
+                isValid: c.isValid,
+                servedOn: c.servedOn,
+                scheduleDueOn: c.scheduleDueOn,
+                paymentDueOn: c.paymentDueOn,
+                claimedTotalCents: toCents(c.claimedTotal),
+                schedule: sch
+                  ? { issuedAt: sch.issuedAt, scheduledCents: toCents(sch.scheduledAmount) }
+                  : null,
+                paidCents: paidBy.get(c.id) ?? 0,
+                today: localToday,
+                timeZone,
+              }),
+            )
+          : null;
+        return [c.id, step] as const;
+      }),
+    );
+    return { rows: claimRows, today: localToday, attention };
   }
 
   async function claimDetail(scope: TenantScope, projectId: string, claimId: string, check = true) {
@@ -653,6 +697,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       warnings,
       today,
       timeline,
+      attention: mostUrgentStep(timeline),
     };
   }
 

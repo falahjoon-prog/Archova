@@ -34514,8 +34514,20 @@ components:
           rulesReviewed,
           status,
           daysToScheduleDue,
+          attention,
         ]
       properties:
+        attention:
+          description: The one open SOPA step that needs a look now (overdue or due within 3 days), or null. Rule-based from the claim timeline.
+          oneOf:
+            - type: object
+              required: [label, dueOn, status, note]
+              properties:
+                label: { type: string }
+                dueOn: { type: string, format: date }
+                status: { type: string, enum: [overdue, due_soon] }
+                note: { type: [string, 'null'] }
+            - { type: 'null' }
         id: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
         contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
         number: { type: integer }

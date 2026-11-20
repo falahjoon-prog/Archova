@@ -60,6 +60,7 @@ const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
   rulesReviewed: false,
   status: 'submitted',
   daysToScheduleDue: 4,
+  attention: null,
   ...over,
 });
 const detail = (over: Partial<PaymentClaim> = {}): PaymentClaimDetail => ({
@@ -120,6 +121,37 @@ beforeEach(() => {
 });
 
 describe('ClaimsRegisterScreen', () => {
+  it('lists the claims that need a look now, overdue first', async () => {
+    const hot = (n: number, status: 'overdue' | 'due_soon', dueOn: string) =>
+      claim({
+        id: `pcl_${n}`,
+        number: n,
+        attention: { label: 'Payment schedule deadline', dueOn, status, note: null },
+      });
+    fake.on('GET', `${P}/payment-claims`, () => ({
+      data: [
+        hot(1, 'due_soon', '2026-10-27'),
+        claim({ id: 'pcl_9', number: 9 }),
+        hot(2, 'overdue', '2026-10-20'),
+      ],
+    }));
+    fake.on('GET', `${P}/contracts`, () => ({ data: [{ id: 'cnt_1', title: 'Electrical' }] }));
+    renderInProject(<ClaimsRegisterScreen />);
+    const panel = await screen.findByRole('region', { name: 'Needs attention' });
+    const items = Array.from(panel.querySelectorAll('li')).map((li) => li.textContent ?? '');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatch(/claim 2.*Overdue/);
+    expect(items[1]).toMatch(/claim 1.*Due soon/);
+  });
+
+  it('shows no attention panel when nothing is urgent', async () => {
+    fake.on('GET', `${P}/payment-claims`, () => ({ data: [claim()] }));
+    fake.on('GET', `${P}/contracts`, () => ({ data: [{ id: 'cnt_1', title: 'Electrical' }] }));
+    renderInProject(<ClaimsRegisterScreen />);
+    await screen.findByText('Electrical, claim 1');
+    expect(screen.queryByRole('region', { name: 'Needs attention' })).toBeNull();
+  });
+
   it('shows the countdown to each schedule deadline and the dates the rules gave', async () => {
     fake.on('GET', `${P}/payment-claims`, () => ({ data: [claim()] }));
     fake.on('GET', `${P}/contracts`, () => ({ data: [{ id: 'cnt_1', title: 'Electrical' }] }));

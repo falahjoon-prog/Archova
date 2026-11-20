@@ -8869,6 +8869,12 @@ export const PaymentApplicationSchema = z.object({
 export type PaymentApplication = z.infer<typeof PaymentApplicationSchema>;
 
 export const PaymentClaimSchema = z.object({
+  "attention": z.union([z.object({
+  "label": z.string(),
+  "dueOn": z.string().date(),
+  "status": z.enum(["overdue", "due_soon"]),
+  "note": z.string().nullable(),
+}), z.null()]),
   "id": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
   "number": z.number().int(),

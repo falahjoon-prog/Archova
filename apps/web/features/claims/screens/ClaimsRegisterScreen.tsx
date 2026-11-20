@@ -18,6 +18,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { AttentionPanel } from '../components/AttentionPanel';
 import { DeadlineChip } from '../components/DeadlineChip';
 import type { PaymentClaim, PaymentClaimStatus } from '../data/api';
 import { useClaimsRegister, useContracts } from '../hooks/useClaims';
@@ -107,6 +108,7 @@ export function ClaimsRegisterScreen() {
         />
       </FilterBar>
       <ErrorAlert error={q.error} title="We couldn't load the claims" />
+      {q.data ? <AttentionPanel claims={q.data} title={title} /> : null}
       {q.isPending ? (
         <SkeletonRows label="Loading payment claims…" />
       ) : q.data ? (
