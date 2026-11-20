@@ -1,4 +1,5 @@
 import { encodeId } from '@archova/domain';
+import type { ConditionRow } from '../application/condition';
 import type { AllocationRow, AssetRow, PlanRow, RecordRow } from '../application/plant';
 import type { DueState, PlantFlag } from '../domain/plant';
 
@@ -70,4 +71,15 @@ export const toFlagDto = (f: PlantFlag) => ({
     : null,
   message: f.message,
   date: f.date,
+});
+
+export const toConditionDto = (c: ConditionRow) => ({
+  id: encodeId('plantCondition', c.id),
+  assetId: encodeId('plantAsset', c.assetId),
+  kind: c.kind,
+  allocationId: c.allocationId ? encodeId('plantAllocation', c.allocationId) : null,
+  recordId: c.recordId ? encodeId('plantRecord', c.recordId) : null,
+  takenOn: c.takenOn,
+  note: c.note,
+  fileIds: c.fileIds.map((f) => encodeId('file', f)),
 });

@@ -1,5 +1,8 @@
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
+import { hexToBase64, quarantineKey } from '@archova/mod-files';
+import type { Browser } from './helpers';
 import {
   addMember,
   createOrg,
@@ -241,5 +244,115 @@ describe('plant and equipment', () => {
     };
     expect(list.data.find((a) => a.assetId === hired.id)!.postedThrough).toBe('2026-01-09');
     expect(list.data.find((a) => a.assetId === owned.id)!.postedThrough).toBeNull();
+  });
+
+  /** An org-level photo (no project), the way the condition photos tab uploads one. */
+  async function uploadPlantPhoto(
+    browser: Browser,
+    orgId: string,
+    name: string,
+    projectId?: string,
+  ) {
+    const content = `${name} ${Math.random()}`;
+    const sha256 = createHash('sha256').update(content).digest('hex');
+    const created = await browser.post(`/v1/orgs/${orgId}/uploads`, {
+      filename: name,
+      mime: 'image/jpeg',
+      sizeBytes: content.length,
+      sha256,
+      module: 'plant',
+      ...(projectId ? { projectId } : {}),
+    });
+    if (created.statusCode !== 201) return { status: created.statusCode, id: '' };
+    const uploadId = (created.json() as { id: string }).id;
+    t.store.put(quarantineKey(decodeId('upload', uploadId)!), content.length, hexToBase64(sha256));
+    const done = await browser.post(`/v1/orgs/${orgId}/uploads/${uploadId}/complete`);
+    return { status: done.statusCode, id: (done.json() as { id: string }).id };
+  }
+
+  it('keeps condition photos for hire-in, hire-out and a service, and refuses anyone else’s files', async () => {
+    const ana = await signUp(t.app, 'plant-photos');
+    const org = await createOrg(ana.browser, 'Plant Photos');
+    const project = await createProject(ana.browser, org.id);
+    const base = `/v1/orgs/${org.id}/plant`;
+    const mk = async (assetNumber: string) =>
+      (
+        await ana.browser.post(`${base}/assets`, {
+          name: assetNumber,
+          assetNumber,
+          category: 'crane',
+          ownership: 'hired',
+        })
+      ).json() as Asset;
+    const crane = await mk('CR-1');
+    const other = await mk('CR-2');
+    const url = `${base}/assets/${crane.id}/condition-checks`;
+
+    const photo = await uploadPlantPhoto(ana.browser, org.id, 'in.jpg');
+    expect(photo.status).toBe(200);
+    const alloc = (
+      await ana.browser.post(`${base}/assets/${crane.id}/allocations`, {
+        projectId: project.id,
+        startsOn: '2026-11-20',
+        endsOn: '2026-11-21',
+      })
+    ).json() as Alloc;
+    const hireIn = await ana.browser.post(url, {
+      kind: 'hire_in',
+      fileIds: [photo.id],
+      note: 'Scratch on the left door',
+      allocationId: alloc.id,
+    });
+    expect(hireIn.statusCode).toBe(201);
+    expect(hireIn.json().fileIds).toEqual([photo.id]);
+    expect(hireIn.json().allocationId).toBe(alloc.id);
+
+    // A service photo can't name an allocation, and a hire photo can't name a service record.
+    const p2 = await uploadPlantPhoto(ana.browser, org.id, 'svc.jpg');
+    expect(
+      (await ana.browser.post(url, { kind: 'service', fileIds: [p2.id], allocationId: alloc.id }))
+        .statusCode,
+    ).toBe(422);
+    expect((await ana.browser.post(url, { kind: 'service', fileIds: [p2.id] })).statusCode).toBe(
+      201,
+    );
+
+    // An allocation of another machine is refused.
+    const otherAlloc = (
+      await ana.browser.post(`${base}/assets/${other.id}/allocations`, {
+        projectId: project.id,
+        startsOn: '2026-11-25',
+        endsOn: '2026-11-26',
+      })
+    ).json() as Alloc;
+    expect(
+      (
+        await ana.browser.post(url, {
+          kind: 'hire_out',
+          fileIds: [photo.id],
+          allocationId: otherAlloc.id,
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    // No photos, or a file that isn't a plant photo, is refused.
+    expect((await ana.browser.post(url, { kind: 'hire_in', fileIds: [] })).statusCode).toBe(422);
+    const foreign = await uploadPlantPhoto(ana.browser, org.id, 'site.jpg', project.id);
+    expect(foreign.status).toBe(200);
+    expect(
+      (await ana.browser.post(url, { kind: 'hire_in', fileIds: [foreign.id] })).statusCode,
+    ).toBe(422);
+
+    const list = (await ana.browser.get(url)).json() as { data: Array<{ kind: string }> };
+    expect(list.data.map((c) => c.kind).sort()).toEqual(['hire_in', 'service']);
+  });
+
+  it('lets a subcontractor neither read nor add condition photos', async () => {
+    const ana = await signUp(t.app, 'plant-ph-own');
+    const org = await createOrg(ana.browser, 'Plant Photo Owners');
+    const project = await createProject(ana.browser, org.id);
+    const sub = await signUp(t.app, 'plant-ph-sub');
+    await addMember(ana.browser, org.id, project.id, sub.email, 'Subcontractor');
+    expect((await uploadPlantPhoto(sub.browser, org.id, 'x.jpg')).status).toBe(403);
   });
 });

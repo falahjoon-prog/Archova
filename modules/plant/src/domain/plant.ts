@@ -17,6 +17,9 @@ export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 export type Ownership = 'owned' | 'hired';
 export type AssetStatus = 'active' | 'maintenance' | 'retired';
 export type PlanKind = 'service' | 'inspection' | 'certification';
+/** When a machine's condition is photographed: arriving on hire, going back, or after a service. */
+export type ConditionKind = 'hire_in' | 'hire_out' | 'service';
+export const MAX_CONDITION_PHOTOS = 10;
 
 export interface Span {
   startsOn: string;

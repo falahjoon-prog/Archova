@@ -8,7 +8,13 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { AssetCategory, AssetStatus, Ownership, PlanKind } from '../domain/plant';
+import type {
+  AssetCategory,
+  AssetStatus,
+  ConditionKind,
+  Ownership,
+  PlanKind,
+} from '../domain/plant';
 
 export const plantSchema = pgSchema('plant');
 
@@ -97,6 +103,22 @@ export const maintenanceRecords = plantSchema.table('maintenance_records', {
   performedBy: text('performed_by'),
   note: text('note'),
   costCents: bigint('cost_cents', { mode: 'number' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const conditionChecks = plantSchema.table('condition_checks', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+  kind: text('kind').$type<ConditionKind>().notNull(),
+  allocationId: uuid('allocation_id').references(() => allocations.id),
+  recordId: uuid('record_id').references(() => maintenanceRecords.id),
+  takenOn: date('taken_on').notNull(),
+  note: text('note'),
+  fileIds: uuid('file_ids').array().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });

@@ -100,6 +100,7 @@ export const ID_PREFIXES = {
   plantAllocation: 'pal',
   plantPlan: 'ppn',
   plantRecord: 'prc',
+  plantCondition: 'pcc',
   timesheet: 'tsh',
   timesheetLine: 'tsl',
   gate: 'wgt',

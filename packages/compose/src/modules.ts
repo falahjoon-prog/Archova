@@ -266,6 +266,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       // Photos on a prefab unit's QA checks.
       prefab: 'prefab.units.write',
     },
+    orgUploadPermissions: {
+      // Condition photos on a machine, which belongs to the org rather than a project.
+      plant: 'plant.assets.manage',
+    },
   });
   filesApi = files.api;
 
@@ -602,6 +606,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const plant = createPlantModule(services, {
     access: access.api,
+    files: files.api,
     postCost: financials.api.postPlantCost,
     requireProject: platform.api.getProject,
     costCodeBudgeted: financials.api.costCodeBudgeted,
