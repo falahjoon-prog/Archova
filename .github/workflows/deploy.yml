@@ -51,7 +51,7 @@ jobs:
         if: env.ACCOUNT != ''
         with:
           ref: ${{ env.TAG }}
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         if: env.ACCOUNT != ''
         with:
           role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-${{ matrix.env }}-c1-gha-deploy

@@ -88,7 +88,7 @@ jobs:
           output-file: sbom-${{ matrix.target }}.spdx.json
 
       # --- Push and sign (once AWS exists) ---------------------------------------------------------------------
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         if: env.PUSH == 'true'
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_SHARED }}:role/archova-shared-gha-ecr-push
