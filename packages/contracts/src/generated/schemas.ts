@@ -1331,6 +1331,16 @@ export const ClaimStatementSchema = z.object({
 });
 export type ClaimStatement = z.infer<typeof ClaimStatementSchema>;
 
+export const ClaimTimelineStepSchema = z.object({
+  "key": z.enum(["served", "schedule", "payment", "adjudication_schedule_less", "adjudication_unpaid", "adjudication_notice", "adjudication_apply"]),
+  "label": z.string(),
+  "dueOn": z.string().date().nullable(),
+  "doneOn": z.string().date().nullable(),
+  "status": z.enum(["done", "upcoming", "due_soon", "overdue", "closed"]),
+  "note": z.string().nullable(),
+});
+export type ClaimTimelineStep = z.infer<typeof ClaimTimelineStepSchema>;
+
 export const CloseChangeEventRequestSchema = z.object({
   "note": z.string().min(1).max(5000),
 }).strict();
@@ -8908,6 +8918,7 @@ export const PaymentScheduleSchema = z.object({
 export type PaymentSchedule = z.infer<typeof PaymentScheduleSchema>;
 
 export const PaymentClaimDetailSchema = z.object({
+  "timeline": z.array(ClaimTimelineStepSchema),
   "statement": z.union([ClaimStatementSchema, z.null()]),
   "warnings": z.array(z.enum(["subcontractor_statement_missing"])),
   "claim": PaymentClaimSchema,

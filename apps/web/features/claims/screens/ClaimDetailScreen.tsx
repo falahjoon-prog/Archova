@@ -18,6 +18,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { ClaimTimeline } from '../components/ClaimTimeline';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { IssueScheduleForm } from '../components/IssueScheduleForm';
 import { PaymentsCard } from '../components/PaymentsCard';
@@ -160,6 +161,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
           />
         </Card>
       </div>
+      <ClaimTimeline steps={d.timeline} />
       <DataTable
         caption="Lines claimed"
         columns={lineColumns}

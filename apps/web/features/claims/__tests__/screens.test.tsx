@@ -66,6 +66,7 @@ const detail = (over: Partial<PaymentClaim> = {}): PaymentClaimDetail => ({
   claim: claim(over),
   statement: null,
   warnings: [],
+  timeline: [],
   lines: [
     {
       sovItemId: 'sov_1',
@@ -207,6 +208,34 @@ describe('ClaimDetailScreen', () => {
       scheduledAmount: '28500.00',
       declarationsOverride: { reason: 'Paper is coming' },
     });
+  });
+
+  it('shows the SOPA timeline with the schedule deadline and its status', async () => {
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => ({
+      ...detail(),
+      timeline: [
+        {
+          key: 'served',
+          label: 'Claim served',
+          dueOn: null,
+          doneOn: '2026-10-14',
+          status: 'done',
+          note: null,
+        },
+        {
+          key: 'schedule',
+          label: 'Payment schedule deadline',
+          dueOn: '2026-10-28',
+          doneOn: null,
+          status: 'due_soon',
+          note: 'If no schedule is given by this day, the full claim is likely payable.',
+        },
+      ],
+    }));
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    expect(await screen.findByText('Payment schedule deadline')).toBeTruthy();
+    expect(screen.getByText('Due soon')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/full claim is likely payable/);
   });
 
   it('warns about a missing subcontractor’s statement without blocking, and links one', async () => {
