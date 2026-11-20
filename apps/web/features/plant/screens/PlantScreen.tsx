@@ -488,7 +488,7 @@ function FlagRow({
   canManage: boolean;
   m: Mutations;
 }) {
-  const archovaTexts = useFeatureFlag('plant.sms');
+  const archovaTexts = useFeatureFlag('plant_sms');
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [picked, setPicked] = useState<Channel[]>(['email']);
