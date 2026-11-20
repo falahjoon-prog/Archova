@@ -7,13 +7,45 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { PaymentClaimDetail } from '../data/api';
 import { useClaimsMutations } from '../hooks/useClaims';
+import { LineScheduleForm } from './LineScheduleForm';
 import { aud, cents } from '../lib/money';
 
 /**
  * Issues the payment schedule (CLM-US7, CLM-US10). Scheduling less than the claim needs a reason, and an issued
  * schedule cannot be changed, so the form says so before the button is pressed.
  */
-export function IssueScheduleForm({ detail }: { detail: PaymentClaimDetail }) {
+export function IssueScheduleForm({
+  detail,
+  describeLine,
+}: {
+  detail: PaymentClaimDetail;
+  describeLine?: (l: PaymentClaimDetail['lines'][number]) => string;
+}) {
+  // Line by line is for reducing part of a claim with a reason on each part; one amount stays the default.
+  const [byLine, setByLine] = useState(false);
+  if (byLine && describeLine)
+    return (
+      <div className="stack-lg">
+        <LineScheduleForm detail={detail} describe={describeLine} />
+        <div className="row-actions">
+          <Button variant="secondary" onClick={() => setByLine(false)}>
+            Schedule as one amount instead
+          </Button>
+        </div>
+      </div>
+    );
+  return (
+    <SingleAmountForm detail={detail} onByLine={describeLine ? () => setByLine(true) : undefined} />
+  );
+}
+
+function SingleAmountForm({
+  detail,
+  onByLine,
+}: {
+  detail: PaymentClaimDetail;
+  onByLine: (() => void) | undefined;
+}) {
   const project = useCurrentProject();
   const { issueSchedule } = useClaimsMutations(project.projectId);
   const claim = detail.claim;
@@ -96,6 +128,11 @@ export function IssueScheduleForm({ detail }: { detail: PaymentClaimDetail }) {
         <ErrorAlert error={issueSchedule.error} title="We couldn't issue this schedule" />
       )}
       <div className="row-actions">
+        {onByLine ? (
+          <Button type="button" variant="secondary" onClick={onByLine}>
+            Schedule line by line
+          </Button>
+        ) : null}
         <Button
           type="submit"
           disabled={issueSchedule.isPending || Boolean(missing && override.trim().length < 3)}

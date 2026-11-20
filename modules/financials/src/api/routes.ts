@@ -792,7 +792,29 @@ export function financialsRoutes(
               project(input.params),
               ref('paymentClaim', input.params.claimId, 'claimId'),
               {
-                scheduledAmount: money(b.scheduledAmount, 'scheduledAmount'),
+                ...(b.scheduledAmount !== undefined
+                  ? { scheduledAmount: money(b.scheduledAmount, 'scheduledAmount') }
+                  : {}),
+                ...(b.lines
+                  ? {
+                      lines: b.lines.map((l, n) => ({
+                        ...(l.sovItemId
+                          ? { sovItemId: ref('sovItem', l.sovItemId, `lines/${n}/sovItemId`) }
+                          : {}),
+                        ...(l.variationId
+                          ? {
+                              variationId: ref(
+                                'variation',
+                                l.variationId,
+                                `lines/${n}/variationId`,
+                              ),
+                            }
+                          : {}),
+                        scheduledAmount: money(l.scheduledAmount, `lines/${n}/scheduledAmount`),
+                        ...(l.reason ? { reason: l.reason } : {}),
+                      })),
+                    }
+                  : {}),
                 ...(b.overallReason ? { overallReason: b.overallReason } : {}),
                 ...(b.declarationsOverride
                   ? { declarationsOverride: { reason: b.declarationsOverride.reason } }

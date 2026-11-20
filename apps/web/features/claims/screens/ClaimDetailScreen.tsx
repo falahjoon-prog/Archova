@@ -61,19 +61,21 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
     atLeast(perms.data?.toolLevels.payment_claims, 'standard');
   const item = (id: string) => contract.data?.sov.find((s) => s.id === id);
 
+  const describeLine = (l: Line): string => {
+    if (l.variationId) {
+      const v = variations.data?.data.find((x) => x.id === l.variationId);
+      return v ? `Variation ${v.number} ${v.title}` : 'Variation';
+    }
+    const it = l.sovItemId ? item(l.sovItemId) : undefined;
+    return `${it?.code ?? ''} ${it?.description ?? ''}`.trim() || 'Line';
+  };
+
   const lineColumns: DataTableColumn<Line>[] = [
     {
       id: 'item',
       header: 'Item',
       rowHeader: true,
-      cell: (l) => {
-        if (l.variationId) {
-          const v = variations.data?.data.find((x) => x.id === l.variationId);
-          return v ? `Variation ${v.number} ${v.title}` : 'Variation';
-        }
-        const it = l.sovItemId ? item(l.sovItemId) : undefined;
-        return `${it?.code ?? ''} ${it?.description ?? ''}`.trim() || 'Line';
-      },
+      cell: describeLine,
     },
     {
       id: 'previous',
@@ -192,7 +194,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
         </Card>
       ) : c.isValid && c.status === 'submitted' && canAssess ? (
         <Card title="Issue the payment schedule">
-          <IssueScheduleForm detail={d} />
+          <IssueScheduleForm detail={d} describeLine={describeLine} />
         </Card>
       ) : null}
       <PaymentsCard detail={d} canRecord={canAssess} />

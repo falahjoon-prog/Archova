@@ -7225,7 +7225,13 @@ export const IssueMeetingRequestSchema = z.object({
 export type IssueMeetingRequest = z.infer<typeof IssueMeetingRequestSchema>;
 
 export const IssuePaymentScheduleRequestSchema = z.object({
+  "scheduledAmount": FinancialsMoneySchema.optional(),
+  "lines": z.array(z.object({
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).optional(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).optional(),
   "scheduledAmount": FinancialsMoneySchema,
+  "reason": z.string().min(1).max(5000).optional(),
+}).strict()).max(500).optional(),
   "overallReason": z.string().min(1).max(5000).optional(),
   "declarationsOverride": z.object({
   "reason": z.string().min(3).max(2000),
@@ -8915,8 +8921,11 @@ export const PaymentScheduleSchema = z.object({
   "withheldAmount": FinancialsMoneySchema,
   "overallReason": z.string().nullable(),
   "lineReasons": z.array(z.object({
-  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).nullable(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).nullable(),
   "reason": z.string(),
+  "claimedAmount": z.string().nullable(),
+  "scheduledAmount": z.string().nullable(),
 })),
   "issuedAt": z.string().datetime({ offset: true }),
   "issuedWithinTime": z.boolean(),

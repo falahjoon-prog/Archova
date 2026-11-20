@@ -34592,10 +34592,22 @@ components:
           type: array
           items:
             type: object
-            required: [sovItemId, reason]
+            required: [sovItemId, variationId, reason, claimedAmount, scheduledAmount]
             properties:
-              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              sovItemId: { type: [string, 'null'], pattern: '^sov_[0-9A-Za-z]{26}$' }
+              variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
               reason: { type: string }
+              claimedAmount:
+                {
+                  type: [string, 'null'],
+                  description: What the claim took on this line (ex GST,
+                  before retention). Set on line by line schedules.,
+                }
+              scheduledAmount:
+                {
+                  type: [string, 'null'],
+                  description: What was scheduled for the line. Set on line by line schedules.,
+                }
         issuedAt: { type: string, format: date-time }
         issuedWithinTime: { type: boolean }
     PaymentClaimList:
@@ -34708,9 +34720,22 @@ components:
     IssuePaymentScheduleRequest:
       type: object
       additionalProperties: false
-      required: [scheduledAmount]
+      description: Give `scheduledAmount` (one total) or `lines` (line by line), not both. By line, a line left out is scheduled in full, and every line scheduled for less than the claim took needs its own `reason`. The total is worked out with retention in proportion.
       properties:
         scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        lines:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [scheduledAmount]
+            description: Give exactly one of sovItemId or variationId.
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              variationId: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+              scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+              reason: { type: string, minLength: 1, maxLength: 5000 }
         overallReason: { type: string, minLength: 1, maxLength: 5000 }
         declarationsOverride:
           type: object
