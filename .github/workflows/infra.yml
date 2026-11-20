@@ -203,7 +203,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         if: env.ACCOUNT != ''
         with:
           role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-github-terraform-plan
@@ -283,7 +283,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         if: env.ACCOUNT != ''
         with:
           role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-github-terraform-apply
