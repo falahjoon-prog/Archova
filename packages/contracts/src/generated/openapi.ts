@@ -6063,6 +6063,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create the records for every row that passed the dry run (RFI imports only so far), with the original numbers and dates and no notifications. All or nothing; rows that failed the dry run are left out. Safe to run again on a re-export: a number already imported is skipped. */
+        post: operations["applyImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows": {
         parameters: {
             query?: never;
@@ -37821,6 +37842,35 @@ export interface operations {
         };
     };
     cancelImportJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    applyImportJob: {
         parameters: {
             query?: never;
             header: {

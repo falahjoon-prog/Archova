@@ -7991,6 +7991,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ImportJob' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/apply:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    post:
+      operationId: applyImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Create the records for every row that passed the dry run (RFI imports only so far), with the original numbers
+        and dates and no notifications. All or nothing; rows that failed the dry run are left out. Safe to run again on
+        a re-export: a number already imported is skipped.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows:
     parameters:
       - $ref: '#/components/parameters/OrgId'

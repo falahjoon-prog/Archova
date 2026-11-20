@@ -5,12 +5,12 @@ file is read into staged rows, they map columns to Archova's fields, and a dry r
 created in other modules yet.
 
 - **Flow:** `createImportJob` (uploaded) → `parseImportJob` (parsed) → `setImportMapping` (validated, with counts and
-  per-row problems) → `cancelImportJob`, or apply (not built).
+  per-row problems) → `cancelImportJob`, or `applyImportJob` (RFI imports only: one transaction, through the `rfis` import command, original numbers and dates, no notifications).
 - **Fields:** the field catalogue is `@archova/ai-prompts` `IMPORT_FIELDS`, the same list Nova's mapping suggestions use.
 - **Limits:** 50,000 rows; files over 5 MB are not read in the API and wait for the worker. One open import per project.
 - **Idempotent:** a staged row's `source_ref` is the record's own number in the old system; a number that appears twice in
   one file fails the dry run.
-- **Not built:** applying through each module's `importX` command, rollback, XLSX, 30-day staging purge (worker),
+- **Not built:** applying defects, drawing registers and companies (only `rfis` has an `importX` command yet), more than 5,000 rows per apply, rollback, XLSX, 30-day staging purge (worker),
   connectors, webhooks, email-in.
 
 ## Accounting connectors (phase 2, integrations/02)

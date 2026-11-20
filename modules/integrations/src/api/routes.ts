@@ -351,6 +351,18 @@ export function integrationsRoutes(
           ),
         ),
       ),
+    applyImportJob: async (input) =>
+      job(
+        200,
+        await tx(input, (s) =>
+          svc.apply(
+            s,
+            project(input.params),
+            jobIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+          ),
+        ),
+      ),
     cancelImportJob: async (input) =>
       job(
         200,

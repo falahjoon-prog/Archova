@@ -82,6 +82,9 @@ export function useImportMutations() {
       mutationFn: async (v: { job: ImportJob; mapping: MappingInput }) =>
         await settle(await api.setMapping(projectId, v.job, v.mapping)),
     }),
+    apply: useMutation({
+      mutationFn: async (job: ImportJob) => await settle(await api.apply(projectId, job)),
+    }),
     cancel: useMutation({
       mutationFn: async (job: ImportJob) => await settle(await api.cancel(projectId, job)),
     }),

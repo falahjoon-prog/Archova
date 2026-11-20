@@ -142,6 +142,74 @@ describe('import staging (integrations/07)', () => {
     expect((await s.pm.browser.get(url)).json().data).toHaveLength(2);
   });
 
+  it('applies a validated RFI import with the original numbers, dates and responses', async () => {
+    const s = await setup('imp-apply');
+    const url = `${s.base}/import-jobs`;
+    const log = [
+      'No,Subject,Question,Status,Date Raised,Date Answered,Official Response,Responded By',
+      '#87,Slab edge,Confirm detail at C,Answered,1/3/2027,8/3/2027,Use S-12,Sam',
+      '#88,Door hardware,Which handle?,Open,2/3/2027,,,',
+      '#89,,Missing subject,Open,2/3/2027,,,',
+    ].join('\r\n');
+    const created = await s.pm.browser.post(url, { entity: 'rfi', fileId: await s.file(log) });
+    const id = created.json().id as string;
+    const parsed = await s.pm.browser.post(
+      `${url}/${id}/parse`,
+      {},
+      { 'if-match': etagOf(created) },
+    );
+    const mapped = await s.pm.browser.put(
+      `${url}/${id}/mapping`,
+      {
+        columns: {
+          number: 0,
+          subject: 1,
+          question: 2,
+          status: 3,
+          openedAt: 4,
+          answeredAt: 5,
+          officialResponse: 6,
+          responseBy: 7,
+        },
+      },
+      { 'if-match': etagOf(parsed) },
+    );
+    expect(mapped.json()).toMatchObject({ validRows: 2, invalidRows: 1 });
+
+    // A stale ETag is refused; the real one creates the RFIs.
+    expect(
+      (await s.pm.browser.post(`${url}/${id}/apply`, {}, { 'if-match': etagOf(parsed) }))
+        .statusCode,
+    ).toBe(412);
+    const applied = await s.pm.browser.post(
+      `${url}/${id}/apply`,
+      {},
+      { 'if-match': etagOf(mapped) },
+    );
+    expect(applied.statusCode).toBe(200);
+    expect(applied.json()).toMatchObject({ status: 'done' });
+
+    const rfis = (await s.pm.browser.get(`${s.base}/rfis`)).json().data as Array<{
+      number: number;
+      subject: string;
+      status: string;
+    }>;
+    expect(rfis.map((r) => [r.number, r.subject, r.status]).sort()).toEqual([
+      [87, 'Slab edge', 'answered'],
+      [88, 'Door hardware', 'open'],
+    ]);
+    const rows = (await s.pm.browser.get(`${url}/${id}/rows?status=applied`)).json().data;
+    expect(rows).toHaveLength(2);
+
+    // A finished import cannot be applied again.
+    const again = await s.pm.browser.post(
+      `${url}/${id}/apply`,
+      {},
+      { 'if-match': etagOf(applied) },
+    );
+    expect(again.json().code).toBe('import.invalid_state');
+  });
+
   it('keeps imports to project admins and refuses unusable files', async () => {
     const s = await setup('imp2');
     const url = `${s.base}/import-jobs`;
