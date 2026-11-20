@@ -888,6 +888,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        /** Photos of a machine's condition at hire-in, hire-out and after a service, newest first. */
+        get: operations["listPlantConditionChecks"];
+        put?: never;
+        /**
+         * Record the condition of a machine with photos.
+         * @description Each photo must be a ready file uploaded with module `plant` (an org-level upload). A hire-in or hire-out may name the allocation, and a service the maintenance record, both of this machine.
+         */
+        post: operations["createPlantConditionCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/plant/utilisation": {
         parameters: {
             query?: never;
@@ -18407,6 +18431,30 @@ export interface components {
         PlantMaintenanceRecordList: {
             data: components["schemas"]["PlantMaintenanceRecord"][];
         };
+        /** @enum {string} */
+        PlantConditionKind: "hire_in" | "hire_out" | "service";
+        PlantConditionCheck: {
+            id: string;
+            assetId: string;
+            kind: components["schemas"]["PlantConditionKind"];
+            allocationId: string | null;
+            recordId: string | null;
+            /** Format: date */
+            takenOn: string;
+            note: string | null;
+            /** @description Photos, as file ids. */
+            fileIds: string[];
+        };
+        PlantConditionCheckList: {
+            data: components["schemas"]["PlantConditionCheck"][];
+        };
+        CreatePlantConditionCheckRequest: {
+            kind: components["schemas"]["PlantConditionKind"];
+            fileIds: string[];
+            note?: string;
+            allocationId?: string;
+            recordId?: string;
+        };
         PlantUtilisation: {
             /** Format: date */
             from: string;
@@ -29851,6 +29899,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlantMaintenanceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantConditionChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantConditionCheckList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantConditionCheck: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantConditionCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantConditionCheck"];
                 };
             };
             default: components["responses"]["Problem"];

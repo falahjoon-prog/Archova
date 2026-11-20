@@ -3419,6 +3419,18 @@ export const CreatePlantAssetRequestSchema = z.object({
 }).strict();
 export type CreatePlantAssetRequest = z.infer<typeof CreatePlantAssetRequestSchema>;
 
+export const PlantConditionKindSchema = z.enum(["hire_in", "hire_out", "service"]);
+export type PlantConditionKind = z.infer<typeof PlantConditionKindSchema>;
+
+export const CreatePlantConditionCheckRequestSchema = z.object({
+  "kind": PlantConditionKindSchema,
+  "fileIds": z.array(z.string()).min(1).max(10),
+  "note": z.string().min(1).max(2000).optional(),
+  "allocationId": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")).optional(),
+  "recordId": z.string().regex(new RegExp("^prc_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreatePlantConditionCheckRequest = z.infer<typeof CreatePlantConditionCheckRequestSchema>;
+
 export const CreatePlantContractorNoticeRequestSchema = z.object({
   "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
   "message": z.string().min(1).max(1000).optional(),
@@ -9146,6 +9158,23 @@ export const PlantAssetListSchema = z.object({
   "data": z.array(PlantAssetSchema),
 });
 export type PlantAssetList = z.infer<typeof PlantAssetListSchema>;
+
+export const PlantConditionCheckSchema = z.object({
+  "id": z.string().regex(new RegExp("^pcc_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "kind": PlantConditionKindSchema,
+  "allocationId": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")).nullable(),
+  "recordId": z.string().regex(new RegExp("^prc_[0-9A-Za-z]{26}$")).nullable(),
+  "takenOn": z.string().date(),
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+});
+export type PlantConditionCheck = z.infer<typeof PlantConditionCheckSchema>;
+
+export const PlantConditionCheckListSchema = z.object({
+  "data": z.array(PlantConditionCheckSchema),
+});
+export type PlantConditionCheckList = z.infer<typeof PlantConditionCheckListSchema>;
 
 export const PlantContractorNoticeSchema = z.object({
   "id": z.string().regex(new RegExp("^pcn_[0-9A-Za-z]{26}$")),

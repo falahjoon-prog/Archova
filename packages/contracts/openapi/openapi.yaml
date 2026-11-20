@@ -1033,6 +1033,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlantMaintenanceRecordList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    get:
+      operationId: listPlantConditionChecks
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Photos of a machine's condition at hire-in, hire-out and after a service, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantConditionCheckList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPlantConditionCheck
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Record the condition of a machine with photos.
+      description: Each photo must be a ready file uploaded with module `plant` (an org-level upload). A hire-in or hire-out may name the allocation, and a service the maintenance record, both of this machine.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantConditionCheckRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantConditionCheck' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/utilisation:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -26139,6 +26177,36 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PlantMaintenanceRecord' }
+    PlantConditionKind: { type: string, enum: [hire_in, hire_out, service] }
+    PlantConditionCheck:
+      type: object
+      required: [id, assetId, kind, allocationId, recordId, takenOn, note, fileIds]
+      properties:
+        id: { type: string, pattern: '^pcc_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/PlantConditionKind' }
+        allocationId: { type: [string, 'null'], pattern: '^pal_[0-9A-Za-z]{26}$' }
+        recordId: { type: [string, 'null'], pattern: '^prc_[0-9A-Za-z]{26}$' }
+        takenOn: { type: string, format: date }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string }, description: 'Photos, as file ids.' }
+    PlantConditionCheckList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantConditionCheck' }
+    CreatePlantConditionCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, fileIds]
+      properties:
+        kind: { $ref: '#/components/schemas/PlantConditionKind' }
+        fileIds: { type: array, minItems: 1, maxItems: 10, items: { type: string } }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        allocationId: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+        recordId: { type: string, pattern: '^prc_[0-9A-Za-z]{26}$' }
     PlantUtilisation:
       type: object
       required: [from, to, days, fleetPct, assets, projects]

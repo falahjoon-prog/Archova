@@ -1,4 +1,4 @@
--- Composed from modules/plant/db/migrations/20261120100000_plant_contractor_notices.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/plant/db/migrations/20261120110000_plant_contractor_notices.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Who services a machine, and the notices staff send them from a Nova flag. A notice is queued with a snapshot of what it
 -- says (the issue and due date as they stood) and the contractor's address at the time; the worker emails it and
 -- records the outcome. The mail names the machine and the issue only, never rates, projects or other fleet data.

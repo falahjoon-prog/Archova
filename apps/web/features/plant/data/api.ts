@@ -17,6 +17,9 @@ export type PlantUtilisation = S['PlantUtilisation'];
 export type CreatePlantAsset = S['CreatePlantAssetRequest'];
 export type CreatePlantAllocation = S['CreatePlantAllocationRequest'];
 export type CreatePlantPlan = S['CreatePlantMaintenancePlanRequest'];
+export type PlantConditionCheck = S['PlantConditionCheck'];
+export type PlantConditionKind = S['PlantConditionKind'];
+export type CreatePlantConditionCheck = S['CreatePlantConditionCheckRequest'];
 export type CompletePlantPlan = S['CompletePlantMaintenanceRequest'];
 
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -118,6 +121,24 @@ export function createPlantApi(orgId: string) {
       return unwrap(
         await api.POST('/v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete', {
           params: { path: { ...org, planId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async conditionChecks(assetId: string): Promise<PlantConditionCheck[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks', {
+          params: { path: { ...org, assetId } },
+        }),
+      ).data;
+    },
+    async createConditionCheck(
+      assetId: string,
+      body: CreatePlantConditionCheck,
+    ): Promise<PlantConditionCheck> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks', {
+          params: { path: { ...org, assetId }, header: idempotencyKey() },
           body,
         }),
       );

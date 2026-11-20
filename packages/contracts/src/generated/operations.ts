@@ -179,6 +179,15 @@ export const ListPlantMaintenanceRecordsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
 });
+export const ListPlantConditionChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantConditionCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantConditionCheckBody = s.CreatePlantConditionCheckRequestSchema;
 export const GetPlantUtilisationParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5679,6 +5688,30 @@ export const operations = {
     params: ListPlantMaintenanceRecordsParams,
     query: null,
     body: null,
+  },
+  listPlantConditionChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantConditionChecksParams,
+    query: null,
+    body: null,
+  },
+  createPlantConditionCheck: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantConditionCheckParams,
+    query: null,
+    body: CreatePlantConditionCheckBody,
   },
   getPlantUtilisation: {
     method: 'GET',
