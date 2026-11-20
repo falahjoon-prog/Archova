@@ -22,6 +22,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { queries } from '@/shared/lib/api';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { ConditionPhotos } from '../components/ConditionPhotos';
 import type {
   PlantAllocation,
   PlantAsset,
@@ -268,6 +269,7 @@ export function PlantScreen() {
           { id: 'fleet', label: 'Fleet', count: fleet.length },
           { id: 'schedule', label: 'Allocations' },
           { id: 'maintenance', label: 'Maintenance' },
+          { id: 'condition', label: 'Condition photos' },
           { id: 'utilisation', label: 'Utilisation' },
         ]}
       >
@@ -362,6 +364,7 @@ export function PlantScreen() {
             {canManage ? <PlanForm machines={fleet} today={today} m={m} /> : null}
           </div>
         ) : null}
+        {tab === 'condition' ? <ConditionPhotos machines={fleet} canManage={canManage} /> : null}
         {tab === 'utilisation' ? (
           <div className="stack-lg">
             <ErrorAlert error={util.error} title="We couldn't load utilisation" />

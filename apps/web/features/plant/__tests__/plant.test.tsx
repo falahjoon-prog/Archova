@@ -127,4 +127,35 @@ describe('PlantScreen', () => {
     await user.click(await screen.findByRole('tab', { name: /Utilisation/ }));
     expect(await screen.findByText('39%')).toBeTruthy();
   });
+
+  it('shows a machine’s condition photos by when they were taken', async () => {
+    fake.on('GET', `${P}/assets/{assetId}/condition-checks`, () => ({
+      data: [
+        {
+          id: 'pcc_1',
+          assetId: 'pla_1',
+          kind: 'hire_in',
+          allocationId: null,
+          recordId: null,
+          takenOn: '2026-11-10',
+          note: 'Scratch on the left door',
+          fileIds: ['fil_1'],
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PlantScreen />);
+    await user.click(await screen.findByRole('tab', { name: /Condition photos/ }));
+    await user.selectOptions(await screen.findByLabelText('Machine'), 'pla_1');
+    expect(await screen.findByText('Scratch on the left door')).toBeTruthy();
+    expect(screen.getAllByText('Hire in').length).toBeGreaterThan(0);
+  });
+
+  it('asks for a machine and a photo before saving a condition', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PlantScreen />);
+    await user.click(await screen.findByRole('tab', { name: /Condition photos/ }));
+    await user.click(await screen.findByRole('button', { name: 'Save condition' }));
+    expect(await screen.findByText('Choose the machine.')).toBeTruthy();
+  });
 });

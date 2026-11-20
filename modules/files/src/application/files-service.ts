@@ -60,6 +60,8 @@ export interface FilesDeps {
    * photographing their white card during an induction holds no documents permission (backend 06 §5).
    */
   uploadPermissions?: Readonly<Record<string, string>>;
+  /** The same for org-level files (no project), checked at org scope instead of `files.org_objects.upload`. */
+  orgUploadPermissions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -73,6 +75,7 @@ export function createFilesService({
   scanner,
   logger,
   uploadPermissions = {},
+  orgUploadPermissions = {},
 }: FilesDeps) {
   async function authorise(
     scope: TenantScope,
@@ -88,7 +91,10 @@ export function createFilesService({
         { projectId },
       );
     } else if (action === 'upload') {
-      await access.assert(scope, 'files.org_objects.upload');
+      await access.assert(
+        scope,
+        (module ? orgUploadPermissions[module] : undefined) ?? 'files.org_objects.upload',
+      );
     } else if (scope.ctx.principalType !== 'member') {
       // Org-level files (logos, templates) are visible to org members, never to external collaborators.
       throw new AppError('file.not_found');
