@@ -17,6 +17,8 @@ Other docs in this project refer to this area as `docs/security/`; this folder i
 | 07 | [Audit logging](07-audit-logging.md) | Activity log, security log and sealed evidence records; hash chain + S3 Object Lock; 7-year retention; evidence packs for adjudication |
 | 08 | [Australian privacy and compliance](08-privacy-compliance-au.md) | Privacy Act/APPs, NDB scheme, 2024 reforms (AI decision transparency from Dec 2026), SOPA, WHS, GST; ISO 27001 then IRAP roadmap |
 | 09 | [Security baseline](09-security-baseline.md) | OWASP ASVS L2, Essential Eight L2, encryption, secrets, mobile, AI security rules, SDLC, incident response |
+| 10 | [ISO 27001 / SOC 2 readiness](10-iso27001-soc2-readiness.md) | What is in place, gaps, evidence checklist, prioritised plan; policy set in [policies/isms-policies.md](policies/isms-policies.md) |
+| 11 | [Data residency statement](11-data-residency-statement.md) | Draft public statement, what is true today, publish checklist |
 
 ## Decisions for john
 
