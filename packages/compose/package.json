@@ -23,6 +23,7 @@
     "@archova/mod-plant": "workspace:*",
     "@archova/mod-announcements": "workspace:*",
     "@archova/mod-bookmarks": "workspace:*",
+    "@archova/mod-contractors": "workspace:*",
     "@archova/mod-recents": "workspace:*",
     "@archova/mod-conversations": "workspace:*",
     "@archova/mod-links": "workspace:*",

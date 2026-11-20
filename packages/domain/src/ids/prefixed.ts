@@ -146,6 +146,7 @@ export const ID_PREFIXES = {
   projectRisk: 'rsk',
   notification: 'ntf',
   bookmark: 'bmk',
+  contractorLink: 'ctl',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
   inspection: 'ins',

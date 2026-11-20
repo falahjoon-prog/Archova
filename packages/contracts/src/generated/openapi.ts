@@ -689,6 +689,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/contractor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's contractor profile (404 `contractor.no_profile` if they have not set one up). */
+        get: operations["getMyContractorProfile"];
+        /**
+         * Create or update the caller's contractor profile (free tier; no organisation needed).
+         * @description A contractor is a normal account (`POST /v1/auth/signup`) plus this profile. Any profession. The profile is
+         *     private: companies see only the name and profession on a link request, and the phone once they accept.
+         */
+        put: operations["saveMyContractorProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find a company by name (at least 3 characters; 10 results at most; rate limited).
+         * @description Returns only the name, the last three ABN digits and the caller's own link status. There is no public
+         *     page and no count or paging, so the list cannot be walked. Needs a contractor profile.
+         */
+        get: operations["searchContractorCompanies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The companies the caller has asked to work for or works for, newest first. Searchable and paged. */
+        get: operations["listMyContractorLinks"];
+        put?: never;
+        /**
+         * Ask a company to add the caller as a contractor (idempotent).
+         * @description `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` for 30 days after
+         *     the company rejected the caller. `409 contractor_link.too_many_requests` at 50 open requests.
+         */
+        post: operations["requestContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel a pending request or end an accepted link (idempotent). */
+        delete: operations["removeMyContractorLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Contractors who asked to work for, or work for, this company. Org owners and admins only. */
+        get: operations["listCompanyContractors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a pending contractor request (idempotent). Org owners and admins only. */
+        post: operations["acceptContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending contractor request (idempotent). Org owners and admins only. */
+        post: operations["rejectContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End an accepted link (idempotent). Org owners and admins only. */
+        delete: operations["endContractorLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/plant/assets": {
         parameters: {
             query?: never;
@@ -18273,6 +18436,59 @@ export interface components {
             title: string;
             subtitle?: string;
         };
+        /** @enum {string} */
+        ContractorLinkStatus: "requested" | "accepted" | "rejected" | "ended";
+        ContractorProfileInput: {
+            /** @description The business or trading name companies see. */
+            displayName: string;
+            /** @description Free text, any profession (electrician, architect, certifier). */
+            profession: string;
+            phone?: string | null;
+        };
+        ContractorProfile: {
+            displayName: string;
+            profession: string;
+            phone: string | null;
+        };
+        ContractorCompany: {
+            id: string;
+            name: string;
+            abnLast3: string | null;
+            linkStatus: components["schemas"]["ContractorLinkStatus"] | null;
+        };
+        ContractorCompanyList: {
+            data: components["schemas"]["ContractorCompany"][];
+        };
+        ContractorLink: {
+            id: string;
+            companyName: string;
+            status: components["schemas"]["ContractorLinkStatus"];
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        ContractorLinkPage: {
+            data: components["schemas"]["ContractorLink"][];
+            nextCursor: string | null;
+        };
+        CompanyContractor: {
+            id: string;
+            displayName: string;
+            profession: string;
+            /** @description Only once the link is accepted. */
+            phone: string | null;
+            status: components["schemas"]["ContractorLinkStatus"];
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        CompanyContractorPage: {
+            data: components["schemas"]["CompanyContractor"][];
+            nextCursor: string | null;
+            pendingCount: number;
+        };
         Bookmark: {
             id: string;
             entityType: components["schemas"]["BookmarkEntityType"];
@@ -28631,6 +28847,7 @@ export interface components {
         ApiTokenId: string;
         NotificationId: string;
         BookmarkId: string;
+        ContractorLinkId: string;
         AccountingProvider: "xero" | "myob";
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
@@ -29643,6 +29860,247 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyContractorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorProfile"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveMyContractorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractorProfileInput"];
+            };
+        };
+        responses: {
+            /** @description The saved profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorProfile"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchContractorCompanies: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching companies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorCompanyList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMyContractorLinks: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: components["schemas"]["ContractorLinkStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorLinkPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    requestContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    companyId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The link (status `requested`, or the existing one) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeMyContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCompanyContractors: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: components["schemas"]["ContractorLinkStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractorPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    endContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ended */
             204: {
                 headers: {
                     [name: string]: unknown;

@@ -64,7 +64,7 @@ export interface Database {
    * unreachable here: their RLS policies call `current_setting('app.org_id')`, which errors when unset.
    */
   withGlobalTx<T>(
-    owner: 'identity' | 'billing' | 'backoffice',
+    owner: 'identity' | 'billing' | 'backoffice' | 'contractors',
     fn: (tx: Tx) => Promise<T>,
     opts?: TxOptions,
   ): Promise<T>;

@@ -61,6 +61,7 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
+import { createContractorsModule } from '@archova/mod-contractors';
 import { createRecentsModule } from '@archova/mod-recents';
 import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
 import { PREFAB_PERMISSIONS, createPrefabModule, type PrefabModule } from '@archova/mod-prefab';
@@ -368,6 +369,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const notifications = createNotificationsModule(services);
   const bookmarks = createBookmarksModule(services);
+  const contractors = createContractorsModule(services);
   const recents = createRecentsModule(services);
 
   // Built right after financials; financials reaches it lazily at request time.
@@ -767,6 +769,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    contractors,
     recents,
     plant,
     financials,
@@ -822,6 +825,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    contractors,
     recents,
     plant,
     financials,
