@@ -12,6 +12,7 @@ import { reviewDetection } from '../../domain/takeoff-detect';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
 import { leaksNone } from '../scorers';
+import { syntheticPlan } from '../synthetic-plans';
 import {
   ACCURACY_BARS,
   scoreDetection,
@@ -108,6 +109,40 @@ const cases = [
   ),
 ];
 
+/** Seeded synthetic plans with known power points, room areas and footing length (ai/10 §4 accuracy set). */
+const PLAN_SEEDS = [11, 12, 13, 14, 15, 16, 17, 18] as const;
+const planCases = PLAN_SEEDS.flatMap((seed) => {
+  const p = syntheticPlan(seed);
+  const image = { mime: 'image/png' as const, base64: p.base64 };
+  const base = { sheetLabel: `S-${seed} Synthetic floor plan`, legendText: p.legend, image };
+  const caseOf = (
+    suffix: string,
+    target: TakeoffDetectInput['target'],
+    shapes: readonly Shape[],
+    examples: Array<{ x: number; y: number }>,
+  ): GoldenCase<TakeoffDetectInput, TakeoffDetectExpected> => ({
+    id: `plan-${seed}-${suffix}`,
+    input: { ...base, target, examples },
+    expected: { truth: { sheet: p.sheet, shapes } },
+    tags: ['synthetic-plan'],
+  });
+  return [
+    caseOf(
+      'gpo',
+      { kind: 'count', what: 'power points (GPOs)' },
+      p.gpos,
+      p.gpos.slice(0, 2).map((g) => g.points[0]!),
+    ),
+    caseOf(
+      'rooms',
+      { kind: 'area', what: 'room areas', hint: 'each rectangular room is one region' },
+      p.rooms,
+      p.rooms[0]!.points,
+    ),
+    caseOf('footing', { kind: 'length', what: 'strip footing' }, p.footings, p.footings[0]!.points),
+  ];
+});
+
 const INSTRUCTION = /\bNOTE (FOR|TO) THE AI\b/i;
 
 /** Deterministic stand-in: one item per example the estimator pointed at, shaped for the target kind. */
@@ -139,8 +174,8 @@ export const takeoffDetectSuite: EvalSuite<
 > = {
   prompt: takeoffDetectPrompt,
   source:
-    'synthetic sheets (Harbourside Apartments), plumbing only; accuracy set pending (ai/10 §4)',
-  cases,
+    'synthetic sheets (Harbourside Apartments) plus 8 seeded synthetic floor plans with known answers (ai/10 §4); real scores need a live provider run',
+  cases: [...cases, ...planCases],
   fake: heuristicTakeoffDetect,
   score: (c, r): CaseScores => {
     const ok = r.outcome.kind === 'ok' ? r.outcome.output : null;
