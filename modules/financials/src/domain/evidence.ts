@@ -66,7 +66,12 @@ export interface ScheduleSnapshot {
     scheduledAmount: string;
     withheldAmount: string;
     overallReason: string | null;
-    lineReasons: { ref: string; reason: string }[];
+    lineReasons: {
+      ref: string;
+      reason: string;
+      claimedAmount?: string;
+      scheduledAmount?: string;
+    }[];
     issuedAt: string;
     issuedWithinTime: boolean;
   };
@@ -153,7 +158,12 @@ export function evidenceLines(s: EvidenceSnapshot, snapshotSha256: string) {
       `Claimed net ${s.claim.claimedNet}. Scheduled ${p.scheduledAmount}. Withheld ${p.withheldAmount}.`,
     );
     if (p.overallReason) add(`Reason: ${p.overallReason}`);
-    for (const r of p.lineReasons) add(`${r.ref}: ${r.reason}`);
+    for (const r of p.lineReasons)
+      add(
+        r.claimedAmount !== undefined && r.scheduledAmount !== undefined
+          ? `${r.ref}: scheduled ${r.scheduledAmount} of ${r.claimedAmount}. ${r.reason}`
+          : `${r.ref}: ${r.reason}`,
+      );
     if (s.claimEvidenceSha256) add(`Answers sealed claim record ${s.claimEvidenceSha256}`, 'small');
   }
   add('Seal', 'heading');

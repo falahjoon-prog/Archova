@@ -20,6 +20,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { claimTimeline, mostUrgentStep } from '../domain/claim-timeline';
+import { isScheduleLinesError, scheduleFromLines } from '../domain/schedule-lines';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { attachChangeEvent } from './changeEvents';
 import { fromCents, toCents } from '../domain/money';
@@ -184,8 +185,13 @@ export interface CreateVariationInput {
   changeEventId?: string;
 }
 
+type LineReasonRow = (typeof paymentSchedules.$inferInsert)['lineReasons'][number];
+
 export interface IssueScheduleInput {
-  scheduledAmount: string;
+  /** The total, when scheduling the whole claim in one amount. Give this or `lines`, not both. */
+  scheduledAmount?: string;
+  /** Line by line: each reduced line needs its own reason. Lines left out are scheduled in full. */
+  lines?: { sovItemId?: string; variationId?: string; scheduledAmount: string; reason?: string }[];
   overallReason?: string;
   /** Goes ahead although a required declaration is missing (see `FinancialsDeps.declarations`). */
   declarationsOverride?: { reason: string };
@@ -874,8 +880,10 @@ export function createFinancialsService(deps: FinancialsDeps) {
           withheldAmount: schedule.withheldAmount,
           overallReason: schedule.overallReason,
           lineReasons: schedule.lineReasons.map((r) => ({
-            ref: refOf({ sovItemId: r.sovItemId, variationId: null }).ref,
+            ref: refOf({ sovItemId: r.sovItemId ?? null, variationId: r.variationId ?? null }).ref,
             reason: r.reason,
+            ...(r.claimedAmount !== undefined ? { claimedAmount: r.claimedAmount } : {}),
+            ...(r.scheduledAmount !== undefined ? { scheduledAmount: r.scheduledAmount } : {}),
           })),
           issuedAt: schedule.issuedAt.toISOString(),
           issuedWithinTime: schedule.issuedWithinTime,
@@ -1450,7 +1458,11 @@ export function createFinancialsService(deps: FinancialsDeps) {
   ) {
     await need(scope, 'financials.claims.assess', projectId);
     await requireStaff(scope, projectId, 'issue a payment schedule');
-    const { claim, schedule } = await claimDetail(scope, projectId, claimId, false);
+    const {
+      claim,
+      schedule,
+      lines: claimLines,
+    } = await claimDetail(scope, projectId, claimId, false);
     if (!claim.isValid || claim.scheduleDueOn === null)
       throw new AppError(
         'conflict',
@@ -1464,7 +1476,65 @@ export function createFinancialsService(deps: FinancialsDeps) {
       );
     const claimed = GST_TOTAL(claim);
     const net = toCents(claim.claimedNet);
-    const scheduled = toCents(input.scheduledAmount);
+    if (input.lines && input.scheduledAmount !== undefined)
+      throw new AppError(
+        'validation_failed',
+        'Give the schedule line by line or as one amount, not both.',
+        [{ path: 'scheduledAmount', message: 'Leave out when scheduling by line' }],
+      );
+    if (!input.lines && input.scheduledAmount === undefined)
+      throw new AppError('validation_failed', 'Give the scheduled amount.', [
+        { path: 'scheduledAmount', message: 'Required' },
+      ]);
+    // By line: the total comes from the lines, and every reduced line carries its own reason.
+    let byLine: { lineReasons: LineReasonRow[]; scheduledNet: number } | null = null;
+    if (input.lines) {
+      const r = scheduleFromLines(
+        claimLines.map((l) => ({
+          sovItemId: l.sovItemId,
+          variationId: l.variationId,
+          thisClaim: toCents(l.thisClaim),
+        })),
+        net,
+        input.lines.map((l) => ({
+          ...(l.sovItemId ? { sovItemId: l.sovItemId } : {}),
+          ...(l.variationId ? { variationId: l.variationId } : {}),
+          scheduledAmount: toCents(l.scheduledAmount),
+          ...(l.reason ? { reason: l.reason } : {}),
+        })),
+      );
+      if (isScheduleLinesError(r)) {
+        if (r.code === 'reason_missing')
+          throw new AppError(
+            'financials.schedule.line_reason_required',
+            'Give a reason for every line you are scheduling for less than the claim.',
+            r.keys.map((k) => ({
+              path: `lines/${k}/reason`,
+              message: 'Required for a reduced line',
+            })),
+          );
+        throw new AppError(
+          'validation_failed',
+          r.code === 'over_line'
+            ? 'A line cannot be scheduled for more than the claim took on it.'
+            : 'That line is not on this claim, or is given twice.',
+          [{ path: 'lines', message: r.code }],
+        );
+      }
+      byLine = {
+        scheduledNet: r.scheduledNet,
+        lineReasons: r.lines
+          .filter((l) => l.scheduledAmount < l.claimedAmount)
+          .map((l) => ({
+            ...(l.sovItemId ? { sovItemId: l.sovItemId } : {}),
+            ...(l.variationId ? { variationId: l.variationId } : {}),
+            reason: l.reason!,
+            claimedAmount: fromCents(l.claimedAmount),
+            scheduledAmount: fromCents(l.scheduledAmount),
+          })),
+      };
+    }
+    const scheduled = byLine ? byLine.scheduledNet : toCents(input.scheduledAmount!);
     if (scheduled > net)
       throw new AppError(
         'financials.schedule.over_claim',
@@ -1472,7 +1542,9 @@ export function createFinancialsService(deps: FinancialsDeps) {
         [{ path: 'scheduledAmount', message: `At most ${claim.claimedNet}` }],
       );
     const reasoned =
-      (input.overallReason ?? '').trim().length > 0 || (input.lineReasons ?? []).length > 0;
+      (input.overallReason ?? '').trim().length > 0 ||
+      (input.lineReasons ?? []).length > 0 ||
+      (byLine?.lineReasons.length ?? 0) > 0;
     if (scheduled < net && !reasoned)
       throw new AppError(
         'financials.schedule.reason_required',
@@ -1495,7 +1567,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         scheduledAmount: fromCents(scheduled),
         withheldAmount: fromCents(net - scheduled),
         overallReason: input.overallReason?.trim() || null,
-        lineReasons: input.lineReasons ?? [],
+        lineReasons: byLine ? byLine.lineReasons : (input.lineReasons ?? []),
         issuedAt,
         issuedBy: scope.ctx.userId,
         issuedWithinTime: issuedOn <= claim.scheduleDueOn,
