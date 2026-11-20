@@ -1,0 +1,10 @@
+# Security-sensitive paths need a review from security (docs/security-licensing/09 §7).
+# Handle is the repo owner until Sam's reviewers have GitHub accounts.
+/modules/identity/        @falahjoon-prog
+/modules/billing/         @falahjoon-prog
+/modules/esign/           @falahjoon-prog
+/modules/backoffice/      @falahjoon-prog
+/packages/kernel/         @falahjoon-prog
+/infra/                   @falahjoon-prog
+/.github/                 @falahjoon-prog
+/docs/security-licensing/ @falahjoon-prog
