@@ -369,7 +369,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const notifications = createNotificationsModule(services);
   const bookmarks = createBookmarksModule(services);
-  const contractors = createContractorsModule(services);
+  const contractors = createContractorsModule(services, {
+    emailVerified: async (userId) => (await identity.api.getUser(userId))?.emailVerified === true,
+  });
   const recents = createRecentsModule(services);
 
   // Built right after financials; financials reaches it lazily at request time.

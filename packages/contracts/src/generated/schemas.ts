@@ -1506,7 +1506,7 @@ export const CompanyContactPageSchema = z.object({
 });
 export type CompanyContactPage = z.infer<typeof CompanyContactPageSchema>;
 
-export const ContractorLinkStatusSchema = z.enum(["requested", "accepted", "rejected", "ended"]);
+export const ContractorLinkStatusSchema = z.enum(["requested", "accepted", "rejected", "ended", "cancelled", "blocked"]);
 export type ContractorLinkStatus = z.infer<typeof ContractorLinkStatusSchema>;
 
 export const CompanyContractorSchema = z.object({
@@ -1896,7 +1896,7 @@ export const ContractSourceRefSchema = z.object({
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
 export const ContractorCompanySchema = z.object({
-  "id": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "id": z.string().regex(new RegExp("^cls_[0-9A-Za-z]{26}$")),
   "name": z.string(),
   "abnLast3": z.string().nullable(),
   "linkStatus": z.union([ContractorLinkStatusSchema, z.null()]),
@@ -1922,6 +1922,11 @@ export const ContractorLinkPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type ContractorLinkPage = z.infer<typeof ContractorLinkPageSchema>;
+
+export const ContractorListingSchema = z.object({
+  "listed": z.boolean(),
+}).strict();
+export type ContractorListing = z.infer<typeof ContractorListingSchema>;
 
 export const ContractorProfileSchema = z.object({
   "displayName": z.string(),

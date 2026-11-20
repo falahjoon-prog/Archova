@@ -744,8 +744,10 @@ export interface paths {
         put?: never;
         /**
          * Ask a company to add the caller as a contractor (idempotent).
-         * @description `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` for 30 days after
-         *     the company rejected the caller. `409 contractor_link.too_many_requests` at 50 open requests.
+         * @description `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` after the company
+         *     rejected the caller (30 days) or blocked them (for good); the text never says which. `409
+         *     contractor_link.too_many_requests` at 50 open requests; `409 contractor_link.company_busy` when the company
+         *     has 100 waiting. `403 contractor.email_unverified` where verified email is required.
          */
         post: operations["requestContractorLink"];
         delete?: never;
@@ -766,7 +768,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Cancel a pending request or end an accepted link (idempotent). */
+        /** Cancel a pending request or end an accepted link (idempotent; the row stays, as a status change). */
         delete: operations["removeMyContractorLink"];
         options?: never;
         head?: never;
@@ -786,6 +788,46 @@ export interface paths {
         get: operations["listCompanyContractors"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether contractors can find this company by name. Org owners and admins only. */
+        get: operations["getContractorListing"];
+        /** Turn name search on or off. Off by default; a company is invisible to contractors until it opts in. */
+        put: operations["setContractorListing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block a contractor for good (idempotent). They see it as a rejection. Org owners and admins only. */
+        post: operations["blockContractorLink"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18437,7 +18479,10 @@ export interface components {
             subtitle?: string;
         };
         /** @enum {string} */
-        ContractorLinkStatus: "requested" | "accepted" | "rejected" | "ended";
+        ContractorLinkStatus: "requested" | "accepted" | "rejected" | "ended" | "cancelled" | "blocked";
+        ContractorListing: {
+            listed: boolean;
+        };
         ContractorProfileInput: {
             /** @description The business or trading name companies see. */
             displayName: string;
@@ -18451,6 +18496,7 @@ export interface components {
             phone: string | null;
         };
         ContractorCompany: {
+            /** @description An opaque listing id */
             id: string;
             name: string;
             abnLast3: string | null;
@@ -29974,7 +30020,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    companyId: string;
+                    listingId: string;
                 };
             };
         };
@@ -30035,6 +30081,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyContractorPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractorListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorListing"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setContractorListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractorListing"];
+            };
+        };
+        responses: {
+            /** @description The setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorListing"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    blockContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -28,12 +28,16 @@ export const statusLabel: Record<ContractorLinkStatus, string> = {
   accepted: 'Added',
   rejected: 'Declined',
   ended: 'Ended',
+  cancelled: 'Cancelled',
+  blocked: 'Declined',
 };
 const statusTone = {
   requested: 'warning',
   accepted: 'success',
   rejected: 'danger',
   ended: 'neutral',
+  cancelled: 'neutral',
+  blocked: 'danger',
 } as const;
 
 /** The contractor's home (free tier): set up a profile, find companies, see who has added them. */
@@ -139,7 +143,7 @@ function FindCompany() {
           name="company"
           type="search"
           autoComplete="off"
-          hint="Type at least 3 letters. Companies are not listed publicly."
+          hint="Type at least 3 letters. Only companies that chose to be found appear."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -147,7 +151,8 @@ function FindCompany() {
         {term.length >= 3 && search.isPending ? <SkeletonRows rows={2} /> : null}
         {search.data && search.data.length === 0 ? (
           <p className="u-muted">
-            No company with that name. Check the spelling, or ask them to join Archova.
+            No company found with that name. Check the spelling, or ask them to turn on contractor
+            search in Archova.
           </p>
         ) : null}
         {search.data && search.data.length > 0 ? (
@@ -159,7 +164,7 @@ function FindCompany() {
                   {c.abnLast3 ? <p className="inbox-list__body">ABN ending {c.abnLast3}</p> : null}
                 </div>
                 <div className="inbox-list__side">
-                  {c.linkStatus && c.linkStatus !== 'rejected' && c.linkStatus !== 'ended' ? (
+                  {c.linkStatus && c.linkStatus !== 'ended' && c.linkStatus !== 'cancelled' ? (
                     <StatusPill tone={statusTone[c.linkStatus]}>
                       {statusLabel[c.linkStatus]}
                     </StatusPill>

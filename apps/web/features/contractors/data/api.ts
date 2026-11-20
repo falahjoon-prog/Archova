@@ -42,9 +42,9 @@ export const contractorApi = {
       }),
     );
   },
-  async request(companyId: string): Promise<ContractorLink> {
+  async request(listingId: string): Promise<ContractorLink> {
     await ensureCsrfToken();
-    return unwrap(await api.POST('/v1/me/contractor/links', { body: { companyId } }));
+    return unwrap(await api.POST('/v1/me/contractor/links', { body: { listingId } }));
   },
   async remove(linkId: string): Promise<void> {
     await ensureCsrfToken();
@@ -76,6 +76,28 @@ export function createCompanyContractorsApi(orgId: string) {
           params: { path: { ...org, linkId } },
         }),
       );
+    },
+    async block(linkId: string): Promise<CompanyContractor> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/contractors/{linkId}/block', {
+          params: { path: { ...org, linkId } },
+        }),
+      );
+    },
+    async listing(): Promise<boolean> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/contractors/listing', { params: { path: org } }),
+      ).listed;
+    },
+    async setListing(listed: boolean): Promise<boolean> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.PUT('/v1/orgs/{orgId}/contractors/listing', {
+          params: { path: org },
+          body: { listed },
+        }),
+      ).listed;
     },
     async reject(linkId: string): Promise<CompanyContractor> {
       await ensureCsrfToken();

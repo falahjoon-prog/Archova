@@ -15,10 +15,12 @@ export interface Principal {
 }
 
 /**
+ * `contractor` is a free-tier contractor writing their own link row in a company they do not belong to (X64); no
+ * access check treats it as a member or an external collaborator.
  * `support` is an Archova staff member inside an open support session (Sam 12 §4a): read only, and none of the
  * member or external checks pass for it, so a module that does not know about support shows it nothing.
  */
-export type PrincipalType = 'member' | 'external' | 'support';
+export type PrincipalType = 'member' | 'external' | 'support' | 'contractor';
 
 /** Per-request tenant context (multi-tenancy.md §3). The org always comes from the URL path (X4). */
 export interface TenantContext {

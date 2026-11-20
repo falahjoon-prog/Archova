@@ -341,6 +341,8 @@ export const PROBLEM_CODES = {
   'contractor_link.not_found': 404,
   'contractor_link.rejected_recently': 409,
   'contractor_link.too_many_requests': 409,
+  'contractor_link.company_busy': 409,
+  'contractor.email_unverified': 403,
   // recents
   'recent.invalid_target': 422,
   // logistics (material deliveries)

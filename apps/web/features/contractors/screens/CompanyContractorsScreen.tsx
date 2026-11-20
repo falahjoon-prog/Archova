@@ -1,16 +1,33 @@
 'use client';
 
-import { Button, EmptyState, PageHeader, SkeletonRows, StatusPill } from '@archova/ui';
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  SkeletonRows,
+  StatusPill,
+  Switch,
+} from '@archova/ui';
 import { Building2 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { useDecideContractor, useCompanyContractors } from '../hooks/useContractors';
+import {
+  useCompanyContractors,
+  useContractorListing,
+  useDecideContractor,
+} from '../hooks/useContractors';
 
 /** A company's contractors (free tier): requests to accept or reject, and who is already added. */
 export function CompanyContractorsScreen() {
   const decide = useDecideContractor();
   const pending = useCompanyContractors('requested');
   const accepted = useCompanyContractors('accepted');
-  const busy = decide.accept.isPending || decide.reject.isPending || decide.end.isPending;
+  const listing = useContractorListing();
+  const busy =
+    decide.accept.isPending ||
+    decide.reject.isPending ||
+    decide.block.isPending ||
+    decide.end.isPending;
   const waiting = pending.query.data?.pages.flatMap((p) => p.data) ?? [];
   const added = accepted.query.data?.pages.flatMap((p) => p.data) ?? [];
   const error =
@@ -27,6 +44,21 @@ export function CompanyContractorsScreen() {
         description="Contractors who asked to work for you. Only owners and admins can accept or reject."
       />
       <ErrorAlert error={error} title="We couldn't complete that" />
+
+      <Card title="Let contractors find you">
+        <div className="stack">
+          <p className="u-m-0 u-muted">
+            Off by default. When on, a signed-in contractor can search your company name and ask to
+            be added. You still accept or reject every request.
+          </p>
+          <Switch
+            label="Contractors can find this company by name"
+            checked={listing.query.data ?? false}
+            disabled={listing.query.isPending || listing.set.isPending}
+            onCheckedChange={(on) => listing.set.mutate(on)}
+          />
+        </div>
+      </Card>
 
       <section className="stack" aria-labelledby="ctr-pending">
         <h2 id="ctr-pending" className="u-h3">
@@ -65,6 +97,15 @@ export function CompanyContractorsScreen() {
                     aria-label={`Reject ${c.displayName}`}
                   >
                     Reject
+                  </Button>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => decide.block.mutate(c.id)}
+                    aria-label={`Block ${c.displayName}`}
+                  >
+                    Block
                   </Button>
                 </div>
               </li>

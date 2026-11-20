@@ -73,6 +73,12 @@ export interface Database {
    * caller's own memberships and the orgs they belong to. Used by GET /v1/me before an org is chosen.
    */
   withSelfTx<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T>;
+  /**
+   * Contractor scope (ADR-0007 amendment 1): a transaction in the named company that runs as the restricted
+   * `app_contractor` role, which can read and write nothing except `contractors.links` (own row, plus pending rows
+   * for counting). Only the contractors module's links repository may call it (see its boundary test).
+   */
+  withContractorTx<T>(orgId: string, userId: string, fn: (tx: Tx) => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -119,6 +125,16 @@ export function createDatabase(connectionString: string, opts: { max?: number } 
         await tx.execute(
           sql`select set_config('app.org_id', ${NIL_UUID}, true), set_config('app.self_user_id', ${userId}, true)`,
         );
+        return fn(tx);
+      });
+    },
+    async withContractorTx(orgId, userId, fn) {
+      return db.transaction(async (tx) => {
+        await begin(tx, undefined);
+        await tx.execute(
+          sql`select set_config('app.org_id', ${orgId}, true), set_config('app.user_id', ${userId}, true)`,
+        );
+        await tx.execute(sql`SET LOCAL ROLE app_contractor`);
         return fn(tx);
       });
     },

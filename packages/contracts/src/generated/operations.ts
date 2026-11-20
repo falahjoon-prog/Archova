@@ -140,7 +140,7 @@ export const ListMyContractorLinksQuery = z.object({
   "cursor": z.string().max(200).optional(),
 });
 export const RequestContractorLinkBody = z.object({
-  "companyId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "listingId": z.string().regex(new RegExp("^cls_[0-9A-Za-z]{26}$")),
 }).strict();
 export const RemoveMyContractorLinkParams = z.object({
   "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
@@ -153,6 +153,17 @@ export const ListCompanyContractorsQuery = z.object({
   "status": s.ContractorLinkStatusSchema.optional(),
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
+});
+export const GetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingBody = s.ContractorListingSchema;
+export const BlockContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
 });
 export const AcceptContractorLinkParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -5688,6 +5699,42 @@ export const operations = {
     contentType: null,
     params: ListCompanyContractorsParams,
     query: ListCompanyContractorsQuery,
+    body: null,
+  },
+  getContractorListing: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetContractorListingParams,
+    query: null,
+    body: null,
+  },
+  setContractorListing: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SetContractorListingParams,
+    query: null,
+    body: SetContractorListingBody,
+  },
+  blockContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/block',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: BlockContractorLinkParams,
+    query: null,
     body: null,
   },
   acceptContractorLink: {

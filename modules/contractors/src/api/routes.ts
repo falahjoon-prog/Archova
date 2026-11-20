@@ -40,7 +40,7 @@ export function contractorsRoutes(database: Database, service: ContractorService
     }),
     requestContractorLink: async (input) => ({
       status: 201,
-      body: await service.requestLink(requirePrincipal(input).userId, input.body.companyId),
+      body: await service.requestLink(requirePrincipal(input).userId, input.body.listingId),
     }),
     removeMyContractorLink: async (input) => {
       await service.removeMyLink(requirePrincipal(input).userId, input.params.linkId);
@@ -70,6 +70,22 @@ export function contractorsRoutes(database: Database, service: ContractorService
       status: 200,
       body: await database.withTenantTx(requireAdmin(input), (s) =>
         service.decide(s, input.params.linkId, 'rejected'),
+      ),
+    }),
+    blockContractorLink: async (input) => ({
+      status: 200,
+      body: await database.withTenantTx(requireAdmin(input), (s) =>
+        service.decide(s, input.params.linkId, 'blocked'),
+      ),
+    }),
+    getContractorListing: async (input) => ({
+      status: 200,
+      body: await database.withTenantTx(requireAdmin(input), (s) => service.getListing(s), ro),
+    }),
+    setContractorListing: async (input) => ({
+      status: 200,
+      body: await database.withTenantTx(requireAdmin(input), (s) =>
+        service.setListing(s, input.body.listed),
       ),
     }),
     endContractorLink: async (input) => {

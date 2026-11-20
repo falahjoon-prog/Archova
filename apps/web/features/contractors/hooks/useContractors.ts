@@ -48,7 +48,7 @@ export function useMyLinks(q: string) {
 export function useRequestLink() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (companyId: string) => contractorApi.request(companyId),
+    mutationFn: (listingId: string) => contractorApi.request(listingId),
     onSuccess: () => qc.invalidateQueries({ queryKey: mine }),
   });
 }
@@ -83,7 +83,23 @@ export function useDecideContractor() {
   const done = () => qc.invalidateQueries({ queryKey: ['orgs', orgId, 'contractors'] });
   return {
     accept: useMutation({ mutationFn: (id: string) => source.accept(id), onSuccess: done }),
+    block: useMutation({ mutationFn: (id: string) => source.block(id), onSuccess: done }),
     reject: useMutation({ mutationFn: (id: string) => source.reject(id), onSuccess: done }),
     end: useMutation({ mutationFn: (id: string) => source.end(id), onSuccess: done }),
+  };
+}
+
+/** Whether contractors can find this company by name (off until the company opts in). */
+export function useContractorListing() {
+  const { orgId } = useCurrentOrg();
+  const source = useMemo(() => createCompanyContractorsApi(orgId), [orgId]);
+  const qc = useQueryClient();
+  const key = ['orgs', orgId, 'contractor-listing'];
+  return {
+    query: useQuery({ queryKey: key, queryFn: () => source.listing() }),
+    set: useMutation({
+      mutationFn: (listed: boolean) => source.setListing(listed),
+      onSuccess: (listed) => qc.setQueryData(key, listed),
+    }),
   };
 }

@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import { and, count, desc, eq, ilike, inArray, lt } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, lt, sql } from 'drizzle-orm';
 import { decodeId, encodeId, uuidv7 } from '@archova/domain';
 import type {
   CompanyContractor,
@@ -7,46 +6,50 @@ import type {
   ContractorCompanyList,
   ContractorLink,
   ContractorLinkPage,
+  ContractorListing,
   ContractorProfile,
   ContractorProfileInput,
 } from '@archova/contracts';
-import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
-import { directory, links, profiles, type LinkStatus } from '../infra/tables';
+import { AppError, type Database, type TenantScope } from '@archova/kernel';
+import { createLinksRepo, type SelfLink } from '../infra/links-repo';
+import { directory, linkDecisions, links, profiles, type LinkStatus } from '../infra/tables';
+import type { createSearchGuard } from './search-guard';
 
-/** Open (pending) requests one contractor may have at once, so Add cannot be used to spam companies. */
+/** Open (pending) requests one contractor may have at once, across companies. */
 export const MAX_OPEN_REQUESTS = 50;
+/** Open (pending) requests one company may have waiting, so bulk accounts cannot flood one builder. */
+export const MAX_OPEN_PER_COMPANY = 100;
 /** After a company rejects a contractor, the same contractor cannot ask that company again for this long. */
 export const REJECT_COOLDOWN_DAYS = 30;
 export const MAX_SEARCH_RESULTS = 10;
 export const MIN_SEARCH_LENGTH = 3;
-/** Company searches per contractor per minute (in process; the edge limit is the real backstop). */
-export const SEARCH_PER_MINUTE = 20;
 
 type LinkRow = typeof links.$inferSelect;
 
+export interface ContractorDeps {
+  searchGuard: ReturnType<typeof createSearchGuard>;
+  /** True when the account's email is verified. */
+  emailVerified: (userId: string) => Promise<boolean>;
+  /**
+   * Require a verified email before search or request (Sam 20 Nov, item 2). Off until email verification exists:
+   * sign-up does not verify addresses yet, so turning it on now would lock every contractor out.
+   */
+  requireVerifiedEmail: boolean;
+  now: () => Date;
+}
+
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
-const toLink = (r: LinkRow): ContractorLink => ({
+/** A contractor sees a block as a plain rejection; the company's decision is not explained. */
+const toLink = (r: SelfLink): ContractorLink => ({
   id: encodeId('contractorLink', r.id),
   companyName: r.companyName,
-  status: r.status,
+  status: r.status === 'blocked' ? 'rejected' : r.status,
   requestedAt: r.requestedAt.toISOString(),
   decidedAt: iso(r.decidedAt),
 });
 
 /** Escapes LIKE wildcards so a search for "100%" matches the text, not everything. */
 export const likeEscape = (q: string) => q.replace(/[\\%_]/g, (c) => `\\${c}`);
-
-/** A transaction in the target company, for the one thing a contractor may write there: their own link row. */
-function companyCtx(orgId: string, userId: string): TenantContext {
-  return {
-    orgId,
-    userId,
-    principalType: 'external',
-    orgRole: null,
-    entitlements: { plan: 'contractor', state: 'active', modules: [], limits: {} },
-    requestId: randomUUID(),
-  };
-}
 
 export interface ContractorService {
   getProfile(userId: string): Promise<ContractorProfile>;
@@ -61,7 +64,7 @@ export interface ContractorService {
       cursor?: string | undefined;
     },
   ): Promise<ContractorLinkPage>;
-  requestLink(userId: string, companyPublicId: string): Promise<ContractorLink>;
+  requestLink(userId: string, listingPublicId: string): Promise<ContractorLink>;
   removeMyLink(userId: string, linkPublicId: string): Promise<void>;
   listForCompany(
     scope: TenantScope,
@@ -75,26 +78,19 @@ export interface ContractorService {
   decide(
     scope: TenantScope,
     linkPublicId: string,
-    to: 'accepted' | 'rejected',
+    to: 'accepted' | 'rejected' | 'blocked',
   ): Promise<CompanyContractor>;
   endForCompany(scope: TenantScope, linkPublicId: string): Promise<void>;
+  getListing(scope: TenantScope): Promise<ContractorListing>;
+  setListing(scope: TenantScope, listed: boolean): Promise<ContractorListing>;
 }
 
 export function createContractorService(
   database: Database,
-  now: () => Date = () => new Date(),
+  deps: ContractorDeps,
 ): ContractorService {
-  const searchHits = new Map<string, number[]>();
-  function limitSearch(userId: string) {
-    const t = now().getTime();
-    const recent = (searchHits.get(userId) ?? []).filter((h) => t - h < 60_000);
-    if (recent.length >= SEARCH_PER_MINUTE) {
-      searchHits.set(userId, recent);
-      throw new AppError('rate_limited', 'Too many searches. Wait a moment and try again.');
-    }
-    recent.push(t);
-    searchHits.set(userId, recent);
-  }
+  const { now } = deps;
+  const repo = createLinksRepo(database);
 
   const readProfile = (userId: string) =>
     database.withGlobalTx('contractors', async (tx) => {
@@ -106,10 +102,20 @@ export function createContractorService(
     profession: p.profession,
     phone: p.phone,
   });
-  async function requireProfile(userId: string) {
+  async function requireContractor(userId: string) {
     const p = await readProfile(userId);
     if (!p) throw new AppError('contractor.profile_required');
+    if (deps.requireVerifiedEmail && !(await deps.emailVerified(userId)))
+      throw new AppError('contractor.email_unverified', 'Verify your email address first.');
     return p;
+  }
+
+  async function withProfile(scope: TenantScope, row: LinkRow) {
+    const [p] = await scope.tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, row.contractorUserId));
+    return toCompanyContractor(row, p ?? null);
   }
 
   return {
@@ -138,11 +144,11 @@ export function createContractorService(
     },
 
     async searchCompanies(userId, q) {
-      await requireProfile(userId);
+      const profile = await requireContractor(userId);
       const term = q.trim();
       if (term.length < MIN_SEARCH_LENGTH)
         throw new AppError('validation_failed', `Type at least ${MIN_SEARCH_LENGTH} characters.`);
-      limitSearch(userId);
+      await deps.searchGuard.check(userId, profile.createdAt, term);
       const found = await database.withGlobalTx('contractors', (tx) =>
         tx
           .select()
@@ -151,50 +157,28 @@ export function createContractorService(
           .orderBy(directory.name)
           .limit(MAX_SEARCH_RESULTS),
       );
-      const mine = found.length
-        ? await database.withSelfTx(userId, (tx) =>
-            tx
-              .select({ orgId: links.orgId, status: links.status })
-              .from(links)
-              .where(
-                and(
-                  eq(links.contractorUserId, userId),
-                  inArray(
-                    links.orgId,
-                    found.map((f) => f.companyId),
-                  ),
-                ),
-              ),
+      const status = found.length
+        ? await repo.statusByCompany(
+            userId,
+            found.map((f) => f.companyId),
           )
-        : [];
-      const status = new Map(mine.map((m) => [m.orgId, m.status]));
+        : new Map<string, LinkStatus>();
       return {
-        data: found.map((f) => ({
-          id: encodeId('org', f.companyId),
-          name: f.name,
-          abnLast3: f.abnLast3,
-          linkStatus: status.get(f.companyId) ?? null,
-        })),
+        data: found.map((f) => {
+          const s = status.get(f.companyId) ?? null;
+          return {
+            id: encodeId('companyListing', f.listingId),
+            name: f.name,
+            abnLast3: f.abnLast3,
+            linkStatus: s === 'blocked' ? 'rejected' : s,
+          };
+        }),
       };
     },
 
     async listMyLinks(userId, o) {
-      const cursor = o.cursor ? decodeId('contractorLink', o.cursor) : null;
-      const rows = await database.withSelfTx(userId, (tx) =>
-        tx
-          .select()
-          .from(links)
-          .where(
-            and(
-              eq(links.contractorUserId, userId),
-              o.status ? eq(links.status, o.status) : undefined,
-              o.q?.trim() ? ilike(links.companyName, `%${likeEscape(o.q.trim())}%`) : undefined,
-              cursor ? lt(links.id, cursor) : undefined,
-            ),
-          )
-          .orderBy(desc(links.id))
-          .limit(o.limit + 1),
-      );
+      const before = o.cursor ? decodeId('contractorLink', o.cursor) : null;
+      const rows = await repo.listOwn(userId, { ...o, before, limit: o.limit + 1 });
       const page = rows.slice(0, o.limit);
       return {
         data: page.map(toLink),
@@ -203,79 +187,38 @@ export function createContractorService(
       };
     },
 
-    async requestLink(userId, companyPublicId) {
-      await requireProfile(userId);
-      const orgId = decodeId('org', companyPublicId);
-      if (!orgId) throw new AppError('org.not_found');
+    async requestLink(userId, listingPublicId) {
+      await requireContractor(userId);
+      const listingId = decodeId('companyListing', listingPublicId);
+      if (!listingId) throw new AppError('org.not_found');
+      // The company comes from this server-side lookup (listed, not deleted), never from the request.
       const company = await database.withGlobalTx('contractors', async (tx) => {
         const [d] = await tx
           .select()
           .from(directory)
-          .where(and(eq(directory.companyId, orgId), eq(directory.listed, true)));
+          .where(and(eq(directory.listingId, listingId), eq(directory.listed, true)));
         return d ?? null;
       });
       if (!company) throw new AppError('org.not_found');
-
-      return database.withTenantTx(companyCtx(orgId, userId), async (scope) => {
-        const mine = and(eq(links.orgId, orgId), eq(links.contractorUserId, userId));
-        const [existing] = await scope.tx.select().from(links).where(mine);
-        if (existing && (existing.status === 'requested' || existing.status === 'accepted'))
-          return toLink(existing);
-        if (
-          existing?.status === 'rejected' &&
-          existing.decidedAt &&
-          now().getTime() - existing.decidedAt.getTime() < REJECT_COOLDOWN_DAYS * 86_400_000
-        )
-          throw new AppError('contractor_link.rejected_recently');
-
-        const total = await database.withSelfTx(userId, async (tx) => {
-          const [r] = await tx
-            .select({ n: count() })
-            .from(links)
-            .where(and(eq(links.contractorUserId, userId), eq(links.status, 'requested')));
-          return r?.n ?? 0;
-        });
-        if (total >= MAX_OPEN_REQUESTS) throw new AppError('contractor_link.too_many_requests');
-
-        const fresh = {
+      if ((await repo.countOpenOwn(userId)) >= MAX_OPEN_REQUESTS)
+        throw new AppError('contractor_link.too_many_requests');
+      return toLink(
+        await repo.request(company.companyId, userId, {
+          id: uuidv7(),
           companyName: company.name,
-          status: 'requested' as const,
-          requestedAt: now(),
-          decidedAt: null,
-          decidedBy: null,
-        };
-        const [row] = existing
-          ? await scope.tx.update(links).set(fresh).where(mine).returning()
-          : await scope.tx
-              .insert(links)
-              .values({ id: uuidv7(), orgId, contractorUserId: userId, ...fresh })
-              .returning();
-        return toLink(row!);
-      });
+          now: now(),
+          cooldownMs: REJECT_COOLDOWN_DAYS * 86_400_000,
+          maxOpenPerCompany: MAX_OPEN_PER_COMPANY,
+        }),
+      );
     },
 
-    /** Cancels a pending request or ends an accepted link. Gone, rejected or ended links are left alone. */
+    /** Cancels a pending request or ends an accepted link, as a status change. Anything else is left alone. */
     async removeMyLink(userId, linkPublicId) {
       const id = decodeId('contractorLink', linkPublicId);
       if (!id) return;
-      const mine = await database.withSelfTx(userId, async (tx) => {
-        const [r] = await tx
-          .select({ orgId: links.orgId, status: links.status })
-          .from(links)
-          .where(and(eq(links.id, id), eq(links.contractorUserId, userId)));
-        return r ?? null;
-      });
-      if (!mine) return;
-      await database.withTenantTx(companyCtx(mine.orgId, userId), async (scope) => {
-        const own = and(eq(links.id, id), eq(links.contractorUserId, userId));
-        if (mine.status === 'requested')
-          await scope.tx.delete(links).where(and(own, eq(links.status, 'requested')));
-        else if (mine.status === 'accepted')
-          await scope.tx
-            .update(links)
-            .set({ status: 'ended', decidedAt: now() })
-            .where(and(own, eq(links.status, 'accepted')));
-      });
+      const orgId = await repo.companyOfOwn(userId, id);
+      if (orgId) await repo.withdraw(orgId, userId, id, now());
     },
 
     async listForCompany(scope, o) {
@@ -316,13 +259,20 @@ export function createContractorService(
       const [row] = await scope.tx.select().from(links).where(where);
       if (!row) throw new AppError('contractor_link.not_found');
       if (row.status === to) return withProfile(scope, row);
-      if (row.status !== 'requested')
+      if (to !== 'blocked' && row.status !== 'requested')
         throw new AppError('conflict', 'This request has already been decided.');
       const [updated] = await scope.tx
         .update(links)
-        .set({ status: to, decidedAt: now(), decidedBy: scope.ctx.userId })
-        .where(and(where, eq(links.status, 'requested')))
+        .set({ status: to, decidedAt: now() })
+        .where(where)
         .returning();
+      await scope.tx
+        .insert(linkDecisions)
+        .values({ orgId: scope.ctx.orgId, linkId: id, decidedBy: scope.ctx.userId })
+        .onConflictDoUpdate({
+          target: linkDecisions.linkId,
+          set: { decidedBy: scope.ctx.userId, decidedAt: now() },
+        });
       return withProfile(scope, updated!);
     },
 
@@ -331,20 +281,31 @@ export function createContractorService(
       if (!id) return;
       await scope.tx
         .update(links)
-        .set({ status: 'ended', decidedAt: now(), decidedBy: scope.ctx.userId })
+        .set({ status: 'ended', decidedAt: now() })
         .where(
           and(eq(links.id, id), eq(links.orgId, scope.ctx.orgId), eq(links.status, 'accepted')),
         );
     },
-  };
 
-  async function withProfile(scope: TenantScope, row: LinkRow) {
-    const [p] = await scope.tx
-      .select()
-      .from(profiles)
-      .where(eq(profiles.userId, row.contractorUserId));
-    return toCompanyContractor(row, p ?? null);
-  }
+    async getListing(scope) {
+      const [d] = await scope.tx
+        .select({ listed: directory.listed })
+        .from(directory)
+        .where(eq(directory.companyId, scope.ctx.orgId));
+      return { listed: d?.listed ?? false };
+    },
+
+    /** Opt in or out of name search. Creates the directory row from the org if the trigger never saw it. */
+    async setListing(scope, listed) {
+      const orgId = scope.ctx.orgId;
+      await scope.tx.execute(sql`
+        insert into contractors.directory (company_id, name, abn_last3, listed)
+        select id, name, case when abn is null then null else right(abn::text, 3) end, ${listed}
+          from platform.orgs where id = ${orgId}::uuid and deleted_at is null
+        on conflict (company_id) do update set listed = excluded.listed, updated_at = now()`);
+      return this.getListing(scope);
+    },
+  };
 }
 
 /** The company sees the name and profession to decide; the phone only once the link is accepted. */
