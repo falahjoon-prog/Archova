@@ -26,6 +26,7 @@ import { IssueDialog } from '../components/IssueDialog';
 import { NovaMinutesDialog } from '../components/NovaMinutesDialog';
 import { SectionCard } from '../components/SectionCard';
 import { useMeeting, useMeetingMutations } from '../hooks/useMeetings';
+import { buildMeetingIcs, icsFileName } from '../lib/ics';
 import { saveFile } from '../lib/labels';
 
 /** One meeting's minutes: attendance, numbered items by section, and the issued versions. */
@@ -77,6 +78,31 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
               title={m.title}
               subtitle={`${m.seriesName}, meeting ${m.number}`}
             />
+            <Button
+              variant="secondary"
+              onClick={() =>
+                saveFile(
+                  new File(
+                    [
+                      buildMeetingIcs({
+                        id: m.id,
+                        title: m.title,
+                        seriesName: m.seriesName,
+                        number: m.number,
+                        heldAt: m.heldAt,
+                        location: m.location,
+                        version: m.version,
+                        url: window.location.href,
+                      }),
+                    ],
+                    icsFileName(m.title),
+                    { type: 'text/calendar;charset=utf-8' },
+                  ),
+                )
+              }
+            >
+              Add to calendar
+            </Button>
             {d.viewer.canEdit ? (
               <Button variant="secondary" onClick={() => setDrafting(true)}>
                 Draft with Nova
