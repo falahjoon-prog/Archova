@@ -131,6 +131,7 @@ export function financialsRoutes(
     schedule: d.schedule ? toScheduleDto(d.schedule) : null,
     statement: d.statement ? toStatementDto(d.statement) : null,
     warnings: d.warnings,
+    timeline: d.timeline,
   });
   const contractBody = (d: {
     contract: Parameters<typeof toContractDto>[0];

@@ -19,6 +19,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
+import { claimTimeline } from '../domain/claim-timeline';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { attachChangeEvent } from './changeEvents';
 import { fromCents, toCents } from '../domain/money';
@@ -194,6 +195,9 @@ export interface IssueScheduleInput {
 const OUTSIDER_VISIBLE = ['submitted', 'approved', 'rejected'];
 
 const GST_TOTAL = (c: ClaimRow) => toCents(c.claimedTotal);
+
+const toSignedCents = (amount: string) =>
+  amount.startsWith('-') ? -toCents(amount.slice(1)) : toCents(amount);
 
 export function createFinancialsService(deps: FinancialsDeps) {
   const now = deps.now ?? (() => new Date());
@@ -621,7 +625,26 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .limit(1);
     const warnings: ClaimWarning[] =
       statementExpected(contract) && !statement ? ['subcontractor_statement_missing'] : [];
-    const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
+    const timeZone = (await deps.platform.getProject(scope, projectId)).timezone;
+    const today = localDateOf(now(), timeZone);
+    const [paid] = await scope.tx
+      .select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` })
+      .from(payments)
+      .where(eq(payments.claimId, claimId));
+    const timeline = claimTimeline({
+      ruleState: claim.ruleState,
+      isValid: claim.isValid,
+      servedOn: claim.servedOn,
+      scheduleDueOn: claim.scheduleDueOn,
+      paymentDueOn: claim.paymentDueOn,
+      claimedTotalCents: toCents(claim.claimedTotal),
+      schedule: schedule
+        ? { issuedAt: schedule.issuedAt, scheduledCents: toCents(schedule.scheduledAmount) }
+        : null,
+      paidCents: toSignedCents(paid?.total ?? '0'),
+      today,
+      timeZone,
+    });
     return {
       claim,
       lines,
@@ -629,6 +652,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       statement: statement ?? null,
       warnings,
       today,
+      timeline,
     };
   }
 

@@ -18155,7 +18155,7 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue` or `safety.incident_action_assigned`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue`, `financials.schedule_due`, `financials.adjudication_window` or `safety.incident_action_assigned`. */
             kind: string;
             title: string;
             body: string;
@@ -23627,6 +23627,8 @@ export interface components {
             data: components["schemas"]["PaymentClaim"][];
         };
         PaymentClaimDetail: {
+            /** @description The claim's SOPA path from service to payment and the adjudication windows that apply now. Empty for a claim that is not valid. Dates come from the stored claim dates and the rule row in force on the service date. */
+            timeline: components["schemas"]["ClaimTimelineStep"][];
             /** @description The NSW subcontractor's statement linked to this claim, if one was recorded. */
             statement: components["schemas"]["ClaimStatement"] | null;
             /** @description `subcontractor_statement_missing` is an NSW subcontract claim with no statement linked. A prompt only: Archova does not suggest withholding payment for it (open question for the lawyer). */
@@ -23634,6 +23636,24 @@ export interface components {
             claim: components["schemas"]["PaymentClaim"];
             lines: components["schemas"]["PaymentClaimLine"][];
             schedule: components["schemas"]["PaymentSchedule"] | null;
+        };
+        ClaimTimelineStep: {
+            /** @enum {string} */
+            key: "served" | "schedule" | "payment" | "adjudication_schedule_less" | "adjudication_unpaid" | "adjudication_notice" | "adjudication_apply";
+            label: string;
+            /**
+             * Format: date
+             * @description The deadline
+             */
+            dueOn: string | null;
+            /**
+             * Format: date
+             * @description The day it happened
+             */
+            doneOn: string | null;
+            /** @enum {string} */
+            status: "done" | "upcoming" | "due_soon" | "overdue" | "closed";
+            note: string | null;
         };
         ClaimStatement: {
             /** Format: date */

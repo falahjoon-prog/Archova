@@ -25792,7 +25792,7 @@ components:
         id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
         kind:
           type: string
-          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue` or `safety.incident_action_assigned`.
+          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue`, `financials.schedule_due`, `financials.adjudication_window` or `safety.incident_action_assigned`.
         title: { type: string }
         body: { type: string }
         entityType:
@@ -34595,8 +34595,12 @@ components:
           items: { $ref: '#/components/schemas/PaymentClaim' }
     PaymentClaimDetail:
       type: object
-      required: [claim, lines, schedule, statement, warnings]
+      required: [claim, lines, schedule, statement, warnings, timeline]
       properties:
+        timeline:
+          type: array
+          description: The claim's SOPA path from service to payment and the adjudication windows that apply now. Empty for a claim that is not valid. Dates come from the stored claim dates and the rule row in force on the service date.
+          items: { $ref: '#/components/schemas/ClaimTimelineStep' }
         statement:
           oneOf:
             - { $ref: '#/components/schemas/ClaimStatement' }
@@ -34614,6 +34618,29 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/PaymentSchedule' }
             - { type: 'null' }
+    ClaimTimelineStep:
+      type: object
+      required: [key, label, dueOn, doneOn, status, note]
+      properties:
+        key:
+          type: string
+          enum:
+            [
+              served,
+              schedule,
+              payment,
+              adjudication_schedule_less,
+              adjudication_unpaid,
+              adjudication_notice,
+              adjudication_apply,
+            ]
+        label: { type: string }
+        dueOn:
+          { type: [string, 'null'], format: date, description: The deadline, if the step has one. }
+        doneOn:
+          { type: [string, 'null'], format: date, description: The day it happened, if it has. }
+        status: { type: string, enum: [done, upcoming, due_soon, overdue, closed] }
+        note: { type: [string, 'null'] }
     ClaimStatement:
       type: object
       required: [periodEnd, receivedOn, signedOn, note, recordedAt]
