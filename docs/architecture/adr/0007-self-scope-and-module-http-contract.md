@@ -39,3 +39,19 @@ Building the foundations surfaced two gaps in the docs.
 - Tenant-isolation tests cover the self policies (an external collaborator sees exactly the orgs they belong to).
 - Ben's module template (`pnpm gen:module`) generates `api/routes.ts` against `defineRoutes`.
 - Sam reviews the self policies and the identity token handling as part of the identity review ADR-0005 requires.
+
+## Amendment 1 (20 Nov 2026): contractor links (X64)
+
+- **Status:** Proposed. Needs Sam's review before any code that uses it merges.
+- **Why:** X64 gives a contractor one global account and one `contractors.links` row per company. The contractor must read their own links across companies (no org chosen), and must be able to ask a company to link and to find a company by name. The "adding a `self_read` policy needs an ADR amendment" rule above applies.
+
+### Decision
+1. **One new self policy.** `contractors.links` gets `self_read` (select only): `contractor_user_id = kernel.self_user_id()`. The table is still `FORCE ROW LEVEL SECURITY` with the usual `tenant_isolation` policy for the company side. Nothing else gains a self policy. The contractor reads only the link row: company id, company display name copied onto the link at request time, status and dates. They never read `platform.orgs`, projects or any company record through it.
+2. **Contractor writes go through the target org's tenant transaction, never self scope.** Self scope stays read-only. The contractors use case that handles "request a link", "cancel my request" and "end my link" opens `withTenantTx` for the named company and may only: insert a `requested` row for the caller; delete or end a row whose `contractor_user_id` is the caller. It never reads any other row in that org. The org id comes from the directory (item 3), never from the client. The company's own accept/reject routes are ordinary org-scoped routes behind org admin/owner role checks.
+3. **Company search uses a narrow global directory, not `platform.orgs`.** `contractors.directory` (global layer, no RLS, only the contractors module's repositories read it) holds `org_id`, `name`, `abn_last3` and `listed`, kept in step with `platform.orgs` by an `after insert or update` trigger. It cannot expose anything else because it has nothing else. `platform.orgs` policies are unchanged. Search needs a signed-in contractor account, a query of at least 3 characters, returns at most 10 rows, ordered by name, never total counts or paging, and is rate limited per account (20 per minute). A company can set `listed = false` later without a new policy.
+4. **Contractor account.** A contractor is an `identity.users` row (normal sign-up) plus a `contractors.profiles` row (global, keyed by user id, owner only). It has no membership, so `GET /v1/me` returns it with no orgs. Contractor routes live under `/v1/me/contractor/...`, take no org from the path, and use `principal.userId` only. The `contractors` module is added as a fourth owner of `withGlobalTx` for the profile and directory tables.
+5. **Abuse limits.** At most 50 open `requested` links per contractor; a rejected pair cannot re-request for 30 days; duplicate (company, contractor) rows are impossible (unique index). Rate limit is in-process per API instance for now; the edge WAF limit (infrastructure 04) is the real backstop.
+
+### Consequences
+- Tenant-isolation tests: a contractor sees only their own links; another contractor's link ids return nothing; a company sees only its own links; a normal self transaction (`/v1/me`) still sees no links.
+- Step 1 contains no payments and no company data beyond the link row. Jobs, chat and quotes shared with an accepted contractor arrive later and must be gated on an `accepted` link by their own review.
