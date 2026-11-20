@@ -291,6 +291,56 @@ describe('contractors (free tier, X64)', () => {
     ).toMatch(/row-level security/);
   });
 
+  it('stops the contractor role from granting itself access or lifting a block', async () => {
+    const { owner: co, org } = await listedCompany('ctr-self-co', 'Selfgrant Constructions');
+    const c = await contractor('ctr-self');
+    const hit = (await find(c.browser, 'selfgrant constructions'))[0]!;
+    const orgUuid = decodeId('org', org.id)!;
+    const uuid = decodeId('user', c.userId)!;
+
+    // Inserting a row that is already accepted is refused.
+    expect(
+      await pgMessage(() =>
+        t.database.withContractorTx(orgUuid, uuid, (tx) =>
+          tx.execute(
+            sql`insert into contractors.links (id, org_id, contractor_user_id, company_name, status) values (${uuidv7()}::uuid, ${orgUuid}::uuid, ${uuid}::uuid, 'x', 'accepted')`,
+          ),
+        ),
+      ),
+    ).toMatch(/row-level security/);
+
+    // Own pending row cannot be moved to accepted.
+    const link = (
+      await c.browser.post('/v1/me/contractor/links', { listingId: hit.id })
+    ).json() as Link;
+    expect(
+      await pgMessage(() =>
+        t.database.withContractorTx(orgUuid, uuid, (tx) =>
+          tx.execute(
+            sql`update contractors.links set status = 'accepted' where contractor_user_id = ${uuid}::uuid`,
+          ),
+        ),
+      ),
+    ).toMatch(/row-level security/);
+    expect(
+      ((await c.browser.get('/v1/me/contractor/links')).json() as { data: Link[] }).data[0]!.status,
+    ).toBe('requested');
+
+    // A blocked row cannot be updated at all, and a rejection inside the cooldown cannot be lifted.
+    await co.browser.post(`/v1/orgs/${org.id}/contractors/${link.id}/block`);
+    const lifted = await t.database.withContractorTx(
+      orgUuid,
+      uuid,
+      async (tx) =>
+        (
+          await tx.execute(
+            sql`update contractors.links set status = 'requested' where contractor_user_id = ${uuid}::uuid`,
+          )
+        ).rowCount,
+    );
+    expect(lifted).toBe(0);
+  });
+
   it('never lets a contractor undo a rejection or a block', async () => {
     const { owner: co, org } = await listedCompany('ctr-rej-co', 'Cooldown Constructions');
     const c = await contractor('ctr-rej');

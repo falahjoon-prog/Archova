@@ -99,9 +99,17 @@ create policy contractor_read on contractors.links for select to app_contractor
          and (contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid or status = 'requested'));
 create policy contractor_insert on contractors.links for insert to app_contractor
   with check (org_id = current_setting('app.org_id')::uuid
-              and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+              and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid
+              and status = 'requested');
+-- A contractor can move their own row only to requested, cancelled or ended: never to accepted, and never out of
+-- blocked or out of a rejection that is still inside the 30 day cooldown.
 create policy contractor_update on contractors.links for update to app_contractor
-  using (org_id = current_setting('app.org_id')::uuid and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid)
-  with check (org_id = current_setting('app.org_id')::uuid and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+  using (org_id = current_setting('app.org_id')::uuid
+         and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid
+         and status <> 'blocked'
+         and not (status = 'rejected' and decided_at > now() - interval '30 days'))
+  with check (org_id = current_setting('app.org_id')::uuid
+              and contractor_user_id = nullif(current_setting('app.user_id', true), '')::uuid
+              and status in ('requested', 'cancelled', 'ended'));
 
 select kernel.grant_module_schema('contractors');
