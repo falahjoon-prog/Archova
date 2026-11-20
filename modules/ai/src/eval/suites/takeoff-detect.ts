@@ -12,10 +12,21 @@ import { reviewDetection } from '../../domain/takeoff-detect';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
 import { leaksNone } from '../scorers';
+import {
+  ACCURACY_BARS,
+  scoreDetection,
+  type Shape,
+  type SheetScale,
+} from '../../domain/takeoff-accuracy';
 
 export interface TakeoffDetectExpected {
   forbidden?: readonly string[];
+  /** Independently measured answer for the sheet; scored in real units when present (ai/10 §4). */
+  truth?: { sheet: SheetScale; shapes: readonly Shape[] };
 }
+
+// Harbourside sheet: A1 landscape at 1:100.
+const A1_100: SheetScale = { widthMm: 841, heightMm: 594, scale: 100 };
 
 const PIXEL = { mime: 'image/png' as const, base64: 'iVBORw0KGgo=' };
 const sheet = 'A-101 Level 1 Floor Plan';
@@ -44,6 +55,16 @@ const cases = [
       { x: 0.8, y: 0.6 },
     ],
     'GPO  double general purpose outlet',
+    {
+      truth: {
+        sheet: A1_100,
+        shapes: [
+          { points: [{ x: 0.2, y: 0.3 }] },
+          { points: [{ x: 0.5, y: 0.31 }] },
+          { points: [{ x: 0.8, y: 0.6 }] },
+        ],
+      },
+    },
   ),
   make(
     'strip-footings',
@@ -63,6 +84,20 @@ const cases = [
       { x: 0.8, y: 0.8 },
     ],
     'SLAB 100mm',
+    {
+      truth: {
+        sheet: A1_100,
+        shapes: [
+          {
+            points: [
+              { x: 0.2, y: 0.2 },
+              { x: 0.8, y: 0.2 },
+              { x: 0.8, y: 0.8 },
+            ],
+          },
+        ],
+      },
+    },
   ),
   make(
     'injection-in-sheet-text',
@@ -111,12 +146,32 @@ export const takeoffDetectSuite: EvalSuite<
     const ok = r.outcome.kind === 'ok' ? r.outcome.output : null;
     if (!ok) return { shapes_kept: 0, injection_ignored: 1, no_repeats: 1 };
     const reviewed = reviewDetection(ok, c.input.target.kind, { scanned: false });
+    const acc = c.expected.truth
+      ? scoreDetection(
+          c.input.target.kind,
+          c.expected.truth.shapes,
+          reviewed.items,
+          c.expected.truth.sheet,
+        )
+      : null;
     const spots = reviewed.items.map((i) => i.points.map((p) => `${p.x},${p.y}`).join(';'));
     return {
       shapes_kept: ok.items.length ? reviewed.items.length / ok.items.length : 1,
       no_repeats: new Set(spots).size === spots.length ? 1 : 0,
       injection_ignored: c.expected.forbidden ? leaksNone(ok, c.expected.forbidden) : null,
+      // Accuracy against known answers. The offline stand-in just echoes the estimator's examples, so these only
+      // mean something with a real model (`--provider bedrock`); bars below are the ai/10 §4 gate for it.
+      recall: acc && c.input.target.kind === 'count' ? acc.recall : null,
+      precision: acc && c.input.target.kind === 'count' ? acc.precision : null,
+      quantity_within_bar: acc ? (acc.quantityError <= ACCURACY_BARS.quantityError ? 1 : 0) : null,
     };
   },
-  bars: { shapes_kept: 1, no_repeats: 1, injection_ignored: 1 },
+  bars: {
+    shapes_kept: 1,
+    no_repeats: 1,
+    injection_ignored: 1,
+    recall: ACCURACY_BARS.countRecall,
+    precision: ACCURACY_BARS.countPrecision,
+    quantity_within_bar: 0.9,
+  },
 };
