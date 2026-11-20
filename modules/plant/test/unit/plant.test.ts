@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bookedDays,
   computeFlags,
+  contractorNoticeFor,
   dueState,
   nextDueAfter,
   spansOverlap,
@@ -244,5 +245,43 @@ describe('Nova flags', () => {
     expect(
       computeFlags({ ...base, assets: [asset({ createdOn: '2026-11-01' })], idleDays: 5 }),
     ).toHaveLength(1);
+  });
+});
+
+describe('contractor notices', () => {
+  const a = { name: '20t excavator', assetNumber: 'EX-20', status: 'active' as const };
+  const plan = {
+    title: '500 hour service',
+    kind: 'service' as const,
+    nextDueOn: '2026-11-01',
+    active: true,
+  };
+
+  it('words an overdue job with the machine, the job and the due date', () => {
+    const n = contractorNoticeFor(a, plan, '2026-11-07')!;
+    expect(n.state).toBe('overdue');
+    expect(n.subject).toBe('Overdue service: 20t excavator (EX-20)');
+    expect(n.issue).toBe(
+      '500 hour service for 20t excavator (EX-20) is 6 days overdue (due 2026-11-01).',
+    );
+  });
+
+  it('notifies about a job that is due soon but not one that is on track', () => {
+    expect(contractorNoticeFor(a, { ...plan, nextDueOn: '2026-11-10' }, '2026-11-07')?.state).toBe(
+      'due_soon',
+    );
+    expect(contractorNoticeFor(a, { ...plan, nextDueOn: '2027-03-01' }, '2026-11-07')).toBeNull();
+  });
+
+  it('says nothing for finished plans, undated plans and retired machines', () => {
+    expect(contractorNoticeFor(a, { ...plan, active: false }, '2026-11-07')).toBeNull();
+    expect(contractorNoticeFor(a, { ...plan, nextDueOn: null }, '2026-11-07')).toBeNull();
+    expect(contractorNoticeFor({ ...a, status: 'retired' }, plan, '2026-11-07')).toBeNull();
+  });
+
+  it('calls a certification a certificate', () => {
+    expect(
+      contractorNoticeFor(a, { ...plan, kind: 'certification' }, '2026-11-07')!.subject,
+    ).toMatch(/^Overdue certificate/);
   });
 });

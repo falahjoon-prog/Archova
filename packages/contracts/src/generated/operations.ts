@@ -195,6 +195,17 @@ export const GetPlantUtilisationQuery = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
 });
+export const CreatePlantContractorNoticeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantContractorNoticeBody = s.CreatePlantContractorNoticeRequestSchema;
+export const ListPlantContractorNoticesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantContractorNoticesQuery = z.object({
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")).optional(),
+});
 export const ListPlantFlagsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5712,6 +5723,30 @@ export const operations = {
     contentType: null,
     params: GetPlantUtilisationParams,
     query: GetPlantUtilisationQuery,
+    body: null,
+  },
+  createPlantContractorNotice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantContractorNoticeParams,
+    query: null,
+    body: CreatePlantContractorNoticeBody,
+  },
+  listPlantContractorNotices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/contractor-notices',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantContractorNoticesParams,
+    query: ListPlantContractorNoticesQuery,
     body: null,
   },
   listPlantFlags: {

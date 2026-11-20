@@ -12,6 +12,7 @@ export type PlantAssetStatus = S['PlantAssetStatus'];
 export type PlantAllocation = S['PlantAllocation'];
 export type PlantPlan = S['PlantMaintenancePlan'];
 export type PlantFlag = S['PlantFlag'];
+export type PlantContractorNotice = S['PlantContractorNotice'];
 export type PlantUtilisation = S['PlantUtilisation'];
 export type CreatePlantAsset = S['CreatePlantAssetRequest'];
 export type CreatePlantAllocation = S['CreatePlantAllocationRequest'];
@@ -42,6 +43,35 @@ export function createPlantApi(orgId: string) {
         await api.PATCH('/v1/orgs/{orgId}/plant/assets/{assetId}', {
           params: { path: { ...org, assetId } },
           body: { status },
+        }),
+      );
+    },
+    async setContractor(
+      assetId: string,
+      contractor: { contractorName: string; contractorEmail: string },
+    ): Promise<PlantAsset> {
+      return unwrap(
+        await api.PATCH('/v1/orgs/{orgId}/plant/assets/{assetId}', {
+          params: { path: { ...org, assetId } },
+          body: contractor,
+        }),
+      );
+    },
+    async notices(): Promise<PlantContractorNotice[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/plant/contractor-notices', {
+          params: { path: org, query: {} },
+        }),
+      ).data;
+    },
+    async notifyContractor(
+      assetId: string,
+      body: { planId: string; message?: string },
+    ): Promise<PlantContractorNotice> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices', {
+          params: { path: { ...org, assetId }, header: idempotencyKey() },
+          body,
         }),
       );
     },

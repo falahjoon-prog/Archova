@@ -14,6 +14,7 @@ import {
   StatusPill,
   Tabs,
   TextField,
+  Textarea,
   type DataTableColumn,
 } from '@archova/ui';
 import { addDays } from '@archova/time';
@@ -28,6 +29,7 @@ import type {
   PlantAsset,
   PlantAssetCategory,
   PlantAssetStatus,
+  PlantContractorNotice,
   PlantFlag,
   PlantPlan,
 } from '../data/api';
@@ -86,7 +88,7 @@ export function PlantScreen() {
   const to = addDays(today, WINDOW_DAYS);
   const past = addDays(today, -WINDOW_DAYS);
   const [tab, setTab] = useState('overview');
-  const { assets, allocations, plans, flags } = usePlantData(today, to);
+  const { assets, allocations, plans, flags, notices } = usePlantData(today, to);
   const util = usePlantUtilisation(past, today);
   const projects = useQuery(queries.projects(org.orgId));
   const m = usePlantMutations();
@@ -125,6 +127,11 @@ export function PlantScreen() {
           } satisfies DataTableColumn<PlantAsset>,
         ]
       : []),
+    {
+      id: 'contractor',
+      header: 'Contractor',
+      cell: (a) => <ContractorCell asset={a} canManage={canManage} m={m} />,
+    },
     {
       id: 'status',
       header: 'Status',
@@ -299,7 +306,14 @@ export function PlantScreen() {
               ) : (
                 <ul className="stack-sm" aria-label="Fleet flags">
                   {list.map((f, i) => (
-                    <FlagRow key={`${f.code}-${f.subjectId ?? f.assetId}-${i}`} flag={f} />
+                    <FlagRow
+                      key={`${f.code}-${f.subjectId ?? f.assetId}-${i}`}
+                      flag={f}
+                      asset={fleet.find((a) => a.id === f.assetId)}
+                      notices={notices.data ?? []}
+                      canManage={canManage}
+                      m={m}
+                    />
                   ))}
                 </ul>
               )}
@@ -445,11 +459,155 @@ export function PlantScreen() {
   );
 }
 
-function FlagRow({ flag }: { flag: PlantFlag }) {
+const NOTIFIABLE = new Set([
+  'maintenance_overdue',
+  'maintenance_due_soon',
+  'certification_expired',
+  'certification_expiring',
+]);
+
+function FlagRow({
+  flag,
+  asset,
+  notices,
+  canManage,
+  m,
+}: {
+  flag: PlantFlag;
+  asset: PlantAsset | undefined;
+  notices: PlantContractorNotice[];
+  canManage: boolean;
+  m: Mutations;
+}) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const notifiable = canManage && NOTIFIABLE.has(flag.code) && flag.subjectId && asset;
+  const last = notices.find((n) => n.planId === flag.subjectId);
+  function send(e: FormEvent) {
+    e.preventDefault();
+    if (!asset || !flag.subjectId) return;
+    m.notifyContractor.mutate(
+      { assetId: asset.id, planId: flag.subjectId, message: message.trim() },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setMessage('');
+        },
+      },
+    );
+  }
   return (
-    <li>
+    <li className="stack-sm">
       <Alert tone={SEVERITY[flag.severity]}>{flag.message}</Alert>
+      {last ? (
+        <p className="u-muted" role="status">
+          Contractor notified {formatLocalDate(last.createdAt.slice(0, 10))} ({last.recipientEmail}
+          {last.status === 'failed' ? ', the email could not be delivered' : ''}).
+        </p>
+      ) : null}
+      {notifiable && !last ? (
+        asset.contractorEmail ? (
+          open ? (
+            <form className="stack-sm" onSubmit={send}>
+              <p className="u-muted">
+                Emails {asset.contractorName ?? 'the contractor'} ({asset.contractorEmail}) the
+                machine, the job and the due date. They don&apos;t need an Archova account.
+              </p>
+              <Textarea
+                label="Note (optional)"
+                value={message}
+                maxLength={1000}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+              <ErrorAlert
+                error={m.notifyContractor.error}
+                title="We couldn't notify the contractor"
+              />
+              <div className="row-actions">
+                <Button type="submit" disabled={m.notifyContractor.isPending}>
+                  {m.notifyContractor.isPending ? 'Sending…' : 'Send to contractor'}
+                </Button>
+                <Button type="button" variant="tertiary" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="row-actions">
+              <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+                Notify contractor
+              </Button>
+            </div>
+          )
+        ) : (
+          <p className="u-muted">
+            Add a contractor email to {asset.name} on the Fleet tab to notify them from here.
+          </p>
+        )
+      ) : null}
     </li>
+  );
+}
+
+function ContractorCell({
+  asset,
+  canManage,
+  m,
+}: {
+  asset: PlantAsset;
+  canManage: boolean;
+  m: Mutations;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(asset.contractorName ?? '');
+  const [email, setEmail] = useState(asset.contractorEmail ?? '');
+  const [error, setError] = useState<string | null>(null);
+  if (!editing)
+    return (
+      <div className="stack-sm">
+        <span>
+          {asset.contractorEmail
+            ? `${asset.contractorName ? `${asset.contractorName}, ` : ''}${asset.contractorEmail}`
+            : '—'}
+        </span>
+        {canManage ? (
+          <Button type="button" variant="tertiary" onClick={() => setEditing(true)}>
+            {asset.contractorEmail ? 'Edit contractor' : 'Add contractor'}
+            <span className="u-visually-hidden"> for {asset.name}</span>
+          </Button>
+        ) : null}
+      </div>
+    );
+  function save(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return setError('Enter a valid email address.');
+    m.setContractor.mutate(
+      { assetId: asset.id, contractorName: name.trim(), contractorEmail: email.trim() },
+      { onSuccess: () => setEditing(false) },
+    );
+  }
+  return (
+    <form className="stack-sm" onSubmit={save} noValidate>
+      <TextField label="Contractor name" value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField
+        label="Contractor email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      {error ? <Alert tone="danger">{error}</Alert> : null}
+      <ErrorAlert error={m.setContractor.error} title="We couldn't save the contractor" />
+      <div className="row-actions">
+        <Button type="submit" disabled={m.setContractor.isPending}>
+          {m.setContractor.isPending ? 'Saving…' : 'Save'}
+        </Button>
+        <Button type="button" variant="tertiary" onClick={() => setEditing(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -460,10 +618,14 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
   const [ownership, setOwnership] = useState<'owned' | 'hired'>('owned');
   const [supplier, setSupplier] = useState('');
   const [rate, setRate] = useState('');
+  const [contractorName, setContractorName] = useState('');
+  const [contractorEmail, setContractorEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   function save(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (contractorEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contractorEmail.trim()))
+      return setError('Enter a valid contractor email address.');
     if (!name.trim() || !assetNumber.trim())
       return setError('Give the machine a name and an asset number.');
     if (rate && !(Number(rate) >= 0)) return setError('The daily rate must be a dollar amount.');
@@ -475,6 +637,8 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
         ownership,
         ...(ownership === 'hired' && supplier.trim() ? { supplier: supplier.trim() } : {}),
         ...(canSeeRates && rate ? { dailyRateCents: dollarsToCents(rate) } : {}),
+        ...(contractorName.trim() ? { contractorName: contractorName.trim() } : {}),
+        ...(contractorEmail.trim() ? { contractorEmail: contractorEmail.trim() } : {}),
       },
       {
         onSuccess: () => {
@@ -482,6 +646,8 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
           setAssetNumber('');
           setSupplier('');
           setRate('');
+          setContractorName('');
+          setContractorEmail('');
         },
       },
     );
@@ -531,6 +697,19 @@ function AssetForm({ m, canSeeRates }: { m: Mutations; canSeeRates: boolean }) {
               onChange={(e) => setRate(e.target.value)}
             />
           ) : null}
+        </div>
+        <div className="form-row">
+          <TextField
+            label="Contractor name (optional)"
+            value={contractorName}
+            onChange={(e) => setContractorName(e.target.value)}
+          />
+          <TextField
+            label="Contractor email (optional)"
+            type="email"
+            value={contractorEmail}
+            onChange={(e) => setContractorEmail(e.target.value)}
+          />
         </div>
         {error ? <Alert tone="danger">{error}</Alert> : null}
         <ErrorAlert error={m.createAsset.error} title="We couldn't add this machine" />

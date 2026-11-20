@@ -1100,6 +1100,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlantUtilisation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantContractorNotice
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Email the machine's contractor about a flagged service, inspection or certificate.
+      description: |
+        Queues an email to the contractor address on the machine; no Archova account is needed. The text is built from the
+        plan (machine, job, due date) plus the optional note. Refused with `plant.bad_state` when the machine has no
+        contractor email, the plan has nothing flagged, or the contractor was already notified about it in the last 24 hours.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantContractorNoticeRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantContractorNotice' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/contractor-notices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantContractorNotices
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Notices sent to contractors in the last 90 days, newest first.
+      parameters:
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantContractorNoticeList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/flags:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -25948,6 +25996,8 @@ components:
           dailyRateCents,
           status,
           notes,
+          contractorName,
+          contractorEmail,
           version,
         ]
       properties:
@@ -25965,6 +26015,12 @@ components:
           description: Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller.
         status: { $ref: '#/components/schemas/PlantAssetStatus' }
         notes: { type: [string, 'null'] }
+        contractorName: { type: [string, 'null'], description: Who services the machine. }
+        contractorEmail:
+          {
+            type: [string, 'null'],
+            description: Where notices about flagged maintenance are sent. The contractor needs no Archova account.,
+          }
         version: { type: integer }
     PlantAssetList:
       type: object
@@ -25988,6 +26044,8 @@ components:
         serialNumber: { type: string, minLength: 1, maxLength: 100 }
         dailyRateCents: { type: integer, minimum: 0 }
         notes: { type: string, minLength: 1, maxLength: 2000 }
+        contractorName: { type: string, minLength: 1, maxLength: 200 }
+        contractorEmail: { type: string, minLength: 3, maxLength: 254 }
     UpdatePlantAssetRequest:
       type: object
       additionalProperties: false
@@ -26002,6 +26060,8 @@ components:
         serialNumber: { type: string, maxLength: 100 }
         dailyRateCents: { type: integer, minimum: 0 }
         notes: { type: string, maxLength: 2000 }
+        contractorName: { type: string, maxLength: 200 }
+        contractorEmail: { type: string, maxLength: 254, description: Empty clears it. }
         status: { $ref: '#/components/schemas/PlantAssetStatus' }
     PlantAllocation:
       type: object
@@ -26176,6 +26236,50 @@ components:
               projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
               bookedDays: { type: integer }
               costCents: { type: [integer, 'null'] }
+    PlantContractorNotice:
+      type: object
+      required:
+        [
+          id,
+          assetId,
+          planId,
+          recipientName,
+          recipientEmail,
+          subject,
+          issue,
+          dueOn,
+          message,
+          status,
+          createdAt,
+          sentAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pcn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        recipientName: { type: string }
+        recipientEmail: { type: string }
+        subject: { type: string }
+        issue: { type: string }
+        dueOn: { type: string, format: date }
+        message: { type: string }
+        status: { type: string, enum: [queued, sending, sent, failed] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+    PlantContractorNoticeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantContractorNotice' }
+    CreatePlantContractorNoticeRequest:
+      type: object
+      additionalProperties: false
+      required: [planId]
+      properties:
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        message: { type: string, minLength: 1, maxLength: 1000 }
     PlantFlag:
       type: object
       required: [code, severity, assetId, subjectId, message, date]

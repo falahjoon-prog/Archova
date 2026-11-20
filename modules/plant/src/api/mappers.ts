@@ -1,6 +1,6 @@
 import { encodeId } from '@archova/domain';
 import type { ConditionRow } from '../application/condition';
-import type { AllocationRow, AssetRow, PlanRow, RecordRow } from '../application/plant';
+import type { AllocationRow, AssetRow, NoticeRow, PlanRow, RecordRow } from '../application/plant';
 import type { DueState, PlantFlag } from '../domain/plant';
 
 export const toAssetDto = (a: AssetRow) => ({
@@ -16,6 +16,8 @@ export const toAssetDto = (a: AssetRow) => ({
   dailyRateCents: a.dailyRateCents,
   status: a.status,
   notes: a.notes,
+  contractorName: a.contractorName,
+  contractorEmail: a.contractorEmail,
   version: a.version,
 });
 
@@ -71,6 +73,21 @@ export const toFlagDto = (f: PlantFlag) => ({
     : null,
   message: f.message,
   date: f.date,
+});
+
+export const toNoticeDto = (n: NoticeRow) => ({
+  id: encodeId('plantNotice', n.id),
+  assetId: encodeId('plantAsset', n.assetId),
+  planId: encodeId('plantPlan', n.planId),
+  recipientName: n.recipientName,
+  recipientEmail: n.recipientEmail,
+  subject: n.subject,
+  issue: n.issue,
+  dueOn: n.dueOn,
+  message: n.message,
+  status: n.status,
+  createdAt: n.createdAt.toISOString(),
+  sentAt: n.sentAt ? n.sentAt.toISOString() : null,
 });
 
 export const toConditionDto = (c: ConditionRow) => ({

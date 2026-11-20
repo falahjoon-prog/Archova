@@ -14,6 +14,7 @@ import {
   toAssetDto,
   toConditionDto,
   toFlagDto,
+  toNoticeDto,
   toPlanDto,
   toRecordDto,
 } from './mappers';
@@ -186,6 +187,31 @@ export function plantRoutes(database: Database, svc: PlantService, condition: Co
         },
       };
     },
+    createPlantContractorNotice: async (input) => ({
+      status: 201,
+      body: toNoticeDto(
+        await tx(input, (s) =>
+          svc.notifyContractor(s, assetId(input.params), {
+            planId: ref('plantPlan', input.body.planId, 'planId'),
+            message: input.body.message,
+          }),
+        ),
+      ),
+    }),
+    listPlantContractorNotices: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            svc.listNotices(s, {
+              ...(input.query.assetId
+                ? { assetId: ref('plantAsset', input.query.assetId, 'assetId') }
+                : {}),
+            }),
+          )
+        ).map(toNoticeDto),
+      },
+    }),
     listPlantFlags: async (input) => ({
       status: 200,
       body: {
