@@ -216,3 +216,95 @@ export function suggestHazards(i: SuggestInput): HazardSuggestion[] {
   }
   return out.slice(0, i.limit ?? 8);
 }
+
+// --- Hazard insights (rules over plans already on the project) -----------------------------------------------------
+
+export interface InsightPlan {
+  companyId: string | null;
+  status: PretaskStatus;
+  reviewed: boolean;
+  workDate: string;
+  hazards: PretaskHazard[];
+  crewCount: number;
+  signedCount: number;
+}
+
+export interface HazardInsights {
+  plans: number;
+  closed: number;
+  reviewed: number;
+  /** Closed and not reviewed yet. */
+  toReview: number;
+  topHazards: {
+    hazard: string;
+    plans: number;
+    /** Plans where this hazard started at high or extreme risk. */
+    highRiskPlans: number;
+    lastSeen: string;
+    companyIds: string[];
+  }[];
+  byCompany: { companyId: string | null; plans: number; closed: number; highRiskHazards: number }[];
+}
+
+export function hazardInsights(plans: InsightPlan[], limit = 10): HazardInsights {
+  const byHazard = new Map<
+    string,
+    { hazard: string; plans: number; high: number; last: string; companies: Set<string> }
+  >();
+  const byCompany = new Map<
+    string,
+    { companyId: string | null; plans: number; closed: number; high: number }
+  >();
+  for (const p of plans) {
+    const ck = p.companyId ?? '';
+    const c = byCompany.get(ck) ?? { companyId: p.companyId, plans: 0, closed: 0, high: 0 };
+    c.plans += 1;
+    if (p.status === 'closed') c.closed += 1;
+    byCompany.set(ck, c);
+    const seenHere = new Set<string>();
+    for (const h of p.hazards) {
+      const k = hazardKey(h.hazard);
+      if (!k || seenHere.has(k)) continue;
+      seenHere.add(k);
+      const e = byHazard.get(k) ?? {
+        hazard: h.hazard,
+        plans: 0,
+        high: 0,
+        last: p.workDate,
+        companies: new Set(),
+      };
+      e.plans += 1;
+      if (RANK[h.riskBefore] >= RANK.high) {
+        e.high += 1;
+        c.high += 1;
+      }
+      if (p.workDate > e.last) e.last = p.workDate;
+      if (p.companyId) e.companies.add(p.companyId);
+      byHazard.set(k, e);
+    }
+  }
+  return {
+    plans: plans.length,
+    closed: plans.filter((p) => p.status === 'closed').length,
+    reviewed: plans.filter((p) => p.reviewed).length,
+    toReview: plans.filter((p) => p.status === 'closed' && !p.reviewed).length,
+    topHazards: [...byHazard.values()]
+      .sort((a, b) => b.plans - a.plans || b.high - a.high || a.hazard.localeCompare(b.hazard))
+      .slice(0, limit)
+      .map((e) => ({
+        hazard: e.hazard,
+        plans: e.plans,
+        highRiskPlans: e.high,
+        lastSeen: e.last,
+        companyIds: [...e.companies].sort(),
+      })),
+    byCompany: [...byCompany.values()]
+      .sort((a, b) => b.plans - a.plans)
+      .map((c) => ({
+        companyId: c.companyId,
+        plans: c.plans,
+        closed: c.closed,
+        highRiskHazards: c.high,
+      })),
+  };
+}

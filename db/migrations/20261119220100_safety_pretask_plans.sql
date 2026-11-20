@@ -1,4 +1,4 @@
--- Composed from modules/safety/db/migrations/20261119220000_safety_pretask_plans.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/safety/db/migrations/20261119220100_safety_pretask_plans.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- safety: pre-task plans (take-5 style). The crew lists the hazards of today's task and the controls they will use,
 -- signs on, and the plan is closed as a record. It may link to the SWMS the work falls under. Each crew row keeps the
 -- induction status seen when the person signed. Reviewing is the supervisor's step. Every change is logged in an

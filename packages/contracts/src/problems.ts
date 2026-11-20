@@ -541,6 +541,7 @@ export const PROBLEM_CODES = {
   'pretask.not_signed': 409,
   'pretask.has_signatures': 409,
   'pretask.already_reviewed': 409,
+  'pretask.template_not_found': 404,
   'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,

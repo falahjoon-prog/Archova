@@ -23,7 +23,9 @@ import {
   toSuggestionDto,
   toSwmsDto,
   toHazardSuggestionDto,
+  toInsightsDto,
   toPlanDetail,
+  toTemplateDto,
   toPlanDto,
   toTalkDetail,
   toTalkDto,
@@ -227,7 +229,67 @@ export function safetyRoutes(
       userId: p.userId ? ref('user', p.userId, `crew.${i}.userId`) : null,
     }));
 
+  const templateId = (p: { templateId: string }) => {
+    const id = decodeId('pretaskTemplate', p.templateId);
+    if (!id) throw new AppError('pretask.template_not_found');
+    return id;
+  };
+
   return defineRoutes({
+    listPretaskTemplates: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            pretask.listTemplates(s, project(input.params), {
+              includeInactive: input.query.includeInactive === 'true',
+            }),
+          )
+        ).map(toTemplateDto),
+      },
+    }),
+    createPretaskTemplate: async (input) => {
+      const b = input.body;
+      const t = await tx(input, (s) =>
+        pretask.createTemplate(s, project(input.params), {
+          name: b.name,
+          taskTitle: b.taskTitle,
+          hazards: b.hazards,
+          ...(b.swmsId ? { swmsId: ref('swms', b.swmsId, 'swmsId') } : {}),
+        }),
+      );
+      return { status: 201, body: toTemplateDto(t), headers: { etag: etag(t.version) } };
+    },
+    updatePretaskTemplate: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const t = await tx(input, (s) =>
+        pretask.setTemplateActive(
+          s,
+          project(input.params),
+          templateId(input.params),
+          expected,
+          input.body.isActive,
+        ),
+      );
+      return { status: 200, body: toTemplateDto(t), headers: { etag: etag(t.version) } };
+    },
+    getPretaskInsights: async (input) => ({
+      status: 200,
+      body: toInsightsDto(
+        await read(input, (s) =>
+          pretask.insights(s, project(input.params), input.query.days ?? 30),
+        ),
+      ),
+    }),
+    copyPretaskPlan: async (input) =>
+      planOk(
+        201,
+        await tx(input, (s) =>
+          pretask.copy(s, project(input.params), planId(input.params), {
+            ...(input.body?.workDate ? { workDate: input.body.workDate } : {}),
+          }),
+        ),
+      ),
     listPretaskPlans: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>
