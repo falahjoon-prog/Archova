@@ -38,9 +38,9 @@
     "@archova/config-ts": "workspace:*",
     "@types/node": "^22.18.0",
     "eslint": "^9.39.0",
-    "prettier": "^3.6.0",
+    "prettier": "^3.10.1",
     "tsx": "^4.20.0",
-    "turbo": "^2.5.0",
+    "turbo": "^2.11.11",
     "typescript": "~5.9.3",
     "@archova/tools": "workspace:*"
   }

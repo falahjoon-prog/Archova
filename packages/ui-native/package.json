@@ -22,10 +22,10 @@
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
-    "@types/react": "~19.2.2",
+    "@types/react": "~19.3.0",
     "eslint": "^9.39.0",
-    "react": "19.2.3",
-    "react-native": "0.86.3",
+    "react": "19.3.1",
+    "react-native": "0.88.1",
     "typescript": "~5.9.3",
     "vitest": "^3.2.0"
   }
