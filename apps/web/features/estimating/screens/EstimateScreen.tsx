@@ -24,6 +24,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { Estimate, EstimateLine } from '../data/estimates-api';
 import { useCostItems, useEstimate, useEstimateMutations } from '../hooks/useEstimates';
 import { dollars, parsePercent, parseQuantity, parseRate } from '../lib/estimate-format';
+import { findScopeGaps } from '../lib/scope-gaps';
 
 /** A field that saves when you leave it, and puts the old value back when what you typed is not a number. */
 function CommitInput({
@@ -115,6 +116,7 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
   const itemsIn = (parentId: string | null) =>
     e.lines.filter((l) => l.kind === 'item' && l.parentId === parentId);
   const waiting = e.lines.reduce((n, l) => n + l.pendingMeasurements, 0);
+  const gaps = findScopeGaps(e.lines.map((l) => l.description));
   const patchSettings = (patch: Parameters<typeof m.settings.mutate>[0]['patch']) =>
     m.settings.mutate({ estimate: e, patch });
   const mutationError =
@@ -245,6 +247,19 @@ export function EstimateScreen({ estimateId }: { estimateId: string }) {
           {e.totals.missingRates} {e.totals.missingRates === 1 ? 'line has' : 'lines have'} no
           quantity or rate. They add nothing to the total, and the estimate cannot be issued until
           every line is priced.
+        </Alert>
+      ) : null}
+      {!locked && gaps.length > 0 ? (
+        <Alert tone="info" title="Is anything missing from this estimate?">
+          <ul className="u-m-0">
+            {gaps.map((g) => (
+              <li key={g.id}>
+                <strong>{g.missing}.</strong> {g.because}
+              </li>
+            ))}
+          </ul>
+          These are prompts from a checklist, not prices. Add a line if the work is in scope, or
+          ignore.
         </Alert>
       ) : null}
       {waiting > 0 ? (
