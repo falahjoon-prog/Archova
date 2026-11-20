@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type TenantScope } from '@archova/kernel';
+import { AppError, isFlagOn, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { addDays, localDateOf } from '@archova/time';
 import {
@@ -582,6 +582,11 @@ export function createPlantService(deps: PlantDeps) {
   ) {
     await need(scope, 'plant.assets.manage');
     const channel = input.channel ?? 'email';
+    if (channel === 'sms' && !(await isFlagOn(scope.ctx, 'plant_sms')))
+      throw new AppError(
+        'plant.bad_state',
+        'Texts from Archova are not switched on for this organisation.',
+      );
     const a = await assetRow(scope, assetId);
     if (channel === 'email' && !a.contractorEmail)
       throw new AppError(
