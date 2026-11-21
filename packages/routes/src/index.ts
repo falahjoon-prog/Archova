@@ -140,6 +140,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   pretaskPlans: (orgSlug: string, projectId: string, planId?: string) =>
     `${p(orgSlug, projectId)}/pre-task-plans${planId ? `?id=${enc(planId)}` : ''}`,
+  safetyEvidencePack: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/safety-evidence-pack`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
   handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,

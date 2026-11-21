@@ -2,6 +2,7 @@ import type { InjuryRecord } from '@archova/domain';
 import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
 import type { DbpInspection, DbpObservation } from '../domain/dbp';
+import type { EvidenceSources } from '../domain/evidence-pack';
 import type { ProjectSustainability } from '../domain/sustainability';
 import {
   PROJECT_LIMIT,
@@ -81,7 +82,20 @@ export interface ReportingDeps {
       requiredForTenders: boolean;
     }>;
   };
+  /** For the regulator evidence pack: inspections in a date range (`quality`); restricted unless readable. */
+  inspectionEvidence: {
+    inspections(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string },
+    ): Promise<EvidenceSources['inspections']>;
+  };
   workforce: {
+    inductionEvidence(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string },
+    ): Promise<EvidenceSources['inductions']>;
     hoursWorked(
       scope: TenantScope,
       projectId: string,
@@ -100,6 +114,11 @@ export interface ReportingDeps {
     }>;
   };
   safety: {
+    evidenceRecords(
+      scope: TenantScope,
+      projectId: string,
+      range: { from: string; to: string },
+    ): Promise<Pick<EvidenceSources, 'incidents' | 'actions' | 'pretasks' | 'toolbox'>>;
     injuryRows(
       scope: TenantScope,
       projectId: string,

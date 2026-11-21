@@ -5911,6 +5911,130 @@ export const EstimatePageSchema = z.object({
 });
 export type EstimatePage = z.infer<typeof EstimatePageSchema>;
 
+export const EvidencePackActionSchema = z.object({
+  "incidentRef": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "dueDate": z.string(),
+  "status": z.enum(["open", "done", "verified"]),
+  "completedAt": z.string(),
+  "verifiedAt": z.string(),
+});
+export type EvidencePackAction = z.infer<typeof EvidencePackActionSchema>;
+
+export const EvidencePackGapSchema = z.object({
+  "section": z.enum(["incidents", "actions", "pretasks", "toolbox", "inductions", "inspections", "pack"]),
+  "severity": z.enum(["high", "medium", "low"]),
+  "message": z.string(),
+});
+export type EvidencePackGap = z.infer<typeof EvidencePackGapSchema>;
+
+export const EvidencePackIncidentSchema = z.object({
+  "ref": z.string(),
+  "title": z.string(),
+  "type": z.string(),
+  "severity": z.string(),
+  "occurredAt": z.string(),
+  "location": z.string(),
+  "status": z.enum(["reported", "investigating", "closed"]),
+  "isNotifiable": z.boolean(),
+  "notifiableClass": z.string(),
+  "regulatorNotifiedAt": z.string(),
+  "writtenNoticeRequestedAt": z.string(),
+  "hasRootCause": z.boolean(),
+  "closedAt": z.string(),
+});
+export type EvidencePackIncident = z.infer<typeof EvidencePackIncidentSchema>;
+
+export const EvidencePackInductionSchema = z.object({
+  "workerName": z.string(),
+  "completedOn": z.string(),
+  "quizScore": z.number().int(),
+  "expiresOn": z.string(),
+  "method": z.enum(["self", "assisted", "link"]),
+});
+export type EvidencePackInduction = z.infer<typeof EvidencePackInductionSchema>;
+
+export const EvidencePackInspectionSchema = z.object({
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "scheduledFor": z.string(),
+  "completedOn": z.string(),
+  "pass": z.number().int(),
+  "fail": z.number().int(),
+});
+export type EvidencePackInspection = z.infer<typeof EvidencePackInspectionSchema>;
+
+export const EvidencePackPretaskSchema = z.object({
+  "ref": z.string(),
+  "taskTitle": z.string(),
+  "workDate": z.string(),
+  "location": z.string(),
+  "supervisorName": z.string(),
+  "status": z.enum(["open", "closed"]),
+  "hazards": z.number().int(),
+  "hazardsWithoutControls": z.number().int(),
+  "crew": z.number().int(),
+  "signed": z.number().int(),
+  "notCurrentlyInducted": z.number().int(),
+  "reviewed": z.boolean(),
+});
+export type EvidencePackPretask = z.infer<typeof EvidencePackPretaskSchema>;
+
+export const EvidencePackToolboxSchema = z.object({
+  "ref": z.string(),
+  "title": z.string(),
+  "heldOn": z.string(),
+  "presenterName": z.string(),
+  "status": z.enum(["open", "closed"]),
+  "attendees": z.number().int(),
+  "signed": z.number().int(),
+});
+export type EvidencePackToolbox = z.infer<typeof EvidencePackToolboxSchema>;
+
+export const EvidenceSectionActionsSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackActionSchema),
+});
+export type EvidenceSectionActions = z.infer<typeof EvidenceSectionActionsSchema>;
+
+export const EvidenceSectionIncidentsSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackIncidentSchema),
+});
+export type EvidenceSectionIncidents = z.infer<typeof EvidenceSectionIncidentsSchema>;
+
+export const EvidenceSectionInductionsSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackInductionSchema),
+});
+export type EvidenceSectionInductions = z.infer<typeof EvidenceSectionInductionsSchema>;
+
+export const EvidenceSectionInspectionsSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackInspectionSchema),
+});
+export type EvidenceSectionInspections = z.infer<typeof EvidenceSectionInspectionsSchema>;
+
+export const EvidenceSectionPretasksSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackPretaskSchema),
+});
+export type EvidenceSectionPretasks = z.infer<typeof EvidenceSectionPretasksSchema>;
+
+export const EvidenceSectionToolboxSchema = z.object({
+  "restricted": z.boolean(),
+  "truncated": z.boolean(),
+  "rows": z.array(EvidencePackToolboxSchema),
+});
+export type EvidenceSectionToolbox = z.infer<typeof EvidenceSectionToolboxSchema>;
+
 export const LaborTurnSchema = z.object({
   "role": z.enum(["user", "nova"]),
   "text": z.string().min(1).max(1500),
@@ -10898,6 +11022,25 @@ export const SafetyBadgeSchema = z.object({
 })),
 });
 export type SafetyBadge = z.infer<typeof SafetyBadgeSchema>;
+
+export const SafetyEvidencePackSchema = z.object({
+  "project": z.object({
+  "name": z.string(),
+  "number": z.string(),
+  "timeZone": z.string(),
+}),
+  "from": z.string(),
+  "to": z.string(),
+  "generatedOn": z.string(),
+  "incidents": EvidenceSectionIncidentsSchema,
+  "actions": EvidenceSectionActionsSchema,
+  "pretasks": EvidenceSectionPretasksSchema,
+  "toolbox": EvidenceSectionToolboxSchema,
+  "inductions": EvidenceSectionInductionsSchema,
+  "inspections": EvidenceSectionInspectionsSchema,
+  "gaps": z.array(EvidencePackGapSchema),
+});
+export type SafetyEvidencePack = z.infer<typeof SafetyEvidencePackSchema>;
 
 export const SaveActionPlanTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
