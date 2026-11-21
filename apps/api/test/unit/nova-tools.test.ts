@@ -20,6 +20,9 @@ const denied: NovaToolSources = {
   defects: {
     openForMeeting: async () => ({ rows: [], truncated: false, restricted: true }),
   },
+  documents: {
+    stuckReviews: async () => ({ rows: [], truncated: false, restricted: true }),
+  },
   quality: {
     overdueInspections: async () => ({ rows: [], truncated: false, restricted: true }),
     failedInspectionItems: async () => ({ rows: [], truncated: false, restricted: true }),

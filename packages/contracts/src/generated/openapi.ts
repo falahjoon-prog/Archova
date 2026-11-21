@@ -2862,6 +2862,282 @@ export interface paths {
         patch: operations["updateMarkup"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** The review matrix for the document (open round first, then past rounds) and its open comment count. */
+        get: operations["getDocumentReview"];
+        put?: never;
+        /** Put the current revision out for review with a matrix of reviewers and approvers. 409 `document_review.already_open` if a round is open. */
+        post: operations["startDocumentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel the open round. The document goes back to draft. */
+        post: operations["cancelDocumentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The person a step is assigned to approves it, approves with comments or rejects it. Anyone else gets 403. */
+        post: operations["decideDocumentReviewStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand a step that has not been decided to another project member. */
+        post: operations["reassignDocumentReviewStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's suggested reviewers, from who reviewed documents of the same type before (rules only). */
+        get: operations["suggestDocumentReviewers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/document-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every document out for review in folders the caller can open, with who it waits on and how late it is. */
+        get: operations["listOpenDocumentReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** Comment threads on the document, oldest first. */
+        get: operations["listDocumentComments"];
+        put?: never;
+        /** Start a thread, or reply to one with `parentId`. Replying to a resolved thread reopens it. */
+        post: operations["addDocumentComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments/{commentId}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                commentId: components["parameters"]["DocumentCommentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve or reopen a thread (the first comment of it). */
+        post: operations["setDocumentCommentResolution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listItpPackages"];
+        put?: never;
+        /** Create a draft ITP, optionally tied to a document and filled from Nova's starter points for the discipline. */
+        post: operations["createItpPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getItpPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft ITP. Sending `items` replaces all points. 409 `itp.not_editable` once active. */
+        patch: operations["updateItpPackage"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the work. 422 `itp.document_not_approved` if the linked document is not approved or for construction. */
+        post: operations["activateItpPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/items/{itemId}/signoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+                itemId: components["parameters"]["ItpItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pass, fail or waive a point, or set it back to pending. A hold point blocks later points; 409 `itp.hold_point_open`. The package completes when nothing is pending or failed. */
+        post: operations["signItpItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's starter points for a discipline (concrete, waterproofing, fire, or general). Rules only. */
+        get: operations["getItpTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/transmittals": {
         parameters: {
             query?: never;
@@ -20551,6 +20827,203 @@ export interface components {
             document: components["schemas"]["Document"];
             revisions: components["schemas"]["DocumentRevision"][];
         };
+        /** @enum {string} */
+        ReviewMode: "sequential" | "parallel";
+        /** @enum {string} */
+        ReviewStepRole: "reviewer" | "approver";
+        /** @enum {string} */
+        ReviewStepStatus: "waiting" | "pending" | "approved" | "approved_with_comments" | "rejected" | "skipped";
+        DocumentReviewStep: {
+            id: string;
+            userId: string;
+            userName: string | null;
+            role: components["schemas"]["ReviewStepRole"];
+            order: number;
+            status: components["schemas"]["ReviewStepStatus"];
+            /** Format: date-time */
+            activatedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        DocumentReview: {
+            id: string;
+            documentId: string;
+            revisionId: string;
+            mode: components["schemas"]["ReviewMode"];
+            /** @enum {string} */
+            status: "open" | "approved" | "rejected" | "cancelled";
+            /** Format: date-time */
+            dueAt: string | null;
+            note: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The document has a newer revision than the one this round reviewed. */
+            stale: boolean;
+            /** @description Whole days past the due date (or the default 5-day SLA when none was set); 0 when on time or closed. */
+            overdueDays: number;
+            steps: components["schemas"]["DocumentReviewStep"][];
+        };
+        DocumentReviewState: {
+            current: components["schemas"]["DocumentReview"] | null;
+            history: components["schemas"]["DocumentReview"][];
+            openComments: number;
+        };
+        OpenDocumentReview: {
+            documentId: string;
+            documentTitle: string;
+            docNumber: string | null;
+            review: components["schemas"]["DocumentReview"];
+        };
+        ReviewerSuggestion: {
+            userId: string;
+            userName: string | null;
+            role: components["schemas"]["ReviewStepRole"];
+            count: number;
+        };
+        StartDocumentReviewRequest: {
+            mode: components["schemas"]["ReviewMode"];
+            /** Format: date-time */
+            dueAt?: string | null;
+            note?: string | null;
+            steps: {
+                userId: string;
+                role: components["schemas"]["ReviewStepRole"];
+                order: number;
+            }[];
+        };
+        DecideReviewStepRequest: {
+            /** @enum {string} */
+            decision: "approved" | "approved_with_comments" | "rejected";
+            note?: string | null;
+        };
+        ReassignReviewStepRequest: {
+            userId: string;
+        };
+        DocumentComment: {
+            id: string;
+            documentId: string;
+            revisionId: string | null;
+            parentId: string | null;
+            body: string;
+            page: number | null;
+            /** @enum {string} */
+            status: "open" | "resolved";
+            authorId: string | null;
+            authorName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            resolvedById: string | null;
+            resolvedByName: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolutionNote: string | null;
+        };
+        DocumentCommentThread: {
+            root: components["schemas"]["DocumentComment"];
+            replies: components["schemas"]["DocumentComment"][];
+        };
+        DocumentCommentList: {
+            data: components["schemas"]["DocumentCommentThread"][];
+        };
+        AddDocumentCommentRequest: {
+            body: string;
+            parentId?: string;
+            revisionId?: string;
+            page?: number;
+        };
+        ResolveDocumentCommentRequest: {
+            resolved: boolean;
+            note?: string | null;
+        };
+        /** @enum {string} */
+        ItpPointType: "hold" | "witness" | "surveillance";
+        /** @enum {string} */
+        ItpItemStatus: "pending" | "passed" | "failed" | "waived";
+        ItpItemInput: {
+            description: string;
+            acceptanceCriteria?: string | null;
+            pointType: components["schemas"]["ItpPointType"];
+        };
+        ItpItem: {
+            id: string;
+            sort: number;
+            description: string;
+            acceptanceCriteria: string | null;
+            pointType: components["schemas"]["ItpPointType"];
+            status: components["schemas"]["ItpItemStatus"];
+            signedById: string | null;
+            signedByName: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            note: string | null;
+        };
+        ItpProgress: {
+            total: number;
+            done: number;
+            failed: number;
+            holdOpen: number;
+        };
+        ItpPackage: {
+            id: string;
+            number: string;
+            name: string;
+            discipline: string | null;
+            documentId: string | null;
+            responsibleCompanyId: string | null;
+            /** @enum {string} */
+            status: "draft" | "active" | "complete";
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        ItpPackageSummary: {
+            package: components["schemas"]["ItpPackage"];
+            progress: components["schemas"]["ItpProgress"];
+        };
+        ItpPackageDetail: {
+            package: components["schemas"]["ItpPackage"];
+            items: components["schemas"]["ItpItem"][];
+            progress: components["schemas"]["ItpProgress"];
+            document: {
+                id: string;
+                title: string;
+                docNumber: string | null;
+                status: components["schemas"]["DocumentStatus"];
+            } | null;
+        };
+        CreateItpPackageRequest: {
+            name: string;
+            discipline?: string | null;
+            documentId?: string | null;
+            responsibleCompanyId?: string | null;
+            /** @description Fill the points from the starter for the discipline when `items` is not sent. */
+            fromTemplate?: boolean;
+            items?: components["schemas"]["ItpItemInput"][];
+        };
+        UpdateItpPackageRequest: {
+            name?: string;
+            discipline?: string | null;
+            documentId?: string | null;
+            responsibleCompanyId?: string | null;
+            items?: components["schemas"]["ItpItemInput"][];
+        };
+        SignItpItemRequest: {
+            status: components["schemas"]["ItpItemStatus"];
+            note?: string | null;
+        };
+        ItpTemplate: {
+            key: string;
+            items: {
+                description: string;
+                acceptanceCriteria: string;
+                pointType: components["schemas"]["ItpPointType"];
+            }[];
+        };
         DocumentPage: {
             data: components["schemas"]["Document"][];
             nextCursor: string | null;
@@ -29280,6 +29753,10 @@ export interface components {
         SpecBookId: string;
         FolderId: string;
         DocumentId: string;
+        DocumentReviewStepId: string;
+        DocumentCommentId: string;
+        ItpPackageId: string;
+        ItpItemId: string;
         DrawingSetId: string;
         DrawingSheetId: string;
         DrawingRevisionId: string;
@@ -34155,6 +34632,492 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Markup"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matrix */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartDocumentReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description The round started */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matrix after cancelling */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideDocumentReviewStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideReviewStepRequest"];
+            };
+        };
+        responses: {
+            /** @description The matrix after the decision. The round closes when everyone has decided or someone rejects. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reassignDocumentReviewStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignReviewStepRequest"];
+            };
+        };
+        responses: {
+            /** @description The matrix after reassigning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestDocumentReviewers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to five project members, most frequent first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReviewerSuggestion"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOpenDocumentReviews: {
+        parameters: {
+            query?: {
+                /** @description Send `true` for only the reviews past their due date (or past the default SLA when none was set). */
+                overdue?: "true";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open reviews, soonest due first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["OpenDocumentReview"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDocumentComments: {
+        parameters: {
+            query?: {
+                revisionId?: string;
+                status?: "open" | "resolved";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Threads with their replies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDocumentComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDocumentCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description All threads after adding */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setDocumentCommentResolution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                commentId: components["parameters"]["DocumentCommentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDocumentCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description All threads after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listItpPackages: {
+        parameters: {
+            query?: {
+                documentId?: string;
+                status?: "draft" | "active" | "complete";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ITP packages, newest first, with progress */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ItpPackageSummary"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createItpPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItpPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getItpPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package with its points */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateItpPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateItpPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    activateItpPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signItpItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+                itemId: components["parameters"]["ItpItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignItpItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The package after signing */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getItpTemplate: {
+        parameters: {
+            query?: {
+                discipline?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The starter points */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpTemplate"];
                 };
             };
             default: components["responses"]["Problem"];

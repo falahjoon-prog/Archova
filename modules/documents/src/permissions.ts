@@ -12,4 +12,12 @@ export const DOCUMENTS_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'documents.markups.publish', scope: 'project', tool: 'documents', level: 'standard' },
   { key: 'documents.transmittals.read', scope: 'project', tool: 'documents', level: 'read' },
   { key: 'documents.transmittals.manage', scope: 'project', tool: 'documents', level: 'standard' },
+  // Review matrix, threaded comments and ITP packages. Anyone who can read a document can comment; deciding a
+  // review step is allowed only for the person it is assigned to, checked in the use case.
+  { key: 'documents.reviews.read', scope: 'project', tool: 'documents', level: 'read' },
+  { key: 'documents.reviews.manage', scope: 'project', tool: 'documents', level: 'standard' },
+  { key: 'documents.comments.create', scope: 'project', tool: 'documents', level: 'read' },
+  { key: 'documents.itp.read', scope: 'project', tool: 'documents', level: 'read' },
+  { key: 'documents.itp.manage', scope: 'project', tool: 'documents', level: 'standard' },
+  { key: 'documents.itp.signoff', scope: 'project', tool: 'documents', level: 'standard' },
 ];

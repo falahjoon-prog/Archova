@@ -576,6 +576,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     novaTools: buildNovaTools({
       rfis: rfis.api,
       defects: defects.api,
+      documents: documents.api.nova,
       quality: quality.api.nova,
       financials: financials.api,
       scheduling: () => schedulingForNova!(),

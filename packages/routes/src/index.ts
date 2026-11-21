@@ -66,6 +66,8 @@ export const webRoutes = {
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
     `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
   transmittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/transmittals`,
+  /** Inspection and test plan packages tied to document control. */
+  itp: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/itp`,
   newTransmittal: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/transmittals/new`,
   transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>

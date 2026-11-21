@@ -3677,6 +3677,386 @@ paths:
         '204':
           description: Deleted
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: The review matrix for the document (open round first, then past rounds) and its open comment count.
+      responses:
+        '200':
+          description: The matrix
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: startDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Put the current revision out for review with a matrix of reviewers and approvers. 409 `document_review.already_open` if a round is open.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartDocumentReviewRequest' }
+      responses:
+        '201':
+          description: The round started
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      operationId: cancelDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Cancel the open round. The document goes back to draft.
+      responses:
+        '200':
+          description: The matrix after cancelling
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentReviewStepId'
+    post:
+      operationId: decideDocumentReviewStep
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: The person a step is assigned to approves it, approves with comments or rejects it. Anyone else gets 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideReviewStepRequest' }
+      responses:
+        '200':
+          description: The matrix after the decision. The round closes when everyone has decided or someone rejects.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/reassign:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentReviewStepId'
+    post:
+      operationId: reassignDocumentReviewStep
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Hand a step that has not been decided to another project member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReassignReviewStepRequest' }
+      responses:
+        '200':
+          description: The matrix after reassigning
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review-suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: suggestDocumentReviewers
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Nova's suggested reviewers, from who reviewed documents of the same type before (rules only).
+      responses:
+        '200':
+          description: Up to five project members, most frequent first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ReviewerSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/document-reviews:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listOpenDocumentReviews
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: Every document out for review in folders the caller can open, with who it waits on and how late it is.
+      parameters:
+        - name: overdue
+          in: query
+          description: Send `true` for only the reviews past their due date (or past the default SLA when none was set).
+          schema: { type: string, enum: ['true'] }
+      responses:
+        '200':
+          description: Open reviews, soonest due first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OpenDocumentReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: listDocumentComments
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Comment threads on the document, oldest first.
+      parameters:
+        - {
+            name: revisionId,
+            in: query,
+            schema: { type: string, pattern: '^rev_[0-9A-Za-z]{26}$' },
+          }
+        - { name: status, in: query, schema: { type: string, enum: [open, resolved] } }
+      responses:
+        '200':
+          description: Threads with their replies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addDocumentComment
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.comments.create
+      summary: Start a thread, or reply to one with `parentId`. Replying to a resolved thread reopens it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddDocumentCommentRequest' }
+      responses:
+        '201':
+          description: All threads after adding
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments/{commentId}/resolution:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentCommentId'
+    post:
+      operationId: setDocumentCommentResolution
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.comments.create
+      summary: Resolve or reopen a thread (the first comment of it).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveDocumentCommentRequest' }
+      responses:
+        '200':
+          description: All threads after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listItpPackages
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      parameters:
+        - {
+            name: documentId,
+            in: query,
+            schema: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' },
+          }
+        - { name: status, in: query, schema: { type: string, enum: [draft, active, complete] } }
+      responses:
+        '200':
+          description: ITP packages, newest first, with progress
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ItpPackageSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Create a draft ITP, optionally tied to a document and filled from Nova's starter points for the discipline.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateItpPackageRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+    get:
+      operationId: getItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      responses:
+        '200':
+          description: The package with its points
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Edit a draft ITP. Sending `items` replaces all points. 409 `itp.not_editable` once active.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateItpPackageRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+    post:
+      operationId: activateItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Start the work. 422 `itp.document_not_approved` if the linked document is not approved or for construction.
+      responses:
+        '200':
+          description: Active
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/items/{itemId}/signoff:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+      - $ref: '#/components/parameters/ItpItemId'
+    post:
+      operationId: signItpItem
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.signoff
+      summary: Pass, fail or waive a point, or set it back to pending. A hold point blocks later points; 409 `itp.hold_point_open`. The package completes when nothing is pending or failed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignItpItemRequest' }
+      responses:
+        '200':
+          description: The package after signing
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getItpTemplate
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      summary: Nova's starter points for a discipline (concrete, waterproofing, fire, or general). Rules only.
+      parameters:
+        - { name: discipline, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: The starter points
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/transmittals:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -21271,6 +21651,26 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' }
+    DocumentReviewStepId:
+      name: stepId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^drs_[0-9A-Za-z]{26}$' }
+    DocumentCommentId:
+      name: commentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dcm_[0-9A-Za-z]{26}$' }
+    ItpPackageId:
+      name: itpId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ipk_[0-9A-Za-z]{26}$' }
+    ItpItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ipi_[0-9A-Za-z]{26}$' }
     DrawingSetId:
       name: drawingSetId
       in: path
@@ -29480,6 +29880,331 @@ components:
         revisions:
           type: array
           items: { $ref: '#/components/schemas/DocumentRevision' }
+    ReviewMode: { type: string, enum: [sequential, parallel] }
+    ReviewStepRole: { type: string, enum: [reviewer, approver] }
+    ReviewStepStatus:
+      type: string
+      enum: [waiting, pending, approved, approved_with_comments, rejected, skipped]
+    DocumentReviewStep:
+      type: object
+      required: [id, userId, userName, role, order, status, activatedAt, decidedAt, decisionNote]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userName: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/ReviewStepRole' }
+        order: { type: integer }
+        status: { $ref: '#/components/schemas/ReviewStepStatus' }
+        activatedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    DocumentReview:
+      type: object
+      required:
+        [
+          id,
+          documentId,
+          revisionId,
+          mode,
+          status,
+          dueAt,
+          note,
+          closedAt,
+          createdAt,
+          stale,
+          overdueDays,
+          steps,
+        ]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        revisionId: { type: string }
+        mode: { $ref: '#/components/schemas/ReviewMode' }
+        status: { type: string, enum: [open, approved, rejected, cancelled] }
+        dueAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+        closedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        stale:
+          type: boolean
+          description: The document has a newer revision than the one this round reviewed.
+        overdueDays:
+          type: integer
+          description: Whole days past the due date (or the default 5-day SLA when none was set); 0 when on time or closed.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentReviewStep' }
+    DocumentReviewState:
+      type: object
+      required: [current, history, openComments]
+      properties:
+        current:
+          oneOf: [{ $ref: '#/components/schemas/DocumentReview' }, { type: 'null' }]
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentReview' }
+        openComments: { type: integer }
+    OpenDocumentReview:
+      type: object
+      required: [documentId, documentTitle, docNumber, review]
+      properties:
+        documentId: { type: string }
+        documentTitle: { type: string }
+        docNumber: { type: [string, 'null'] }
+        review: { $ref: '#/components/schemas/DocumentReview' }
+    ReviewerSuggestion:
+      type: object
+      required: [userId, userName, role, count]
+      properties:
+        userId: { type: string }
+        userName: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/ReviewStepRole' }
+        count: { type: integer }
+    StartDocumentReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [mode, steps]
+      properties:
+        mode: { $ref: '#/components/schemas/ReviewMode' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [userId, role, order]
+            properties:
+              userId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+              role: { $ref: '#/components/schemas/ReviewStepRole' }
+              order: { type: integer, minimum: 1, maximum: 50 }
+    DecideReviewStepRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, approved_with_comments, rejected] }
+        note: { type: [string, 'null'], maxLength: 2000 }
+    ReassignReviewStepRequest:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    DocumentComment:
+      type: object
+      required:
+        [
+          id,
+          documentId,
+          revisionId,
+          parentId,
+          body,
+          page,
+          status,
+          authorId,
+          authorName,
+          createdAt,
+          resolvedById,
+          resolvedByName,
+          resolvedAt,
+          resolutionNote,
+        ]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        revisionId: { type: [string, 'null'] }
+        parentId: { type: [string, 'null'] }
+        body: { type: string }
+        page: { type: [integer, 'null'] }
+        status: { type: string, enum: [open, resolved] }
+        authorId: { type: [string, 'null'] }
+        authorName: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        resolvedById: { type: [string, 'null'] }
+        resolvedByName: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        resolutionNote: { type: [string, 'null'] }
+    DocumentCommentThread:
+      type: object
+      required: [root, replies]
+      properties:
+        root: { $ref: '#/components/schemas/DocumentComment' }
+        replies:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentComment' }
+    DocumentCommentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentCommentThread' }
+    AddDocumentCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000 }
+        parentId: { type: string, pattern: '^dcm_[0-9A-Za-z]{26}$' }
+        revisionId: { type: string, pattern: '^rev_[0-9A-Za-z]{26}$' }
+        page: { type: integer, minimum: 1 }
+    ResolveDocumentCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [resolved]
+      properties:
+        resolved: { type: boolean }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    ItpPointType: { type: string, enum: [hold, witness, surveillance] }
+    ItpItemStatus: { type: string, enum: [pending, passed, failed, waived] }
+    ItpItemInput:
+      type: object
+      additionalProperties: false
+      required: [description, pointType]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 500 }
+        acceptanceCriteria: { type: [string, 'null'], maxLength: 1000 }
+        pointType: { $ref: '#/components/schemas/ItpPointType' }
+    ItpItem:
+      type: object
+      required:
+        [
+          id,
+          sort,
+          description,
+          acceptanceCriteria,
+          pointType,
+          status,
+          signedById,
+          signedByName,
+          signedAt,
+          note,
+        ]
+      properties:
+        id: { type: string }
+        sort: { type: integer }
+        description: { type: string }
+        acceptanceCriteria: { type: [string, 'null'] }
+        pointType: { $ref: '#/components/schemas/ItpPointType' }
+        status: { $ref: '#/components/schemas/ItpItemStatus' }
+        signedById: { type: [string, 'null'] }
+        signedByName: { type: [string, 'null'] }
+        signedAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+    ItpProgress:
+      type: object
+      required: [total, done, failed, holdOpen]
+      properties:
+        total: { type: integer }
+        done: { type: integer }
+        failed: { type: integer }
+        holdOpen: { type: integer }
+    ItpPackage:
+      type: object
+      required:
+        [
+          id,
+          number,
+          name,
+          discipline,
+          documentId,
+          responsibleCompanyId,
+          status,
+          completedAt,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        name: { type: string }
+        discipline: { type: [string, 'null'] }
+        documentId: { type: [string, 'null'] }
+        responsibleCompanyId: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, active, complete] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    ItpPackageSummary:
+      type: object
+      required: [package, progress]
+      properties:
+        package: { $ref: '#/components/schemas/ItpPackage' }
+        progress: { $ref: '#/components/schemas/ItpProgress' }
+    ItpPackageDetail:
+      type: object
+      required: [package, items, progress, document]
+      properties:
+        package: { $ref: '#/components/schemas/ItpPackage' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ItpItem' }
+        progress: { $ref: '#/components/schemas/ItpProgress' }
+        document:
+          oneOf:
+            - type: object
+              required: [id, title, docNumber, status]
+              properties:
+                id: { type: string }
+                title: { type: string }
+                docNumber: { type: [string, 'null'] }
+                status: { $ref: '#/components/schemas/DocumentStatus' }
+            - type: 'null'
+    CreateItpPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { type: [string, 'null'], maxLength: 100 }
+        documentId: { type: [string, 'null'], pattern: '^doc_[0-9A-Za-z]{26}$' }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        fromTemplate:
+          {
+            type: boolean,
+            description: Fill the points from the starter for the discipline when `items` is not sent.,
+          }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ItpItemInput' }
+    UpdateItpPackageRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { type: [string, 'null'], maxLength: 100 }
+        documentId: { type: [string, 'null'], pattern: '^doc_[0-9A-Za-z]{26}$' }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ItpItemInput' }
+    SignItpItemRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/ItpItemStatus' }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    ItpTemplate:
+      type: object
+      required: [key, items]
+      properties:
+        key: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [description, acceptanceCriteria, pointType]
+            properties:
+              description: { type: string }
+              acceptanceCriteria: { type: string }
+              pointType: { $ref: '#/components/schemas/ItpPointType' }
     DocumentPage:
       type: object
       required: [data, nextCursor]

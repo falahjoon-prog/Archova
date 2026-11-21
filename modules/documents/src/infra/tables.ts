@@ -240,3 +240,93 @@ export const sheetGeometry = documents.table('sheet_geometry', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   version: integer('version').notNull().default(1),
 });
+
+export type ReviewMode = 'sequential' | 'parallel';
+export type ReviewStatus = 'open' | 'approved' | 'rejected' | 'cancelled';
+export type StepRole = 'reviewer' | 'approver';
+export type StepStatus =
+  'waiting' | 'pending' | 'approved' | 'approved_with_comments' | 'rejected' | 'skipped';
+
+export const documentReviews = documents.table('document_reviews', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  revisionId: uuid('revision_id').notNull(),
+  mode: text('mode').$type<ReviewMode>().notNull(),
+  status: text('status').$type<ReviewStatus>().notNull(),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+  note: text('note'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  ...audit,
+});
+
+export const documentReviewSteps = documents.table('document_review_steps', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  reviewId: uuid('review_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  role: text('role').$type<StepRole>().notNull(),
+  stepOrder: integer('step_order').notNull(),
+  status: text('status').$type<StepStatus>().notNull(),
+  activatedAt: timestamp('activated_at', { withTimezone: true }),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionNote: text('decision_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+export const documentComments = documents.table('document_comments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  revisionId: uuid('revision_id'),
+  parentId: uuid('parent_id'),
+  body: text('body').notNull(),
+  page: integer('page'),
+  status: text('status').$type<'open' | 'resolved'>().notNull(),
+  resolvedBy: uuid('resolved_by'),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolutionNote: text('resolution_note'),
+  ...audit,
+});
+
+export type ItpPointType = 'hold' | 'witness' | 'surveillance';
+export type ItpItemStatus = 'pending' | 'passed' | 'failed' | 'waived';
+export type ItpStatus = 'draft' | 'active' | 'complete';
+
+export const itpPackages = documents.table('itp_packages', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: text('number').notNull(),
+  name: text('name').notNull(),
+  discipline: text('discipline'),
+  documentId: uuid('document_id'),
+  responsibleCompanyId: uuid('responsible_company_id'),
+  status: text('status').$type<ItpStatus>().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  ...audit,
+});
+
+export const itpItems = documents.table('itp_items', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  packageId: uuid('package_id').notNull(),
+  sort: integer('sort').notNull(),
+  description: text('description').notNull(),
+  acceptanceCriteria: text('acceptance_criteria'),
+  pointType: text('point_type').$type<ItpPointType>().notNull(),
+  status: text('status').$type<ItpItemStatus>().notNull(),
+  signedBy: uuid('signed_by'),
+  signedAt: timestamp('signed_at', { withTimezone: true }),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});

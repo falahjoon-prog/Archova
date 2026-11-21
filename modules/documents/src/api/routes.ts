@@ -30,10 +30,20 @@ import type {
   TransmittalService,
 } from '../application/transmittals';
 import type { RegisterService } from '../application/register';
+import type { ReviewService } from '../application/reviews';
+import type { CommentService } from '../application/comments';
+import type { ItpService } from '../application/itp';
 import type { TransmittalLinkService } from '../application/transmittal-links';
 import {
   toDocumentDetail,
   toDocumentDto,
+  commentUserIds,
+  reviewUserIds,
+  toCommentListDto,
+  toItpDetailDto,
+  toItpPackageDto,
+  toReviewDto,
+  toReviewStateDto,
   toDrawingRevisionDto,
   toDrawingSetDto,
   toDrawingSheetDto,
@@ -49,7 +59,7 @@ import {
 
 export interface DocumentsRouteDeps {
   database: Database;
-  identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
+  identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser' | 'getUsers'>;
   folders: FolderService;
   documents: DocumentService;
   drawings: DrawingService;
@@ -59,6 +69,9 @@ export interface DocumentsRouteDeps {
   tiles: TileService;
   transmittals: TransmittalService;
   register: RegisterService;
+  reviews: ReviewService;
+  comments: CommentService;
+  itp: ItpService;
   links: TransmittalLinkService;
   platform: Pick<PlatformApi, 'getProject' | 'getOrg'>;
   messages: MessageSender;
@@ -106,6 +119,14 @@ const toSpecDetail = (x: {
 
 export function documentsRoutes(d: DocumentsRouteDeps) {
   const ro = { readOnly: true } as const;
+  /** One identity lookup per response, for the names the review, comment and ITP screens show. */
+  async function namesFor(userIds: readonly (string | null)[]): Promise<Map<string, string>> {
+    const ids = [...new Set(userIds.filter((x): x is string => !!x))];
+    const users = await d.identity.getUsers(ids);
+    return new Map([...users].map(([k, u]) => [k, u.name]));
+  }
+  const itpUserIds = (x: { items: { signedBy: string | null }[] }) =>
+    x.items.map((i) => i.signedBy);
   /** Pages reached by an access link are never indexed, and the token never leaks through a referrer (Sam 11 §3). */
   const LINK_HEADERS = {
     'referrer-policy': 'no-referrer',
@@ -786,6 +807,250 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         d.transmittals.acknowledge(s, project(input.params), transmittalId, input.body.event),
       );
       return { status: 200, body: toRecipientDto(row) };
+    },
+    // ---- Review matrix ------------------------------------------------------------------------------------------
+    getDocumentReview: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const v = await read(input, (s) =>
+        d.reviews.forDocument(s, project(input.params), documentId),
+      );
+      return { status: 200, body: toReviewStateDto(v, await namesFor(reviewUserIds(v))) };
+    },
+    startDocumentReview: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const b = input.body;
+      const v = await tx(input, (s) =>
+        d.reviews.start(s, project(input.params), documentId, {
+          mode: b.mode,
+          dueAt: b.dueAt ? new Date(b.dueAt) : null,
+          note: b.note ?? null,
+          steps: b.steps.map((x, i) => ({
+            userId: ref('user', x.userId, `steps/${i}/userId`),
+            role: x.role,
+            order: x.order,
+          })),
+        }),
+      );
+      return { status: 201, body: toReviewStateDto(v, await namesFor(reviewUserIds(v))) };
+    },
+    cancelDocumentReview: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const v = await tx(input, (s) => d.reviews.cancel(s, project(input.params), documentId));
+      return { status: 200, body: toReviewStateDto(v, await namesFor(reviewUserIds(v))) };
+    },
+    decideDocumentReviewStep: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const stepId = id('documentReviewStep', input.params.stepId, 'document_review.not_found');
+      const v = await tx(input, (s) =>
+        d.reviews.decide(s, project(input.params), documentId, stepId, input.body),
+      );
+      return { status: 200, body: toReviewStateDto(v, await namesFor(reviewUserIds(v))) };
+    },
+    reassignDocumentReviewStep: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const stepId = id('documentReviewStep', input.params.stepId, 'document_review.not_found');
+      const userId = ref('user', input.body.userId, 'userId');
+      const v = await tx(input, (s) =>
+        d.reviews.reassign(s, project(input.params), documentId, stepId, userId),
+      );
+      return { status: 200, body: toReviewStateDto(v, await namesFor(reviewUserIds(v))) };
+    },
+    suggestDocumentReviewers: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const rows = await read(input, (s) =>
+        d.reviews.suggestions(s, project(input.params), documentId),
+      );
+      const names = await namesFor(rows.map((r) => r.userId));
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({
+            userId: encodeId('user', r.userId),
+            userName: names.get(r.userId) ?? null,
+            role: r.role,
+            count: r.count,
+          })),
+        },
+      };
+    },
+    listOpenDocumentReviews: async (input) => {
+      const rows = await read(input, (s) =>
+        d.reviews.openReviews(s, project(input.params), {
+          overdueOnly: input.query.overdue === 'true',
+        }),
+      );
+      const names = await namesFor(rows.flatMap((r) => r.steps.map((x) => x.userId)));
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({
+            documentId: encodeId('document', r.document.id),
+            documentTitle: r.document.title,
+            docNumber: r.document.docNumber,
+            review: toReviewDto(r, names),
+          })),
+        },
+      };
+    },
+    // ---- Threaded comments --------------------------------------------------------------------------------------
+    listDocumentComments: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const threads = await read(input, (s) =>
+        d.comments.list(s, project(input.params), documentId, {
+          ...(input.query.revisionId
+            ? { revisionId: ref('revision', input.query.revisionId, 'revisionId') }
+            : {}),
+          ...(input.query.status ? { status: input.query.status } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: toCommentListDto(threads, await namesFor(commentUserIds(threads))),
+      };
+    },
+    addDocumentComment: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const b = input.body;
+      const threads = await tx(input, (s) =>
+        d.comments.add(s, project(input.params), documentId, {
+          body: b.body,
+          ...(b.parentId ? { parentId: ref('documentComment', b.parentId, 'parentId') } : {}),
+          ...(b.revisionId ? { revisionId: ref('revision', b.revisionId, 'revisionId') } : {}),
+          ...(b.page ? { page: b.page } : {}),
+        }),
+      );
+      return {
+        status: 201,
+        body: toCommentListDto(threads, await namesFor(commentUserIds(threads))),
+      };
+    },
+    setDocumentCommentResolution: async (input) => {
+      const documentId = id('document', input.params.documentId, 'document.not_found');
+      const commentId = id('documentComment', input.params.commentId, 'document_comment.not_found');
+      const threads = await tx(input, (s) =>
+        d.comments.setResolved(s, project(input.params), documentId, commentId, input.body),
+      );
+      return {
+        status: 200,
+        body: toCommentListDto(threads, await namesFor(commentUserIds(threads))),
+      };
+    },
+    // ---- ITP packages -------------------------------------------------------------------------------------------
+    listItpPackages: async (input) => {
+      const rows = await read(input, (s) =>
+        d.itp.list(s, project(input.params), {
+          ...(input.query.documentId
+            ? { documentId: ref('document', input.query.documentId, 'documentId') }
+            : {}),
+          ...(input.query.status ? { status: input.query.status } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({ package: toItpPackageDto(r.package), progress: r.progress })),
+        },
+      };
+    },
+    createItpPackage: async (input) => {
+      const b = input.body;
+      const x = await tx(input, (s) =>
+        d.itp.create(s, project(input.params), {
+          name: b.name,
+          discipline: b.discipline ?? null,
+          documentId: b.documentId ? ref('document', b.documentId, 'documentId') : null,
+          responsibleCompanyId: b.responsibleCompanyId
+            ? ref('company', b.responsibleCompanyId, 'responsibleCompanyId')
+            : null,
+          ...(b.items ? { items: b.items } : {}),
+          ...(b.fromTemplate ? { fromTemplate: true } : {}),
+        }),
+      );
+      return {
+        status: 201,
+        body: toItpDetailDto(x, await namesFor(itpUserIds(x))),
+        headers: { etag: etag(x.package.version) },
+      };
+    },
+    getItpPackage: async (input) => {
+      const x = await read(input, (s) =>
+        d.itp.detail(
+          s,
+          project(input.params),
+          id('itpPackage', input.params.itpId, 'itp.not_found'),
+        ),
+      );
+      return {
+        status: 200,
+        body: toItpDetailDto(x, await namesFor(itpUserIds(x))),
+        headers: { etag: etag(x.package.version) },
+      };
+    },
+    updateItpPackage: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      const x = await tx(input, (s) =>
+        d.itp.update(
+          s,
+          project(input.params),
+          id('itpPackage', input.params.itpId, 'itp.not_found'),
+          expected,
+          {
+            ...(b.name !== undefined ? { name: b.name } : {}),
+            ...(b.discipline !== undefined ? { discipline: b.discipline } : {}),
+            ...(b.documentId !== undefined
+              ? { documentId: b.documentId ? ref('document', b.documentId, 'documentId') : null }
+              : {}),
+            ...(b.responsibleCompanyId !== undefined
+              ? {
+                  responsibleCompanyId: b.responsibleCompanyId
+                    ? ref('company', b.responsibleCompanyId, 'responsibleCompanyId')
+                    : null,
+                }
+              : {}),
+            ...(b.items ? { items: b.items } : {}),
+          },
+        ),
+      );
+      return {
+        status: 200,
+        body: toItpDetailDto(x, await namesFor(itpUserIds(x))),
+        headers: { etag: etag(x.package.version) },
+      };
+    },
+    activateItpPackage: async (input) => {
+      const x = await tx(input, (s) =>
+        d.itp.activate(
+          s,
+          project(input.params),
+          id('itpPackage', input.params.itpId, 'itp.not_found'),
+        ),
+      );
+      return {
+        status: 200,
+        body: toItpDetailDto(x, await namesFor(itpUserIds(x))),
+        headers: { etag: etag(x.package.version) },
+      };
+    },
+    signItpItem: async (input) => {
+      const x = await tx(input, (s) =>
+        d.itp.signItem(
+          s,
+          project(input.params),
+          id('itpPackage', input.params.itpId, 'itp.not_found'),
+          id('itpItem', input.params.itemId, 'itp.not_found'),
+          input.body,
+        ),
+      );
+      return {
+        status: 200,
+        body: toItpDetailDto(x, await namesFor(itpUserIds(x))),
+        headers: { etag: etag(x.package.version) },
+      };
+    },
+    getItpTemplate: async (input) => {
+      const t = d.itp.template(input.query.discipline);
+      return { status: 200, body: { key: t.key, items: t.items } };
     },
   });
 }
