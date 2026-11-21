@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { decodeId, encodeId, uuidv7 } from '@archova/domain';
-import { addMonths } from '@archova/mod-workforce';
+import { addMonths, findInductionReminders } from '@archova/mod-workforce';
 import { hexToBase64, quarantineKey } from '@archova/mod-files';
 import { localDateOf } from '@archova/time';
 import { createHash } from 'node:crypto';
@@ -413,6 +413,43 @@ describe('online inductions (product/14)', () => {
         credentials: [{ kind: 'white_card', status: 'sighted', expiresOn: null }],
       }),
     ]);
+
+    // Expiry depth: a signed induction nearing its end is flagged, and one that has lapsed can be redone.
+    const ctx: Parameters<typeof t.adminDb.withTenantTx>[0] = {
+      orgId: decodeId('org', s.org.id)!,
+      userId: decodeId('user', s.sm.userId)!,
+      principalType: 'member',
+      orgRole: 'owner',
+      entitlements: { plan: 'x', state: 'active', modules: [], limits: {} },
+      requestId: 't',
+    };
+    const setExpiry = (daysFromToday: number) =>
+      t.adminDb.withTenantTx(ctx, async ({ tx }) => {
+        // A signed completion is sealed; the test ages it directly, the way time would.
+        await tx.execute(sql`set local session_replication_role = replica`);
+        await tx.execute(sql`update workforce.induction_completions
+          set expires_on = (now() at time zone ${TZ})::date + ${daysFromToday}::int
+          where id = ${decodeId('inductionCompletion', c.id)!}`);
+      });
+    await setExpiry(10);
+    const soon = (await s.sm.browser.get(`${s.base}/induction-register`)).json().data[0];
+    expect(soon).toMatchObject({ status: 'current', daysToExpiry: 10, expiringSoon: true });
+    const found = await t.adminDb.withTenantTx(ctx, (sc) => findInductionReminders(sc, new Date()));
+    expect(found.filter((r) => r.completionId === decodeId('inductionCompletion', c.id)!)).toEqual([
+      expect.objectContaining({ threshold: 30, workerName: expect.any(String) }),
+    ]);
+    await setExpiry(-1);
+    expect((await s.sm.browser.get(`${s.base}/induction-register`)).json().data[0]).toMatchObject({
+      status: 'expired',
+      expiringSoon: false,
+    });
+    const redo = await s.sub.browser.post(`${s.base}/induction-completions`, {});
+    expect(redo.json()).toMatchObject({ status: 'in_progress', versionNumber: 1 });
+    expect(redo.json().id).not.toBe(c.id);
+    expect((await s.sub.browser.post(`${s.base}/induction-completions`, {})).json().id).toBe(
+      redo.json().id,
+    );
+    await setExpiry(300);
 
     // A material change: everyone redoes it before their next sign-in (IND-AC10).
     await s.sub.browser.post(`${s.base}/attendance/sign-out`, { gateCode: s.code });

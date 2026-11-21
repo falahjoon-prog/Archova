@@ -27102,6 +27102,7 @@ components:
                 cover,
                 warranty_item,
                 declaration,
+                induction,
               ],
           }
         entityId: { type: string, description: Public id of the record the notification is about. }
@@ -39388,12 +39389,18 @@ components:
           items: { $ref: '#/components/schemas/FileRef' }
     InductionRegisterEntry:
       type: object
-      required: [worker, status, completion, credentials]
+      required: [worker, status, daysToExpiry, expiringSoon, completion, credentials]
       properties:
         worker: { $ref: '#/components/schemas/Worker' }
         status:
           type: string
           enum: [current, needs_reinduction, expired, in_progress, not_inducted]
+        daysToExpiry:
+          description: Whole days until the signed induction runs out (negative once it has). Null when there is no signed induction or it never expires.
+          type: [integer, 'null']
+        expiringSoon:
+          description: A current induction that runs out within 30 days, so it can be redone before it blocks sign-in.
+          type: boolean
         completion:
           oneOf:
             - type: object

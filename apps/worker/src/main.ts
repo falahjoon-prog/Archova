@@ -38,6 +38,7 @@ import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
+import { inductionExpiry } from './jobs/induction-expiry';
 import { warrantyExpiry } from './jobs/warranty-expiry';
 import { createTwilioSender } from './sms';
 import { plantContractorNotices } from './jobs/plant-contractor-notices';
@@ -134,6 +135,7 @@ async function main() {
     correspondenceEmails(emailSender, config.email.appBaseUrl),
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
+    inductionExpiry,
     walletRetention(),
     auditVerify,
     warrantyExpiry,

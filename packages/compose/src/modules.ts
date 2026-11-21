@@ -581,6 +581,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       documents: documents.api.nova,
       quality: quality.api.nova,
       financials: financials.api,
+      workforce: () => workforce.api,
       scheduling: () => schedulingForNova!(),
       safety: safety.api.nova,
     }),

@@ -421,6 +421,8 @@ export const inductionBuilderSource: InductionBuilderSource = {
             version: 1,
           },
           status: 'current',
+          daysToExpiry: 316,
+          expiringSoon: false,
           completion: {
             id: 'icm_preview1',
             versionNumber: 1,

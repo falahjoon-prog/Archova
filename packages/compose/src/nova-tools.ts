@@ -99,6 +99,14 @@ export interface NovaToolSources {
     ) => Promise<{ restricted: boolean; rows: Array<{ name: string; riskFlag: string | null }> }>;
   };
   /** Created after `ai`, so read lazily. */
+  workforce: () => {
+    expiringInductionsForNova: (
+      s: TenantScope,
+      projectId: string,
+      o: { limit: number },
+    ) => Promise<Listing>;
+  };
+  /** Created after `ai`, so read lazily. */
   scheduling: () => {
     slipSignals: (
       s: TenantScope,
@@ -226,6 +234,21 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
           projectId,
           'No open inspections are past their due date.',
           await src.quality.overdueInspections(scope, projectId, { limit: LIMIT }),
+        ),
+    },
+    {
+      name: 'expiring_inductions',
+      description:
+        'Workers whose site induction has expired, is out of date, or runs out within 30 days, soonest first. Use before rostering or when asked who needs re-inducting. Site managers only.',
+      params: {},
+      run: async (scope, projectId) =>
+        listing(
+          'Inductions to redo',
+          'induction',
+          'the induction register',
+          projectId,
+          'Nobody on this project has an induction that has lapsed or runs out in the next 30 days.',
+          await src.workforce().expiringInductionsForNova(scope, projectId, { limit: LIMIT }),
         ),
     },
     {

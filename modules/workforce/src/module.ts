@@ -127,6 +127,8 @@ export function createWorkforceModule(
       getInductionVersion: inductions.versionForAi,
       /** For `safety` (pre-task plans): each login's induction status on a project today. */
       inductionStatusForUsers: inductions.statusForUsers,
+      /** For Nova (`compose/nova-tools`): workers whose induction has lapsed or runs out within 30 days. Site managers only. */
+      expiringInductionsForNova: inductions.expiringForNova,
       /** For `reporting` (regulator evidence pack): completed inductions in a date range. */
       inductionEvidence: inductions.evidenceRecords,
       /** For `reporting` (Nova project risk): subcontractor insurance read through live wallet grants. */

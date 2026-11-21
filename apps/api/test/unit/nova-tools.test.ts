@@ -33,6 +33,9 @@ const denied: NovaToolSources = {
       throw new AppError('access.denied');
     },
   },
+  workforce: () => ({
+    expiringInductionsForNova: async () => ({ rows: [], truncated: false, restricted: true }),
+  }),
   safety: {
     subcontractorRisk: async () => ({ restricted: true, rows: [] }),
   },

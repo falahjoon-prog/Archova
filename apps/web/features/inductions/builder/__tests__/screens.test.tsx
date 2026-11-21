@@ -103,7 +103,8 @@ describe('Induction builder screens (preview data)', () => {
   it('shows the register with status and the version completed', async () => {
     renderInProject(<InductionRegisterScreen />);
     expect(await screen.findByText('Sam Worker')).toBeTruthy();
-    expect(screen.getByText('Current')).toBeTruthy();
+    expect(screen.getAllByText('Current').length).toBeGreaterThan(0);
+    expect(screen.getByText('Induction status by company')).toBeTruthy();
     expect(screen.getByText('v1')).toBeTruthy();
     expect(screen.getByText('White card')).toBeTruthy();
   });

@@ -1,7 +1,7 @@
 // Pure induction rules (product/14 IND-AC1–AC10, compliance/04 §2–§4, X58).
 import { createHash } from 'node:crypto';
 import { INDUCTION_SECTIONS, type InductionSection } from '@archova/ai-prompts';
-import { parseLocalDate, type LocalDate } from '@archova/time';
+import { daysBetween, parseLocalDate, type LocalDate } from '@archova/time';
 
 export { INDUCTION_SECTIONS, type InductionSection };
 export type SectionKey = InductionSection | 'extra';
@@ -277,4 +277,54 @@ export function addMonths(date: LocalDate, months: number): LocalDate {
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const d = Math.min(day, last);
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` as LocalDate;
+}
+
+/** Days before expiry at which a worker and the site team are reminded; 0 is the expiry day and after. */
+export type ReminderThreshold = 30 | 7 | 0;
+export const EXPIRING_SOON_DAYS = 30;
+
+/** Whole days from today to the expiry date (negative once expired); null when the induction never expires. */
+export function daysToExpiry(expiresOn: string | null, today: LocalDate): number | null {
+  return expiresOn ? daysBetween(today, expiresOn as LocalDate) : null;
+}
+
+/** The most urgent reminder step reached, or null more than 30 days out (so switching reminders on does not flood). */
+export function reminderThreshold(
+  expiresOn: string | null,
+  today: LocalDate,
+): ReminderThreshold | null {
+  const left = daysToExpiry(expiresOn, today);
+  if (left === null) return null;
+  if (left <= 0) return 0;
+  if (left <= 7) return 7;
+  return left <= EXPIRING_SOON_DAYS ? 30 : null;
+}
+
+/** A current induction that lapses within 30 days: still valid today, so it can be redone before it blocks sign-in. */
+export function isExpiringSoon(
+  status: InductionStatus,
+  expiresOn: string | null,
+  today: LocalDate,
+): boolean {
+  const left = daysToExpiry(expiresOn, today);
+  return status === 'current' && left !== null && left <= EXPIRING_SOON_DAYS;
+}
+
+/** Plain-language reminder wording (no personal details beyond the name the supervisor already sees). */
+export function reminderText(
+  name: string,
+  threshold: ReminderThreshold,
+  expiresOn: string,
+  audience: 'worker' | 'supervisor',
+): { title: string; body: string } {
+  const who = audience === 'worker' ? 'Your site induction' : `${name}'s site induction`;
+  if (threshold === 0)
+    return {
+      title: `${who} has expired`,
+      body: `It ran out on ${expiresOn}. ${audience === 'worker' ? 'Redo it before you next sign in.' : 'They need to redo it before they can sign in.'}`,
+    };
+  return {
+    title: `${who} expires in ${threshold === 7 ? '7' : '30'} days`,
+    body: `It runs out on ${expiresOn}. ${audience === 'worker' ? 'Redo it before then so you can keep signing in.' : 'Ask them to redo it, or roster someone else.'}`,
+  };
 }
