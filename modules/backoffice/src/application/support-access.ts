@@ -319,7 +319,11 @@ export function createSupportAccessService(
         expiresAt,
       });
       // Staff act from a global transaction, but the event belongs to the customer's chain, so the transaction is
-      // pointed at that org for this one write (the audit function refuses any other mismatch).
+      // pointed at that org for this one write (the audit function refuses any other mismatch), then put back.
+      const before = (await t.execute(sql`select current_setting('app.org_id', true) as v`))
+        .rows[0] as {
+        v: string | null;
+      };
       await t.execute(sql`select set_config('app.org_id', ${orgId}, true)`);
       await recordSecurityEvent(t, {
         orgId,
@@ -330,6 +334,7 @@ export function createSupportAccessService(
         targetId: id,
         metadata: { ticketRef: g.ticketRef, grantId: g.id, expiresAt: expiresAt.toISOString() },
       });
+      await t.execute(sql`select set_config('app.org_id', ${before.v ?? ''}, true)`);
       notice = {
         orgId,
         staffName: staff.name,
