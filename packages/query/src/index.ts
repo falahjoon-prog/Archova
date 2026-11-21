@@ -72,6 +72,7 @@ export type ProjectTool =
   | 'incidents'
   | 'toolbox'
   | 'pretask'
+  | 'safety-scorecards'
   | 'environment'
   | 'permits'
   | 'handover'

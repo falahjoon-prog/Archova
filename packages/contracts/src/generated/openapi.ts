@@ -11544,6 +11544,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Safety scorecard for every company on the project, worst first. The history is the company's record across all the org's projects (incidents, overdue corrective actions, SWMS, induction at pre-task sign-on, safety observations), so a repeat offender shows before they are re-engaged. Builder staff only. A prompt to look, never a ban. */
+        get: operations["listSafetyScorecards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy": {
         parameters: {
             query?: never;
@@ -27867,6 +27887,42 @@ export interface components {
             toReview: number;
             topHazards: components["schemas"]["PretaskInsightHazard"][];
             byCompany: components["schemas"]["PretaskInsightCompany"][];
+        };
+        SafetyScorecardComponent: {
+            /** @enum {string} */
+            key: "incidents" | "actions" | "swms" | "inductions" | "findings";
+            label: string;
+            /** @description Points lost */
+            lost: number;
+            max: number;
+            detail: string;
+        };
+        SafetyScorecard: {
+            companyId: string;
+            name: string;
+            /** @description 100 is best. */
+            score: number;
+            /** @enum {string} */
+            rating: "good" | "watch" | "elevated" | "high";
+            /**
+             * @description Last 90 days of incidents against the 90 before.
+             * @enum {string}
+             */
+            trend: "improving" | "steady" | "worsening";
+            components: components["schemas"]["SafetyScorecardComponent"][];
+            flags: string[];
+            /** @description One line Nova shows before the company is added to a project. Null when there is nothing to flag. */
+            riskFlag: string | null;
+            counts: {
+                incidents12m: number;
+                incidents90d: number;
+                notifiable12m: number;
+                projects: number;
+                overdueActions: number;
+            };
+        };
+        SafetyScorecardList: {
+            data: components["schemas"]["SafetyScorecard"][];
         };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
@@ -48280,6 +48336,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PretaskInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSafetyScorecards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyScorecardList"];
                 };
             };
             default: components["responses"]["Problem"];

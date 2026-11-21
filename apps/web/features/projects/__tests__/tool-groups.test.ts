@@ -32,6 +32,7 @@ describe('projectToolGroups', () => {
       'SWMS',
       'Toolbox talks',
       'Pre-task plans',
+      'Safety scorecards',
       'Incidents',
       'Safety signals',
       'Inductions',

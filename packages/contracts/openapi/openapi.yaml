@@ -15731,6 +15731,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PretaskInsights' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-scorecards:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSafetyScorecards
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.scorecards.read
+      summary: Safety scorecard for every company on the project, worst first. The history is the company's record across all the org's projects (incidents, overdue corrective actions, SWMS, induction at pre-task sign-on, safety observations), so a repeat offender shows before they are re-engaged. Builder staff only. A prompt to look, never a ban.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyScorecardList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -41257,6 +41274,56 @@ components:
         byCompany:
           type: array
           items: { $ref: '#/components/schemas/PretaskInsightCompany' }
+    SafetyScorecardComponent:
+      type: object
+      required: [key, label, lost, max, detail]
+      properties:
+        key: { type: string, enum: [incidents, actions, swms, inductions, findings] }
+        label: { type: string }
+        lost: { type: integer, description: Points lost, never more than max. }
+        max: { type: integer }
+        detail: { type: string }
+    SafetyScorecard:
+      type: object
+      required: [companyId, name, score, rating, trend, components, flags, riskFlag, counts]
+      properties:
+        companyId: { type: string }
+        name: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100, description: 100 is best. }
+        rating: { type: string, enum: [good, watch, elevated, high] }
+        trend:
+          {
+            type: string,
+            enum: [improving, steady, worsening],
+            description: Last 90 days of incidents against the 90 before.,
+          }
+        components:
+          type: array
+          items: { $ref: '#/components/schemas/SafetyScorecardComponent' }
+        flags:
+          type: array
+          items: { type: string }
+        riskFlag:
+          {
+            type: [string, 'null'],
+            description: One line Nova shows before the company is added to a project. Null when there is nothing to flag.,
+          }
+        counts:
+          type: object
+          required: [incidents12m, incidents90d, notifiable12m, projects, overdueActions]
+          properties:
+            incidents12m: { type: integer }
+            incidents90d: { type: integer }
+            notifiable12m: { type: integer }
+            projects: { type: integer }
+            overdueActions: { type: integer }
+    SafetyScorecardList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SafetyScorecard' }
     IncidentPage:
       type: object
       required: [data, nextCursor]
