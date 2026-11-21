@@ -1,6 +1,7 @@
 import { encodeId } from '@archova/domain';
-import type { AllocationRow, AssetRow, PlanRow, RecordRow } from '../application/plant';
-import type { DueState, PlantFlag } from '../domain/plant';
+import type { ConditionRow } from '../application/condition';
+import type { AllocationRow, AssetRow, NoticeRow, PlanRow, RecordRow } from '../application/plant';
+import { noticeSmsText, type DueState, type PlantFlag } from '../domain/plant';
 
 export const toAssetDto = (a: AssetRow) => ({
   id: encodeId('plantAsset', a.id),
@@ -15,6 +16,9 @@ export const toAssetDto = (a: AssetRow) => ({
   dailyRateCents: a.dailyRateCents,
   status: a.status,
   notes: a.notes,
+  contractorName: a.contractorName,
+  contractorEmail: a.contractorEmail,
+  contractorPhone: a.contractorPhone,
   version: a.version,
 });
 
@@ -70,4 +74,33 @@ export const toFlagDto = (f: PlantFlag) => ({
     : null,
   message: f.message,
   date: f.date,
+});
+
+export const toNoticeDto = (n: NoticeRow) => ({
+  id: encodeId('plantNotice', n.id),
+  assetId: encodeId('plantAsset', n.assetId),
+  planId: encodeId('plantPlan', n.planId),
+  recipientName: n.recipientName,
+  channel: n.channel,
+  recipientEmail: n.recipientEmail,
+  recipientPhone: n.recipientPhone,
+  text: noticeSmsText(n.issue, n.message),
+  subject: n.subject,
+  issue: n.issue,
+  dueOn: n.dueOn,
+  message: n.message,
+  status: n.status,
+  createdAt: n.createdAt.toISOString(),
+  sentAt: n.sentAt ? n.sentAt.toISOString() : null,
+});
+
+export const toConditionDto = (c: ConditionRow) => ({
+  id: encodeId('plantCondition', c.id),
+  assetId: encodeId('plantAsset', c.assetId),
+  kind: c.kind,
+  allocationId: c.allocationId ? encodeId('plantAllocation', c.allocationId) : null,
+  recordId: c.recordId ? encodeId('plantRecord', c.recordId) : null,
+  takenOn: c.takenOn,
+  note: c.note,
+  fileIds: c.fileIds.map((f) => encodeId('file', f)),
 });

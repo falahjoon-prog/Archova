@@ -5,6 +5,8 @@ import type {
   IncidentActionFromSource,
   IncidentDetail,
   PretaskCrew,
+  PretaskInsights,
+  PretaskTemplate,
   PretaskPlan,
   PretaskPlanDetail,
   PretaskSuggestion,
@@ -21,7 +23,7 @@ import type { IncidentService } from '../application/incidents';
 import { swmsLabel, type HrcwCategory } from '../domain/swms';
 import type { SwmsService, SwmsView } from '../application/swms';
 import { pretaskLabel, type HazardSuggestion } from '../domain/pretask';
-import type { CrewView, PlanRow, PretaskService } from '../application/pretask';
+import type { CrewView, PlanRow, PretaskService, TemplateRow } from '../application/pretask';
 import { toolboxLabel, type TopicSuggestion } from '../domain/toolbox';
 import type { AttendeeView, TalkRow, ToolboxService, TopicRow } from '../application/toolbox';
 
@@ -342,3 +344,31 @@ export const toPlanDetail = (
 });
 
 export const toHazardSuggestionDto = (s: HazardSuggestion): PretaskSuggestion => ({ ...s });
+
+export const toTemplateDto = (t: TemplateRow): PretaskTemplate => ({
+  id: encodeId('pretaskTemplate', t.id),
+  name: t.name,
+  taskTitle: t.taskTitle,
+  swmsId: t.swmsId ? encodeId('swms', t.swmsId) : null,
+  hazards: t.hazards,
+  isActive: t.isActive,
+  version: t.version,
+});
+
+export const toInsightsDto = (
+  i: Awaited<ReturnType<PretaskService['insights']>>,
+): PretaskInsights => ({
+  days: i.days,
+  plans: i.plans,
+  closed: i.closed,
+  reviewed: i.reviewed,
+  toReview: i.toReview,
+  topHazards: i.topHazards.map((h) => ({
+    ...h,
+    companyIds: h.companyIds.map((c) => encodeId('company', c)),
+  })),
+  byCompany: i.byCompany.map((c) => ({
+    ...c,
+    companyId: c.companyId ? encodeId('company', c.companyId) : null,
+  })),
+});

@@ -45,6 +45,7 @@ export function createFilesModule(
     store: ObjectStore;
     scanner: MalwareScanner;
     uploadPermissions?: Readonly<Record<string, string>>;
+    orgUploadPermissions?: Readonly<Record<string, string>>;
     tiles: TileUrls;
   },
 ) {

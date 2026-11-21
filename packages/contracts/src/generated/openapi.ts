@@ -689,6 +689,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/contractor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's contractor profile (404 `contractor.no_profile` if they have not set one up). */
+        get: operations["getMyContractorProfile"];
+        /**
+         * Create or update the caller's contractor profile (free tier; no organisation needed).
+         * @description A contractor is a normal account (`POST /v1/auth/signup`) plus this profile. Any profession. The profile is
+         *     private: companies see only the name and profession on a link request, and the phone once they accept.
+         */
+        put: operations["saveMyContractorProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find a company by name (at least 3 characters; 10 results at most; rate limited).
+         * @description Returns only the name, the last three ABN digits and the caller's own link status. There is no public
+         *     page and no count or paging, so the list cannot be walked. Needs a contractor profile.
+         */
+        get: operations["searchContractorCompanies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The companies the caller has asked to work for or works for, newest first. Searchable and paged. */
+        get: operations["listMyContractorLinks"];
+        put?: never;
+        /**
+         * Ask a company to add the caller as a contractor (idempotent).
+         * @description `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` after the company
+         *     rejected the caller (30 days) or blocked them (for good); the text never says which. `409
+         *     contractor_link.too_many_requests` at 50 open requests; `409 contractor_link.company_busy` when the company
+         *     has 100 waiting. `403 contractor.email_unverified` where verified email is required.
+         */
+        post: operations["requestContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/contractor/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel a pending request or end an accepted link (idempotent; the row stays, as a status change). */
+        delete: operations["removeMyContractorLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Contractors who asked to work for, or work for, this company. Org owners and admins only. */
+        get: operations["listCompanyContractors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether contractors can find this company by name. Org owners and admins only. */
+        get: operations["getContractorListing"];
+        /** Turn name search on or off. Off by default; a company is invisible to contractors until it opts in. */
+        put: operations["setContractorListing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block a contractor for good (idempotent). They see it as a rejection. Org owners and admins only. */
+        post: operations["blockContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a pending contractor request (idempotent). Org owners and admins only. */
+        post: operations["acceptContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending contractor request (idempotent). Org owners and admins only. */
+        post: operations["rejectContractorLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/contractors/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End an accepted link (idempotent). Org owners and admins only. */
+        delete: operations["endContractorLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/plant/assets": {
         parameters: {
             query?: never;
@@ -888,6 +1093,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        /** Photos of a machine's condition at hire-in, hire-out and after a service, newest first. */
+        get: operations["listPlantConditionChecks"];
+        put?: never;
+        /**
+         * Record the condition of a machine with photos.
+         * @description Each photo must be a ready file uploaded with module `plant` (an org-level upload). A hire-in or hire-out may name the allocation, and a service the maintenance record, both of this machine.
+         */
+        post: operations["createPlantConditionCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/plant/utilisation": {
         parameters: {
             query?: never;
@@ -904,6 +1133,50 @@ export interface paths {
          *     rate or without permission to see rates. `projects` shows allocated days and cost per project.
          */
         get: operations["getPlantUtilisation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the machine's contractor about a flagged service, inspection or certificate.
+         * @description Queues an email to the contractor address on the machine; no Archova account is needed. The text is built from the
+         *     plan (machine, job, due date) plus the optional note. Refused with `plant.bad_state` when the machine has no
+         *     contractor email, the plan has nothing flagged, or the contractor was already notified about it in the last 24 hours.
+         */
+        post: operations["createPlantContractorNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/plant/contractor-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Notices sent to contractors in the last 90 days, newest first. */
+        get: operations["listPlantContractorNotices"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11112,6 +11385,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Reusable plan templates on the project. Retired ones only with includeInactive. */
+        get: operations["listPretaskTemplates"];
+        put?: never;
+        /** Save the hazards and controls a kind of task usually has, so a plan can start from them. Needs the review permission. */
+        post: operations["createPretaskTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["PretaskTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Retire or restore a template. */
+        patch: operations["updatePretaskTemplate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person. */
+        get: operations["getPretaskInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a new open plan from an earlier one with the same task, hazards, SWMS and people, and nobody signed. Today's date unless workDate is given. */
+        post: operations["copyPretaskPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
         parameters: {
             query?: never;
@@ -18205,6 +18561,63 @@ export interface components {
             title: string;
             subtitle?: string;
         };
+        /** @enum {string} */
+        ContractorLinkStatus: "requested" | "accepted" | "rejected" | "ended" | "cancelled" | "blocked";
+        ContractorListing: {
+            listed: boolean;
+        };
+        ContractorProfileInput: {
+            /** @description The business or trading name companies see. */
+            displayName: string;
+            /** @description Free text, any profession (electrician, architect, certifier). */
+            profession: string;
+            phone?: string | null;
+        };
+        ContractorProfile: {
+            displayName: string;
+            profession: string;
+            phone: string | null;
+        };
+        ContractorCompany: {
+            /** @description An opaque listing id */
+            id: string;
+            name: string;
+            abnLast3: string | null;
+            linkStatus: components["schemas"]["ContractorLinkStatus"] | null;
+        };
+        ContractorCompanyList: {
+            data: components["schemas"]["ContractorCompany"][];
+        };
+        ContractorLink: {
+            id: string;
+            companyName: string;
+            status: components["schemas"]["ContractorLinkStatus"];
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        ContractorLinkPage: {
+            data: components["schemas"]["ContractorLink"][];
+            nextCursor: string | null;
+        };
+        CompanyContractor: {
+            id: string;
+            displayName: string;
+            profession: string;
+            /** @description Only once the link is accepted. */
+            phone: string | null;
+            status: components["schemas"]["ContractorLinkStatus"];
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        CompanyContractorPage: {
+            data: components["schemas"]["CompanyContractor"][];
+            nextCursor: string | null;
+            pendingCount: number;
+        };
         Bookmark: {
             id: string;
             entityType: components["schemas"]["BookmarkEntityType"];
@@ -18238,6 +18651,12 @@ export interface components {
             dailyRateCents: number | null;
             status: components["schemas"]["PlantAssetStatus"];
             notes: string | null;
+            /** @description Who services the machine. */
+            contractorName: string | null;
+            /** @description Where notices about flagged maintenance are sent. The contractor needs no Archova account. */
+            contractorEmail: string | null;
+            /** @description Contractor mobile or landline, in international form (+61...). */
+            contractorPhone: string | null;
             version: number;
         };
         PlantAssetList: {
@@ -18255,6 +18674,9 @@ export interface components {
             serialNumber?: string;
             dailyRateCents?: number;
             notes?: string;
+            contractorName?: string;
+            contractorEmail?: string;
+            contractorPhone?: string;
         };
         UpdatePlantAssetRequest: {
             name?: string;
@@ -18267,6 +18689,11 @@ export interface components {
             serialNumber?: string;
             dailyRateCents?: number;
             notes?: string;
+            contractorName?: string;
+            /** @description Empty clears it. */
+            contractorEmail?: string;
+            /** @description Empty clears it. */
+            contractorPhone?: string;
             status?: components["schemas"]["PlantAssetStatus"];
         };
         PlantAllocation: {
@@ -18354,6 +18781,30 @@ export interface components {
         PlantMaintenanceRecordList: {
             data: components["schemas"]["PlantMaintenanceRecord"][];
         };
+        /** @enum {string} */
+        PlantConditionKind: "hire_in" | "hire_out" | "service";
+        PlantConditionCheck: {
+            id: string;
+            assetId: string;
+            kind: components["schemas"]["PlantConditionKind"];
+            allocationId: string | null;
+            recordId: string | null;
+            /** Format: date */
+            takenOn: string;
+            note: string | null;
+            /** @description Photos, as file ids. */
+            fileIds: string[];
+        };
+        PlantConditionCheckList: {
+            data: components["schemas"]["PlantConditionCheck"][];
+        };
+        CreatePlantConditionCheckRequest: {
+            kind: components["schemas"]["PlantConditionKind"];
+            fileIds: string[];
+            note?: string;
+            allocationId?: string;
+            recordId?: string;
+        };
         PlantUtilisation: {
             /** Format: date */
             from: string;
@@ -18374,6 +18825,45 @@ export interface components {
                 bookedDays: number;
                 costCents: number | null;
             }[];
+        };
+        PlantContractorNotice: {
+            id: string;
+            assetId: string;
+            planId: string;
+            recipientName: string;
+            /**
+             * @description `phone` means the sender texted from their own phone.
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "phone";
+            recipientEmail: string | null;
+            recipientPhone: string | null;
+            /** @description The text message for this notice */
+            text: string;
+            subject: string;
+            issue: string;
+            /** Format: date */
+            dueOn: string;
+            message: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "failed";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        PlantContractorNoticeList: {
+            data: components["schemas"]["PlantContractorNotice"][];
+        };
+        CreatePlantContractorNoticeRequest: {
+            planId: string;
+            message?: string;
+            /**
+             * @description `email` and `sms` are sent by Archova (`sms` needs the SMS provider); `phone` records that the sender texted from their own phone.
+             * @default email
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "phone";
         };
         PlantFlag: {
             /** @enum {string} */
@@ -27102,6 +27592,55 @@ export interface components {
         PretaskSuggestionList: {
             data: components["schemas"]["PretaskSuggestion"][];
         };
+        PretaskTemplate: {
+            id: string;
+            name: string;
+            taskTitle: string;
+            swmsId: string | null;
+            hazards: components["schemas"]["PretaskHazard"][];
+            isActive: boolean;
+            version: number;
+        };
+        PretaskTemplateList: {
+            data: components["schemas"]["PretaskTemplate"][];
+        };
+        CreatePretaskTemplateRequest: {
+            name: string;
+            taskTitle: string;
+            swmsId?: string | null;
+            hazards: components["schemas"]["PretaskHazard"][];
+        };
+        UpdatePretaskTemplateRequest: {
+            isActive: boolean;
+        };
+        CopyPretaskPlanRequest: {
+            /** Format: date */
+            workDate?: string;
+        };
+        PretaskInsightHazard: {
+            hazard: string;
+            plans: number;
+            /** @description Plans where this hazard started at high or extreme risk. */
+            highRiskPlans: number;
+            /** Format: date */
+            lastSeen: string;
+            companyIds: string[];
+        };
+        PretaskInsightCompany: {
+            companyId: string | null;
+            plans: number;
+            closed: number;
+            highRiskHazards: number;
+        };
+        PretaskInsights: {
+            days: number;
+            plans: number;
+            closed: number;
+            reviewed: number;
+            toReview: number;
+            topHazards: components["schemas"]["PretaskInsightHazard"][];
+            byCompany: components["schemas"]["PretaskInsightCompany"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -28440,6 +28979,7 @@ export interface components {
         ToolboxTalkId: string;
         ToolboxAttendeeId: string;
         PretaskPlanId: string;
+        PretaskTemplateId: string;
         PretaskCrewId: string;
         IncidentId: string;
         IncidentActionId: string;
@@ -28498,6 +29038,7 @@ export interface components {
         ApiTokenId: string;
         NotificationId: string;
         BookmarkId: string;
+        ContractorLinkId: string;
         AccountingProvider: "xero" | "myob";
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
@@ -29519,6 +30060,321 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getMyContractorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorProfile"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveMyContractorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractorProfileInput"];
+            };
+        };
+        responses: {
+            /** @description The saved profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorProfile"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchContractorCompanies: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching companies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorCompanyList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMyContractorLinks: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: components["schemas"]["ContractorLinkStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorLinkPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    requestContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    listingId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The link (status `requested`, or the existing one) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeMyContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCompanyContractors: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: components["schemas"]["ContractorLinkStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractorPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractorListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorListing"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setContractorListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractorListing"];
+            };
+        };
+        responses: {
+            /** @description The setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorListing"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    blockContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyContractor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    endContractorLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                linkId: components["parameters"]["ContractorLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listPlantAssets: {
         parameters: {
             query?: never;
@@ -29790,6 +30646,60 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listPlantConditionChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantConditionCheckList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantConditionCheck: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantConditionCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantConditionCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getPlantUtilisation: {
         parameters: {
             query: {
@@ -29811,6 +30721,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlantUtilisation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPlantContractorNotice: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                assetId: components["parameters"]["PlantAssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantContractorNoticeRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantContractorNotice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPlantContractorNotices: {
+        parameters: {
+            query?: {
+                assetId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantContractorNoticeList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -46856,6 +47821,154 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskPlanDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPretaskTemplates: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPretaskTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePretaskTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePretaskTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["PretaskTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePretaskTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPretaskInsights: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PretaskInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    copyPretaskPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                planId: components["parameters"]["PretaskPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CopyPretaskPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
                 headers: {
                     ETag: components["headers"]["ETag"];
                     [name: string]: unknown;

@@ -8,7 +8,13 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { AssetCategory, AssetStatus, Ownership, PlanKind } from '../domain/plant';
+import type {
+  AssetCategory,
+  AssetStatus,
+  ConditionKind,
+  Ownership,
+  PlanKind,
+} from '../domain/plant';
 
 export const plantSchema = pgSchema('plant');
 
@@ -26,6 +32,9 @@ export const assets = plantSchema.table('assets', {
   dailyRateCents: bigint('daily_rate_cents', { mode: 'number' }),
   status: text('status').$type<AssetStatus>().notNull().default('active'),
   notes: text('notes'),
+  contractorName: text('contractor_name'),
+  contractorEmail: text('contractor_email'),
+  contractorPhone: text('contractor_phone'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
@@ -97,6 +106,50 @@ export const maintenanceRecords = plantSchema.table('maintenance_records', {
   performedBy: text('performed_by'),
   note: text('note'),
   costCents: bigint('cost_cents', { mode: 'number' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const contractorNotices = plantSchema.table('contractor_notices', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => maintenancePlans.id),
+  senderId: uuid('sender_id').notNull(),
+  recipientName: text('recipient_name').notNull(),
+  recipientEmail: text('recipient_email'),
+  recipientPhone: text('recipient_phone'),
+  channel: text('channel').$type<'email' | 'sms' | 'phone'>().notNull().default('email'),
+  subject: text('subject').notNull(),
+  issue: text('issue').notNull(),
+  dueOn: date('due_on').notNull(),
+  message: text('message').notNull().default(''),
+  status: text('status')
+    .$type<'queued' | 'sending' | 'sent' | 'failed'>()
+    .notNull()
+    .default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+});
+
+export const conditionChecks = plantSchema.table('condition_checks', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+  kind: text('kind').$type<ConditionKind>().notNull(),
+  allocationId: uuid('allocation_id').references(() => allocations.id),
+  recordId: uuid('record_id').references(() => maintenanceRecords.id),
+  takenOn: date('taken_on').notNull(),
+  note: text('note'),
+  fileIds: uuid('file_ids').array().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });

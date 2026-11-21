@@ -34,6 +34,13 @@ export const FLAG_REGISTRY: readonly FlagDef[] = [
     owner: 'Ben',
     removeBy: '2027-06-30',
   },
+  {
+    key: 'plant_sms',
+    description:
+      'Plant: send contractor notices as texts from Archova (needs the Twilio settings on the worker).',
+    owner: 'Ben',
+    removeBy: '2027-06-30',
+  },
 ];
 
 export const FLAG_KEYS = FLAG_REGISTRY.map((f) => f.key);

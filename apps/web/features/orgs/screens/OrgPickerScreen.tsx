@@ -48,6 +48,12 @@ export function OrgPickerScreen() {
           </ul>
         ) : null}
       </Card>
+      <p className="u-center">
+        Work for companies as a contractor?{' '}
+        <Link className="link" href={webRoutes.contractor()}>
+          Open the contractor portal
+        </Link>
+      </p>
       <div className="u-center">
         <SignOutButton />
       </div>

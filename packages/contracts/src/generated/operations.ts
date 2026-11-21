@@ -129,6 +129,54 @@ export const DeleteBookmarkParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "bookmarkId": z.string().regex(new RegExp("^bmk_[0-9A-Za-z]{26}$")),
 });
+export const SaveMyContractorProfileBody = s.ContractorProfileInputSchema;
+export const SearchContractorCompaniesQuery = z.object({
+  "q": z.string().min(3).max(100),
+});
+export const ListMyContractorLinksQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "status": s.ContractorLinkStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const RequestContractorLinkBody = z.object({
+  "listingId": z.string().regex(new RegExp("^cls_[0-9A-Za-z]{26}$")),
+}).strict();
+export const RemoveMyContractorLinkParams = z.object({
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContractorsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCompanyContractorsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "status": s.ContractorLinkStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const GetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SetContractorListingBody = s.ContractorListingSchema;
+export const BlockContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const AcceptContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const RejectContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
+export const EndContractorLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+});
 export const ListPlantAssetsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -179,12 +227,32 @@ export const ListPlantMaintenanceRecordsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
 });
+export const ListPlantConditionChecksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantConditionCheckParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantConditionCheckBody = s.CreatePlantConditionCheckRequestSchema;
 export const GetPlantUtilisationParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const GetPlantUtilisationQuery = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
+});
+export const CreatePlantContractorNoticeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+});
+export const CreatePlantContractorNoticeBody = s.CreatePlantContractorNoticeRequestSchema;
+export const ListPlantContractorNoticesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPlantContractorNoticesQuery = z.object({
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")).optional(),
 });
 export const ListPlantFlagsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3667,6 +3735,37 @@ export const ClearPretaskSignatureParams = z.object({
   "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
   "crewId": z.string().regex(new RegExp("^ptw_[0-9A-Za-z]{26}$")),
 });
+export const ListPretaskTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPretaskTemplatesQuery = z.object({
+  "includeInactive": z.enum(["true", "false"]).optional(),
+});
+export const CreatePretaskTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreatePretaskTemplateBody = s.CreatePretaskTemplateRequestSchema;
+export const UpdatePretaskTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^ptt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePretaskTemplateBody = s.UpdatePretaskTemplateRequestSchema;
+export const GetPretaskInsightsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetPretaskInsightsQuery = z.object({
+  "days": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const CopyPretaskPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ptk_[0-9A-Za-z]{26}$")),
+});
+export const CopyPretaskPlanBody = s.CopyPretaskPlanRequestSchema;
 export const ListIncidentActionsFromSourceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5549,6 +5648,162 @@ export const operations = {
     query: null,
     body: null,
   },
+  getMyContractorProfile: {
+    method: 'GET',
+    path: '/v1/me/contractor',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  saveMyContractorProfile: {
+    method: 'PUT',
+    path: '/v1/me/contractor',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: SaveMyContractorProfileBody,
+  },
+  searchContractorCompanies: {
+    method: 'GET',
+    path: '/v1/me/contractor/companies',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: SearchContractorCompaniesQuery,
+    body: null,
+  },
+  listMyContractorLinks: {
+    method: 'GET',
+    path: '/v1/me/contractor/links',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: ListMyContractorLinksQuery,
+    body: null,
+  },
+  requestContractorLink: {
+    method: 'POST',
+    path: '/v1/me/contractor/links',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: RequestContractorLinkBody,
+  },
+  removeMyContractorLink: {
+    method: 'DELETE',
+    path: '/v1/me/contractor/links/{linkId}',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RemoveMyContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  listCompanyContractors: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/contractors',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListCompanyContractorsParams,
+    query: ListCompanyContractorsQuery,
+    body: null,
+  },
+  getContractorListing: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetContractorListingParams,
+    query: null,
+    body: null,
+  },
+  setContractorListing: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/contractors/listing',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SetContractorListingParams,
+    query: null,
+    body: SetContractorListingBody,
+  },
+  blockContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/block',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: BlockContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  acceptContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/accept',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: AcceptContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  rejectContractorLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}/reject',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RejectContractorLinkParams,
+    query: null,
+    body: null,
+  },
+  endContractorLink: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/contractors/{linkId}',
+    module: "contractors",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: EndContractorLinkParams,
+    query: null,
+    body: null,
+  },
   listPlantAssets: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/plant/assets',
@@ -5669,6 +5924,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  listPlantConditionChecks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantConditionChecksParams,
+    query: null,
+    body: null,
+  },
+  createPlantConditionCheck: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantConditionCheckParams,
+    query: null,
+    body: CreatePlantConditionCheckBody,
+  },
   getPlantUtilisation: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/plant/utilisation',
@@ -5679,6 +5958,30 @@ export const operations = {
     contentType: null,
     params: GetPlantUtilisationParams,
     query: GetPlantUtilisationQuery,
+    body: null,
+  },
+  createPlantContractorNotice: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePlantContractorNoticeParams,
+    query: null,
+    body: CreatePlantContractorNoticeBody,
+  },
+  listPlantContractorNotices: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/plant/contractor-notices',
+    module: "plant",
+    auth: "required",
+    permission: "plant.assets.view",
+    internal: false,
+    contentType: null,
+    params: ListPlantContractorNoticesParams,
+    query: ListPlantContractorNoticesQuery,
     body: null,
   },
   listPlantFlags: {
@@ -12924,6 +13227,66 @@ export const operations = {
     params: ClearPretaskSignatureParams,
     query: null,
     body: null,
+  },
+  listPretaskTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.read",
+    internal: false,
+    contentType: null,
+    params: ListPretaskTemplatesParams,
+    query: ListPretaskTemplatesQuery,
+    body: null,
+  },
+  createPretaskTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: "application/json",
+    params: CreatePretaskTemplateParams,
+    query: null,
+    body: CreatePretaskTemplateBody,
+  },
+  updatePretaskTemplate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: "application/json",
+    params: UpdatePretaskTemplateParams,
+    query: null,
+    body: UpdatePretaskTemplateBody,
+  },
+  getPretaskInsights: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.review",
+    internal: false,
+    contentType: null,
+    params: GetPretaskInsightsParams,
+    query: GetPretaskInsightsQuery,
+    body: null,
+  },
+  copyPretaskPlan: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy',
+    module: "safety",
+    auth: "required",
+    permission: "safety.pretask.run",
+    internal: false,
+    contentType: "application/json",
+    params: CopyPretaskPlanParams,
+    query: null,
+    body: CopyPretaskPlanBody,
   },
   listIncidentActionsFromSource: {
     method: 'GET',

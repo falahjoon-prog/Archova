@@ -335,6 +335,14 @@ export const PROBLEM_CODES = {
   // bookmarks
   'bookmark.invalid_target': 422,
   'bookmark.limit_reached': 409,
+  // contractors (X64)
+  'contractor.no_profile': 404,
+  'contractor.profile_required': 403,
+  'contractor_link.not_found': 404,
+  'contractor_link.rejected_recently': 409,
+  'contractor_link.too_many_requests': 409,
+  'contractor_link.company_busy': 409,
+  'contractor.email_unverified': 403,
   // recents
   'recent.invalid_target': 422,
   // logistics (material deliveries)
@@ -534,6 +542,7 @@ export const PROBLEM_CODES = {
   'pretask.not_signed': 409,
   'pretask.has_signatures': 409,
   'pretask.already_reviewed': 409,
+  'pretask.template_not_found': 404,
   'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,

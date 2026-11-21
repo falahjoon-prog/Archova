@@ -59,6 +59,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: bookmarks
+  - name: contractors
   - name: recents
   - name: plant
   - name: reporting
@@ -813,6 +814,238 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor:
+    get:
+      operationId: getMyContractorProfile
+      tags: [contractors]
+      x-module: contractors
+      summary: The caller's contractor profile (404 `contractor.no_profile` if they have not set one up).
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorProfile' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveMyContractorProfile
+      tags: [contractors]
+      x-module: contractors
+      summary: Create or update the caller's contractor profile (free tier; no organisation needed).
+      description: |
+        A contractor is a normal account (`POST /v1/auth/signup`) plus this profile. Any profession. The profile is
+        private: companies see only the name and profession on a link request, and the phone once they accept.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractorProfileInput' }
+      responses:
+        '200':
+          description: The saved profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorProfile' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/companies:
+    get:
+      operationId: searchContractorCompanies
+      tags: [contractors]
+      x-module: contractors
+      summary: Find a company by name (at least 3 characters; 10 results at most; rate limited).
+      description: |
+        Returns only the name, the last three ABN digits and the caller's own link status. There is no public
+        page and no count or paging, so the list cannot be walked. Needs a contractor profile.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 3, maxLength: 100 }
+      responses:
+        '200':
+          description: Matching companies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorCompanyList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/links:
+    get:
+      operationId: listMyContractorLinks
+      tags: [contractors]
+      x-module: contractors
+      summary: The companies the caller has asked to work for or works for, newest first. Searchable and paged.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: The links
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorLinkPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: requestContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Ask a company to add the caller as a contractor (idempotent).
+      description: |
+        `404 org.not_found` if the company is not listed. `409 contractor_link.rejected_recently` after the company
+        rejected the caller (30 days) or blocked them (for good); the text never says which. `409
+        contractor_link.too_many_requests` at 50 open requests; `409 contractor_link.company_busy` when the company
+        has 100 waiting. `403 contractor.email_unverified` where verified email is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [listingId]
+              properties:
+                listingId: { type: string, pattern: '^cls_[0-9A-Za-z]{26}$' }
+      responses:
+        '201':
+          description: The link (status `requested`, or the existing one)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/contractor/links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/ContractorLinkId'
+    delete:
+      operationId: removeMyContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Cancel a pending request or end an accepted link (idempotent; the row stays, as a status change).
+      responses:
+        '204':
+          description: Done
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCompanyContractors
+      tags: [contractors]
+      x-module: contractors
+      summary: Contractors who asked to work for, or work for, this company. Org owners and admins only.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: The links
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractorPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/listing:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getContractorListing
+      tags: [contractors]
+      x-module: contractors
+      summary: Whether contractors can find this company by name. Org owners and admins only.
+      responses:
+        '200':
+          description: The setting
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorListing' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: setContractorListing
+      tags: [contractors]
+      x-module: contractors
+      summary: Turn name search on or off. Off by default; a company is invisible to contractors until it opts in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractorListing' }
+      responses:
+        '200':
+          description: The setting
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorListing' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/block:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: blockContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Block a contractor for good (idempotent). They see it as a rejection. Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: acceptContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Accept a pending contractor request (idempotent). Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    post:
+      operationId: rejectContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: Reject a pending contractor request (idempotent). Org owners and admins only.
+      responses:
+        '200':
+          description: The link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyContractor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/contractors/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ContractorLinkId'
+    delete:
+      operationId: endContractorLink
+      tags: [contractors]
+      x-module: contractors
+      summary: End an accepted link (idempotent). Org owners and admins only.
+      responses:
+        '204':
+          description: Ended
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/assets:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1033,6 +1266,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlantMaintenanceRecordList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    get:
+      operationId: listPlantConditionChecks
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Photos of a machine's condition at hire-in, hire-out and after a service, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantConditionCheckList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPlantConditionCheck
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Record the condition of a machine with photos.
+      description: Each photo must be a ready file uploaded with module `plant` (an org-level upload). A hire-in or hire-out may name the allocation, and a service the maintenance record, both of this machine.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantConditionCheckRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantConditionCheck' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/utilisation:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1061,6 +1332,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PlantUtilisation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/PlantAssetId'
+    post:
+      operationId: createPlantContractorNotice
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.manage
+      summary: Email the machine's contractor about a flagged service, inspection or certificate.
+      description: |
+        Queues an email to the contractor address on the machine; no Archova account is needed. The text is built from the
+        plan (machine, job, due date) plus the optional note. Refused with `plant.bad_state` when the machine has no
+        contractor email, the plan has nothing flagged, or the contractor was already notified about it in the last 24 hours.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePlantContractorNoticeRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantContractorNotice' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/plant/contractor-notices:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPlantContractorNotices
+      tags: [plant]
+      x-module: plant
+      x-permission: plant.assets.view
+      summary: Notices sent to contractors in the last 90 days, newest first.
+      parameters:
+        - name: assetId
+          in: query
+          schema: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlantContractorNoticeList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/plant/flags:
     parameters:
@@ -15225,6 +15544,120 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPretaskTemplates
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.read
+      summary: Reusable plan templates on the project. Retired ones only with includeInactive.
+      parameters:
+        - { name: includeInactive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPretaskTemplate
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: Save the hazards and controls a kind of task usually has, so a plan can start from them. Needs the review permission.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePretaskTemplateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskTemplateId'
+    patch:
+      operationId: updatePretaskTemplate
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: Retire or restore a template.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePretaskTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPretaskInsights
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person.
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    post:
+      operationId: copyPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Start a new open plan from an earlier one with the same task, hazards, SWMS and people, and nobody signed. Today's date unless workDate is given.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyPretaskPlanRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20631,6 +21064,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ptk_[0-9A-Za-z]{26}$' }
+    PretaskTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ptt_[0-9A-Za-z]{26}$' }
     PretaskCrewId:
       name: crewId
       in: path
@@ -20921,6 +21359,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^bmk_[0-9A-Za-z]{26}$' }
+    ContractorLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
     AccountingProvider:
       name: provider
       in: path
@@ -25869,6 +26312,103 @@ components:
         projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
         title: { type: string, minLength: 1, maxLength: 200 }
         subtitle: { type: string, maxLength: 200 }
+    ContractorLinkStatus:
+      type: string
+      enum: [requested, accepted, rejected, ended, cancelled, blocked]
+    ContractorListing:
+      type: object
+      additionalProperties: false
+      required: [listed]
+      properties:
+        listed: { type: boolean }
+    ContractorProfileInput:
+      type: object
+      additionalProperties: false
+      required: [displayName, profession]
+      properties:
+        displayName:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 120,
+            description: The business or trading name companies see.,
+          }
+        profession:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 80,
+            description: 'Free text, any profession (electrician, architect, certifier).',
+          }
+        phone: { type: [string, 'null'], maxLength: 30 }
+    ContractorProfile:
+      type: object
+      required: [displayName, profession, phone]
+      properties:
+        displayName: { type: string }
+        profession: { type: string }
+        phone: { type: [string, 'null'] }
+    ContractorCompany:
+      type: object
+      required: [id, name, abnLast3, linkStatus]
+      properties:
+        id:
+          {
+            type: string,
+            pattern: '^cls_[0-9A-Za-z]{26}$',
+            description: An opaque listing id,
+            not the organisation id.,
+          }
+        name: { type: string }
+        abnLast3: { type: [string, 'null'] }
+        linkStatus:
+          oneOf:
+            - $ref: '#/components/schemas/ContractorLinkStatus'
+            - type: 'null'
+    ContractorCompanyList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ContractorCompany' }
+    ContractorLink:
+      type: object
+      required: [id, companyName, status, requestedAt, decidedAt]
+      properties:
+        id: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
+        companyName: { type: string }
+        status: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        requestedAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    ContractorLinkPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ContractorLink' }
+        nextCursor: { type: [string, 'null'] }
+    CompanyContractor:
+      type: object
+      required: [id, displayName, profession, phone, status, requestedAt, decidedAt]
+      properties:
+        id: { type: string, pattern: '^ctl_[0-9A-Za-z]{26}$' }
+        displayName: { type: string }
+        profession: { type: string }
+        phone: { type: [string, 'null'], description: Only once the link is accepted. }
+        status: { $ref: '#/components/schemas/ContractorLinkStatus' }
+        requestedAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    CompanyContractorPage:
+      type: object
+      required: [data, nextCursor, pendingCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CompanyContractor' }
+        nextCursor: { type: [string, 'null'] }
+        pendingCount: { type: integer, minimum: 0 }
     Bookmark:
       type: object
       required: [id, entityType, entityId, projectId, title, subtitle, createdAt]
@@ -25910,6 +26450,9 @@ components:
           dailyRateCents,
           status,
           notes,
+          contractorName,
+          contractorEmail,
+          contractorPhone,
           version,
         ]
       properties:
@@ -25927,6 +26470,17 @@ components:
           description: Hire rate, or the internal carrying rate for an owned machine, per day. Null when not set or not visible to the caller.
         status: { $ref: '#/components/schemas/PlantAssetStatus' }
         notes: { type: [string, 'null'] }
+        contractorName: { type: [string, 'null'], description: Who services the machine. }
+        contractorEmail:
+          {
+            type: [string, 'null'],
+            description: Where notices about flagged maintenance are sent. The contractor needs no Archova account.,
+          }
+        contractorPhone:
+          {
+            type: [string, 'null'],
+            description: 'Contractor mobile or landline, in international form (+61...).',
+          }
         version: { type: integer }
     PlantAssetList:
       type: object
@@ -25950,6 +26504,9 @@ components:
         serialNumber: { type: string, minLength: 1, maxLength: 100 }
         dailyRateCents: { type: integer, minimum: 0 }
         notes: { type: string, minLength: 1, maxLength: 2000 }
+        contractorName: { type: string, minLength: 1, maxLength: 200 }
+        contractorEmail: { type: string, minLength: 3, maxLength: 254 }
+        contractorPhone: { type: string, minLength: 1, maxLength: 30 }
     UpdatePlantAssetRequest:
       type: object
       additionalProperties: false
@@ -25964,6 +26521,9 @@ components:
         serialNumber: { type: string, maxLength: 100 }
         dailyRateCents: { type: integer, minimum: 0 }
         notes: { type: string, maxLength: 2000 }
+        contractorName: { type: string, maxLength: 200 }
+        contractorEmail: { type: string, maxLength: 254, description: Empty clears it. }
+        contractorPhone: { type: string, maxLength: 30, description: Empty clears it. }
         status: { $ref: '#/components/schemas/PlantAssetStatus' }
     PlantAllocation:
       type: object
@@ -26079,6 +26639,36 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PlantMaintenanceRecord' }
+    PlantConditionKind: { type: string, enum: [hire_in, hire_out, service] }
+    PlantConditionCheck:
+      type: object
+      required: [id, assetId, kind, allocationId, recordId, takenOn, note, fileIds]
+      properties:
+        id: { type: string, pattern: '^pcc_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/PlantConditionKind' }
+        allocationId: { type: [string, 'null'], pattern: '^pal_[0-9A-Za-z]{26}$' }
+        recordId: { type: [string, 'null'], pattern: '^prc_[0-9A-Za-z]{26}$' }
+        takenOn: { type: string, format: date }
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string }, description: 'Photos, as file ids.' }
+    PlantConditionCheckList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantConditionCheck' }
+    CreatePlantConditionCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, fileIds]
+      properties:
+        kind: { $ref: '#/components/schemas/PlantConditionKind' }
+        fileIds: { type: array, minItems: 1, maxItems: 10, items: { type: string } }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        allocationId: { type: string, pattern: '^pal_[0-9A-Za-z]{26}$' }
+        recordId: { type: string, pattern: '^prc_[0-9A-Za-z]{26}$' }
     PlantUtilisation:
       type: object
       required: [from, to, days, fleetPct, assets, projects]
@@ -26108,6 +26698,68 @@ components:
               projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
               bookedDays: { type: integer }
               costCents: { type: [integer, 'null'] }
+    PlantContractorNotice:
+      type: object
+      required:
+        [
+          id,
+          assetId,
+          planId,
+          recipientName,
+          channel,
+          recipientEmail,
+          recipientPhone,
+          text,
+          subject,
+          issue,
+          dueOn,
+          message,
+          status,
+          createdAt,
+          sentAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pcn_[0-9A-Za-z]{26}$' }
+        assetId: { type: string, pattern: '^pla_[0-9A-Za-z]{26}$' }
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        recipientName: { type: string }
+        channel:
+          {
+            type: string,
+            enum: [email, sms, phone],
+            description: '`phone` means the sender texted from their own phone.',
+          }
+        recipientEmail: { type: [string, 'null'] }
+        recipientPhone: { type: [string, 'null'] }
+        text: { type: string, description: The text message for this notice, ready to send. }
+        subject: { type: string }
+        issue: { type: string }
+        dueOn: { type: string, format: date }
+        message: { type: string }
+        status: { type: string, enum: [queued, sending, sent, failed] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+    PlantContractorNoticeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PlantContractorNotice' }
+    CreatePlantContractorNoticeRequest:
+      type: object
+      additionalProperties: false
+      required: [planId]
+      properties:
+        planId: { type: string, pattern: '^ppn_[0-9A-Za-z]{26}$' }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        channel:
+          {
+            type: string,
+            enum: [email, sms, phone],
+            default: email,
+            description: '`email` and `sms` are sent by Archova (`sms` needs the SMS provider); `phone` records that the sender texted from their own phone.',
+          }
     PlantFlag:
       type: object
       required: [code, severity, assetId, subjectId, message, date]
@@ -40224,6 +40876,84 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PretaskSuggestion' }
+    PretaskTemplate:
+      type: object
+      required: [id, name, taskTitle, swmsId, hazards, isActive, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        taskTitle: { type: string }
+        swmsId: { type: [string, 'null'] }
+        hazards:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+        isActive: { type: boolean }
+        version: { type: integer }
+    PretaskTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskTemplate' }
+    CreatePretaskTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, taskTitle, hazards]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        taskTitle: { type: string, minLength: 1, maxLength: 200 }
+        swmsId: { type: [string, 'null'] }
+        hazards:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+    UpdatePretaskTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [isActive]
+      properties:
+        isActive: { type: boolean }
+    CopyPretaskPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        workDate: { type: string, format: date }
+    PretaskInsightHazard:
+      type: object
+      required: [hazard, plans, highRiskPlans, lastSeen, companyIds]
+      properties:
+        hazard: { type: string }
+        plans: { type: integer }
+        highRiskPlans:
+          { type: integer, description: Plans where this hazard started at high or extreme risk. }
+        lastSeen: { type: string, format: date }
+        companyIds:
+          type: array
+          items: { type: string }
+    PretaskInsightCompany:
+      type: object
+      required: [companyId, plans, closed, highRiskHazards]
+      properties:
+        companyId: { type: [string, 'null'] }
+        plans: { type: integer }
+        closed: { type: integer }
+        highRiskHazards: { type: integer }
+    PretaskInsights:
+      type: object
+      required: [days, plans, closed, reviewed, toReview, topHazards, byCompany]
+      properties:
+        days: { type: integer }
+        plans: { type: integer }
+        closed: { type: integer }
+        reviewed: { type: integer }
+        toReview: { type: integer }
+        topHazards:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskInsightHazard' }
+        byCompany:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskInsightCompany' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

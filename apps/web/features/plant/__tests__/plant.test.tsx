@@ -27,6 +27,9 @@ const asset = {
   dailyRateCents: 45000,
   status: 'active',
   notes: null,
+  contractorName: 'Hunter Plant Services',
+  contractorEmail: 'service@hunterplant.example',
+  contractorPhone: '+61412345678',
   version: 1,
 };
 
@@ -77,6 +80,7 @@ beforeEach(() => {
       },
     ],
   }));
+  fake.on('GET', `${P}/contractor-notices`, () => ({ data: [] }));
   fake.on('GET', `${P}/utilisation`, () => ({
     from: '2026-10-08',
     to: '2026-11-07',
@@ -126,5 +130,68 @@ describe('PlantScreen', () => {
     renderInProject(<PlantScreen />);
     await user.click(await screen.findByRole('tab', { name: /Utilisation/ }));
     expect(await screen.findByText('39%')).toBeTruthy();
+  });
+
+  it('sends a flagged job to the contractor with an optional note', async () => {
+    const user = userEvent.setup();
+    let body: unknown = null;
+    fake.on('POST', `${P}/assets/{assetId}/contractor-notices`, (req: { body?: unknown }) => {
+      body = req.body;
+      return { id: 'pcn_1' };
+    });
+    renderInProject(<PlantScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Notify contractor' }));
+    expect(screen.getByText(/don.t need an Archova account/)).toBeTruthy();
+    await user.type(screen.getByLabelText(/Note/), 'Please book before Friday');
+    await user.click(screen.getByRole('button', { name: 'Send to contractor' }));
+    await vi.waitFor(() =>
+      expect(body).toMatchObject({
+        planId: 'ppn_1',
+        message: 'Please book before Friday',
+        channel: 'email',
+      }),
+    );
+  });
+
+  it('asks for a contractor email when the machine has none', async () => {
+    fake.on('GET', `${P}/assets`, () => ({
+      data: [{ ...asset, contractorEmail: null, contractorName: null, contractorPhone: null }],
+    }));
+    renderInProject(<PlantScreen />);
+    expect(
+      await screen.findByText(/Add a contractor email or phone number to 20t excavator/),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Notify contractor' })).toBeNull();
+  });
+
+  it('shows a machine’s condition photos by when they were taken', async () => {
+    fake.on('GET', `${P}/assets/{assetId}/condition-checks`, () => ({
+      data: [
+        {
+          id: 'pcc_1',
+          assetId: 'pla_1',
+          kind: 'hire_in',
+          allocationId: null,
+          recordId: null,
+          takenOn: '2026-11-10',
+          note: 'Scratch on the left door',
+          fileIds: ['fil_1'],
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    renderInProject(<PlantScreen />);
+    await user.click(await screen.findByRole('tab', { name: /Condition photos/ }));
+    await user.selectOptions(await screen.findByLabelText('Machine'), 'pla_1');
+    expect(await screen.findByText('Scratch on the left door')).toBeTruthy();
+    expect(screen.getAllByText('Hire in').length).toBeGreaterThan(0);
+  });
+
+  it('asks for a machine and a photo before saving a condition', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PlantScreen />);
+    await user.click(await screen.findByRole('tab', { name: /Condition photos/ }));
+    await user.click(await screen.findByRole('button', { name: 'Save condition' }));
+    expect(await screen.findByText('Choose the machine.')).toBeTruthy();
   });
 });

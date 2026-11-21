@@ -17,6 +17,9 @@ export type AssetCategory = (typeof ASSET_CATEGORIES)[number];
 export type Ownership = 'owned' | 'hired';
 export type AssetStatus = 'active' | 'maintenance' | 'retired';
 export type PlanKind = 'service' | 'inspection' | 'certification';
+/** When a machine's condition is photographed: arriving on hire, going back, or after a service. */
+export type ConditionKind = 'hire_in' | 'hire_out' | 'service';
+export const MAX_CONDITION_PHOTOS = 10;
 
 export interface Span {
   startsOn: string;
@@ -277,4 +280,66 @@ export function computeFlags(input: {
       (x.date ?? '').localeCompare(y.date ?? '') ||
       x.assetId.localeCompare(y.assetId),
   );
+}
+
+export interface NoticePlan {
+  title: string;
+  kind: PlanKind;
+  nextDueOn: string | null;
+  active: boolean;
+}
+
+/** A notice to the machine's contractor is not sent twice for one plan inside this many hours. */
+export const NOTICE_COOLDOWN_HOURS = 24;
+
+/**
+ * What a notice to the contractor says about a plan Nova has flagged: the subject, the issue in a sentence and the due
+ * date. Null when there is nothing to notify about: the plan is finished, has no due date, is not yet due soon, or the
+ * machine is retired. The text names the machine and the job only, so it is safe to send outside the organisation.
+ */
+export function contractorNoticeFor(
+  asset: Pick<FlagAsset, 'name' | 'assetNumber' | 'status'>,
+  plan: NoticePlan,
+  today: string,
+): { subject: string; issue: string; dueOn: string; state: 'due_soon' | 'overdue' } | null {
+  if (!plan.active || !plan.nextDueOn || asset.status === 'retired') return null;
+  const state = dueState(plan.nextDueOn, today, plan.kind);
+  if (state === 'ok') return null;
+  const days = daysBetween(today, plan.nextDueOn);
+  const what = plan.kind === 'certification' ? 'certificate' : plan.kind;
+  const when =
+    days < 0
+      ? `${plural(-days, 'day')} overdue`
+      : days === 0
+        ? 'due today'
+        : `due in ${plural(days, 'day')}`;
+  const name = label(asset as FlagAsset);
+  return {
+    subject: `${state === 'overdue' ? 'Overdue' : 'Upcoming'} ${what}: ${name}`.slice(0, 200),
+    issue: `${plan.title} for ${name} is ${when} (due ${plan.nextDueOn}).`,
+    dueOn: plan.nextDueOn,
+    state,
+  };
+}
+
+/**
+ * A mobile or landline number typed by staff, as the international form (`+61412345678`). Australian numbers may start
+ * with 0 or 61; anything else must already start with + and a country code. Null when it can't be a phone number.
+ */
+export function normalisePhone(raw: string): string | null {
+  const t = raw.trim();
+  if (!/^\+?[\d\s()-]+$/.test(t)) return null;
+  const digits = t.replace(/\D/g, '');
+  let intl: string;
+  if (t.startsWith('+')) intl = digits;
+  else if (digits.startsWith('0')) intl = `61${digits.slice(1)}`;
+  else if (digits.startsWith('61')) intl = digits;
+  else return null;
+  return intl.length >= 9 && intl.length <= 15 ? `+${intl}` : null;
+}
+
+/** The text message for a contractor notice: the issue, the sender's note and a line asking them to reply. */
+export function noticeSmsText(issue: string, message: string): string {
+  const note = message.trim() ? ` Note: ${message.trim()}` : '';
+  return `${issue}${note} Please reply to book it in.`.slice(0, 600);
 }

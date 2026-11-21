@@ -18,6 +18,8 @@ export interface UserRecord {
   name: string;
   locale: string;
   timezone: string | null;
+  /** Set once the person has proved they own the address. Sign-up does not verify yet. */
+  emailVerified: boolean;
 }
 
 export interface RequestMeta {
@@ -31,6 +33,7 @@ const toRecord = (u: typeof users.$inferSelect): UserRecord => ({
   name: u.name,
   locale: u.locale,
   timezone: u.timezone,
+  emailVerified: u.emailVerifiedAt != null,
 });
 
 export function createAccountService(database: Database, sessions: SessionService) {

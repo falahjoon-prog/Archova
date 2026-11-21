@@ -7,8 +7,17 @@ import {
   type Database,
   type TenantScope,
 } from '@archova/kernel';
+import type { ConditionService } from '../application/condition';
 import type { PlantService } from '../application/plant';
-import { toAllocationDto, toAssetDto, toFlagDto, toPlanDto, toRecordDto } from './mappers';
+import {
+  toAllocationDto,
+  toAssetDto,
+  toConditionDto,
+  toFlagDto,
+  toNoticeDto,
+  toPlanDto,
+  toRecordDto,
+} from './mappers';
 
 const id = (kind: IdKind, value: string, notFound: ProblemCode) => {
   const uuid = decodeId(kind, value);
@@ -23,7 +32,7 @@ const ref = (kind: IdKind, value: string, path: string) => {
   return uuid;
 };
 
-export function plantRoutes(database: Database, svc: PlantService) {
+export function plantRoutes(database: Database, svc: PlantService, condition: ConditionService) {
   const tx = <T>(input: Parameters<typeof requireTenant>[0], fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(
@@ -122,6 +131,32 @@ export function plantRoutes(database: Database, svc: PlantService) {
         data: (await read(input, (s) => svc.records(s, assetId(input.params)))).map(toRecordDto),
       },
     }),
+    listPlantConditionChecks: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => condition.list(s, assetId(input.params)))).map(
+          toConditionDto,
+        ),
+      },
+    }),
+    createPlantConditionCheck: async (input) => ({
+      status: 201,
+      body: toConditionDto(
+        await tx(input, (s) =>
+          condition.record(s, assetId(input.params), {
+            kind: input.body.kind,
+            fileIds: input.body.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)),
+            note: input.body.note,
+            allocationId: input.body.allocationId
+              ? ref('plantAllocation', input.body.allocationId, 'allocationId')
+              : undefined,
+            recordId: input.body.recordId
+              ? ref('plantRecord', input.body.recordId, 'recordId')
+              : undefined,
+          }),
+        ),
+      ),
+    }),
     getPlantUtilisation: async (input) => {
       const u = await read(input, (s) =>
         svc.utilisation(s, {
@@ -152,6 +187,32 @@ export function plantRoutes(database: Database, svc: PlantService) {
         },
       };
     },
+    createPlantContractorNotice: async (input) => ({
+      status: 201,
+      body: toNoticeDto(
+        await tx(input, (s) =>
+          svc.notifyContractor(s, assetId(input.params), {
+            planId: ref('plantPlan', input.body.planId, 'planId'),
+            message: input.body.message,
+            channel: input.body.channel,
+          }),
+        ),
+      ),
+    }),
+    listPlantContractorNotices: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            svc.listNotices(s, {
+              ...(input.query.assetId
+                ? { assetId: ref('plantAsset', input.query.assetId, 'assetId') }
+                : {}),
+            }),
+          )
+        ).map(toNoticeDto),
+      },
+    }),
     listPlantFlags: async (input) => ({
       status: 200,
       body: {

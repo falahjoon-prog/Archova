@@ -12,10 +12,14 @@ export type PlantAssetStatus = S['PlantAssetStatus'];
 export type PlantAllocation = S['PlantAllocation'];
 export type PlantPlan = S['PlantMaintenancePlan'];
 export type PlantFlag = S['PlantFlag'];
+export type PlantContractorNotice = S['PlantContractorNotice'];
 export type PlantUtilisation = S['PlantUtilisation'];
 export type CreatePlantAsset = S['CreatePlantAssetRequest'];
 export type CreatePlantAllocation = S['CreatePlantAllocationRequest'];
 export type CreatePlantPlan = S['CreatePlantMaintenancePlanRequest'];
+export type PlantConditionCheck = S['PlantConditionCheck'];
+export type PlantConditionKind = S['PlantConditionKind'];
+export type CreatePlantConditionCheck = S['CreatePlantConditionCheckRequest'];
 export type CompletePlantPlan = S['CompletePlantMaintenanceRequest'];
 
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -39,6 +43,35 @@ export function createPlantApi(orgId: string) {
         await api.PATCH('/v1/orgs/{orgId}/plant/assets/{assetId}', {
           params: { path: { ...org, assetId } },
           body: { status },
+        }),
+      );
+    },
+    async setContractor(
+      assetId: string,
+      contractor: { contractorName: string; contractorEmail: string; contractorPhone: string },
+    ): Promise<PlantAsset> {
+      return unwrap(
+        await api.PATCH('/v1/orgs/{orgId}/plant/assets/{assetId}', {
+          params: { path: { ...org, assetId } },
+          body: contractor,
+        }),
+      );
+    },
+    async notices(): Promise<PlantContractorNotice[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/plant/contractor-notices', {
+          params: { path: org, query: {} },
+        }),
+      ).data;
+    },
+    async notifyContractor(
+      assetId: string,
+      body: { planId: string; message?: string; channel?: 'email' | 'sms' | 'phone' },
+    ): Promise<PlantContractorNotice> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/plant/assets/{assetId}/contractor-notices', {
+          params: { path: { ...org, assetId }, header: idempotencyKey() },
+          body: { ...body, channel: body.channel ?? 'email' },
         }),
       );
     },
@@ -88,6 +121,24 @@ export function createPlantApi(orgId: string) {
       return unwrap(
         await api.POST('/v1/orgs/{orgId}/plant/maintenance-plans/{planId}/complete', {
           params: { path: { ...org, planId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async conditionChecks(assetId: string): Promise<PlantConditionCheck[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks', {
+          params: { path: { ...org, assetId } },
+        }),
+      ).data;
+    },
+    async createConditionCheck(
+      assetId: string,
+      body: CreatePlantConditionCheck,
+    ): Promise<PlantConditionCheck> {
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/plant/assets/{assetId}/condition-checks', {
+          params: { path: { ...org, assetId }, header: idempotencyKey() },
           body,
         }),
       );

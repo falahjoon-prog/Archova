@@ -61,6 +61,7 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createBookmarksModule } from '@archova/mod-bookmarks';
+import { createContractorsModule } from '@archova/mod-contractors';
 import { createRecentsModule } from '@archova/mod-recents';
 import { LOGISTICS_PERMISSIONS, createLogisticsModule } from '@archova/mod-logistics';
 import { PREFAB_PERMISSIONS, createPrefabModule, type PrefabModule } from '@archova/mod-prefab';
@@ -266,6 +267,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       // Photos on a prefab unit's QA checks.
       prefab: 'prefab.units.write',
     },
+    orgUploadPermissions: {
+      // Condition photos on a machine, which belongs to the org rather than a project.
+      plant: 'plant.assets.manage',
+    },
   });
   filesApi = files.api;
 
@@ -364,6 +369,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const notifications = createNotificationsModule(services);
   const bookmarks = createBookmarksModule(services);
+  const contractors = createContractorsModule(services, {
+    emailVerified: async (userId) => (await identity.api.getUser(userId))?.emailVerified === true,
+  });
   const recents = createRecentsModule(services);
 
   // Built right after financials; financials reaches it lazily at request time.
@@ -602,6 +610,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const plant = createPlantModule(services, {
     access: access.api,
+    files: files.api,
     postCost: financials.api.postPlantCost,
     requireProject: platform.api.getProject,
     costCodeBudgeted: financials.api.costCodeBudgeted,
@@ -762,6 +771,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    contractors,
     recents,
     plant,
     financials,
@@ -817,6 +827,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     bim,
     notifications,
     bookmarks,
+    contractors,
     recents,
     plant,
     financials,

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { uploadFile } from '@/shared/lib/uploads';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import {
   createPlantApi,
@@ -9,6 +10,7 @@ import {
   type CreatePlantAllocation,
   type CreatePlantAsset,
   type CreatePlantPlan,
+  type PlantConditionKind,
   type PlantAssetStatus,
 } from '../data/api';
 
@@ -25,6 +27,7 @@ export function usePlantData(from: string, to: string) {
     }),
     plans: useQuery({ queryKey: key(orgId, 'plans'), queryFn: () => source.plans() }),
     flags: useQuery({ queryKey: key(orgId, 'flags'), queryFn: () => source.flags() }),
+    notices: useQuery({ queryKey: key(orgId, 'notices'), queryFn: () => source.notices() }),
   };
 }
 
@@ -36,6 +39,17 @@ export function useCostCodes(projectId: string) {
     queryKey: key(orgId, 'cost-codes', projectId),
     queryFn: () => source.costCodes(projectId).catch(() => []),
     enabled: projectId !== '',
+  });
+}
+
+/** Condition photos of one machine, newest first. Off until a machine is chosen. */
+export function useConditionChecks(assetId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useMemo(() => createPlantApi(orgId), [orgId]);
+  return useQuery({
+    queryKey: key(orgId, 'condition', assetId),
+    queryFn: () => source.conditionChecks(assetId),
+    enabled: assetId !== '',
   });
 }
 
@@ -63,6 +77,34 @@ export function usePlantMutations() {
         source.setStatus(v.assetId, v.status),
       onSuccess: refresh,
     }),
+    setContractor: useMutation({
+      mutationFn: (v: {
+        assetId: string;
+        contractorName: string;
+        contractorEmail: string;
+        contractorPhone: string;
+      }) =>
+        source.setContractor(v.assetId, {
+          contractorName: v.contractorName,
+          contractorEmail: v.contractorEmail,
+          contractorPhone: v.contractorPhone,
+        }),
+      onSuccess: refresh,
+    }),
+    notifyContractor: useMutation({
+      mutationFn: (v: {
+        assetId: string;
+        planId: string;
+        message?: string;
+        channel?: 'email' | 'sms' | 'phone';
+      }) =>
+        source.notifyContractor(v.assetId, {
+          planId: v.planId,
+          ...(v.message ? { message: v.message } : {}),
+          ...(v.channel ? { channel: v.channel } : {}),
+        }),
+      onSuccess: refresh,
+    }),
     allocate: useMutation({
       mutationFn: (v: { assetId: string; body: CreatePlantAllocation }) =>
         source.allocate(v.assetId, v.body),
@@ -75,6 +117,26 @@ export function usePlantMutations() {
     createPlan: useMutation({
       mutationFn: (v: { assetId: string; body: CreatePlantPlan }) =>
         source.createPlan(v.assetId, v.body),
+      onSuccess: refresh,
+    }),
+    /** Uploads each photo as an org-level plant file (the camera on a phone), then records the check. */
+    recordCondition: useMutation({
+      mutationFn: async (v: {
+        assetId: string;
+        kind: PlantConditionKind;
+        files: File[];
+        note?: string;
+      }) => {
+        const fileIds: string[] = [];
+        for (const file of v.files) {
+          fileIds.push((await uploadFile(orgId, { file, module: 'plant' })).id);
+        }
+        return source.createConditionCheck(v.assetId, {
+          kind: v.kind,
+          fileIds,
+          ...(v.note ? { note: v.note } : {}),
+        });
+      },
       onSuccess: refresh,
     }),
     completePlan: useMutation({

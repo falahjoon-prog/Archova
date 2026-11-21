@@ -2,7 +2,7 @@ import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
 import { uploadFile } from '@/shared/lib/uploads';
-import type { CrewMember, Plan, PlanDetail, Suggestion } from '../lib/types';
+import type { CrewMember, Insights, Plan, PlanDetail, Suggestion, Template } from '../lib/types';
 import type { PretaskSource } from './source';
 
 type ApiPlan = components['schemas']['PretaskPlan'];
@@ -60,6 +60,9 @@ export const toDetail = (d: ApiDetail): PlanDetail => ({
   canEdit: d.canEdit,
   canReview: d.canReview,
 });
+
+type ApiTemplate = components['schemas']['PretaskTemplate'];
+const toTemplate = (t: ApiTemplate): Template => ({ ...t });
 
 export function createPretaskApi(orgId: string): PretaskSource {
   const planPath = (projectId: string, planId: string) => ({ orgId, projectId, planId });
@@ -185,6 +188,52 @@ export function createPretaskApi(orgId: string): PretaskSource {
           } as never),
         ) as ApiDetail,
       );
+    },
+    async copyPlan(projectId, d) {
+      return toDetail(
+        unwrap(
+          await api.POST(`${P}/pretask-plans/{planId}/copy`, {
+            params: { path: planPath(projectId, d.plan.id), header: idempotencyKey() },
+            body: {},
+          } as never),
+        ) as ApiDetail,
+      );
+    },
+    async listTemplates(projectId) {
+      const r = unwrap(
+        await api.GET(`${P}/pretask-templates`, {
+          params: { path: { orgId, projectId }, query: { includeInactive: 'true' } },
+        } as never),
+      ) as { data: ApiTemplate[] };
+      return r.data.map(toTemplate);
+    },
+    async createTemplate(projectId, input) {
+      return toTemplate(
+        unwrap(
+          await api.POST(`${P}/pretask-templates`, {
+            params: { path: { orgId, projectId }, header: idempotencyKey() },
+            body: input,
+          } as never),
+        ) as ApiTemplate,
+      );
+    },
+    async setTemplateActive(projectId, t, isActive) {
+      return toTemplate(
+        unwrap(
+          await api.PATCH(`${P}/pretask-templates/{templateId}`, {
+            params: { path: { orgId, projectId, templateId: t.id }, header: ifMatch(t.version) },
+            body: { isActive },
+          } as never),
+        ) as ApiTemplate,
+      );
+    },
+    async insights(projectId) {
+      const res = await api.GET(`${P}/pretask-plans/insights`, {
+        params: { path: { orgId, projectId }, query: {} },
+      } as never);
+      // Insights are for the supervisor; anyone else gets a refusal and simply does not see the tab.
+      if ((res as { response?: Response }).response?.status === 403) return null;
+      return unwrap(res as never) as Insights;
     },
     async listSwms(projectId) {
       const r = unwrap(

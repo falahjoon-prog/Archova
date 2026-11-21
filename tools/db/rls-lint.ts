@@ -15,6 +15,10 @@ export const GLOBAL_TABLES = new Set([
   // Partner app codes and tokens are found by hash before any org is known; they carry `target_org_id`.
   'identity.app_codes',
   'identity.app_tokens',
+  // Contractor accounts (X64, ADR-0007 amendment 1): a profile per account, and a name-only company directory
+  // for search. Only the contractors module reads them; the directory holds a name and three ABN digits.
+  'contractors.profiles',
+  'contractors.directory',
   'kernel.schema_migrations',
   // Nova statutory clause-rule table: lawyer-signed reference data, read-only to the app (ai/11 F34).
   'ai.ai_legal_rules',

@@ -7,7 +7,10 @@ const p = (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${e
 
 export const webRoutes = {
   login: (next?: string) => (next ? `/login?next=${enc(next)}` : '/login'),
-  signup: () => '/signup',
+  signup: (next?: string) => (next ? `/signup?next=${enc(next)}` : '/signup'),
+  /** The free contractor portal (X64): signed-in contractors, no organisation needed. */
+  contractor: () => '/contractor',
+  contractors: (orgSlug: string) => `/${enc(orgSlug)}/contractors`,
   orgPicker: () => '/orgs',
   newOrg: () => '/orgs/new',
   org: (orgSlug: string) => `/${enc(orgSlug)}`,

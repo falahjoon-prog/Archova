@@ -1,12 +1,15 @@
 import { and, asc, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type TenantScope } from '@archova/kernel';
+import { AppError, isFlagOn, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { addDays, localDateOf } from '@archova/time';
 import {
   allocatable,
   bookedDays,
   computeFlags,
+  contractorNoticeFor,
+  NOTICE_COOLDOWN_HOURS,
+  normalisePhone,
   nextDueAfter,
   spanDays,
   spansOverlap,
@@ -19,12 +22,19 @@ import {
   type PlanKind,
   type Span,
 } from '../domain/plant';
-import { allocations, assets, maintenancePlans, maintenanceRecords } from '../infra/tables';
+import {
+  allocations,
+  assets,
+  contractorNotices,
+  maintenancePlans,
+  maintenanceRecords,
+} from '../infra/tables';
 
 export type AssetRow = typeof assets.$inferSelect;
 export type AllocationRow = typeof allocations.$inferSelect;
 export type PlanRow = typeof maintenancePlans.$inferSelect;
 export type RecordRow = typeof maintenanceRecords.$inferSelect;
+export type NoticeRow = typeof contractorNotices.$inferSelect;
 
 /** Plant is planned in Australian time; the org has no zone of its own yet. */
 export const PLANT_TIME_ZONE = 'Australia/Sydney';
@@ -55,9 +65,35 @@ export interface AssetInput {
   serialNumber?: string | undefined;
   dailyRateCents?: number | undefined;
   notes?: string | undefined;
+  /** Who services the machine; the address that Nova's maintenance flags can be sent to. */
+  contractorName?: string | undefined;
+  contractorEmail?: string | undefined;
+  /** Mobile or landline; stored in international form (+61...). */
+  contractorPhone?: string | undefined;
 }
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean = (s: string | undefined) => s?.trim() || null;
+/** A phone number typed into the register; empty clears it. Stored as +61... */
+const phone = (s: string | undefined) => {
+  const v = clean(s);
+  if (!v) return null;
+  const n = normalisePhone(v);
+  if (!n)
+    throw new AppError('validation_failed', 'Enter a valid phone number.', [
+      { path: 'contractorPhone', message: 'Must be a phone number' },
+    ]);
+  return n;
+};
+/** An address typed into the register; empty clears it. Anything else must look like an email address. */
+const address = (s: string | undefined) => {
+  const v = clean(s);
+  if (v && (v.length > 254 || !EMAIL.test(v)))
+    throw new AppError('validation_failed', 'Enter a valid email address.', [
+      { path: 'contractorEmail', message: 'Must be an email address' },
+    ]);
+  return v ? v.toLowerCase() : null;
+};
 
 /** The org's fleet: register, project allocations, maintenance schedule, utilisation and Nova's flags. */
 export function createPlantService(deps: PlantDeps) {
@@ -123,6 +159,9 @@ export function createPlantService(deps: PlantDeps) {
         serialNumber: clean(input.serialNumber),
         dailyRateCents: input.dailyRateCents ?? null,
         notes: clean(input.notes),
+        contractorName: clean(input.contractorName),
+        contractorEmail: address(input.contractorEmail),
+        contractorPhone: phone(input.contractorPhone),
         createdBy: scope.ctx.userId,
       })
       .returning();
@@ -167,6 +206,15 @@ export function createPlantService(deps: PlantDeps) {
         ...(patch.serialNumber !== undefined ? { serialNumber: clean(patch.serialNumber) } : {}),
         ...(patch.dailyRateCents !== undefined ? { dailyRateCents: patch.dailyRateCents } : {}),
         ...(patch.notes !== undefined ? { notes: clean(patch.notes) } : {}),
+        ...(patch.contractorName !== undefined
+          ? { contractorName: clean(patch.contractorName) }
+          : {}),
+        ...(patch.contractorPhone !== undefined
+          ? { contractorPhone: phone(patch.contractorPhone) }
+          : {}),
+        ...(patch.contractorEmail !== undefined
+          ? { contractorEmail: address(patch.contractorEmail) }
+          : {}),
         ...(patch.status ? { status: patch.status } : {}),
         version: cur.version + 1,
       })
@@ -517,6 +565,109 @@ export function createPlantService(deps: PlantDeps) {
     });
   }
 
+  /**
+   * Queue a notice to the machine's contractor about a plan Nova has flagged (due soon, overdue or expired). The text
+   * is built here from the plan as it stands, never taken from the caller, so a notice can't say more than the flag
+   * does. The machine needs a contractor address; the same plan isn't noticed again inside the cooldown.
+   */
+  async function notifyContractor(
+    scope: TenantScope,
+    assetId: string,
+    input: {
+      planId: string;
+      message?: string | undefined;
+      /** `email` and `sms` are queued for the worker; `phone` is recorded as sent: the caller texts from their own phone. */
+      channel?: 'email' | 'sms' | 'phone' | undefined;
+    },
+  ) {
+    await need(scope, 'plant.assets.manage');
+    const channel = input.channel ?? 'email';
+    if (channel === 'sms' && !(await isFlagOn(scope.ctx, 'plant_sms')))
+      throw new AppError(
+        'plant.bad_state',
+        'Texts from Archova are not switched on for this organisation.',
+      );
+    const a = await assetRow(scope, assetId);
+    if (channel === 'email' && !a.contractorEmail)
+      throw new AppError(
+        'plant.bad_state',
+        `${a.name} has no contractor email. Add one to the machine first.`,
+      );
+    if (channel !== 'email' && !a.contractorPhone)
+      throw new AppError(
+        'plant.bad_state',
+        `${a.name} has no contractor phone number. Add one to the machine first.`,
+      );
+    const [plan] = await scope.tx
+      .select()
+      .from(maintenancePlans)
+      .where(and(eq(maintenancePlans.id, input.planId), eq(maintenancePlans.assetId, a.id)))
+      .limit(1)
+      .for('update');
+    if (!plan) throw new AppError('plant.plan_not_found');
+    const notice = contractorNoticeFor(a, plan, today());
+    if (!notice)
+      throw new AppError(
+        'plant.bad_state',
+        'Nova has nothing flagged on this job to notify about.',
+      );
+    const since = new Date(now().getTime() - NOTICE_COOLDOWN_HOURS * 3_600_000);
+    const [recent] = await scope.tx
+      .select({ id: contractorNotices.id })
+      .from(contractorNotices)
+      .where(
+        and(
+          eq(contractorNotices.planId, plan.id),
+          eq(contractorNotices.channel, channel),
+          gte(contractorNotices.createdAt, since),
+        ),
+      )
+      .limit(1);
+    if (recent)
+      throw new AppError(
+        'plant.bad_state',
+        'The contractor was already notified about this job this way in the last day.',
+      );
+    const [r] = await scope.tx
+      .insert(contractorNotices)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        assetId: a.id,
+        planId: plan.id,
+        senderId: scope.ctx.userId,
+        recipientName: a.contractorName ?? a.supplier ?? 'there',
+        channel,
+        recipientEmail: channel === 'email' ? a.contractorEmail : null,
+        recipientPhone: channel === 'email' ? null : a.contractorPhone,
+        // Texted from the sender's own phone: nothing for the worker to send.
+        ...(channel === 'phone' ? { status: 'sent' as const, sentAt: now() } : {}),
+        subject: notice.subject,
+        issue: notice.issue,
+        dueOn: notice.dueOn,
+        message: clean(input.message) ?? '',
+      })
+      .returning();
+    return r!;
+  }
+
+  /** Notices sent in the last 90 days, newest first, for one machine or all. */
+  async function listNotices(scope: TenantScope, opts: { assetId?: string }) {
+    await need(scope, 'plant.assets.view');
+    const since = new Date(now().getTime() - 90 * 86_400_000);
+    return scope.tx
+      .select()
+      .from(contractorNotices)
+      .where(
+        and(
+          gte(contractorNotices.createdAt, since),
+          opts.assetId ? eq(contractorNotices.assetId, opts.assetId) : undefined,
+        ),
+      )
+      .orderBy(desc(contractorNotices.createdAt), desc(contractorNotices.id))
+      .limit(MAX_ROWS);
+  }
+
   return {
     listAssets,
     createAsset,
@@ -530,6 +681,8 @@ export function createPlantService(deps: PlantDeps) {
     records,
     utilisation,
     flags,
+    notifyContractor,
+    listNotices,
     today,
   };
 }

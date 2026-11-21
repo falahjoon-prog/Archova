@@ -1506,6 +1506,27 @@ export const CompanyContactPageSchema = z.object({
 });
 export type CompanyContactPage = z.infer<typeof CompanyContactPageSchema>;
 
+export const ContractorLinkStatusSchema = z.enum(["requested", "accepted", "rejected", "ended", "cancelled", "blocked"]);
+export type ContractorLinkStatus = z.infer<typeof ContractorLinkStatusSchema>;
+
+export const CompanyContractorSchema = z.object({
+  "id": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+  "displayName": z.string(),
+  "profession": z.string(),
+  "phone": z.string().nullable(),
+  "status": ContractorLinkStatusSchema,
+  "requestedAt": z.string().datetime({ offset: true }),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type CompanyContractor = z.infer<typeof CompanyContractorSchema>;
+
+export const CompanyContractorPageSchema = z.object({
+  "data": z.array(CompanyContractorSchema),
+  "nextCursor": z.string().nullable(),
+  "pendingCount": z.number().int().min(0),
+});
+export type CompanyContractorPage = z.infer<typeof CompanyContractorPageSchema>;
+
 export const CoverIssueKindSchema = z.enum(["expired", "expired_while_renewing", "expiring", "missing", "below_minimum"]);
 export type CoverIssueKind = z.infer<typeof CoverIssueKindSchema>;
 
@@ -1874,6 +1895,53 @@ export const ContractSourceRefSchema = z.object({
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
+export const ContractorCompanySchema = z.object({
+  "id": z.string().regex(new RegExp("^cls_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "abnLast3": z.string().nullable(),
+  "linkStatus": z.union([ContractorLinkStatusSchema, z.null()]),
+});
+export type ContractorCompany = z.infer<typeof ContractorCompanySchema>;
+
+export const ContractorCompanyListSchema = z.object({
+  "data": z.array(ContractorCompanySchema),
+});
+export type ContractorCompanyList = z.infer<typeof ContractorCompanyListSchema>;
+
+export const ContractorLinkSchema = z.object({
+  "id": z.string().regex(new RegExp("^ctl_[0-9A-Za-z]{26}$")),
+  "companyName": z.string(),
+  "status": ContractorLinkStatusSchema,
+  "requestedAt": z.string().datetime({ offset: true }),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type ContractorLink = z.infer<typeof ContractorLinkSchema>;
+
+export const ContractorLinkPageSchema = z.object({
+  "data": z.array(ContractorLinkSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ContractorLinkPage = z.infer<typeof ContractorLinkPageSchema>;
+
+export const ContractorListingSchema = z.object({
+  "listed": z.boolean(),
+}).strict();
+export type ContractorListing = z.infer<typeof ContractorListingSchema>;
+
+export const ContractorProfileSchema = z.object({
+  "displayName": z.string(),
+  "profession": z.string(),
+  "phone": z.string().nullable(),
+});
+export type ContractorProfile = z.infer<typeof ContractorProfileSchema>;
+
+export const ContractorProfileInputSchema = z.object({
+  "displayName": z.string().min(1).max(120),
+  "profession": z.string().min(1).max(80),
+  "phone": z.string().max(30).nullable().optional(),
+}).strict();
+export type ContractorProfileInput = z.infer<typeof ContractorProfileInputSchema>;
+
 export const ContributingConditionSchema = z.enum(["workmanship", "design", "materials", "supervision", "weather", "coordination", "documentation"]);
 export type ContributingCondition = z.infer<typeof ContributingConditionSchema>;
 
@@ -1980,6 +2048,11 @@ export const CoordinationIssueListSchema = z.object({
   "data": z.array(CoordinationIssueSchema),
 });
 export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
+
+export const CopyPretaskPlanRequestSchema = z.object({
+  "workDate": z.string().date().optional(),
+}).strict();
+export type CopyPretaskPlanRequest = z.infer<typeof CopyPretaskPlanRequestSchema>;
 
 export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
 export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
@@ -3414,8 +3487,30 @@ export const CreatePlantAssetRequestSchema = z.object({
   "serialNumber": z.string().min(1).max(100).optional(),
   "dailyRateCents": z.number().int().min(0).optional(),
   "notes": z.string().min(1).max(2000).optional(),
+  "contractorName": z.string().min(1).max(200).optional(),
+  "contractorEmail": z.string().min(3).max(254).optional(),
+  "contractorPhone": z.string().min(1).max(30).optional(),
 }).strict();
 export type CreatePlantAssetRequest = z.infer<typeof CreatePlantAssetRequestSchema>;
+
+export const PlantConditionKindSchema = z.enum(["hire_in", "hire_out", "service"]);
+export type PlantConditionKind = z.infer<typeof PlantConditionKindSchema>;
+
+export const CreatePlantConditionCheckRequestSchema = z.object({
+  "kind": PlantConditionKindSchema,
+  "fileIds": z.array(z.string()).min(1).max(10),
+  "note": z.string().min(1).max(2000).optional(),
+  "allocationId": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")).optional(),
+  "recordId": z.string().regex(new RegExp("^prc_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreatePlantConditionCheckRequest = z.infer<typeof CreatePlantConditionCheckRequestSchema>;
+
+export const CreatePlantContractorNoticeRequestSchema = z.object({
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "message": z.string().min(1).max(1000).optional(),
+  "channel": z.enum(["email", "sms", "phone"]).optional(),
+}).strict();
+export type CreatePlantContractorNoticeRequest = z.infer<typeof CreatePlantContractorNoticeRequestSchema>;
 
 export const PlantPlanKindSchema = z.enum(["service", "inspection", "certification"]);
 export type PlantPlanKind = z.infer<typeof PlantPlanKindSchema>;
@@ -3509,6 +3604,14 @@ export const CreatePretaskPlanRequestSchema = z.object({
   "crew": z.array(PretaskCrewInputSchema).max(100).optional(),
 }).strict();
 export type CreatePretaskPlanRequest = z.infer<typeof CreatePretaskPlanRequestSchema>;
+
+export const CreatePretaskTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "taskTitle": z.string().min(1).max(200),
+  "swmsId": z.string().nullable().optional(),
+  "hazards": z.array(PretaskHazardSchema).max(50),
+}).strict();
+export type CreatePretaskTemplateRequest = z.infer<typeof CreatePretaskTemplateRequestSchema>;
 
 export const CreateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80),
@@ -9137,6 +9240,9 @@ export const PlantAssetSchema = z.object({
   "dailyRateCents": z.number().int().nullable(),
   "status": PlantAssetStatusSchema,
   "notes": z.string().nullable(),
+  "contractorName": z.string().nullable(),
+  "contractorEmail": z.string().nullable(),
+  "contractorPhone": z.string().nullable(),
   "version": z.number().int(),
 });
 export type PlantAsset = z.infer<typeof PlantAssetSchema>;
@@ -9145,6 +9251,47 @@ export const PlantAssetListSchema = z.object({
   "data": z.array(PlantAssetSchema),
 });
 export type PlantAssetList = z.infer<typeof PlantAssetListSchema>;
+
+export const PlantConditionCheckSchema = z.object({
+  "id": z.string().regex(new RegExp("^pcc_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "kind": PlantConditionKindSchema,
+  "allocationId": z.string().regex(new RegExp("^pal_[0-9A-Za-z]{26}$")).nullable(),
+  "recordId": z.string().regex(new RegExp("^prc_[0-9A-Za-z]{26}$")).nullable(),
+  "takenOn": z.string().date(),
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+});
+export type PlantConditionCheck = z.infer<typeof PlantConditionCheckSchema>;
+
+export const PlantConditionCheckListSchema = z.object({
+  "data": z.array(PlantConditionCheckSchema),
+});
+export type PlantConditionCheckList = z.infer<typeof PlantConditionCheckListSchema>;
+
+export const PlantContractorNoticeSchema = z.object({
+  "id": z.string().regex(new RegExp("^pcn_[0-9A-Za-z]{26}$")),
+  "assetId": z.string().regex(new RegExp("^pla_[0-9A-Za-z]{26}$")),
+  "planId": z.string().regex(new RegExp("^ppn_[0-9A-Za-z]{26}$")),
+  "recipientName": z.string(),
+  "channel": z.enum(["email", "sms", "phone"]),
+  "recipientEmail": z.string().nullable(),
+  "recipientPhone": z.string().nullable(),
+  "text": z.string(),
+  "subject": z.string(),
+  "issue": z.string(),
+  "dueOn": z.string().date(),
+  "message": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "failed"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type PlantContractorNotice = z.infer<typeof PlantContractorNoticeSchema>;
+
+export const PlantContractorNoticeListSchema = z.object({
+  "data": z.array(PlantContractorNoticeSchema),
+});
+export type PlantContractorNoticeList = z.infer<typeof PlantContractorNoticeListSchema>;
 
 export const PlantFlagSchema = z.object({
   "code": z.enum(["maintenance_overdue", "maintenance_due_soon", "certification_expired", "certification_expiring", "double_booking", "booked_while_unavailable", "service_during_booking", "hire_not_costed", "idle"]),
@@ -9476,6 +9623,34 @@ export const PretaskEventSchema = z.object({
 });
 export type PretaskEvent = z.infer<typeof PretaskEventSchema>;
 
+export const PretaskInsightCompanySchema = z.object({
+  "companyId": z.string().nullable(),
+  "plans": z.number().int(),
+  "closed": z.number().int(),
+  "highRiskHazards": z.number().int(),
+});
+export type PretaskInsightCompany = z.infer<typeof PretaskInsightCompanySchema>;
+
+export const PretaskInsightHazardSchema = z.object({
+  "hazard": z.string(),
+  "plans": z.number().int(),
+  "highRiskPlans": z.number().int(),
+  "lastSeen": z.string().date(),
+  "companyIds": z.array(z.string()),
+});
+export type PretaskInsightHazard = z.infer<typeof PretaskInsightHazardSchema>;
+
+export const PretaskInsightsSchema = z.object({
+  "days": z.number().int(),
+  "plans": z.number().int(),
+  "closed": z.number().int(),
+  "reviewed": z.number().int(),
+  "toReview": z.number().int(),
+  "topHazards": z.array(PretaskInsightHazardSchema),
+  "byCompany": z.array(PretaskInsightCompanySchema),
+});
+export type PretaskInsights = z.infer<typeof PretaskInsightsSchema>;
+
 export const PretaskStatusSchema = z.enum(["open", "closed"]);
 export type PretaskStatus = z.infer<typeof PretaskStatusSchema>;
 
@@ -9552,6 +9727,22 @@ export const PretaskSuggestionListSchema = z.object({
   "data": z.array(PretaskSuggestionSchema),
 });
 export type PretaskSuggestionList = z.infer<typeof PretaskSuggestionListSchema>;
+
+export const PretaskTemplateSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "taskTitle": z.string(),
+  "swmsId": z.string().nullable(),
+  "hazards": z.array(PretaskHazardSchema),
+  "isActive": z.boolean(),
+  "version": z.number().int(),
+});
+export type PretaskTemplate = z.infer<typeof PretaskTemplateSchema>;
+
+export const PretaskTemplateListSchema = z.object({
+  "data": z.array(PretaskTemplateSchema),
+});
+export type PretaskTemplateList = z.infer<typeof PretaskTemplateListSchema>;
 
 export const PretaskTransitionRequestSchema = z.object({
   "action": z.enum(["close", "reopen"]),
@@ -12605,6 +12796,9 @@ export const UpdatePlantAssetRequestSchema = z.object({
   "serialNumber": z.string().max(100).optional(),
   "dailyRateCents": z.number().int().min(0).optional(),
   "notes": z.string().max(2000).optional(),
+  "contractorName": z.string().max(200).optional(),
+  "contractorEmail": z.string().max(254).optional(),
+  "contractorPhone": z.string().max(30).optional(),
   "status": PlantAssetStatusSchema.optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdatePlantAssetRequest = z.infer<typeof UpdatePlantAssetRequestSchema>;
@@ -12652,6 +12846,11 @@ export const UpdatePretaskPlanRequestSchema = z.object({
   "hazards": z.array(PretaskHazardSchema).max(50).optional(),
 }).strict();
 export type UpdatePretaskPlanRequest = z.infer<typeof UpdatePretaskPlanRequestSchema>;
+
+export const UpdatePretaskTemplateRequestSchema = z.object({
+  "isActive": z.boolean(),
+}).strict();
+export type UpdatePretaskTemplateRequest = z.infer<typeof UpdatePretaskTemplateRequestSchema>;
 
 export const UpdateProductionItemRequestSchema = z.object({
   "name": z.string().min(1).max(80).optional(),
