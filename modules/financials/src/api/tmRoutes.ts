@@ -73,6 +73,9 @@ const toSignoffDto = (s: TmSignoffRow) => ({
   hasPosition: s.lat !== null,
   hasEvidence: s.evidenceFileId !== null,
   evidenceFileId: s.evidenceFileId ? encodeId('file', s.evidenceFileId) : null,
+  signatureFileId: s.signatureFileId ? encodeId('file', s.signatureFileId) : null,
+  signatureMethod: s.signatureMethod,
+  acknowledgementVersion: s.acknowledgementVersion,
   contentHash: s.contentHash,
   signedAt: s.signedAt.toISOString(),
 });
@@ -180,6 +183,13 @@ export function tmTicketRoutes(database: Database, tm: TmTicketsService) {
             ...(input.body.evidenceFileId
               ? { evidenceFileId: ref('file', input.body.evidenceFileId, 'evidenceFileId') }
               : {}),
+            ...(input.body.signatureFileId
+              ? {
+                  signatureFileId: ref('file', input.body.signatureFileId, 'signatureFileId'),
+                }
+              : {}),
+            ...(input.body.signatureMethod ? { signatureMethod: input.body.signatureMethod } : {}),
+            acknowledgementVersion: input.body.acknowledgementVersion,
             ...(input.body.fix
               ? {
                   fix: {

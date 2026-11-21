@@ -55,6 +55,11 @@ export function lineProblem(lines: DraftLine[]): string | null {
   return null;
 }
 
+/** The version and wording of the acknowledgement the signer accepts. Change both together (and the version) if the wording changes. */
+export const ACK_VERSION = 'tm-sign-v1';
+export const ACK_TEXT =
+  'I confirm the labour, equipment and materials on this ticket are a true record of the work done, and I understand this signature is recorded against the ticket, with the time and device it was given from.';
+
 export const GEO_LABEL: Record<string, string> = {
   inside: 'on site',
   outside: 'outside the site fence',

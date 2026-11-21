@@ -15,6 +15,14 @@ export type TmSuggestion = S['TmTicketSuggestion'];
 export type SignTmTicket = S['SignTmTicketRequest'];
 export type TmChecks = S['TmTicketChecks'];
 export type ConvertTmTicket = S['ConvertTmTicketRequest'];
+/** What the form sends: the docket photo and the signature image are uploaded first and attached by id. */
+export type SignInput = Omit<
+  SignTmTicket,
+  'evidenceFileId' | 'signatureFileId' | 'signatureMethod'
+> & {
+  evidence?: File;
+  signature?: { image: Blob; method: 'drawn' | 'typed' };
+};
 export type ReviewTmTicket = S['ReviewTmTicketRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
@@ -55,20 +63,20 @@ export function createTmApi(orgId: string) {
       );
     },
     /** `evidence` is the photo of the docket signed on site; it is uploaded first and attached by id. */
-    async sign(
-      projectId: string,
-      tmTicketId: string,
-      input: Omit<SignTmTicket, 'evidenceFileId'> & { evidence?: File },
-    ): Promise<TmTicketDetail> {
-      const { evidence, ...rest } = input;
-      const body: SignTmTicket = evidence
-        ? {
-            ...rest,
-            evidenceFileId: (
-              await uploadFile(orgId, { file: evidence, projectId, module: 'financials' })
-            ).id,
-          }
-        : rest;
+    async sign(projectId: string, tmTicketId: string, input: SignInput): Promise<TmTicketDetail> {
+      const { evidence, signature, ...rest } = input;
+      const body: SignTmTicket = { ...rest };
+      if (evidence)
+        body.evidenceFileId = (
+          await uploadFile(orgId, { file: evidence, projectId, module: 'financials' })
+        ).id;
+      if (signature) {
+        const file = new File([signature.image], 'signature.png', { type: 'image/png' });
+        body.signatureFileId = (
+          await uploadFile(orgId, { file, projectId, module: 'financials' })
+        ).id;
+        body.signatureMethod = signature.method;
+      }
       return unwrap(
         await api.POST(`${P}/tm-tickets/{tmTicketId}/sign`, {
           params: { path: { orgId, projectId, tmTicketId }, header: idempotencyKey() },

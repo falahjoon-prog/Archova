@@ -11659,6 +11659,9 @@ export type SignPretaskCrewRequest = z.infer<typeof SignPretaskCrewRequestSchema
 export const SignTmTicketRequestSchema = z.object({
   "role": z.enum(["contractor", "principal_rep"]),
   "signerName": z.string().min(1).max(200),
+  "signatureFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "signatureMethod": z.enum(["drawn", "typed"]).optional(),
+  "acknowledgementVersion": z.string().min(1).max(40),
   "signerPosition": z.string().min(1).max(200).optional(),
   "evidenceFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
   "fix": z.object({
@@ -12372,6 +12375,9 @@ export const TmTicketLineSchema = z.object({
 export type TmTicketLine = z.infer<typeof TmTicketLineSchema>;
 
 export const TmTicketSignoffSchema = z.object({
+  "signatureFileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable(),
+  "signatureMethod": z.enum(["drawn", "typed"]).nullable(),
+  "acknowledgementVersion": z.string().nullable(),
   "geofenceStatus": z.enum(["inside", "outside", "uncertain", "unknown"]),
   "hasPosition": z.boolean(),
   "role": z.enum(["contractor", "principal_rep"]),
