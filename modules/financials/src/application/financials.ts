@@ -722,11 +722,15 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` })
       .from(payments)
       .where(eq(payments.claimId, claimId));
-    const [adjudication] = await scope.tx
-      .select()
-      .from(claimAdjudications)
-      .where(eq(claimAdjudications.claimId, claimId))
-      .limit(1);
+    // The adjudication record (adjudicator, notes, the builder's own dates) is the builder's: an outside payee reading
+    // their own claim sees neither the record nor the steps built from it.
+    const [adjudication] = (await viewer(scope, projectId)).isInternal
+      ? await scope.tx
+          .select()
+          .from(claimAdjudications)
+          .where(eq(claimAdjudications.claimId, claimId))
+          .limit(1)
+      : [];
     const timeline = claimTimeline({
       adjudication: adjudication ? adjudicationFacts(adjudication) : null,
       ruleState: claim.ruleState,
@@ -779,6 +783,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
     projectId: string,
     claimId: string,
     input: Partial<AdjudicationFacts>,
+    /** The version of the record the person was looking at; needed to change a record that exists. */
+    expectedVersion?: number,
   ) {
     await need(scope, 'financials.claims.assess', projectId);
     await requireStaff(scope, projectId, 'record an adjudication');
@@ -810,7 +816,22 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .select()
       .from(claimAdjudications)
       .where(eq(claimAdjudications.claimId, claimId))
+      .for('update')
       .limit(1);
+    if (cur && expectedVersion === undefined)
+      throw new AppError('validation_failed', 'Say which version of the record you are changing.', [
+        { path: 'expectedVersion', message: 'Required when a record already exists' },
+      ]);
+    if (cur && cur.version !== expectedVersion)
+      throw new AppError(
+        'conflict',
+        'Someone else changed this record. Reload it and make your change again.',
+      );
+    if (!cur && expectedVersion !== undefined && expectedVersion !== 0)
+      throw new AppError(
+        'conflict',
+        'This record was removed or never existed. Reload and try again.',
+      );
     const at = new Date();
     const [row] = cur
       ? await scope.tx
@@ -822,6 +843,15 @@ export function createFinancialsService(deps: FinancialsDeps) {
           .insert(claimAdjudications)
           .values({ id: uuidv7(), orgId: scope.ctx.orgId, projectId, claimId, ...values })
           .returning();
+    // Every change leaves its before and after on the event trail: dates here can decide an adjudication.
+    scope.events.add({
+      type: 'financials.claim_adjudication.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: row!.version,
+      data: { claimId, before: cur ? adjudicationFacts(cur) : null, after: facts },
+    });
     if (!cur)
       await recordRetention(scope, {
         recordType: 'financials.claim_adjudications',

@@ -1231,6 +1231,7 @@ export const ClaimAdjudicationSchema = z.object({
   "adjudicatedAmount": z.union([FinancialsMoneySchema, z.null()]),
   "outcome": z.enum(["upheld", "part_upheld", "dismissed", "withdrawn", "settled"]).nullable(),
   "notes": z.string().max(2000).nullable(),
+  "version": z.number().int().min(1).optional(),
   "updatedAt": z.string().datetime({ offset: true }),
 });
 export type ClaimAdjudication = z.infer<typeof ClaimAdjudicationSchema>;
@@ -10750,6 +10751,7 @@ export const RecordAttendanceRequestSchema = z.object({
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
 
 export const RecordClaimAdjudicationRequestSchema = z.object({
+  "expectedVersion": z.number().int().min(0).optional(),
   "noticeServedOn": z.string().date().nullable().optional(),
   "applicationLodgedOn": z.string().date().nullable().optional(),
   "nominatingAuthority": z.string().max(200).nullable().optional(),

@@ -10,7 +10,7 @@ import { useClaimsMutations } from '../hooks/useClaims';
 import { aud } from '../lib/money';
 
 type Record = NonNullable<PaymentClaimDetail['adjudication']>;
-type Form = { [K in keyof RecordClaimAdjudication]-?: string };
+type Form = { [K in keyof Omit<RecordClaimAdjudication, 'expectedVersion'>]-?: string };
 
 const OUTCOMES = [
   { value: 'upheld', label: 'Upheld in full' },
@@ -80,7 +80,10 @@ export function AdjudicationCard({
         .filter(([, v]) => v !== ''),
     ) as RecordClaimAdjudication;
     recordAdjudication.mutate(
-      { claimId: detail.claim.id, body },
+      {
+        claimId: detail.claim.id,
+        body: { ...body, ...(r ? { expectedVersion: r.version } : {}) },
+      },
       { onSuccess: () => setEditing(false) },
     );
   }

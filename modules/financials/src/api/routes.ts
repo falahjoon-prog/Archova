@@ -146,6 +146,7 @@ export function financialsRoutes(
           adjudicatedAmount: d.adjudication.adjudicatedAmount,
           outcome: d.adjudication.outcome,
           notes: d.adjudication.notes,
+          version: d.adjudication.version,
           updatedAt: d.adjudication.updatedAt.toISOString(),
         }
       : null,
@@ -822,6 +823,7 @@ export function financialsRoutes(
                 outcome: b.outcome ?? null,
                 notes: b.notes ?? null,
               },
+              b.expectedVersion,
             ),
           ),
         ),

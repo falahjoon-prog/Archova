@@ -14172,7 +14172,7 @@ export interface paths {
         get?: never;
         /**
          * Record what has happened in adjudication on a claim (builder staff).
-         * @description Send the whole record each time; a field left out is cleared, so a wrong date is corrected by sending it again. Dates for things that happened can't be in the future or out of order. The adjudicator's response and determination due dates are typed in from the adjudicator's notice, never calculated. The claim's `timeline` shows the steps that follow.
+         * @description Send the whole record each time, with the `version` you read as `expectedVersion` (a different version is a conflict); a field left out is cleared. Each change is kept on the event trail with its before and after, so a wrong date is corrected by sending it again. Dates for things that happened can't be in the future or out of order. The adjudicator's response and determination due dates are typed in from the adjudicator's notice, never calculated. The claim's `timeline` shows the steps that follow.
          */
         put: operations["recordClaimAdjudication"];
         post?: never;
@@ -25062,10 +25062,14 @@ export interface components {
             /** @enum {string|null} */
             outcome: "upheld" | "part_upheld" | "dismissed" | "withdrawn" | "settled" | null;
             notes: string | null;
+            /** @description Send this back as `expectedVersion` when changing the record. */
+            version?: number;
             /** Format: date-time */
             updatedAt: string;
         };
         RecordClaimAdjudicationRequest: {
+            /** @description The `version` of the record being changed. Required when a record exists. */
+            expectedVersion?: number;
             /** Format: date */
             noticeServedOn?: string | null;
             /** Format: date */

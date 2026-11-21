@@ -581,6 +581,54 @@ describe('Contracts and payment claims (product/09)', () => {
     ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/retention/) } });
   });
 
+  it('keeps the adjudication record to the builder, versions each change and refuses a stale one', async () => {
+    const s = await setup('QLD');
+    const { contract, sov } = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const claim = (
+      await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+        periodEnd: '2026-09-30',
+        receivedAt: '2026-10-13T23:00:00Z',
+        statesAct: true,
+        lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+      })
+    ).json();
+    const url = `${s.base}/payment-claims/${claim.claim.id}/adjudication`;
+    const body = {
+      applicationLodgedOn: '2026-10-20',
+      adjudicatorName: 'A. Person',
+      notes: 'Internal',
+    };
+
+    // The payee company can't write it.
+    expect((await s.sub.browser.put(url, body)).statusCode).toBeGreaterThanOrEqual(403);
+
+    const first = await s.pm.browser.put(url, body);
+    expect(first.statusCode, first.body).toBe(200);
+    expect(first.json().adjudication).toMatchObject({ adjudicatorName: 'A. Person', version: 1 });
+
+    // A change needs the version it was made from, and a stale one is a conflict.
+    expect((await s.pm.browser.put(url, { ...body, notes: 'x' })).statusCode).toBe(422);
+    const second = await s.pm.browser.put(url, { ...body, notes: 'Updated', expectedVersion: 1 });
+    expect(second.statusCode, second.body).toBe(200);
+    expect(second.json().adjudication).toMatchObject({ notes: 'Updated', version: 2 });
+    expect(
+      (await s.pm.browser.put(url, { ...body, notes: 'Stale', expectedVersion: 1 })).statusCode,
+    ).toBe(409);
+
+    // The payee reading their own claim sees neither the record nor the steps built from it.
+    const read = await s.sub.browser.get(`${s.base}/payment-claims/${claim.claim.id}`);
+    expect(read.statusCode).toBe(200);
+    expect(read.json().adjudication).toBeNull();
+    expect(
+      read.json().timeline.filter((t: { key: string }) => t.key.startsWith('adjudication_a')),
+    ).toEqual([]);
+    expect(
+      (await s.pm.browser.get(`${s.base}/payment-claims/${claim.claim.id}`)).json().adjudication,
+    ).toMatchObject({ notes: 'Updated' });
+  });
+
   it('has no statement rule outside NSW or for a head contract', async () => {
     const q = await setup('QLD');
     const { contract, sov } = (
