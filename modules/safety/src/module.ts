@@ -6,6 +6,7 @@ import { createAnalyticsSource } from './application/analytics';
 import { createClearanceService } from './application/clearance';
 import { createToolboxService } from './application/toolbox';
 import { createPretaskService } from './application/pretask';
+import { createScorecardService } from './application/scorecards';
 import { createReadinessService } from './application/readiness';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -19,13 +20,16 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const toolbox = createToolboxService(deps);
   const pretask = createPretaskService(deps);
   const readiness = createReadinessService(deps);
+  const scorecards = createScorecardService(deps);
   const clearance = createClearanceService(deps);
   const reportingSources = createReportingSources(deps);
   const analytics = createAnalyticsSource(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
-    routes: safetyRoutes(services.database, swms, incidents, toolbox, pretask),
+    routes: safetyRoutes(services.database, swms, incidents, toolbox, pretask, scorecards),
     api: {
+      /** Companies on a project that Nova should flag for safety risk (`compose/nova-tools`); refuses without `safety.scorecards.read`. */
+      nova: { subcontractorRisk: scorecards.atRisk },
       /** What the mobile pull reads (modules/sync). */
       syncSource: incidentSyncSource(incidents),
       /** What a device may queue offline and push (modules/sync). */

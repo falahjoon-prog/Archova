@@ -89,6 +89,12 @@ export interface NovaToolSources {
       }>
     >;
   };
+  safety: {
+    subcontractorRisk: (
+      s: TenantScope,
+      projectId: string,
+    ) => Promise<{ restricted: boolean; rows: Array<{ name: string; riskFlag: string | null }> }>;
+  };
   /** Created after `ai`, so read lazily. */
   scheduling: () => {
     slipSignals: (
@@ -247,6 +253,30 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
             id: raw,
             text: `${r.ref} ${r.title}. Status: ${r.status}. Due: ${r.dueDate ?? 'no due date'}. Reopened ${r.reopenCount} times. Items: ${r.summary.pass} pass, ${r.summary.fail} fail, ${r.summary.na} N/A, ${r.summary.unanswered} not yet answered, of ${r.summary.total}.`,
           },
+        ];
+      },
+    },
+    {
+      name: 'subcontractor_safety_risk',
+      description:
+        'Companies on this project whose safety scorecard is below good or getting worse, with the reasons (builder staff only).',
+      params: {},
+      run: async (scope, projectId) => {
+        const title = 'Subcontractor safety risk';
+        const r = await src.safety.subcontractorRisk(scope, projectId);
+        if (r.restricted)
+          return [{ title, type: 'safety', id: projectId, text: noAccess('safety scorecards') }];
+        if (r.rows.length === 0)
+          return [
+            {
+              title,
+              type: 'safety',
+              id: projectId,
+              text: 'No company on this project has a safety scorecard that needs a closer look.',
+            },
+          ];
+        return [
+          { title, type: 'safety', id: projectId, text: r.rows.map((x) => x.riskFlag).join('\n') },
         ];
       },
     },

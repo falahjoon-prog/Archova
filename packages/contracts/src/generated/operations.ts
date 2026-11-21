@@ -3760,6 +3760,10 @@ export const GetPretaskInsightsParams = z.object({
 export const GetPretaskInsightsQuery = z.object({
   "days": z.coerce.number().int().min(1).max(365).optional(),
 });
+export const ListSafetyScorecardsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const CopyPretaskPlanParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -13274,6 +13278,18 @@ export const operations = {
     contentType: null,
     params: GetPretaskInsightsParams,
     query: GetPretaskInsightsQuery,
+    body: null,
+  },
+  listSafetyScorecards: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards',
+    module: "safety",
+    auth: "required",
+    permission: "safety.scorecards.read",
+    internal: false,
+    contentType: null,
+    params: ListSafetyScorecardsParams,
+    query: null,
     body: null,
   },
   copyPretaskPlan: {

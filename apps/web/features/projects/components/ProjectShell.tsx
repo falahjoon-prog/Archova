@@ -289,6 +289,11 @@ export function projectToolGroups(
       label: 'Pre-task plans',
       icon: PretaskIcon,
     },
+    canAdmin('inspections') && {
+      href: webRoutes.safetyScorecards(orgSlug, projectId),
+      label: 'Safety scorecards',
+      icon: SwmsIcon,
+    },
     canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
       label: 'Incidents',
@@ -441,6 +446,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'SWMS',
       'Toolbox talks',
       'Pre-task plans',
+      'Safety scorecards',
       'Incidents',
       'Safety signals',
       'Inductions',

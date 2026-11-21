@@ -10899,6 +10899,39 @@ export const SafetyBadgeSchema = z.object({
 });
 export type SafetyBadge = z.infer<typeof SafetyBadgeSchema>;
 
+export const SafetyScorecardComponentSchema = z.object({
+  "key": z.enum(["incidents", "actions", "swms", "inductions", "findings"]),
+  "label": z.string(),
+  "lost": z.number().int(),
+  "max": z.number().int(),
+  "detail": z.string(),
+});
+export type SafetyScorecardComponent = z.infer<typeof SafetyScorecardComponentSchema>;
+
+export const SafetyScorecardSchema = z.object({
+  "companyId": z.string(),
+  "name": z.string(),
+  "score": z.number().int().min(0).max(100),
+  "rating": z.enum(["good", "watch", "elevated", "high"]),
+  "trend": z.enum(["improving", "steady", "worsening"]),
+  "components": z.array(SafetyScorecardComponentSchema),
+  "flags": z.array(z.string()),
+  "riskFlag": z.string().nullable(),
+  "counts": z.object({
+  "incidents12m": z.number().int(),
+  "incidents90d": z.number().int(),
+  "notifiable12m": z.number().int(),
+  "projects": z.number().int(),
+  "overdueActions": z.number().int(),
+}),
+});
+export type SafetyScorecard = z.infer<typeof SafetyScorecardSchema>;
+
+export const SafetyScorecardListSchema = z.object({
+  "data": z.array(SafetyScorecardSchema),
+});
+export type SafetyScorecardList = z.infer<typeof SafetyScorecardListSchema>;
+
 export const SaveActionPlanTemplateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();

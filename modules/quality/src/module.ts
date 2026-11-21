@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
@@ -270,6 +270,39 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
         overdueInspections: inspections.overdueForNova,
         failedInspectionItems: inspections.failedItemsForNova,
         inspectionSummaries: inspections.summariesForNova,
+      },
+      /**
+       * Safety observations assigned to each company across the org since a date, and how many are still open past
+       * their due date. Called by `safety` for subcontractor scorecards; the caller has checked permission.
+       */
+      safetyByCompany: async (
+        scope: TenantScope,
+        companyIds: string[],
+        since: Date,
+        today: string,
+      ) => {
+        const out = new Map<string, { raised: number; overdueOpen: number }>();
+        if (companyIds.length === 0) return out;
+        const t = observationsTable;
+        const rows = await scope.tx
+          .select({ companyId: t.assigneeCompanyId, status: t.status, dueDate: t.dueDate })
+          .from(t)
+          .where(
+            and(
+              inArray(t.assigneeCompanyId, companyIds),
+              eq(t.type, 'safety'),
+              isNull(t.deletedAt),
+              gte(t.createdAt, since),
+            ),
+          );
+        for (const r of rows) {
+          if (!r.companyId) continue;
+          const e = out.get(r.companyId) ?? { raised: 0, overdueOpen: 0 };
+          e.raised += 1;
+          if (r.status === 'open' && r.dueDate !== null && r.dueDate < today) e.overdueOpen += 1;
+          out.set(r.companyId, e);
+        }
+        return out;
       },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (
