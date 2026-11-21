@@ -1,8 +1,16 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { localDateOf } from '@archova/time';
 import type { TenantScope } from '@archova/kernel';
-import { acknowledgements, swms } from '../infra/tables';
+import { acknowledgements, pretaskCrew, pretaskPlans, swms } from '../infra/tables';
 import type { SafetyDeps } from './swms';
+
+/** Whether a worker has signed on to a pre-task plan today, and whether one is waiting for them. */
+export interface WorkerPretaskClearance {
+  /** Plans today the worker is signed on to. */
+  signedPlans: number;
+  /** Open plans today for the worker's company (or any, if they have none) that they have not signed. */
+  waitingPlans: number;
+}
 
 export interface WorkerSwmsClearance {
   number: number;
@@ -73,5 +81,50 @@ export function createClearanceService(deps: Pick<SafetyDeps, 'platform' | 'now'
     }));
   }
 
-  return { workerSwms };
+  async function workerPretask(
+    scope: TenantScope,
+    projectId: string,
+    worker: { companyId: string | null; userId: string | null },
+  ): Promise<WorkerPretaskClearance> {
+    const project = await deps.platform.getProject(scope, projectId);
+    const today = localDateOf(now(), project.timezone);
+    const plans = await scope.tx
+      .select({
+        id: pretaskPlans.id,
+        companyId: pretaskPlans.companyId,
+        status: pretaskPlans.status,
+      })
+      .from(pretaskPlans)
+      .where(
+        and(
+          eq(pretaskPlans.projectId, projectId),
+          eq(pretaskPlans.workDate, today),
+          isNull(pretaskPlans.deletedAt),
+        ),
+      );
+    if (!plans.length || !worker.userId) return { signedPlans: 0, waitingPlans: 0 };
+    const mine = await scope.tx
+      .select({ planId: pretaskCrew.planId, signedAt: pretaskCrew.signedAt })
+      .from(pretaskCrew)
+      .where(
+        and(
+          eq(pretaskCrew.projectId, projectId),
+          eq(pretaskCrew.userId, worker.userId),
+          inArray(
+            pretaskCrew.planId,
+            plans.map((p) => p.id),
+          ),
+        ),
+      );
+    const signed = new Set(mine.filter((m) => m.signedAt).map((m) => m.planId));
+    const waiting = plans.filter(
+      (p) =>
+        p.status === 'open' &&
+        !signed.has(p.id) &&
+        (!worker.companyId || !p.companyId || p.companyId === worker.companyId),
+    );
+    return { signedPlans: signed.size, waitingPlans: waiting.length };
+  }
+
+  return { workerSwms, workerPretask };
 }

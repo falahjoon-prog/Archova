@@ -55,6 +55,12 @@ export const clearancePreview: ClearanceSource = {
           status: 'pass',
           detail: 'Certificates and bonds in date',
         },
+        {
+          key: 'pretask',
+          label: "Today's pre-task plan",
+          status: 'warn',
+          detail: 'A plan is open for their work and they have not signed on',
+        },
       ],
       flag: {
         severity: 'blocking',

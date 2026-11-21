@@ -625,6 +625,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
     clearanceSwms: safety.api.workerSwms,
+    clearancePretask: safety.api.workerPretask,
     clearanceInsurance: async (scope, projectId, companyId) => {
       const c = await insurance.api.companyClearance(scope, projectId, companyId);
       return {

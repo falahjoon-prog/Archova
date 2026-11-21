@@ -76,6 +76,27 @@ describe('evaluateClearance', () => {
     expect(evaluateClearance({ ...base, workerActive: false }).result).toBe('blocked');
   });
 
+  describe("today's pre-task plan", () => {
+    const pt = (signedPlans: number, waitingPlans: number) => ({
+      ...base,
+      pretask: { signedPlans, waitingPlans },
+    });
+    it('is not checked when pre-task plans are not connected, or none concern the worker', () => {
+      expect(status(base, 'pretask')).toBe('na');
+      expect(status(pt(0, 0), 'pretask')).toBe('na');
+    });
+    it('passes once the worker has signed on to a plan today', () => {
+      expect(status(pt(1, 0), 'pretask')).toBe('pass');
+      expect(status(pt(1, 1), 'pretask')).toBe('pass');
+    });
+    it('warns but never blocks when a plan is open and unsigned', () => {
+      const r = evaluateClearance(pt(0, 1));
+      expect(r.checks.find((c) => c.key === 'pretask')!.status).toBe('warn');
+      expect(r.result).toBe('warning');
+      expect(r.flag?.severity).toBe('warning');
+    });
+  });
+
   describe('company insurance', () => {
     const ins = (
       state: 'cleared' | 'warning' | 'blocked',

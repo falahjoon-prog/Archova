@@ -737,4 +737,27 @@ describe('site clearance', () => {
     // Another subcontractor cannot look up this company's worker.
     expect((await s.sub2.browser.get(`${url}?code=${badge.workerId}`)).statusCode).toBe(404);
   });
+
+  it("shows whether the worker has signed on to today's pre-task plan, and never blocks on it", async () => {
+    const s = await setup('wf-clear-ptp');
+    const badge = (await s.sub.browser.get(`${s.base}/attendance/me/badge`)).json();
+    const url = `${s.base}/attendance/clearance?code=${badge.workerId}`;
+    const pretask = async () =>
+      (await s.sm.browser.get(url)).json().checks.find((c: { key: string }) => c.key === 'pretask');
+    expect((await pretask()).status).toBe('na');
+
+    const created = await s.pm.browser.post(`${s.base}/pretask-plans`, {
+      taskTitle: 'Form up slab',
+      workDate: new Date().toISOString().slice(0, 10),
+      supervisorName: 'Pat Foreman',
+      hazards: [
+        { hazard: 'Falls', riskBefore: 'high', controls: 'Edge protection', riskAfter: 'low' },
+      ],
+      crew: [{ personName: 'Formco Worker', userId: s.sub.userId }],
+    });
+    expect(created.statusCode).toBe(201);
+    const warned = await pretask();
+    expect(warned.status).toBe('warn');
+    expect(warned.detail).toMatch(/not signed on/);
+  });
 });

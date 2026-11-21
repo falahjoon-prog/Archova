@@ -36770,7 +36770,10 @@ components:
             required: [key, label, status, detail]
             properties:
               key:
-                { type: string, enum: [worker, white_card, licences, induction, swms, insurance] }
+                {
+                  type: string,
+                  enum: [worker, white_card, licences, induction, swms, insurance, pretask],
+                }
               label: { type: string }
               status: { type: string, enum: [pass, warn, fail, na] }
               detail: { type: string }
