@@ -46,6 +46,10 @@ export interface AttendanceSource {
     status: Exclude<RollMark, 'unmarked'>,
   ): Promise<RollCall>;
   endRollCall(projectId: string, rollCallId: string): Promise<RollCall>;
+  /** One tap: everyone not yet ticked is accounted for, and the roll call ends. Refused while anyone is missing. */
+  allClearRollCall(projectId: string, rollCallId: string): Promise<RollCall>;
+  /** The compliance record as CSV: a summary, then every mark in order with who made it and when. */
+  rollCallRecord(projectId: string, rollCallId: string): Promise<{ filename: string; csv: string }>;
   workers(projectId: string, filters: WorkerFilters): Promise<Worker[]>;
   createWorker(projectId: string, input: WorkerInput): Promise<Worker>;
   /** Changes a worker; picking a directory company confirms one typed at the gate. */
@@ -228,7 +232,12 @@ function recount(rc: RollCall) {
 
 const rollOps: Pick<
   AttendanceSource,
-  'rollCalls' | 'startRollCall' | 'markRollCall' | 'endRollCall'
+  | 'rollCalls'
+  | 'startRollCall'
+  | 'markRollCall'
+  | 'endRollCall'
+  | 'allClearRollCall'
+  | 'rollCallRecord'
 > = {
   rollCalls: (projectId) => delay(rollStores.get(projectId)),
   startRollCall: (projectId, input) => {
@@ -267,6 +276,28 @@ const rollOps: Pick<
     const rc = rollStores.get(projectId).find((r) => r.id === rollCallId)!;
     rc.endedAt = new Date().toISOString();
     return delay(rc);
+  },
+  allClearRollCall: (projectId, rollCallId) => {
+    const rc = rollStores.get(projectId).find((r) => r.id === rollCallId)!;
+    if (rc.people.some((p) => p.status === 'missing'))
+      return Promise.reject(new Error('Someone is marked missing.'));
+    const at = new Date().toISOString();
+    for (const p of rc.people)
+      if (p.status === 'unmarked') {
+        p.status = 'accounted_for';
+        p.markedAt = at;
+      }
+    rc.endedAt = at;
+    recount(rc);
+    return delay(rc);
+  },
+  rollCallRecord: (projectId, rollCallId) => {
+    const rc = rollStores.get(projectId).find((r) => r.id === rollCallId)!;
+    const lines = rc.people.map((p) => `${p.markedAt ?? ''},mark,${p.fullName},${p.status}`);
+    return delay({
+      filename: 'roll-call.csv',
+      csv: ['time,event,person,status', ...lines].join('\n'),
+    });
   },
 };
 

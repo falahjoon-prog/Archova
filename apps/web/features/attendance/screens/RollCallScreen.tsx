@@ -48,6 +48,15 @@ const TONES: Record<RollMark, StatusTone> = {
 type Mark = Exclude<RollMark, 'unmarked'>;
 const MARKS: Mark[] = ['accounted_for', 'missing', 'not_on_site'];
 
+function download(filename: string, csv: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Evacuation roll call (ATT-AC5): start from who is on site, tick people off, keep the record. */
 export function RollCallScreen() {
   const org = useCurrentOrg();
@@ -100,7 +109,7 @@ export function RollCallScreen() {
       />
       {previewDataOnly ? <PreviewDataNotice tool="Roll call" /> : null}
       <ErrorAlert
-        error={calls.error ?? m.mark.error}
+        error={calls.error ?? m.mark.error ?? m.allClear.error ?? m.record.error}
         title="Something went wrong with the roll call"
       />
       {calls.isPending ? (
@@ -115,6 +124,21 @@ export function RollCallScreen() {
             m.mark.mutate({ rollCallId: viewing.id, workerId: person.workerId, status })
           }
           onEnd={canManage && !viewing.endedAt ? () => setEnding(true) : undefined}
+          onAllClear={
+            canManage && !viewing.endedAt && viewing.counts.missing === 0
+              ? () => m.allClear.mutate(viewing.id)
+              : undefined
+          }
+          allClearPending={m.allClear.isPending}
+          onRecord={
+            canManage
+              ? () =>
+                  m.record.mutate(viewing.id, {
+                    onSuccess: (r) => download(r.filename, r.csv),
+                  })
+              : undefined
+          }
+          recordPending={m.record.isPending}
         />
       ) : (
         <EmptyState
@@ -231,6 +255,10 @@ function RollCallCard({
   pending,
   onMark,
   onEnd,
+  onAllClear,
+  allClearPending,
+  onRecord,
+  recordPending,
 }: {
   rollCall: RollCall;
   timeZone: string;
@@ -238,13 +266,35 @@ function RollCallCard({
   pending: boolean;
   onMark: (person: RollCallPerson, status: Mark) => void;
   onEnd?: () => void;
+  onAllClear?: () => void;
+  allClearPending: boolean;
+  onRecord?: () => void;
+  recordPending: boolean;
 }) {
   const ended = rollCall.endedAt !== null;
   const groups = groupByCompany(rollCall.people, companyName);
   return (
     <Card
       title={rollCall.reason}
-      actions={onEnd ? <Button onClick={onEnd}>End roll call</Button> : undefined}
+      actions={
+        <>
+          {onRecord ? (
+            <Button variant="secondary" disabled={recordPending} onClick={onRecord}>
+              {recordPending ? 'Preparing…' : 'Download record'}
+            </Button>
+          ) : null}
+          {onAllClear ? (
+            <Button disabled={allClearPending} onClick={onAllClear}>
+              {allClearPending ? 'Saving…' : 'All accounted for'}
+            </Button>
+          ) : null}
+          {onEnd ? (
+            <Button variant="secondary" onClick={onEnd}>
+              End roll call
+            </Button>
+          ) : null}
+        </>
+      }
     >
       <p className="u-m-0">
         <strong>{progressLabel(rollCall.counts)}</strong>

@@ -364,6 +364,66 @@ describe('site sign-in (product/12)', () => {
     expect(late.json().code).toBe('roll_call.ended');
   });
 
+  it('clears a roll call with one tap, keeps the time of offline marks, and records it as CSV', async () => {
+    const s = await setup('wf-allclear');
+    await s.sub.browser.post(`${s.base}/attendance/sign-in`, { gateCode: s.code });
+    await s.sub2.browser.post(`${s.base}/attendance/sign-in`, { gateCode: s.code });
+    const call = (
+      await s.sm.browser.post(`${s.base}/attendance/roll-calls`, { reason: 'Drill' })
+    ).json();
+    const [a, b] = call.people as { workerId: string }[];
+    // A mark tapped with no signal keeps its own time, but never from the future or before the call started.
+    const future = new Date(Date.now() + 3_600_000).toISOString();
+    const clamped = (
+      await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/marks`, {
+        workerId: a!.workerId,
+        status: 'missing',
+        clientAt: future,
+      })
+    ).json();
+    expect(
+      Date.parse(
+        clamped.people.find((p: { workerId: string }) => p.workerId === a!.workerId).markedAt,
+      ),
+    ).toBeLessThanOrEqual(Date.now());
+    // Someone missing blocks all clear, so a missing person is never cleared by accident.
+    const blocked = await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/all-clear`);
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().code).toBe('roll_call.has_missing');
+    await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/marks`, {
+      workerId: a!.workerId,
+      status: 'accounted_for',
+    });
+    // Only a site manager clears everyone.
+    expect(
+      (await s.sub.browser.post(`${s.base}/attendance/roll-calls/${call.id}/all-clear`)).statusCode,
+    ).toBe(403);
+    const cleared = await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/all-clear`);
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.json().counts).toEqual({ total: 2, accountedFor: 2, missing: 0, unmarked: 0 });
+    expect(cleared.json().endedAt).toBeTruthy();
+    const marked = cleared
+      .json()
+      .people.find((p: { workerId: string }) => p.workerId === b!.workerId);
+    expect(marked.markedAt).toBe(cleared.json().endedAt);
+    // Tapping again changes nothing.
+    const again = await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/all-clear`);
+    expect(again.json().endedAt).toBe(cleared.json().endedAt);
+    const record = await s.sm.browser.get(`${s.base}/attendance/roll-calls/${call.id}/record`);
+    expect(record.statusCode).toBe(200);
+    const csv = record.json().csv as string;
+    expect(csv).toContain('Roll call record');
+    expect(csv).toContain('Reason,Drill');
+    expect(csv).toContain('Accounted for,2');
+    expect(csv).toMatch(/,started,/);
+    expect(csv).toMatch(/,ended,/);
+    expect(csv.match(/,mark,/g)).toHaveLength(3);
+    expect(record.json().filename).toMatch(/^roll-call-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(
+      (await s.sub.browser.get(`${s.base}/attendance/roll-calls/${call.id}/record`)).statusCode,
+    ).toBe(403);
+  });
+
   it('closes sessions left open after the day end, flagged as not exact', async () => {
     const s = await setup('wf-auto');
     const yesterday = addDays(today(), -1);

@@ -105,6 +105,28 @@ describe('queued field actions are replayed through the online endpoints', () =>
     expect(calls[1]!.options.body).toEqual({ action: 'close' });
   });
 
+  it('replays roll call taps at the time they were made', async () => {
+    const { api, calls } = fakeApi();
+    const send = createActionSender(api, 'org_1');
+    await send(
+      action('rollcall.mark', 'rlc_1', {
+        workerId: 'wkr_1',
+        status: 'missing',
+        at: '2026-11-21T01:02:03.000Z',
+      }),
+    );
+    await send(action('rollcall.allClear', 'rlc_1', { at: '2026-11-21T01:05:00.000Z' }));
+    await send(action('rollcall.end', 'rlc_1', {}));
+    expect(calls.map((c) => c.path.split('/').pop())).toEqual(['marks', 'all-clear', 'end']);
+    expect(calls[0]!.options.params.path).toMatchObject({ rollCallId: 'rlc_1' });
+    expect(calls[0]!.options.body).toEqual({
+      workerId: 'wkr_1',
+      status: 'missing',
+      clientAt: '2026-11-21T01:02:03.000Z',
+    });
+    expect(calls[1]!.options.body).toEqual({ clientAt: '2026-11-21T01:05:00.000Z' });
+  });
+
   it('has plain text for every kind', () => {
     for (const kind of [
       'delivery.checkIn',
@@ -114,6 +136,9 @@ describe('queued field actions are replayed through the online endpoints', () =>
       'environment.startCondition',
       'toolbox.addAttendee',
       'toolbox.transition',
+      'rollcall.mark',
+      'rollcall.allClear',
+      'rollcall.end',
     ] as const) {
       expect(ACTION_TEXT[kind]).toBeTruthy();
     }

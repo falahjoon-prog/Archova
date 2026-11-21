@@ -3464,7 +3464,9 @@ export interface paths {
          * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
          *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
          *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
-         *     the manager reports one from the incidents screen if it warrants it.
+         *     the manager reports one from the incidents screen if it warrants it. With `raiseObservation` a confirmed
+         *     signal also becomes a safety observation (photo attached, priority from Nova's confidence) in the same
+         *     step, and the signal keeps its `observationId`; the caller needs `quality.observations.create`.
          */
         post: operations["reviewHazardSignal"];
         delete?: never;
@@ -4783,6 +4785,59 @@ export interface paths {
         };
         /** The tender-readiness pack as a PDF. */
         get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack": {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The regulator evidence pack for a project and date range, with the gaps found before export.
+         * @description Inductions, pre-task plans, inspections, incidents, corrective actions and toolbox talks recorded in the range
+         *     (local dates in the project's time zone, up to two years), as they stand today. Each section is limited to what
+         *     the caller may read and is marked `restricted` when they cannot. `gaps` is Nova's pre-check, plain rules over the
+         *     records: it lists what is missing or open so it can be fixed before the pack is handed over. It never says the site
+         *     complied. Archova does not notify the regulator.
+         */
+        get: operations["getSafetyEvidencePack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf": {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The regulator evidence pack as a PDF. */
+        get: operations["getSafetyEvidencePackPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8773,6 +8828,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One tap: mark everyone not yet ticked as accounted for, at one moment, and end the roll call. Refused while anyone is marked missing. */
+        post: operations["allClearRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        /** The compliance record of a roll call as CSV: a summary, then every mark in order with who made it and when. */
+        get: operations["getRollCallRecord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inductions": {
         parameters: {
             query?: never;
@@ -11439,6 +11536,26 @@ export interface paths {
         };
         /** What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person. */
         get: operations["getPretaskInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Safety scorecard for every company on the project, worst first. The history is the company's record across all the org's projects (incidents, overdue corrective actions, SWMS, induction at pre-task sign-on, safety observations), so a repeat offender shows before they are re-engaged. Builder staff only. A prompt to look, never a ban. */
+        get: operations["listSafetyScorecards"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16465,6 +16582,128 @@ export interface components {
             contentType: "application/pdf";
             dataBase64: string;
         };
+        EvidencePackIncident: {
+            ref: string;
+            title: string;
+            type: string;
+            severity: string;
+            occurredAt: string;
+            location: string | null;
+            /** @enum {string} */
+            status: "reported" | "investigating" | "closed";
+            isNotifiable: boolean;
+            notifiableClass: string | null;
+            regulatorNotifiedAt: string | null;
+            writtenNoticeRequestedAt: string | null;
+            hasRootCause: boolean;
+            closedAt: string | null;
+        };
+        EvidencePackAction: {
+            incidentRef: string;
+            number: number;
+            title: string;
+            dueDate: string | null;
+            /** @enum {string} */
+            status: "open" | "done" | "verified";
+            completedAt: string | null;
+            verifiedAt: string | null;
+        };
+        EvidencePackPretask: {
+            ref: string;
+            taskTitle: string;
+            workDate: string;
+            location: string | null;
+            supervisorName: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            hazards: number;
+            hazardsWithoutControls: number;
+            crew: number;
+            signed: number;
+            notCurrentlyInducted: number;
+            reviewed: boolean;
+        };
+        EvidencePackToolbox: {
+            ref: string;
+            title: string;
+            heldOn: string;
+            presenterName: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            attendees: number;
+            signed: number;
+        };
+        EvidencePackInduction: {
+            workerName: string;
+            completedOn: string;
+            quizScore: number | null;
+            expiresOn: string | null;
+            /** @enum {string} */
+            method: "self" | "assisted" | "link";
+        };
+        EvidencePackInspection: {
+            ref: string;
+            title: string;
+            status: string;
+            scheduledFor: string | null;
+            completedOn: string | null;
+            pass: number;
+            fail: number;
+        };
+        EvidenceSectionIncidents: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackIncident"][];
+        };
+        EvidenceSectionActions: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackAction"][];
+        };
+        EvidenceSectionPretasks: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackPretask"][];
+        };
+        EvidenceSectionToolbox: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackToolbox"][];
+        };
+        EvidenceSectionInductions: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackInduction"][];
+        };
+        EvidenceSectionInspections: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackInspection"][];
+        };
+        EvidencePackGap: {
+            /** @enum {string} */
+            section: "incidents" | "actions" | "pretasks" | "toolbox" | "inductions" | "inspections" | "pack";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+        };
+        SafetyEvidencePack: {
+            project: {
+                name: string;
+                number: string | null;
+                timeZone: string;
+            };
+            from: string;
+            to: string;
+            generatedOn: string;
+            incidents: components["schemas"]["EvidenceSectionIncidents"];
+            actions: components["schemas"]["EvidenceSectionActions"];
+            pretasks: components["schemas"]["EvidenceSectionPretasks"];
+            toolbox: components["schemas"]["EvidenceSectionToolbox"];
+            inductions: components["schemas"]["EvidenceSectionInductions"];
+            inspections: components["schemas"]["EvidenceSectionInspections"];
+            gaps: components["schemas"]["EvidencePackGap"][];
+        };
         ReadinessPack: {
             /** @description Local date the pack was built. */
             generatedOn: string;
@@ -19678,6 +19917,8 @@ export interface components {
             reviewNote: string | null;
             /** Format: date-time */
             reviewedAt: string | null;
+            /** @description The safety observation raised when this signal was confirmed (obs_), if any */
+            observationId: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -25248,6 +25489,24 @@ export interface components {
             workerId: string;
             /** @enum {string} */
             status: "accounted_for" | "missing" | "not_on_site";
+            /**
+             * Format: date-time
+             * @description When the mark was tapped on a phone with no signal. Kept inside the roll call's own window (never before it started, never in the future).
+             */
+            clientAt?: string;
+        };
+        AllClearRollCallRequest: {
+            /**
+             * Format: date-time
+             * @description When all clear was tapped on a phone with no signal.
+             */
+            clientAt?: string;
+        };
+        RollCallRecord: {
+            filename: string;
+            csv: string;
+            /** @description Marks in the record. */
+            count: number;
         };
         /**
          * @description The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.
@@ -27628,6 +27887,42 @@ export interface components {
             toReview: number;
             topHazards: components["schemas"]["PretaskInsightHazard"][];
             byCompany: components["schemas"]["PretaskInsightCompany"][];
+        };
+        SafetyScorecardComponent: {
+            /** @enum {string} */
+            key: "incidents" | "actions" | "swms" | "inductions" | "findings";
+            label: string;
+            /** @description Points lost */
+            lost: number;
+            max: number;
+            detail: string;
+        };
+        SafetyScorecard: {
+            companyId: string;
+            name: string;
+            /** @description 100 is best. */
+            score: number;
+            /** @enum {string} */
+            rating: "good" | "watch" | "elevated" | "high";
+            /**
+             * @description Last 90 days of incidents against the 90 before.
+             * @enum {string}
+             */
+            trend: "improving" | "steady" | "worsening";
+            components: components["schemas"]["SafetyScorecardComponent"][];
+            flags: string[];
+            /** @description One line Nova shows before the company is added to a project. Null when there is nothing to flag. */
+            riskFlag: string | null;
+            counts: {
+                incidents12m: number;
+                incidents90d: number;
+                notifiable12m: number;
+                projects: number;
+                overdueActions: number;
+            };
+        };
+        SafetyScorecardList: {
+            data: components["schemas"]["SafetyScorecard"][];
         };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
@@ -34683,6 +34978,8 @@ export interface operations {
                     /** @enum {string} */
                     decision: "confirmed" | "dismissed";
                     note?: string;
+                    /** @description Only with confirmed: also raise a safety observation from the signal. */
+                    raiseObservation?: boolean;
                 };
             };
         };
@@ -36181,6 +36478,60 @@ export interface operations {
             header?: never;
             path: {
                 orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSafetyEvidencePack: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyEvidencePack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSafetyEvidencePackPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
             };
             cookie?: never;
         };
@@ -43024,6 +43375,60 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    allClearRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AllClearRollCallRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRollCallRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCallRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listInductions: {
         parameters: {
             query?: never;
@@ -47931,6 +48336,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PretaskInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSafetyScorecards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyScorecardList"];
                 };
             };
             default: components["responses"]["Problem"];

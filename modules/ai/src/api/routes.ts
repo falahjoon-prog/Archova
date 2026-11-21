@@ -277,6 +277,7 @@ const toHazardSignalDto = (s: HazardSignalView) => ({
   status: s.status,
   reviewNote: s.reviewNote,
   reviewedAt: s.reviewedAt?.toISOString() ?? null,
+  observationId: s.observationId ? encodeId('observation', s.observationId) : null,
   createdAt: s.createdAt.toISOString(),
 });
 
@@ -968,6 +969,7 @@ export function aiRoutes(
         hazardScans.review(scope, projectId, id, {
           decision: input.body.decision,
           ...(input.body.note ? { note: input.body.note } : {}),
+          ...(input.body.raiseObservation ? { raiseObservation: true } : {}),
         }),
       );
       return { status: 200, body: toHazardSignalDto(row) };

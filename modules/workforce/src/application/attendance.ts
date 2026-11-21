@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { geofenceStatus, uuidv7, type GeoFix } from '@archova/domain';
-import { localDateOf, type LocalDate } from '@archova/time';
+import { localDateOf, utcOffsetMinutes, zonedParts, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
@@ -17,6 +17,7 @@ import {
   type EligibilityReason,
   type GateCheckMode,
 } from '../domain/attendance';
+import { csvLine } from '../domain/timesheet';
 import {
   attendanceEvents,
   attendanceSessions,
@@ -55,7 +56,7 @@ export interface WorkforceDeps {
     PlatformApi,
     'getProject' | 'getProjectMembership' | 'companyExists' | 'getOrg' | 'projectCompanies'
   >;
-  identity: Pick<IdentityApi, 'getUser'>;
+  identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   complianceSources?: ComplianceSource[];
   now?: () => Date;
 }
@@ -80,6 +81,16 @@ export interface OnSiteEntry {
 }
 
 const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
+
+/** `2026-11-21 14:05:09 +10:00`: the wall-clock time in the project's zone, with its offset, for the compliance record. */
+function localStamp(at: Date, timeZone: string): string {
+  const p = zonedParts(at, timeZone);
+  const off = utcOffsetMinutes(at, timeZone);
+  const two = (n: number) => String(n).padStart(2, '0');
+  const sign = off < 0 ? '-' : '+';
+  const abs = Math.abs(off);
+  return `${p.year}-${two(p.month)}-${two(p.day)} ${two(p.hour)}:${two(p.minute)}:${two(p.second)} ${sign}${two(Math.floor(abs / 60))}:${two(abs % 60)}`;
+}
 
 export function createAttendanceService(deps: WorkforceDeps) {
   const now = deps.now ?? (() => new Date());
@@ -1012,11 +1023,21 @@ export function createAttendanceService(deps: WorkforceDeps) {
     return getRollCall(scope, projectId, id);
   }
 
+  /**
+   * A mark made on a phone with no signal carries the time it was tapped (`at`). It is kept inside the roll call's own
+   * window: never before it started, never in the future.
+   */
+  function markTime(call: RollCallRow, at: Date | undefined): Date {
+    const t = now();
+    if (!at) return t;
+    return new Date(Math.min(Math.max(at.getTime(), call.startedAt.getTime()), t.getTime()));
+  }
+
   async function markRollCall(
     scope: TenantScope,
     projectId: string,
     rollCallId: string,
-    input: { workerId: string; status: MarkStatus },
+    input: { workerId: string; status: MarkStatus; at?: Date },
   ) {
     const { call } = await getRollCall(scope, projectId, rollCallId);
     if (call.endedAt) throw new AppError('roll_call.ended', 'This roll call has ended.');
@@ -1029,9 +1050,141 @@ export function createAttendanceService(deps: WorkforceDeps) {
       workerId: input.workerId,
       status: input.status,
       markedBy: scope.ctx.userId,
-      markedAt: now(),
+      markedAt: markTime(call, input.at),
     });
     return getRollCall(scope, projectId, rollCallId);
+  }
+
+  /**
+   * One tap for "everyone is accounted for": marks everyone not yet ticked, all at the same moment, and ends the roll
+   * call. Refused while anyone is marked missing, so a missing person is never cleared by accident. A roll call that
+   * has already ended is returned as it is.
+   */
+  async function allClearRollCall(
+    scope: TenantScope,
+    projectId: string,
+    rollCallId: string,
+    input: { at?: Date } = {},
+  ) {
+    const { call, marks } = await getRollCall(scope, projectId, rollCallId);
+    if (call.endedAt) return { call, marks };
+    const latest = new Map<string, MarkStatus>();
+    for (const m of marks) latest.set(m.workerId, m.status);
+    if ([...latest.values()].includes('missing'))
+      throw new AppError(
+        'roll_call.has_missing',
+        'Someone is marked missing. Resolve them before declaring all clear.',
+      );
+    const at = markTime(call, input.at);
+    const todo = call.snapshot.filter((e) => !latest.has(e.workerId));
+    if (todo.length > 0)
+      await scope.tx.insert(rollCallMarks).values(
+        todo.map((e) => ({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          rollCallId,
+          workerId: e.workerId,
+          status: 'accounted_for' as const,
+          markedBy: scope.ctx.userId,
+          markedAt: at,
+        })),
+      );
+    await scope.tx
+      .update(rollCalls)
+      .set({ endedAt: at, endedBy: scope.ctx.userId })
+      .where(eq(rollCalls.id, rollCallId));
+    scope.events.add({
+      type: 'workforce.roll_call.all_clear.v1',
+      projectId,
+      entityType: 'roll_call',
+      entityId: rollCallId,
+      data: { rollCallId, marked: todo.length },
+    });
+    scope.events.add({
+      type: 'workforce.roll_call.ended.v1',
+      projectId,
+      entityType: 'roll_call',
+      entityId: rollCallId,
+      data: { rollCallId },
+    });
+    return getRollCall(scope, projectId, rollCallId);
+  }
+
+  /**
+   * The compliance record of a roll call as CSV: a summary, then every event in order (started, each mark with who
+   * made it and when, ended). Times are written in the project's time zone with their UTC offset.
+   */
+  async function recordRollCall(scope: TenantScope, projectId: string, rollCallId: string) {
+    const { call, marks } = await getRollCall(scope, projectId, rollCallId);
+    const project = await deps.platform.getProject(scope, projectId);
+    const tz = project.timezone;
+    const stamp = (d: Date) => localStamp(d, tz);
+    const byId = new Map<string, string>();
+    const entry = new Map(call.snapshot.map((e) => [e.workerId, e]));
+    const unknown = marks.map((m) => m.workerId).filter((w) => !entry.has(w));
+    if (unknown.length > 0) {
+      const rows = await scope.tx
+        .select({ id: workers.id, name: workers.fullName })
+        .from(workers)
+        .where(inArray(workers.id, unknown));
+      for (const r of rows) byId.set(r.id, r.name);
+    }
+    const nameOf = (id: string) => entry.get(id)?.fullName ?? byId.get(id) ?? '';
+    const userIds = [
+      ...new Set([call.startedBy, call.endedBy, ...marks.map((m) => m.markedBy)]),
+    ].filter((u): u is string => Boolean(u));
+    const names = await deps.identity.getUsers(userIds);
+    const who = (u: string | null) => (u ? (names.get(u)?.name ?? '') : '');
+
+    const latest = new Map<string, MarkStatus>();
+    for (const m of marks) latest.set(m.workerId, m.status);
+    const status = (s: MarkStatus | undefined) => s ?? 'unmarked';
+    const count = (s: string) =>
+      call.snapshot.filter((e) => status(latest.get(e.workerId)) === s).length;
+    const lastMark = marks.reduce<Date | null>(
+      (acc, m) => (!acc || m.markedAt > acc ? m.markedAt : acc),
+      null,
+    );
+    const everyoneAt =
+      call.snapshot.length > 0 && count('accounted_for') === call.snapshot.length ? lastMark : null;
+
+    const out = [
+      csvLine(['Roll call record', project.name]),
+      csvLine(['Reason', call.reason]),
+      csvLine(['Started', stamp(call.startedAt), who(call.startedBy)]),
+      csvLine(['Ended', call.endedAt ? stamp(call.endedAt) : 'Not ended', who(call.endedBy)]),
+      csvLine(['On the list', String(call.snapshot.length)]),
+      csvLine(['Accounted for', String(count('accounted_for'))]),
+      csvLine(['Missing', String(count('missing'))]),
+      csvLine(['Not checked', String(count('unmarked'))]),
+      csvLine([
+        'Everyone accounted for after (seconds)',
+        everyoneAt
+          ? String(Math.round((everyoneAt.getTime() - call.startedAt.getTime()) / 1000))
+          : '',
+      ]),
+      '',
+      csvLine(['time', 'event', 'person', 'company_id', 'status', 'by']),
+      csvLine([stamp(call.startedAt), 'started', '', '', '', who(call.startedBy)]),
+      ...marks.map((m) =>
+        csvLine([
+          stamp(m.markedAt),
+          'mark',
+          nameOf(m.workerId),
+          entry.get(m.workerId)?.companyId ?? '',
+          m.status,
+          who(m.markedBy),
+        ]),
+      ),
+      ...(call.endedAt
+        ? [csvLine([stamp(call.endedAt), 'ended', '', '', '', who(call.endedBy)])]
+        : []),
+    ];
+    return {
+      filename: `roll-call-${call.startedAt.toISOString().slice(0, 10)}.csv`,
+      csv: out.join('\n') + '\n',
+      count: marks.length,
+    };
   }
 
   async function endRollCall(scope: TenantScope, projectId: string, rollCallId: string) {
@@ -1111,6 +1264,8 @@ export function createAttendanceService(deps: WorkforceDeps) {
     startRollCall,
     getRollCall,
     markRollCall,
+    allClearRollCall,
+    recordRollCall,
     endRollCall,
     listRollCalls,
     visibleSessions,

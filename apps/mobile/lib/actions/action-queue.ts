@@ -23,6 +23,9 @@ export type ActionKind =
   | 'environment.startCondition'
   | 'toolbox.addAttendee'
   | 'toolbox.transition'
+  | 'rollcall.mark'
+  | 'rollcall.allClear'
+  | 'rollcall.end'
   | 'pretask.submit';
 
 export interface QueuedAction {

@@ -42,5 +42,8 @@ export const ACTION_TEXT: Record<ActionKind, string> = {
   'environment.startCondition': 'Start condition',
   'toolbox.addAttendee': 'Toolbox talk attendee',
   'toolbox.transition': 'Toolbox talk',
+  'rollcall.mark': 'Roll call mark',
+  'rollcall.allClear': 'Roll call all clear',
+  'rollcall.end': 'End roll call',
   'pretask.submit': 'Pre-task plan',
 };

@@ -42,11 +42,19 @@ describe('HazardSignalsScreen', () => {
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText(/raises no incident/)).toBeTruthy();
+    expect(
+      (
+        within(dialog).getByRole('checkbox', {
+          name: /Raise a safety observation/,
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
     await user.click(within(dialog).getByRole('button', { name: 'Confirm hazard' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(await screen.findByText('Nothing to review')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirmed' }));
     expect(await screen.findByText('Unprotected edge or opening')).toBeTruthy();
+    expect(screen.getByText('Observation raised')).toBeTruthy();
   });
 
   it('refuses a photo Nova cannot read', async () => {

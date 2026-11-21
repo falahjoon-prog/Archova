@@ -19,6 +19,7 @@ import { UploadQueue } from '../lib/files/upload-queue';
 import { backgroundFileTransfer } from '../lib/platform/file-transfer';
 import { randomBytes } from '../lib/platform/crypto';
 import { createDeviceSync } from '../lib/sync/device-sync';
+import { RollCallCache } from '../lib/attendance/roll-call-cache';
 import { SheetCache } from '../lib/files/sheet-cache';
 import { sheetFiles } from '../lib/platform/sheet-files';
 import { OfflineProjects } from '../lib/sync/offline-projects';
@@ -56,6 +57,7 @@ export interface DeviceData {
   pretask: PretaskCache;
   offline: OfflineProjects;
   sheets: SheetCache;
+  rollCalls: RollCallCache;
   requestSync: (trigger: SyncTrigger) => void;
 }
 
@@ -153,6 +155,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
             pretask,
             offline,
             sheets,
+            rollCalls: new RollCallCache(db),
             requestSync: (t) => scheduler.request(t),
           },
         });

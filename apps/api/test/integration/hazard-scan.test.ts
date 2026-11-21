@@ -139,6 +139,41 @@ describe('Nova site photo hazard signals (F35)', () => {
     });
   });
 
+  it('raises a confirmed signal as a safety observation with the photo attached, only if asked', async () => {
+    const s = await setup();
+    const fileId = await s.photo();
+    const scan = (await s.scan('Slab edge on level 3 with no balustrade', fileId)).json();
+    const [first, second] = [
+      scan.signals[0].id as string,
+      scan.signals[1]?.id as string | undefined,
+    ];
+    const raised = await s.pm.browser.post(`${s.base}/ai/safety/hazard-signals/${first}/review`, {
+      decision: 'confirmed',
+      raiseObservation: true,
+    });
+    expect(raised.statusCode).toBe(200);
+    const sig = raised.json();
+    expect(sig.observationId).toMatch(/^obs_/);
+    const obs = (await s.pm.browser.get(`${s.base}/observations/${sig.observationId}`)).json();
+    expect(obs).toMatchObject({ type: 'safety', status: 'open' });
+    expect(obs.description).toContain('confirmed by a person');
+    expect(obs.fileIds).toEqual([fileId]);
+
+    // Without the flag, or when dismissed, no observation is made.
+    if (second) {
+      const plain = await s.pm.browser.post(`${s.base}/ai/safety/hazard-signals/${second}/review`, {
+        decision: 'confirmed',
+      });
+      expect(plain.json().observationId).toBeNull();
+    }
+    const again = (await s.scan('Rubbish in the corridor', await s.photo())).json();
+    const dismissed = await s.pm.browser.post(
+      `${s.base}/ai/safety/hazard-signals/${again.signals[0].id}/review`,
+      { decision: 'dismissed', raiseObservation: true },
+    );
+    expect(dismissed.json().observationId).toBeNull();
+  });
+
   it('audits scans and reviews without the observation text, and keeps signals for five years', async () => {
     const s = await setup();
     const fileId = await s.photo();

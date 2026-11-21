@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
@@ -11,6 +11,7 @@ import {
 import { createActionPlanService } from './application/action-plans';
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
+import { createEvidenceSources } from './application/evidenceSources';
 import { createDbpSources } from './application/dbpSources';
 import { createObservationService } from './application/observations';
 import { createObservationTypeService } from './application/observation-types';
@@ -258,6 +259,8 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     api: {
       /** Per-project rows for the DBP Act insights view in `reporting`. */
       dbp: createDbpSources(deps),
+      /** Inspections in a date range for the regulator evidence pack in `reporting`. */
+      evidence: createEvidenceSources(deps),
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
       /** Portfolio dashboard (`reporting`): open and overdue counts of observations and inspections per project. */
@@ -270,6 +273,53 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
         overdueInspections: inspections.overdueForNova,
         failedInspectionItems: inspections.failedItemsForNova,
         inspectionSummaries: inspections.summariesForNova,
+      },
+      /**
+       * Safety observations assigned to each company across the org since a date, and how many are still open past
+       * their due date. Called by `safety` for subcontractor scorecards; the caller has checked permission.
+       */
+      safetyByCompany: async (
+        scope: TenantScope,
+        companyIds: string[],
+        since: Date,
+        today: string,
+      ) => {
+        const out = new Map<string, { raised: number; overdueOpen: number }>();
+        if (companyIds.length === 0) return out;
+        const t = observationsTable;
+        const rows = await scope.tx
+          .select({ companyId: t.assigneeCompanyId, status: t.status, dueDate: t.dueDate })
+          .from(t)
+          .where(
+            and(
+              inArray(t.assigneeCompanyId, companyIds),
+              eq(t.type, 'safety'),
+              isNull(t.deletedAt),
+              gte(t.createdAt, since),
+            ),
+          );
+        for (const r of rows) {
+          if (!r.companyId) continue;
+          const e = out.get(r.companyId) ?? { raised: 0, overdueOpen: 0 };
+          e.raised += 1;
+          if (r.status === 'open' && r.dueDate !== null && r.dueDate < today) e.overdueOpen += 1;
+          out.set(r.companyId, e);
+        }
+        return out;
+      },
+      /** A safety observation raised from a confirmed Nova hazard signal (`ai`, which checks the caller's create permission). */
+      raiseObservation: async (
+        scope: TenantScope,
+        projectId: string,
+        input: {
+          description: string;
+          hazard: string;
+          priority: 'low' | 'medium' | 'high';
+          fileIds: string[];
+        },
+      ) => {
+        const o = await observations.create(scope, projectId, { ...input, type: 'safety' });
+        return { id: o.observation.id, number: o.observation.number };
       },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (

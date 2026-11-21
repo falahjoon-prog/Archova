@@ -1083,6 +1083,7 @@ export const ReviewHazardSignalParams = z.object({
 export const ReviewHazardSignalBody = z.object({
   "decision": z.enum(["confirmed", "dismissed"]),
   "note": z.string().max(1000).optional(),
+  "raiseObservation": z.boolean().optional(),
 }).strict();
 export const ScanCaptureViewWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1447,6 +1448,22 @@ export const GetReadinessPackParams = z.object({
 });
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
+export const GetSafetyEvidencePackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackPdfQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
 });
 export const ListDashboardSnapshotsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -2840,6 +2857,17 @@ export const EndRollCallParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
 });
+export const AllClearRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
+export const AllClearRollCallBody = s.AllClearRollCallRequestSchema;
+export const GetRollCallRecordParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
 export const ListInductionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3759,6 +3787,10 @@ export const GetPretaskInsightsParams = z.object({
 });
 export const GetPretaskInsightsQuery = z.object({
   "days": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const ListSafetyScorecardsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const CopyPretaskPlanParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -8277,6 +8309,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  getSafetyEvidencePack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackParams,
+    query: GetSafetyEvidencePackQuery,
+    body: null,
+  },
+  getSafetyEvidencePackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackPdfParams,
+    query: GetSafetyEvidencePackPdfQuery,
+    body: null,
+  },
   listDashboardSnapshots: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/dashboard-snapshots',
@@ -11160,6 +11216,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  allClearRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AllClearRollCallParams,
+    query: null,
+    body: AllClearRollCallBody,
+  },
+  getRollCallRecord: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: GetRollCallRecordParams,
+    query: null,
+    body: null,
+  },
   listInductions: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inductions',
@@ -13274,6 +13354,18 @@ export const operations = {
     contentType: null,
     params: GetPretaskInsightsParams,
     query: GetPretaskInsightsQuery,
+    body: null,
+  },
+  listSafetyScorecards: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards',
+    module: "safety",
+    auth: "required",
+    permission: "safety.scorecards.read",
+    internal: false,
+    contentType: null,
+    params: ListSafetyScorecardsParams,
+    query: null,
     body: null,
   },
   copyPretaskPlan: {
