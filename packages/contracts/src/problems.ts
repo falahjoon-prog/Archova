@@ -595,6 +595,7 @@ export const PROBLEM_CODES = {
   'attendance.session_not_found': 404,
   'roll_call.not_found': 404,
   'roll_call.ended': 409,
+  'roll_call.has_missing': 409,
   'induction.not_found': 404,
   'induction.version_not_found': 404,
   'induction.completion_not_found': 404,

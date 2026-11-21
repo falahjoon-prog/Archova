@@ -11751,6 +11751,57 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RollCall' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: allClearRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'One tap: mark everyone not yet ticked as accounted for, at one moment, and end the roll call. Refused while anyone is marked missing.'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllClearRollCallRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getRollCallRecord
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'The compliance record of a roll call as CSV: a summary, then every mark in order with who made it and when.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCallRecord' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inductions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -37267,6 +37318,25 @@ components:
       properties:
         workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
         status: { type: string, enum: [accounted_for, missing, not_on_site] }
+        clientAt:
+          type: string
+          format: date-time
+          description: "When the mark was tapped on a phone with no signal. Kept inside the roll call's own window (never before it started, never in the future)."
+    AllClearRollCallRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        clientAt:
+          type: string
+          format: date-time
+          description: 'When all clear was tapped on a phone with no signal.'
+    RollCallRecord:
+      type: object
+      required: [filename, csv, count]
+      properties:
+        filename: { type: string }
+        csv: { type: string }
+        count: { type: integer, description: Marks in the record. }
     InductionSectionKey:
       type: string
       description: 'The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.'

@@ -117,6 +117,41 @@ export function createActionSender(api: ApiClient, orgId: string): ActionSender 
           ),
         );
         return;
+      case 'rollcall.mark':
+        unwrap(
+          await api.POST(
+            '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/marks',
+            {
+              params: { path: { ...base, rollCallId: a.targetId } },
+              // The time it was tapped, not the time the signal came back.
+              body: {
+                workerId: String(p.workerId),
+                status: p.status as 'accounted_for',
+                ...(typeof p.at === 'string' ? { clientAt: p.at } : {}),
+              },
+            },
+          ),
+        );
+        return;
+      case 'rollcall.allClear':
+        unwrap(
+          await api.POST(
+            '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear',
+            {
+              params: { path: { ...base, rollCallId: a.targetId } },
+              body: typeof p.at === 'string' ? { clientAt: p.at } : {},
+            },
+          ),
+        );
+        return;
+      case 'rollcall.end':
+        unwrap(
+          await api.POST(
+            '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/end',
+            { params: { path: { ...base, rollCallId: a.targetId } } },
+          ),
+        );
+        return;
       case 'toolbox.addAttendee':
       case 'toolbox.transition': {
         // Earlier queued changes may already have moved the talk on, so use its current version, not the one the
