@@ -498,25 +498,29 @@ for (const [i, p] of PROJECTS.entries()) {
       workerIds.set(name, workerId);
     }
     const signIn = { workerId, siteId, kind: 'sign_in', clientAt: at(c.in) };
-    const r = await s.ok<{ outcome: string; session: { localDate: string } | null }>(
+    // A re-run on a populated demo: the worker may still be on site from an earlier run, or the gate may block them
+    // (eligibility rules). Signing out a worker who is not signed in answers 409 attendance.not_on_site; that is the
+    // state we want, so it is not an error here.
+    const signOut = async (clientAt: string) => {
+      const out = await s.call<{ code?: string }>('POST', `${pp}/attendance/events`, {
+        workerId,
+        kind: 'sign_out',
+        clientAt,
+      });
+      if (out.status >= 300 && out.json.code !== 'attendance.not_on_site')
+        throw new Error(`sign_out ${workerId} -> ${out.status} ${JSON.stringify(out.json)}`);
+    };
+    let r = await s.ok<{ outcome: string; session: { localDate: string } | null }>(
       'POST',
       `${pp}/attendance/events`,
       signIn,
     );
     if (r.outcome === 'already_on_site') {
-      await s.ok('POST', `${pp}/attendance/events`, {
-        workerId,
-        kind: 'sign_out',
-        clientAt: zonedToUtc(r.session!.localDate, '15:30', p.timezone).toISOString(),
-      });
-      await s.ok('POST', `${pp}/attendance/events`, signIn);
+      await signOut(zonedToUtc(r.session!.localDate, '15:30', p.timezone).toISOString());
+      r = await s.ok('POST', `${pp}/attendance/events`, signIn);
     }
-    if (c.out)
-      await s.ok('POST', `${pp}/attendance/events`, {
-        workerId,
-        kind: 'sign_out',
-        clientAt: at(c.out),
-      });
+    // Blocked workers never got a session, so there is nothing to sign out.
+    if (c.out && r.outcome !== 'blocked') await signOut(at(c.out));
   }
   console.log(
     `Seeded ${p.name} sign-ins for ${today}: ${CREW.filter((c) => !c.out).length} on site, ${CREW.filter((c) => c.out).length} signed out`,
