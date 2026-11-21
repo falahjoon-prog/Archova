@@ -795,6 +795,15 @@ export function financialsRoutes(
                 ...(b.scheduledAmount !== undefined
                   ? { scheduledAmount: money(b.scheduledAmount, 'scheduledAmount') }
                   : {}),
+                ...(b.deductions
+                  ? {
+                      deductions: b.deductions.map((d, n) => ({
+                        description: d.description,
+                        amount: money(d.amount, `deductions/${n}/amount`),
+                        reason: d.reason,
+                      })),
+                    }
+                  : {}),
                 ...(b.lines
                   ? {
                       lines: b.lines.map((l, n) => ({

@@ -136,6 +136,9 @@ export const paymentSchedules = financialsSchema.table('payment_schedules', {
         /** Line by line schedules only: what the claim took on the line and what was scheduled (ex GST). */
         claimedAmount?: string;
         scheduledAmount?: string;
+        /** A withholding not about a line (set-off, back-charge): what it is, and the amount withheld ex GST. */
+        description?: string;
+        deductionAmount?: string;
       }[]
     >()
     .notNull(),

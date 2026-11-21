@@ -131,6 +131,8 @@ export const toScheduleDto = (s: ScheduleRow) => ({
     reason: r.reason,
     claimedAmount: r.claimedAmount ?? null,
     scheduledAmount: r.scheduledAmount ?? null,
+    description: r.description ?? null,
+    deductionAmount: r.deductionAmount ?? null,
   })),
   issuedAt: s.issuedAt.toISOString(),
   issuedWithinTime: s.issuedWithinTime,
