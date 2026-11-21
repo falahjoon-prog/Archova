@@ -47,6 +47,30 @@ describe('RollCallScreen', () => {
     await screen.findByText(/1 missing/);
   });
 
+  it('clears everyone with one tap, ends the roll call and keeps who and when', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RollCallScreen />);
+    await startOne(user);
+    await user.click(screen.getByRole('button', { name: 'All accounted for' }));
+    await screen.findByText('This roll call has ended');
+    expect(screen.getByText(/3 of 3 accounted for/)).toBeTruthy();
+    const [rc] = await attendancePreview.rollCalls('prj_test');
+    expect(rc!.endedAt).not.toBeNull();
+    expect(new Set(rc!.people.map((p) => p.markedAt)).size).toBe(1);
+    // The record stays available after the call has ended.
+    expect(screen.getByRole('button', { name: 'Download record' })).toBeTruthy();
+  });
+
+  it('does not offer all clear while someone is missing', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RollCallScreen />);
+    await startOne(user);
+    const jo = screen.getByRole('group', { name: 'Mark Jo Tran' });
+    await user.click(within(jo).getByRole('button', { name: 'Missing' }));
+    await screen.findByText(/1 missing/);
+    expect(screen.queryByRole('button', { name: 'All accounted for' })).toBeNull();
+  });
+
   it('warns about people not accounted for when ending, then keeps the record read-only', async () => {
     const user = userEvent.setup();
     renderInProject(<RollCallScreen />);

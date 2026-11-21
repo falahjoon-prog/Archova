@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SignInResult } from '@archova/contracts';
+import type { RollCall } from '@archova/contracts';
+import { migrate } from '../lib/db';
+import type { QueuedAction } from '../lib/actions/action-queue';
+import { RollCallCache } from '../lib/attendance/roll-call-cache';
+import { nodeSqlDriver } from './support/node-sql';
 import {
+  applyQueued,
   findOpenRollCall,
   groupByCompany,
   parseGateCode,
@@ -127,5 +133,106 @@ describe('findOpenRollCall', () => {
     expect(
       await findOpenRollCall({ GET: ok([]) } as never, { orgId: 'o', projectId: 'p' }),
     ).toBeNull();
+  });
+});
+
+const person = (id: string, status: RollCall['people'][number]['status'] = 'unmarked') =>
+  ({
+    workerId: id,
+    fullName: id,
+    phone: null,
+    companyId: null,
+    companyNameOther: null,
+    siteId: null,
+    signedInAt: null,
+    status,
+    markedAt: null,
+    markedBy: null,
+  }) as RollCall['people'][number];
+
+const call = (people: RollCall['people']): RollCall =>
+  ({
+    id: 'rlc_1',
+    projectId: 'prj_1',
+    siteId: null,
+    reason: 'Drill',
+    startedAt: '2026-11-21T01:00:00.000Z',
+    startedBy: null,
+    endedAt: null,
+    counts: { total: people.length, accountedFor: 0, missing: 0, unmarked: people.length },
+    people,
+  }) as RollCall;
+
+const queued = (
+  kind: QueuedAction['kind'],
+  payload: Record<string, unknown>,
+  over: Partial<QueuedAction> = {},
+): QueuedAction => ({
+  id: `a_${Math.random()}`,
+  projectId: 'prj_1',
+  kind,
+  targetId: 'rlc_1',
+  payload,
+  state: 'pending',
+  lastError: null,
+  attempts: 0,
+  createdAt: '2026-11-21T01:01:00.000Z',
+  ...over,
+});
+
+describe('applyQueued (roll call with no signal)', () => {
+  it('shows taps waiting to be sent, with the time they were made', () => {
+    const rc = applyQueued(call([person('a'), person('b'), person('c')]), [
+      queued('rollcall.mark', {
+        workerId: 'a',
+        status: 'accounted_for',
+        at: '2026-11-21T01:02:00.000Z',
+      }),
+      queued('rollcall.mark', { workerId: 'b', status: 'missing', at: '2026-11-21T01:03:00.000Z' }),
+    ]);
+    expect(rc.counts).toEqual({ total: 3, accountedFor: 1, missing: 1, unmarked: 1 });
+    expect(rc.people[0]).toMatchObject({
+      status: 'accounted_for',
+      markedAt: '2026-11-21T01:02:00.000Z',
+    });
+  });
+
+  it('all clear ticks everyone left and ends it, unless someone is missing', () => {
+    const at = '2026-11-21T01:05:00.000Z';
+    const clear = applyQueued(call([person('a'), person('b', 'accounted_for')]), [
+      queued('rollcall.allClear', { at }),
+    ]);
+    expect(clear.endedAt).toBe(at);
+    expect(clear.counts).toMatchObject({ accountedFor: 2, unmarked: 0 });
+    const blocked = applyQueued(call([person('a', 'missing'), person('b')]), [
+      queued('rollcall.allClear', { at }),
+    ]);
+    expect(blocked.endedAt).toBeNull();
+    expect(blocked.people.map((p) => p.status)).toEqual(['missing', 'unmarked']);
+  });
+
+  it('ignores refused taps and other roll calls, and returns the same object when nothing waits', () => {
+    const base = call([person('a')]);
+    expect(
+      applyQueued(base, [
+        queued('rollcall.mark', { workerId: 'a', status: 'missing' }, { state: 'refused' }),
+        queued('rollcall.mark', { workerId: 'a', status: 'missing' }, { targetId: 'rlc_2' }),
+      ]),
+    ).toBe(base);
+  });
+});
+
+describe('RollCallCache', () => {
+  it('keeps the roll call in progress per project and replaces it', async () => {
+    const db = await nodeSqlDriver().open('rollcall.db');
+    await migrate(db);
+    const cache = new RollCallCache(db);
+    expect(await cache.get('prj_1')).toBeNull();
+    await cache.put('prj_1', call([person('a')]));
+    await cache.put('prj_1', call([person('a'), person('b')]));
+    expect((await cache.get('prj_1'))!.people).toHaveLength(2);
+    expect(await cache.get('prj_2')).toBeNull();
+    await cache.clear('prj_1');
+    expect(await cache.get('prj_1')).toBeNull();
   });
 });

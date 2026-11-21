@@ -2840,6 +2840,17 @@ export const EndRollCallParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
 });
+export const AllClearRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
+export const AllClearRollCallBody = s.AllClearRollCallRequestSchema;
+export const GetRollCallRecordParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
 export const ListInductionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -11157,6 +11168,30 @@ export const operations = {
     internal: false,
     contentType: null,
     params: EndRollCallParams,
+    query: null,
+    body: null,
+  },
+  allClearRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AllClearRollCallParams,
+    query: null,
+    body: AllClearRollCallBody,
+  },
+  getRollCallRecord: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: GetRollCallRecordParams,
     query: null,
     body: null,
   },

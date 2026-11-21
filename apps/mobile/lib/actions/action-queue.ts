@@ -22,7 +22,10 @@ export type ActionKind =
   | 'permit.startRenewal'
   | 'environment.startCondition'
   | 'toolbox.addAttendee'
-  | 'toolbox.transition';
+  | 'toolbox.transition'
+  | 'rollcall.mark'
+  | 'rollcall.allClear'
+  | 'rollcall.end';
 
 export interface QueuedAction {
   id: string;

@@ -8773,6 +8773,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One tap: mark everyone not yet ticked as accounted for, at one moment, and end the roll call. Refused while anyone is marked missing. */
+        post: operations["allClearRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        /** The compliance record of a roll call as CSV: a summary, then every mark in order with who made it and when. */
+        get: operations["getRollCallRecord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inductions": {
         parameters: {
             query?: never;
@@ -25248,6 +25290,24 @@ export interface components {
             workerId: string;
             /** @enum {string} */
             status: "accounted_for" | "missing" | "not_on_site";
+            /**
+             * Format: date-time
+             * @description When the mark was tapped on a phone with no signal. Kept inside the roll call's own window (never before it started, never in the future).
+             */
+            clientAt?: string;
+        };
+        AllClearRollCallRequest: {
+            /**
+             * Format: date-time
+             * @description When all clear was tapped on a phone with no signal.
+             */
+            clientAt?: string;
+        };
+        RollCallRecord: {
+            filename: string;
+            csv: string;
+            /** @description Marks in the record. */
+            count: number;
         };
         /**
          * @description The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.
@@ -43019,6 +43079,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    allClearRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AllClearRollCallRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRollCallRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCallRecord"];
                 };
             };
             default: components["responses"]["Problem"];

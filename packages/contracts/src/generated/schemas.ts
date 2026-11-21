@@ -388,6 +388,11 @@ export const AiUsageSchema = z.object({
 });
 export type AiUsage = z.infer<typeof AiUsageSchema>;
 
+export const AllClearRollCallRequestSchema = z.object({
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+}).strict();
+export type AllClearRollCallRequest = z.infer<typeof AllClearRollCallRequestSchema>;
+
 export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
 export type CompanyRef = z.infer<typeof CompanyRefSchema>;
 
@@ -7578,6 +7583,7 @@ export type LogisticsResourceList = z.infer<typeof LogisticsResourceListSchema>;
 export const MarkRollCallRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "status": z.enum(["accounted_for", "missing", "not_on_site"]),
+  "clientAt": z.string().datetime({ offset: true }).optional(),
 }).strict();
 export type MarkRollCallRequest = z.infer<typeof MarkRollCallRequestSchema>;
 
@@ -10876,6 +10882,13 @@ export const RollCallListSchema = z.object({
   "data": z.array(RollCallSchema),
 });
 export type RollCallList = z.infer<typeof RollCallListSchema>;
+
+export const RollCallRecordSchema = z.object({
+  "filename": z.string(),
+  "csv": z.string(),
+  "count": z.number().int(),
+});
+export type RollCallRecord = z.infer<typeof RollCallRecordSchema>;
 
 export const SafetyBadgeSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),

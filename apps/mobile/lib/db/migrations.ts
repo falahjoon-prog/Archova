@@ -134,6 +134,14 @@ export const MIGRATIONS: readonly string[] = [
   ) WITHOUT ROWID;
   CREATE INDEX action_queue_project ON action_queue (project_id, state, created_at);
   `,
+  // 8: the roll call in progress, kept so a supervisor still sees who is on the list when the signal drops.
+  `
+  CREATE TABLE roll_call_cache (
+    project_id TEXT PRIMARY KEY,
+    payload    TEXT NOT NULL,
+    cached_at  TEXT NOT NULL
+  ) WITHOUT ROWID;
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
