@@ -127,7 +127,21 @@ export const paymentSchedules = financialsSchema.table('payment_schedules', {
   scheduledAmount: money('scheduled_amount').notNull(),
   withheldAmount: money('withheld_amount').notNull(),
   overallReason: text('overall_reason'),
-  lineReasons: jsonb('line_reasons').$type<{ sovItemId: string; reason: string }[]>().notNull(),
+  lineReasons: jsonb('line_reasons')
+    .$type<
+      {
+        sovItemId?: string;
+        variationId?: string;
+        reason: string;
+        /** Line by line schedules only: what the claim took on the line and what was scheduled (ex GST). */
+        claimedAmount?: string;
+        scheduledAmount?: string;
+        /** A withholding not about a line (set-off, back-charge): what it is, and the amount withheld ex GST. */
+        description?: string;
+        deductionAmount?: string;
+      }[]
+    >()
+    .notNull(),
   issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
   issuedBy: uuid('issued_by'),
   issuedWithinTime: boolean('issued_within_time').notNull(),

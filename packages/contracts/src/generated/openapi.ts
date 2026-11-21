@@ -24946,8 +24946,17 @@ export interface components {
             withheldAmount: components["schemas"]["FinancialsMoney"];
             overallReason: string | null;
             lineReasons: {
-                sovItemId: string;
+                sovItemId: string | null;
+                variationId: string | null;
                 reason: string;
+                /** @description What the claim took on this line (ex GST */
+                claimedAmount: string | null;
+                /** @description What was scheduled for the line. Set on line by line schedules. */
+                scheduledAmount: string | null;
+                /** @description What a deduction is (a set-off, back-charge). Null on a line. */
+                description: string | null;
+                /** @description What a deduction withholds, ex GST. Null on a line. */
+                deductionAmount: string | null;
             }[];
             /** Format: date-time */
             issuedAt: string;
@@ -25030,8 +25039,21 @@ export interface components {
                 thisClaim: components["schemas"]["FinancialsMoney"];
             }[];
         };
+        /** @description Give `scheduledAmount` (one total) or `lines` (line by line), not both. By line, a line left out is scheduled in full, and every line scheduled for less than the claim took needs its own `reason`. The total is worked out with retention recalculated from the contract's terms on the scheduled lines, less any `deductions`. */
         IssuePaymentScheduleRequest: {
-            scheduledAmount: components["schemas"]["FinancialsMoney"];
+            scheduledAmount?: components["schemas"]["FinancialsMoney"];
+            lines?: {
+                sovItemId?: string;
+                variationId?: string;
+                scheduledAmount: components["schemas"]["FinancialsMoney"];
+                reason?: string;
+            }[];
+            /** @description With `lines` only. Amounts withheld that are not about a line (set-offs, back-charges, liquidated damages), each with its own reason. Taken off after retention. */
+            deductions?: {
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+                reason: string;
+            }[];
             overallReason?: string;
             /** @description Needed to schedule money on a subcontract claim while a declaration the project requires is missing (see `listDeclarationClaims`). Needs `declarations.statements.override`. The schedule is not stopped from being issued in time: this puts who went ahead, and why, on the record. */
             declarationsOverride?: {

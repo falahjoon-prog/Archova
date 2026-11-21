@@ -163,6 +163,67 @@ describe('ClaimsRegisterScreen', () => {
 });
 
 describe('ClaimDetailScreen', () => {
+  it('schedules line by line: a reduced line needs its own reason, then sends only the reduced lines', async () => {
+    const SCHEDULE = `${P}/payment-claims/{claimId}/schedule`;
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());
+    fake.on('POST', SCHEDULE, () => ({
+      ...detail({ status: 'scheduled' }),
+      schedule: {
+        id: 'psc_1',
+        scheduledAmount: '22800.00',
+        withheldAmount: '5700.00',
+        overallReason: null,
+        lineReasons: [],
+        issuedAt: '2026-10-27T01:00:00Z',
+        issuedWithinTime: true,
+      },
+    }));
+    const user = userEvent.setup();
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    await user.click(await screen.findByRole('button', { name: 'Schedule line by line' }));
+    const amount = screen.getByLabelText(/E1 Rough-in: amount to schedule/);
+    await user.clear(amount);
+    await user.type(amount, '24000.00');
+    // 30,000 claimed, 24,000 scheduled; retention is recalculated by the server, so the form shows lines only.
+    expect(document.body.textContent).toMatch(/\$24,000\.00/);
+    expect(document.body.textContent).toMatch(/Retention is recalculated/);
+    await user.click(screen.getByRole('button', { name: 'Issue payment schedule' }));
+    expect(await screen.findByText(/Give the reason for reducing E1 Rough-in/)).toBeTruthy();
+    expect(fake.callsTo('POST', SCHEDULE)).toHaveLength(0);
+    await user.type(
+      screen.getByLabelText(/Reason for reducing E1 Rough-in/),
+      'Level 2 conduits not installed.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Add a set-off or back-charge' }));
+    await user.type(
+      screen.getByLabelText(/Deduction 1: what is being withheld/),
+      'Back-charge: cleaning',
+    );
+    await user.type(screen.getByLabelText(/Deduction 1: amount withheld/), '500.00');
+    await user.type(
+      screen.getByLabelText(/Deduction 1: reason/),
+      'Cleaning done by us, invoice 114.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue payment schedule' }));
+    await waitFor(() => expect(fake.callsTo('POST', SCHEDULE)).toHaveLength(1));
+    expect(fake.callsTo('POST', SCHEDULE)[0]!.init.body).toEqual({
+      lines: [
+        {
+          sovItemId: 'sov_1',
+          scheduledAmount: '24000.00',
+          reason: 'Level 2 conduits not installed.',
+        },
+      ],
+      deductions: [
+        {
+          description: 'Back-charge: cleaning',
+          amount: '500.00',
+          reason: 'Cleaning done by us, invoice 114.',
+        },
+      ],
+    });
+  });
+
   it('asks for reasons before a reduced payment schedule can be issued', async () => {
     fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());
     fake.on('POST', `${P}/payment-claims/{claimId}/schedule`, () => ({

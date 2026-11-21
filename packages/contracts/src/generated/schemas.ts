@@ -7568,14 +7568,25 @@ export const IssueMeetingRequestSchema = z.object({
 export type IssueMeetingRequest = z.infer<typeof IssueMeetingRequestSchema>;
 
 export const IssuePaymentScheduleRequestSchema = z.object({
+  "scheduledAmount": FinancialsMoneySchema.optional(),
+  "lines": z.array(z.object({
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).optional(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).optional(),
   "scheduledAmount": FinancialsMoneySchema,
+  "reason": z.string().min(1).max(1000).optional(),
+}).strict()).max(500).optional(),
+  "deductions": z.array(z.object({
+  "description": z.string().min(1).max(200),
+  "amount": FinancialsMoneySchema,
+  "reason": z.string().min(1).max(1000),
+}).strict()).max(50).optional(),
   "overallReason": z.string().min(1).max(5000).optional(),
   "declarationsOverride": z.object({
   "reason": z.string().min(3).max(2000),
 }).strict().optional(),
   "lineReasons": z.array(z.object({
   "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
-  "reason": z.string().min(1).max(5000),
+  "reason": z.string().min(1).max(1000),
 }).strict()).max(500).optional(),
 }).strict();
 export type IssuePaymentScheduleRequest = z.infer<typeof IssuePaymentScheduleRequestSchema>;
@@ -9335,8 +9346,13 @@ export const PaymentScheduleSchema = z.object({
   "withheldAmount": FinancialsMoneySchema,
   "overallReason": z.string().nullable(),
   "lineReasons": z.array(z.object({
-  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).nullable(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).nullable(),
   "reason": z.string(),
+  "claimedAmount": z.string().nullable(),
+  "scheduledAmount": z.string().nullable(),
+  "description": z.string().nullable(),
+  "deductionAmount": z.string().nullable(),
 })),
   "issuedAt": z.string().datetime({ offset: true }),
   "issuedWithinTime": z.boolean(),

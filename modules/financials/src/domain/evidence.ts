@@ -18,7 +18,15 @@ export function canonicalJson(value: unknown): string {
 export const sha256Hex = (data: string | Uint8Array) =>
   createHash('sha256').update(data).digest('hex');
 
+/**
+ * The stored JSON is the record; the PDF is a rendering of it. `schemaVersion` is 2 on snapshots sealed from the
+ * line-by-line schedule change onward and absent (meaning 1) before it, so a missing field in an old record can be told
+ * from one that was dropped. Verification always hashes the stored text, never a rebuilt snapshot.
+ */
+export const SNAPSHOT_SCHEMA_VERSION = 2;
+
 export interface ClaimSnapshot {
+  schemaVersion?: number;
   kind: 'claim';
   sealedAt: string;
   timeZone: string;
@@ -54,6 +62,7 @@ export interface ClaimSnapshot {
 }
 
 export interface ScheduleSnapshot {
+  schemaVersion?: number;
   kind: 'schedule';
   sealedAt: string;
   timeZone: string;
@@ -66,7 +75,27 @@ export interface ScheduleSnapshot {
     scheduledAmount: string;
     withheldAmount: string;
     overallReason: string | null;
-    lineReasons: { ref: string; reason: string }[];
+    lineReasons: {
+      ref: string;
+      reason: string;
+      claimedAmount?: string;
+      scheduledAmount?: string;
+      /** A withholding that is not about a line (set-off, back-charge): the amount withheld, ex GST. */
+      deductionAmount?: string;
+    }[];
+    /** Schema 2, line by line only. Every claim line with what was claimed and what was scheduled on it. */
+    byLine?: boolean;
+    lines?: { ref: string; claimedAmount: string; scheduledAmount: string }[];
+    claimedGross?: string;
+    scheduledGross?: string;
+    /** The inputs to the retention taken on the schedule, so the result can be checked. */
+    retention?: {
+      ratePct: string;
+      cap: string | null;
+      heldBefore: string;
+      onClaim: string;
+      onSchedule: string;
+    };
     issuedAt: string;
     issuedWithinTime: boolean;
   };
@@ -76,9 +105,19 @@ export type EvidenceSnapshot = ClaimSnapshot | ScheduleSnapshot;
 
 const PAGE = { w: 595, h: 842, margin: 50 };
 
+/**
+ * Standard PDF fonts only draw WinAnsi. Anything else (an emoji, an arrow, a ≥) is replaced with `?` so a stray
+ * character in a free-text reason cannot stop a schedule from being sealed on the day it is due. PDF only: the hashed
+ * JSON keeps the original text.
+ */
+export const pdfSafe = (s: string) =>
+  s
+    .replace(/[\r\t]/g, ' ')
+    .replace(/[^\n\x20-\x7e\u00a1-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026]/g, '?');
+
 function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
   const out: string[] = [];
-  for (const para of text.split('\n')) {
+  for (const para of pdfSafe(text).split('\n')) {
     let line = '';
     for (const word of para.split(/\s+/).filter(Boolean)) {
       // A word wider than the line (a hash) is cut rather than run off the page.
@@ -152,8 +191,30 @@ export function evidenceLines(s: EvidenceSnapshot, snapshotSha256: string) {
     add(
       `Claimed net ${s.claim.claimedNet}. Scheduled ${p.scheduledAmount}. Withheld ${p.withheldAmount}.`,
     );
+    if (p.byLine) {
+      add(
+        'Issued line by line. Lines not listed under reasons were scheduled in full. Retention is recalculated from the contract terms on the amount scheduled and rounded to the cent.',
+        'small',
+      );
+      if (p.claimedGross !== undefined && p.scheduledGross !== undefined)
+        add(`Claimed on lines ${p.claimedGross}. Scheduled on lines ${p.scheduledGross}.`);
+      if (p.retention)
+        add(
+          `Retention rate ${p.retention.ratePct}%, cap ${p.retention.cap ?? 'none'}, held before this claim ${p.retention.heldBefore}. On the claim ${p.retention.onClaim}. On this schedule ${p.retention.onSchedule}.`,
+          'small',
+        );
+      for (const l of p.lines ?? [])
+        add(`${l.ref}: claimed ${l.claimedAmount}, scheduled ${l.scheduledAmount}`);
+    }
     if (p.overallReason) add(`Reason: ${p.overallReason}`);
-    for (const r of p.lineReasons) add(`${r.ref}: ${r.reason}`);
+    for (const r of p.lineReasons)
+      add(
+        r.deductionAmount !== undefined
+          ? `Deduction ${r.ref}: ${r.deductionAmount} withheld. ${r.reason}`
+          : r.claimedAmount !== undefined && r.scheduledAmount !== undefined
+            ? `${r.ref}: scheduled ${r.scheduledAmount} of ${r.claimedAmount}. ${r.reason}`
+            : `${r.ref}: ${r.reason}`,
+      );
     if (s.claimEvidenceSha256) add(`Answers sealed claim record ${s.claimEvidenceSha256}`, 'small');
   }
   add('Seal', 'heading');

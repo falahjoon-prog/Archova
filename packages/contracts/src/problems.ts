@@ -413,6 +413,7 @@ export const PROBLEM_CODES = {
   'financials.payment.not_found': 404,
   'financials.payment.not_reversible': 409,
   'financials.schedule.reason_required': 422,
+  'financials.schedule.line_reason_required': 422,
   'financials.schedule.over_claim': 422,
   'financials.schedule.declarations_missing': 422,
   'financials.sopa.state_not_live': 422,
