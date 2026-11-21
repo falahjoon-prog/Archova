@@ -1,6 +1,12 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { globalKey, type KernelServices, type Principal, type Tx } from '@archova/kernel';
+import {
+  globalKey,
+  recordSecurityEvent,
+  type KernelServices,
+  type Principal,
+  type Tx,
+} from '@archova/kernel';
 import { sessions } from '../infra/tables';
 import {
   SESSION_ABSOLUTE_MS,
@@ -151,8 +157,8 @@ export function createSessionService({
 
   async function revoke(sessionId: string): Promise<void> {
     const now = new Date();
-    const rows = await database.withGlobalTx('identity', (tx) =>
-      tx
+    const rows = await database.withGlobalTx('identity', async (tx) => {
+      const done = await tx
         .update(sessions)
         .set({ revokedAt: now })
         .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)))
@@ -160,8 +166,18 @@ export function createSessionService({
           tokenHash: sessions.tokenHash,
           userId: sessions.userId,
           absoluteExpiresAt: sessions.absoluteExpiresAt,
-        }),
-    );
+        });
+      if (done[0])
+        await recordSecurityEvent(tx, {
+          orgId: null,
+          action: 'auth.session.revoked',
+          actorType: 'user',
+          actorId: done[0].userId,
+          targetType: 'session',
+          targetId: sessionId,
+        });
+      return done;
+    });
     const row = rows[0];
     if (!row || !redis) return;
     const multi = redis.multi();

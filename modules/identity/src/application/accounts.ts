@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type Database, type Principal } from '@archova/kernel';
+import { createHmac } from 'node:crypto';
+import { AppError, recordSecurityEvent, type Database, type Principal } from '@archova/kernel';
 import {
   credentials,
   oauthCodes,
@@ -33,10 +34,14 @@ const toRecord = (u: typeof users.$inferSelect): UserRecord => ({
   name: u.name,
   locale: u.locale,
   timezone: u.timezone,
-  emailVerified: u.emailVerifiedAt != null,
+  emailVerified: u.emailVerifiedAt !== null,
 });
 
-export function createAccountService(database: Database, sessions: SessionService) {
+export function createAccountService(
+  database: Database,
+  sessions: SessionService,
+  auditPepper: string,
+) {
   async function signup(
     input: { email: string; password: string; name: string },
     meta: RequestMeta,
@@ -100,6 +105,24 @@ export function createAccountService(database: Database, sessions: SessionServic
     const stored = found?.credential?.secretHash ?? (await dummyPasswordHash());
     const ok = await verifyPassword(stored, input.password);
     if (!found || !found.credential || !ok || found.user.status !== 'active') {
+      // Recorded before the refusal so the attempt is kept. The account is named by a keyed hash of the address
+      // (HMAC with a secret pepper): an address nobody owns is never stored, and the hash cannot be guessed offline.
+      await database.withGlobalTx('identity', (tx) =>
+        recordSecurityEvent(tx, {
+          orgId: null,
+          action: 'auth.login.failed',
+          actorType: found ? 'user' : 'anonymous',
+          actorId: found?.user.id ?? null,
+          targetType: 'account',
+          targetId: createHmac('sha256', auditPepper)
+            .update(input.email.trim().toLowerCase())
+            .digest('hex'),
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+          client: 'web',
+          metadata: { method: 'password' },
+        }),
+      );
       throw new AppError('auth.invalid_credentials', 'Email or password is incorrect.');
     }
     const session = await database.withGlobalTx('identity', async (tx) => {
@@ -108,6 +131,18 @@ export function createAccountService(database: Database, sessions: SessionServic
         .update(credentials)
         .set({ lastUsedAt: new Date() })
         .where(eq(credentials.id, found.credential!.id));
+      await recordSecurityEvent(tx, {
+        orgId: null,
+        action: 'auth.login.succeeded',
+        actorType: 'user',
+        actorId: found.user.id,
+        targetType: 'account',
+        targetId: found.user.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+        client: 'web',
+        metadata: { method: 'password' },
+      });
       return sessions.create(tx, {
         userId: found.user.id,
         client: 'web',

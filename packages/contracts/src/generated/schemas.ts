@@ -11405,6 +11405,56 @@ export const SearchResultsSchema = z.object({
 });
 export type SearchResults = z.infer<typeof SearchResultsSchema>;
 
+export const SecurityAuditAlertListSchema = z.object({
+  "data": z.array(z.object({
+  "id": z.string(),
+  "rule": z.string(),
+  "severity": z.enum(["info", "medium", "high"]),
+  "summary": z.string(),
+  "eventId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+})),
+});
+export type SecurityAuditAlertList = z.infer<typeof SecurityAuditAlertListSchema>;
+
+export const SecurityAuditEventSchema = z.object({
+  "id": z.string(),
+  "seq": z.number().int(),
+  "at": z.string().datetime({ offset: true }),
+  "action": z.string(),
+  "actorType": z.enum(["user", "api_client", "system", "support", "staff", "anonymous"]),
+  "actorId": z.string().nullable(),
+  "targetType": z.string().nullable(),
+  "targetId": z.string().nullable(),
+  "ip": z.string().nullable(),
+  "client": z.enum(["web", "ios", "android", "api"]).nullable(),
+  "changes": z.record(z.string(), z.unknown()),
+});
+export type SecurityAuditEvent = z.infer<typeof SecurityAuditEventSchema>;
+
+export const SecurityAuditEventPageSchema = z.object({
+  "data": z.array(SecurityAuditEventSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type SecurityAuditEventPage = z.infer<typeof SecurityAuditEventPageSchema>;
+
+export const SecurityAuditIntegritySchema = z.object({
+  "eventCount": z.number().int(),
+  "lastVerification": z.union([z.null(), z.object({
+  "ok": z.boolean(),
+  "checked": z.number().int(),
+  "firstBadSeq": z.number().int().nullable(),
+  "problem": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+})]),
+  "lastAnchor": z.union([z.null(), z.object({
+  "seq": z.number().int(),
+  "at": z.string().datetime({ offset: true }),
+  "writeOnce": z.boolean(),
+})]),
+});
+export type SecurityAuditIntegrity = z.infer<typeof SecurityAuditIntegritySchema>;
+
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
   "clientAt": z.string().datetime({ offset: true }).optional(),

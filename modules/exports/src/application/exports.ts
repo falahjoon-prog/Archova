@@ -1,6 +1,6 @@
 import { desc, eq, gt, sql } from 'drizzle-orm';
 import { encodeId } from '@archova/domain';
-import { AppError, type TenantScope } from '@archova/kernel';
+import { AppError, recordSecurityEvent, type TenantScope } from '@archova/kernel';
 import type { ObjectStore } from '@archova/mod-files';
 import { exportJobs } from '../infra/tables';
 
@@ -78,6 +78,16 @@ export function createExportsService(deps: {
           entityVersion: 1,
           data: { exportId: id, by: scope.ctx.userId, ip: ip ?? null },
         });
+        await recordSecurityEvent(scope.tx, {
+          orgId: scope.ctx.orgId,
+          action: 'export.requested',
+          actorType: 'user',
+          actorId: scope.ctx.userId,
+          targetType: 'data_export',
+          targetId: id,
+          ip: ip ?? null,
+          requestId: scope.ctx.requestId,
+        });
         return toDto(row!);
       } catch (e) {
         if (String((e as { cause?: { code?: string } }).cause?.code ?? '') === '23505')
@@ -109,6 +119,16 @@ export function createExportsService(deps: {
         entityId: id,
         entityVersion: row.version,
         data: { exportId: id, by: scope.ctx.userId, ip: ip ?? null },
+      });
+      await recordSecurityEvent(scope.tx, {
+        orgId: scope.ctx.orgId,
+        action: 'export.downloaded',
+        actorType: 'user',
+        actorId: scope.ctx.userId,
+        targetType: 'data_export',
+        targetId: id,
+        ip: ip ?? null,
+        requestId: scope.ctx.requestId,
       });
       return {
         url,

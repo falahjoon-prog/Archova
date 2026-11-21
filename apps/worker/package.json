@@ -25,6 +25,7 @@
     "@archova/mod-exports": "workspace:*",
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-estimating": "workspace:*",
+    "@archova/mod-audit": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-financials": "workspace:*",
     "@archova/mod-integrations": "workspace:*",

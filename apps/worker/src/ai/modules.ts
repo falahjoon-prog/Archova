@@ -32,6 +32,7 @@ export function loadAiWorkerModules(
         audience: 'archova-ai-worker',
         privateJwk: null,
         webSignInUrl: 'http://ai-worker.invalid',
+        auditPepper: 'ai-worker-does-not-sign-in',
       },
       files: { store: createMemoryObjectStore(), scanner: noScanner },
       messages: disabledMessageSender,

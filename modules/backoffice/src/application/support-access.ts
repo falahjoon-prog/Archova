@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type KernelServices, type Tx } from '@archova/kernel';
+import { AppError, recordSecurityEvent, type KernelServices, type Tx } from '@archova/kernel';
 import {
   staffUsers,
   supportEvents,
@@ -318,6 +318,23 @@ export function createSupportAccessService(
         startedAt: at,
         expiresAt,
       });
+      // Staff act from a global transaction, but the event belongs to the customer's chain, so the transaction is
+      // pointed at that org for this one write (the audit function refuses any other mismatch), then put back.
+      const before = (await t.execute(sql`select current_setting('app.org_id', true) as v`))
+        .rows[0] as {
+        v: string | null;
+      };
+      await t.execute(sql`select set_config('app.org_id', ${orgId}, true)`);
+      await recordSecurityEvent(t, {
+        orgId,
+        action: 'support.session.started',
+        actorType: 'staff',
+        actorId: staff.staffId,
+        targetType: 'support_session',
+        targetId: id,
+        metadata: { ticketRef: g.ticketRef, grantId: g.id, expiresAt: expiresAt.toISOString() },
+      });
+      await t.execute(sql`select set_config('app.org_id', ${before.v ?? ''}, true)`);
       notice = {
         orgId,
         staffName: staff.name,

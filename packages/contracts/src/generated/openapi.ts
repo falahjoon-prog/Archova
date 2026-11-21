@@ -5197,6 +5197,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/security-audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The security audit log, newest first. Org owners and admins only.
+         * @description Sign-ins, API tokens, data exports, project access changes and support access for the company, each in a
+         *     hash chain so a later edit or deletion is detectable (security-licensing/07 §4). Passwords, tokens and secrets
+         *     are never recorded. `action` matches the action or any action under it (`auth` or `auth.login.failed`);
+         *     `to` is exclusive.
+         */
+        get: operations["listSecurityAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/security-audit-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Alerts raised from the security log (support access, broad API tokens, exports, single sign-on changes). */
+        get: operations["listSecurityAuditAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/security-audit-integrity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** How many events the log holds, the last chain verification, and the last anchor. */
+        get: operations["getSecurityAuditIntegrity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -17251,6 +17314,60 @@ export interface components {
                 kind: "user" | "link" | "system";
                 id: string | null;
                 name: string | null;
+            };
+        };
+        SecurityAuditEventPage: {
+            data: components["schemas"]["SecurityAuditEvent"][];
+            nextCursor: string | null;
+        };
+        SecurityAuditEvent: {
+            /** Format: uuid */
+            id: string;
+            seq: number;
+            /** Format: date-time */
+            at: string;
+            action: string;
+            /** @enum {string} */
+            actorType: "user" | "api_client" | "system" | "support" | "staff" | "anonymous";
+            actorId: string | null;
+            targetType: string | null;
+            targetId: string | null;
+            ip: string | null;
+            /** @enum {string|null} */
+            client: "web" | "ios" | "android" | "api" | null;
+            changes: {
+                [key: string]: unknown;
+            };
+        };
+        SecurityAuditAlertList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                rule: string;
+                /** @enum {string} */
+                severity: "info" | "medium" | "high";
+                summary: string;
+                /** Format: uuid */
+                eventId: string | null;
+                /** Format: date-time */
+                at: string;
+            }[];
+        };
+        SecurityAuditIntegrity: {
+            eventCount: number;
+            lastVerification: null | {
+                ok: boolean;
+                checked: number;
+                firstBadSeq: number | null;
+                problem: string | null;
+                /** Format: date-time */
+                at: string;
+            };
+            lastAnchor: null | {
+                seq: number;
+                /** Format: date-time */
+                at: string;
+                writeOnce: boolean;
             };
         };
         ReportList: {
@@ -37636,6 +37753,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSecurityAuditEvents: {
+        parameters: {
+            query?: {
+                action?: string;
+                actorId?: string;
+                from?: string;
+                to?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityAuditEventPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSecurityAuditAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityAuditAlertList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSecurityAuditIntegrity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityAuditIntegrity"];
                 };
             };
             default: components["responses"]["Problem"];
