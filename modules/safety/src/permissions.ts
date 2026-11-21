@@ -20,4 +20,6 @@ export const SAFETY_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'safety.pretask.read', scope: 'project', tool: 'inspections', level: 'read' },
   { key: 'safety.pretask.run', scope: 'project', tool: 'inspections', level: 'standard' },
   { key: 'safety.pretask.review', scope: 'project', tool: 'inspections', level: 'admin' },
+  // Subcontractor safety scorecards: builder staff only; a sub never sees how other companies score.
+  { key: 'safety.scorecards.read', scope: 'project', tool: 'inspections', level: 'admin' },
 ];

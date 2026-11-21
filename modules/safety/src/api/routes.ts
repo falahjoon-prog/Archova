@@ -14,6 +14,7 @@ import type { SwmsContent } from '../domain/swms';
 import type { ActionInput, IncidentFields, IncidentService } from '../application/incidents';
 import type { AttendeeInput, ToolboxService } from '../application/toolbox';
 import type { CrewInput, PretaskService } from '../application/pretask';
+import type { ScorecardService } from '../application/scorecards';
 import {
   toActionDto,
   toActionFromSource,
@@ -27,6 +28,7 @@ import {
   toPlanDetail,
   toTemplateDto,
   toPlanDto,
+  toScorecardDto,
   toTalkDetail,
   toTalkDto,
   toTopicDto,
@@ -157,6 +159,7 @@ export function safetyRoutes(
   incidents: IncidentService,
   toolbox: ToolboxService,
   pretask: PretaskService,
+  scorecards: ScorecardService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -273,6 +276,14 @@ export function safetyRoutes(
       );
       return { status: 200, body: toTemplateDto(t), headers: { etag: etag(t.version) } };
     },
+    listSafetyScorecards: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => scorecards.list(s, project(input.params)))).map(
+          toScorecardDto,
+        ),
+      },
+    }),
     getPretaskInsights: async (input) => ({
       status: 200,
       body: toInsightsDto(

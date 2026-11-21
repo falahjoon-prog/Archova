@@ -20,6 +20,7 @@ import type { SustainabilityService } from '../application/sustainability';
 import type { ReadinessService } from '../application/readiness';
 import type { IncidentAnalyticsService } from '../application/incident-analytics';
 import type { RiskRegisterService } from '../application/risk-register';
+import type { EvidencePackService } from '../application/evidence-pack';
 import type { ReportsService } from '../application/reports';
 
 export function reportingRoutes(
@@ -36,6 +37,7 @@ export function reportingRoutes(
   dbp: DbpService,
   riskRegister: RiskRegisterService,
   incidentAnalytics: IncidentAnalyticsService,
+  evidencePack: EvidencePackService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -170,6 +172,14 @@ export function reportingRoutes(
     getReadinessPack: async (input) => ({
       status: 200,
       body: await read(input, (s) => readiness.build(s)),
+    }),
+    getSafetyEvidencePack: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => evidencePack.build(s, project(input.params), input.query)),
+    }),
+    getSafetyEvidencePackPdf: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => evidencePack.pdf(s, project(input.params), input.query)),
     }),
     getReadinessPackPdf: async (input) => ({
       status: 200,

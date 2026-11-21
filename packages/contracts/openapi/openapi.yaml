@@ -3677,6 +3677,386 @@ paths:
         '204':
           description: Deleted
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: The review matrix for the document (open round first, then past rounds) and its open comment count.
+      responses:
+        '200':
+          description: The matrix
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: startDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Put the current revision out for review with a matrix of reviewers and approvers. 409 `document_review.already_open` if a round is open.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartDocumentReviewRequest' }
+      responses:
+        '201':
+          description: The round started
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      operationId: cancelDocumentReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Cancel the open round. The document goes back to draft.
+      responses:
+        '200':
+          description: The matrix after cancelling
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentReviewStepId'
+    post:
+      operationId: decideDocumentReviewStep
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: The person a step is assigned to approves it, approves with comments or rejects it. Anyone else gets 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideReviewStepRequest' }
+      responses:
+        '200':
+          description: The matrix after the decision. The round closes when everyone has decided or someone rejects.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/reassign:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentReviewStepId'
+    post:
+      operationId: reassignDocumentReviewStep
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Hand a step that has not been decided to another project member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReassignReviewStepRequest' }
+      responses:
+        '200':
+          description: The matrix after reassigning
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewState' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review-suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: suggestDocumentReviewers
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.manage
+      summary: Nova's suggested reviewers, from who reviewed documents of the same type before (rules only).
+      responses:
+        '200':
+          description: Up to five project members, most frequent first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ReviewerSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/document-reviews:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listOpenDocumentReviews
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.reviews.read
+      summary: Every document out for review in folders the caller can open, with who it waits on and how late it is.
+      parameters:
+        - name: overdue
+          in: query
+          description: Send `true` for only the reviews past their due date (or past the default SLA when none was set).
+          schema: { type: string, enum: ['true'] }
+      responses:
+        '200':
+          description: Open reviews, soonest due first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OpenDocumentReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: listDocumentComments
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Comment threads on the document, oldest first.
+      parameters:
+        - {
+            name: revisionId,
+            in: query,
+            schema: { type: string, pattern: '^rev_[0-9A-Za-z]{26}$' },
+          }
+        - { name: status, in: query, schema: { type: string, enum: [open, resolved] } }
+      responses:
+        '200':
+          description: Threads with their replies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addDocumentComment
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.comments.create
+      summary: Start a thread, or reply to one with `parentId`. Replying to a resolved thread reopens it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddDocumentCommentRequest' }
+      responses:
+        '201':
+          description: All threads after adding
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments/{commentId}/resolution:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/DocumentCommentId'
+    post:
+      operationId: setDocumentCommentResolution
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.comments.create
+      summary: Resolve or reopen a thread (the first comment of it).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveDocumentCommentRequest' }
+      responses:
+        '200':
+          description: All threads after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentCommentList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listItpPackages
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      parameters:
+        - {
+            name: documentId,
+            in: query,
+            schema: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' },
+          }
+        - { name: status, in: query, schema: { type: string, enum: [draft, active, complete] } }
+      responses:
+        '200':
+          description: ITP packages, newest first, with progress
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ItpPackageSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Create a draft ITP, optionally tied to a document and filled from Nova's starter points for the discipline.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateItpPackageRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+    get:
+      operationId: getItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      responses:
+        '200':
+          description: The package with its points
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Edit a draft ITP. Sending `items` replaces all points. 409 `itp.not_editable` once active.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateItpPackageRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+    post:
+      operationId: activateItpPackage
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.manage
+      summary: Start the work. 422 `itp.document_not_approved` if the linked document is not approved or for construction.
+      responses:
+        '200':
+          description: Active
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/items/{itemId}/signoff:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ItpPackageId'
+      - $ref: '#/components/parameters/ItpItemId'
+    post:
+      operationId: signItpItem
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.signoff
+      summary: Pass, fail or waive a point, or set it back to pending. A hold point blocks later points; 409 `itp.hold_point_open`. The package completes when nothing is pending or failed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignItpItemRequest' }
+      responses:
+        '200':
+          description: The package after signing
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpPackageDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/itp-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getItpTemplate
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.itp.read
+      summary: Nova's starter points for a discipline (concrete, waterproofing, fire, or general). Rules only.
+      parameters:
+        - { name: discipline, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: The starter points
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItpTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/transmittals:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4480,7 +4860,9 @@ paths:
         A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
         project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
         is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
-        the manager reports one from the incidents screen if it warrants it.
+        the manager reports one from the incidents screen if it warrants it. With `raiseObservation` a confirmed
+        signal also becomes a safety observation (photo attached, priority from Nova's confidence) in the same
+        step, and the signal keeps its `observationId`; the caller needs `quality.observations.create`.
       requestBody:
         required: true
         content:
@@ -4492,6 +4874,9 @@ paths:
               properties:
                 decision: { type: string, enum: [confirmed, dismissed] }
                 note: { type: string, maxLength: 1000 }
+                raiseObservation:
+                  type: boolean
+                  description: 'Only with confirmed: also raise a safety observation from the signal.'
       responses:
         '200':
           description: The decided signal
@@ -6207,6 +6592,50 @@ paths:
       x-module: platform
       x-permission: reporting.readiness.read
       summary: The tender-readiness pack as a PDF.
+      responses:
+        '200':
+          description: The PDF, base64 encoded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: from, in: query, required: true, schema: { type: string, format: date } }
+      - { name: to, in: query, required: true, schema: { type: string, format: date } }
+    get:
+      operationId: getSafetyEvidencePack
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.evidence_pack.export
+      summary: The regulator evidence pack for a project and date range, with the gaps found before export.
+      description: |
+        Inductions, pre-task plans, inspections, incidents, corrective actions and toolbox talks recorded in the range
+        (local dates in the project's time zone, up to two years), as they stand today. Each section is limited to what
+        the caller may read and is marked `restricted` when they cannot. `gaps` is Nova's pre-check, plain rules over the
+        records: it lists what is missing or open so it can be fixed before the pack is handed over. It never says the site
+        complied. Archova does not notify the regulator.
+      responses:
+        '200':
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyEvidencePack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: from, in: query, required: true, schema: { type: string, format: date } }
+      - { name: to, in: query, required: true, schema: { type: string, format: date } }
+    get:
+      operationId: getSafetyEvidencePackPdf
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.evidence_pack.export
+      summary: The regulator evidence pack as a PDF.
       responses:
         '200':
           description: The PDF, base64 encoded
@@ -11702,6 +12131,57 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RollCall' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: allClearRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'One tap: mark everyone not yet ticked as accounted for, at one moment, and end the roll call. Refused while anyone is marked missing.'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllClearRollCallRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getRollCallRecord
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'The compliance record of a roll call as CSV: a summary, then every mark in order with who made it and when.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCallRecord' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inductions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15630,6 +16110,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PretaskInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-scorecards:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSafetyScorecards
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.scorecards.read
+      summary: Safety scorecard for every company on the project, worst first. The history is the company's record across all the org's projects (incidents, overdue corrective actions, SWMS, induction at pre-task sign-on, safety observations), so a repeat offender shows before they are re-engaged. Builder staff only. A prompt to look, never a ban.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyScorecardList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy:
     parameters:
@@ -21154,6 +21651,26 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' }
+    DocumentReviewStepId:
+      name: stepId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^drs_[0-9A-Za-z]{26}$' }
+    DocumentCommentId:
+      name: commentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dcm_[0-9A-Za-z]{26}$' }
+    ItpPackageId:
+      name: itpId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ipk_[0-9A-Za-z]{26}$' }
+    ItpItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ipi_[0-9A-Za-z]{26}$' }
     DrawingSetId:
       name: drawingSetId
       in: path
@@ -23170,6 +23687,211 @@ components:
         filename: { type: string }
         contentType: { type: string, enum: [application/pdf] }
         dataBase64: { type: string }
+    EvidencePackIncident:
+      type: object
+      required:
+        [
+          ref,
+          title,
+          type,
+          severity,
+          occurredAt,
+          location,
+          status,
+          isNotifiable,
+          notifiableClass,
+          regulatorNotifiedAt,
+          writtenNoticeRequestedAt,
+          hasRootCause,
+          closedAt,
+        ]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        type: { type: string }
+        severity: { type: string }
+        occurredAt: { type: string }
+        location: { type: string, nullable: true }
+        status: { type: string, enum: [reported, investigating, closed] }
+        isNotifiable: { type: boolean }
+        notifiableClass: { type: string, nullable: true }
+        regulatorNotifiedAt: { type: string, nullable: true }
+        writtenNoticeRequestedAt: { type: string, nullable: true }
+        hasRootCause: { type: boolean }
+        closedAt: { type: string, nullable: true }
+    EvidencePackAction:
+      type: object
+      required: [incidentRef, number, title, dueDate, status, completedAt, verifiedAt]
+      properties:
+        incidentRef: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        dueDate: { type: string, nullable: true }
+        status: { type: string, enum: [open, done, verified] }
+        completedAt: { type: string, nullable: true }
+        verifiedAt: { type: string, nullable: true }
+    EvidencePackPretask:
+      type: object
+      required:
+        [
+          ref,
+          taskTitle,
+          workDate,
+          location,
+          supervisorName,
+          status,
+          hazards,
+          hazardsWithoutControls,
+          crew,
+          signed,
+          notCurrentlyInducted,
+          reviewed,
+        ]
+      properties:
+        ref: { type: string }
+        taskTitle: { type: string }
+        workDate: { type: string }
+        location: { type: string, nullable: true }
+        supervisorName: { type: string }
+        status: { type: string, enum: [open, closed] }
+        hazards: { type: integer }
+        hazardsWithoutControls: { type: integer }
+        crew: { type: integer }
+        signed: { type: integer }
+        notCurrentlyInducted: { type: integer }
+        reviewed: { type: boolean }
+    EvidencePackToolbox:
+      type: object
+      required: [ref, title, heldOn, presenterName, status, attendees, signed]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        heldOn: { type: string }
+        presenterName: { type: string }
+        status: { type: string, enum: [open, closed] }
+        attendees: { type: integer }
+        signed: { type: integer }
+    EvidencePackInduction:
+      type: object
+      required: [workerName, completedOn, quizScore, expiresOn, method]
+      properties:
+        workerName: { type: string }
+        completedOn: { type: string }
+        quizScore: { type: integer, nullable: true }
+        expiresOn: { type: string, nullable: true }
+        method: { type: string, enum: [self, assisted, link] }
+    EvidencePackInspection:
+      type: object
+      required: [ref, title, status, scheduledFor, completedOn, pass, fail]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        scheduledFor: { type: string, nullable: true }
+        completedOn: { type: string, nullable: true }
+        pass: { type: integer }
+        fail: { type: integer }
+    EvidenceSectionIncidents:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackIncident' }
+    EvidenceSectionActions:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackAction' }
+    EvidenceSectionPretasks:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackPretask' }
+    EvidenceSectionToolbox:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackToolbox' }
+    EvidenceSectionInductions:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackInduction' }
+    EvidenceSectionInspections:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackInspection' }
+    EvidencePackGap:
+      type: object
+      required: [section, severity, message]
+      properties:
+        section:
+          {
+            type: string,
+            enum: [incidents, actions, pretasks, toolbox, inductions, inspections, pack],
+          }
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+    SafetyEvidencePack:
+      type: object
+      required:
+        [
+          project,
+          from,
+          to,
+          generatedOn,
+          incidents,
+          actions,
+          pretasks,
+          toolbox,
+          inductions,
+          inspections,
+          gaps,
+        ]
+      properties:
+        project:
+          type: object
+          required: [name, number, timeZone]
+          properties:
+            name: { type: string }
+            number: { type: string, nullable: true }
+            timeZone: { type: string }
+        from: { type: string }
+        to: { type: string }
+        generatedOn: { type: string }
+        incidents: { $ref: '#/components/schemas/EvidenceSectionIncidents' }
+        actions: { $ref: '#/components/schemas/EvidenceSectionActions' }
+        pretasks: { $ref: '#/components/schemas/EvidenceSectionPretasks' }
+        toolbox: { $ref: '#/components/schemas/EvidenceSectionToolbox' }
+        inductions: { $ref: '#/components/schemas/EvidenceSectionInductions' }
+        inspections: { $ref: '#/components/schemas/EvidenceSectionInspections' }
+        gaps:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackGap' }
     ReadinessPack:
       type: object
       required: [generatedOn, timeZone, prequal, credentials, safety, trust, attention, truncated]
@@ -28172,6 +28894,7 @@ components:
           status,
           reviewNote,
           reviewedAt,
+          observationId,
           createdAt,
         ]
       properties:
@@ -28189,6 +28912,9 @@ components:
         status: { $ref: '#/components/schemas/HazardSignalStatus' }
         reviewNote: { type: [string, 'null'] }
         reviewedAt: { type: [string, 'null'], format: date-time }
+        observationId:
+          type: [string, 'null']
+          description: 'The safety observation raised when this signal was confirmed (obs_), if any'
         createdAt: { type: string, format: date-time }
     NovaHazardScan:
       type: object
@@ -29155,6 +29881,331 @@ components:
         revisions:
           type: array
           items: { $ref: '#/components/schemas/DocumentRevision' }
+    ReviewMode: { type: string, enum: [sequential, parallel] }
+    ReviewStepRole: { type: string, enum: [reviewer, approver] }
+    ReviewStepStatus:
+      type: string
+      enum: [waiting, pending, approved, approved_with_comments, rejected, skipped]
+    DocumentReviewStep:
+      type: object
+      required: [id, userId, userName, role, order, status, activatedAt, decidedAt, decisionNote]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userName: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/ReviewStepRole' }
+        order: { type: integer }
+        status: { $ref: '#/components/schemas/ReviewStepStatus' }
+        activatedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    DocumentReview:
+      type: object
+      required:
+        [
+          id,
+          documentId,
+          revisionId,
+          mode,
+          status,
+          dueAt,
+          note,
+          closedAt,
+          createdAt,
+          stale,
+          overdueDays,
+          steps,
+        ]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        revisionId: { type: string }
+        mode: { $ref: '#/components/schemas/ReviewMode' }
+        status: { type: string, enum: [open, approved, rejected, cancelled] }
+        dueAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+        closedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        stale:
+          type: boolean
+          description: The document has a newer revision than the one this round reviewed.
+        overdueDays:
+          type: integer
+          description: Whole days past the due date (or the default 5-day SLA when none was set); 0 when on time or closed.
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentReviewStep' }
+    DocumentReviewState:
+      type: object
+      required: [current, history, openComments]
+      properties:
+        current:
+          oneOf: [{ $ref: '#/components/schemas/DocumentReview' }, { type: 'null' }]
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentReview' }
+        openComments: { type: integer }
+    OpenDocumentReview:
+      type: object
+      required: [documentId, documentTitle, docNumber, review]
+      properties:
+        documentId: { type: string }
+        documentTitle: { type: string }
+        docNumber: { type: [string, 'null'] }
+        review: { $ref: '#/components/schemas/DocumentReview' }
+    ReviewerSuggestion:
+      type: object
+      required: [userId, userName, role, count]
+      properties:
+        userId: { type: string }
+        userName: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/ReviewStepRole' }
+        count: { type: integer }
+    StartDocumentReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [mode, steps]
+      properties:
+        mode: { $ref: '#/components/schemas/ReviewMode' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [userId, role, order]
+            properties:
+              userId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+              role: { $ref: '#/components/schemas/ReviewStepRole' }
+              order: { type: integer, minimum: 1, maximum: 50 }
+    DecideReviewStepRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, approved_with_comments, rejected] }
+        note: { type: [string, 'null'], maxLength: 2000 }
+    ReassignReviewStepRequest:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+    DocumentComment:
+      type: object
+      required:
+        [
+          id,
+          documentId,
+          revisionId,
+          parentId,
+          body,
+          page,
+          status,
+          authorId,
+          authorName,
+          createdAt,
+          resolvedById,
+          resolvedByName,
+          resolvedAt,
+          resolutionNote,
+        ]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        revisionId: { type: [string, 'null'] }
+        parentId: { type: [string, 'null'] }
+        body: { type: string }
+        page: { type: [integer, 'null'] }
+        status: { type: string, enum: [open, resolved] }
+        authorId: { type: [string, 'null'] }
+        authorName: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        resolvedById: { type: [string, 'null'] }
+        resolvedByName: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        resolutionNote: { type: [string, 'null'] }
+    DocumentCommentThread:
+      type: object
+      required: [root, replies]
+      properties:
+        root: { $ref: '#/components/schemas/DocumentComment' }
+        replies:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentComment' }
+    DocumentCommentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentCommentThread' }
+    AddDocumentCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000 }
+        parentId: { type: string, pattern: '^dcm_[0-9A-Za-z]{26}$' }
+        revisionId: { type: string, pattern: '^rev_[0-9A-Za-z]{26}$' }
+        page: { type: integer, minimum: 1 }
+    ResolveDocumentCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [resolved]
+      properties:
+        resolved: { type: boolean }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    ItpPointType: { type: string, enum: [hold, witness, surveillance] }
+    ItpItemStatus: { type: string, enum: [pending, passed, failed, waived] }
+    ItpItemInput:
+      type: object
+      additionalProperties: false
+      required: [description, pointType]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 500 }
+        acceptanceCriteria: { type: [string, 'null'], maxLength: 1000 }
+        pointType: { $ref: '#/components/schemas/ItpPointType' }
+    ItpItem:
+      type: object
+      required:
+        [
+          id,
+          sort,
+          description,
+          acceptanceCriteria,
+          pointType,
+          status,
+          signedById,
+          signedByName,
+          signedAt,
+          note,
+        ]
+      properties:
+        id: { type: string }
+        sort: { type: integer }
+        description: { type: string }
+        acceptanceCriteria: { type: [string, 'null'] }
+        pointType: { $ref: '#/components/schemas/ItpPointType' }
+        status: { $ref: '#/components/schemas/ItpItemStatus' }
+        signedById: { type: [string, 'null'] }
+        signedByName: { type: [string, 'null'] }
+        signedAt: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+    ItpProgress:
+      type: object
+      required: [total, done, failed, holdOpen]
+      properties:
+        total: { type: integer }
+        done: { type: integer }
+        failed: { type: integer }
+        holdOpen: { type: integer }
+    ItpPackage:
+      type: object
+      required:
+        [
+          id,
+          number,
+          name,
+          discipline,
+          documentId,
+          responsibleCompanyId,
+          status,
+          completedAt,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        name: { type: string }
+        discipline: { type: [string, 'null'] }
+        documentId: { type: [string, 'null'] }
+        responsibleCompanyId: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, active, complete] }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    ItpPackageSummary:
+      type: object
+      required: [package, progress]
+      properties:
+        package: { $ref: '#/components/schemas/ItpPackage' }
+        progress: { $ref: '#/components/schemas/ItpProgress' }
+    ItpPackageDetail:
+      type: object
+      required: [package, items, progress, document]
+      properties:
+        package: { $ref: '#/components/schemas/ItpPackage' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ItpItem' }
+        progress: { $ref: '#/components/schemas/ItpProgress' }
+        document:
+          oneOf:
+            - type: object
+              required: [id, title, docNumber, status]
+              properties:
+                id: { type: string }
+                title: { type: string }
+                docNumber: { type: [string, 'null'] }
+                status: { $ref: '#/components/schemas/DocumentStatus' }
+            - type: 'null'
+    CreateItpPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { type: [string, 'null'], maxLength: 100 }
+        documentId: { type: [string, 'null'], pattern: '^doc_[0-9A-Za-z]{26}$' }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        fromTemplate:
+          {
+            type: boolean,
+            description: Fill the points from the starter for the discipline when `items` is not sent.,
+          }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ItpItemInput' }
+    UpdateItpPackageRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { type: [string, 'null'], maxLength: 100 }
+        documentId: { type: [string, 'null'], pattern: '^doc_[0-9A-Za-z]{26}$' }
+        responsibleCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ItpItemInput' }
+    SignItpItemRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/ItpItemStatus' }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    ItpTemplate:
+      type: object
+      required: [key, items]
+      properties:
+        key: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [description, acceptanceCriteria, pointType]
+            properties:
+              description: { type: string }
+              acceptanceCriteria: { type: string }
+              pointType: { $ref: '#/components/schemas/ItpPointType' }
     DocumentPage:
       type: object
       required: [data, nextCursor]
@@ -37010,6 +38061,25 @@ components:
       properties:
         workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
         status: { type: string, enum: [accounted_for, missing, not_on_site] }
+        clientAt:
+          type: string
+          format: date-time
+          description: "When the mark was tapped on a phone with no signal. Kept inside the roll call's own window (never before it started, never in the future)."
+    AllClearRollCallRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        clientAt:
+          type: string
+          format: date-time
+          description: 'When all clear was tapped on a phone with no signal.'
+    RollCallRecord:
+      type: object
+      required: [filename, csv, count]
+      properties:
+        filename: { type: string }
+        csv: { type: string }
+        count: { type: integer, description: Marks in the record. }
     InductionSectionKey:
       type: string
       description: 'The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.'
@@ -40936,6 +42006,56 @@ components:
         byCompany:
           type: array
           items: { $ref: '#/components/schemas/PretaskInsightCompany' }
+    SafetyScorecardComponent:
+      type: object
+      required: [key, label, lost, max, detail]
+      properties:
+        key: { type: string, enum: [incidents, actions, swms, inductions, findings] }
+        label: { type: string }
+        lost: { type: integer, description: Points lost, never more than max. }
+        max: { type: integer }
+        detail: { type: string }
+    SafetyScorecard:
+      type: object
+      required: [companyId, name, score, rating, trend, components, flags, riskFlag, counts]
+      properties:
+        companyId: { type: string }
+        name: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100, description: 100 is best. }
+        rating: { type: string, enum: [good, watch, elevated, high] }
+        trend:
+          {
+            type: string,
+            enum: [improving, steady, worsening],
+            description: Last 90 days of incidents against the 90 before.,
+          }
+        components:
+          type: array
+          items: { $ref: '#/components/schemas/SafetyScorecardComponent' }
+        flags:
+          type: array
+          items: { type: string }
+        riskFlag:
+          {
+            type: [string, 'null'],
+            description: One line Nova shows before the company is added to a project. Null when there is nothing to flag.,
+          }
+        counts:
+          type: object
+          required: [incidents12m, incidents90d, notifiable12m, projects, overdueActions]
+          properties:
+            incidents12m: { type: integer }
+            incidents90d: { type: integer }
+            notifiable12m: { type: integer }
+            projects: { type: integer }
+            overdueActions: { type: integer }
+    SafetyScorecardList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SafetyScorecard' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

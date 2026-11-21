@@ -201,6 +201,23 @@ export function createAttendanceApi(orgId: string): AttendanceSource {
         ),
       );
     },
+    async allClearRollCall(projectId, rollCallId) {
+      return toRollCall(
+        unwrap(
+          await api.POST(`${P}/roll-calls/{rollCallId}/all-clear`, {
+            params: { path: { orgId, projectId, rollCallId } },
+          }),
+        ),
+      );
+    },
+    async rollCallRecord(projectId, rollCallId) {
+      const r = unwrap(
+        await api.GET(`${P}/roll-calls/{rollCallId}/record`, {
+          params: { path: { orgId, projectId, rollCallId } },
+        }),
+      );
+      return { filename: r.filename, csv: r.csv };
+    },
     async workers(projectId, f) {
       const r = unwrap(
         await api.GET(W, {

@@ -899,6 +899,113 @@ export const DeleteMarkupParams = z.object({
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
   "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
 });
+export const GetDocumentReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const StartDocumentReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const StartDocumentReviewBody = s.StartDocumentReviewRequestSchema;
+export const CancelDocumentReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const DecideDocumentReviewStepParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+  "stepId": z.string().regex(new RegExp("^drs_[0-9A-Za-z]{26}$")),
+});
+export const DecideDocumentReviewStepBody = s.DecideReviewStepRequestSchema;
+export const ReassignDocumentReviewStepParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+  "stepId": z.string().regex(new RegExp("^drs_[0-9A-Za-z]{26}$")),
+});
+export const ReassignDocumentReviewStepBody = s.ReassignReviewStepRequestSchema;
+export const SuggestDocumentReviewersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const ListOpenDocumentReviewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListOpenDocumentReviewsQuery = z.object({
+  "overdue": z.enum(["true"]).optional(),
+});
+export const ListDocumentCommentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const ListDocumentCommentsQuery = z.object({
+  "revisionId": z.string().regex(new RegExp("^rev_[0-9A-Za-z]{26}$")).optional(),
+  "status": z.enum(["open", "resolved"]).optional(),
+});
+export const AddDocumentCommentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const AddDocumentCommentBody = s.AddDocumentCommentRequestSchema;
+export const SetDocumentCommentResolutionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+  "commentId": z.string().regex(new RegExp("^dcm_[0-9A-Za-z]{26}$")),
+});
+export const SetDocumentCommentResolutionBody = s.ResolveDocumentCommentRequestSchema;
+export const ListItpPackagesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListItpPackagesQuery = z.object({
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")).optional(),
+  "status": z.enum(["draft", "active", "complete"]).optional(),
+});
+export const CreateItpPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateItpPackageBody = s.CreateItpPackageRequestSchema;
+export const GetItpPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itpId": z.string().regex(new RegExp("^ipk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateItpPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itpId": z.string().regex(new RegExp("^ipk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateItpPackageBody = s.UpdateItpPackageRequestSchema;
+export const ActivateItpPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itpId": z.string().regex(new RegExp("^ipk_[0-9A-Za-z]{26}$")),
+});
+export const SignItpItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itpId": z.string().regex(new RegExp("^ipk_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^ipi_[0-9A-Za-z]{26}$")),
+});
+export const SignItpItemBody = s.SignItpItemRequestSchema;
+export const GetItpTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetItpTemplateQuery = z.object({
+  "discipline": z.string().max(100).optional(),
+});
 export const ListTransmittalsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1083,6 +1190,7 @@ export const ReviewHazardSignalParams = z.object({
 export const ReviewHazardSignalBody = z.object({
   "decision": z.enum(["confirmed", "dismissed"]),
   "note": z.string().max(1000).optional(),
+  "raiseObservation": z.boolean().optional(),
 }).strict();
 export const ScanCaptureViewWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1447,6 +1555,22 @@ export const GetReadinessPackParams = z.object({
 });
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
+export const GetSafetyEvidencePackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackPdfQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
 });
 export const ListDashboardSnapshotsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -2840,6 +2964,17 @@ export const EndRollCallParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
 });
+export const AllClearRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
+export const AllClearRollCallBody = s.AllClearRollCallRequestSchema;
+export const GetRollCallRecordParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
 export const ListInductionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3759,6 +3894,10 @@ export const GetPretaskInsightsParams = z.object({
 });
 export const GetPretaskInsightsQuery = z.object({
   "days": z.coerce.number().int().min(1).max(365).optional(),
+});
+export const ListSafetyScorecardsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const CopyPretaskPlanParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -7328,6 +7467,210 @@ export const operations = {
     query: null,
     body: null,
   },
+  getDocumentReview: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.read",
+    internal: false,
+    contentType: null,
+    params: GetDocumentReviewParams,
+    query: null,
+    body: null,
+  },
+  startDocumentReview: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.manage",
+    internal: false,
+    contentType: "application/json",
+    params: StartDocumentReviewParams,
+    query: null,
+    body: StartDocumentReviewBody,
+  },
+  cancelDocumentReview: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/cancel',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.manage",
+    internal: false,
+    contentType: null,
+    params: CancelDocumentReviewParams,
+    query: null,
+    body: null,
+  },
+  decideDocumentReviewStep: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/decision',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.read",
+    internal: false,
+    contentType: "application/json",
+    params: DecideDocumentReviewStepParams,
+    query: null,
+    body: DecideDocumentReviewStepBody,
+  },
+  reassignDocumentReviewStep: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/reassign',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReassignDocumentReviewStepParams,
+    query: null,
+    body: ReassignDocumentReviewStepBody,
+  },
+  suggestDocumentReviewers: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review-suggestions',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.manage",
+    internal: false,
+    contentType: null,
+    params: SuggestDocumentReviewersParams,
+    query: null,
+    body: null,
+  },
+  listOpenDocumentReviews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/document-reviews',
+    module: "documents",
+    auth: "required",
+    permission: "documents.reviews.read",
+    internal: false,
+    contentType: null,
+    params: ListOpenDocumentReviewsParams,
+    query: ListOpenDocumentReviewsQuery,
+    body: null,
+  },
+  listDocumentComments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListDocumentCommentsParams,
+    query: ListDocumentCommentsQuery,
+    body: null,
+  },
+  addDocumentComment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments',
+    module: "documents",
+    auth: "required",
+    permission: "documents.comments.create",
+    internal: false,
+    contentType: "application/json",
+    params: AddDocumentCommentParams,
+    query: null,
+    body: AddDocumentCommentBody,
+  },
+  setDocumentCommentResolution: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments/{commentId}/resolution',
+    module: "documents",
+    auth: "required",
+    permission: "documents.comments.create",
+    internal: false,
+    contentType: "application/json",
+    params: SetDocumentCommentResolutionParams,
+    query: null,
+    body: SetDocumentCommentResolutionBody,
+  },
+  listItpPackages: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.read",
+    internal: false,
+    contentType: null,
+    params: ListItpPackagesParams,
+    query: ListItpPackagesQuery,
+    body: null,
+  },
+  createItpPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateItpPackageParams,
+    query: null,
+    body: CreateItpPackageBody,
+  },
+  getItpPackage: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.read",
+    internal: false,
+    contentType: null,
+    params: GetItpPackageParams,
+    query: null,
+    body: null,
+  },
+  updateItpPackage: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateItpPackageParams,
+    query: null,
+    body: UpdateItpPackageBody,
+  },
+  activateItpPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/activate',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.manage",
+    internal: false,
+    contentType: null,
+    params: ActivateItpPackageParams,
+    query: null,
+    body: null,
+  },
+  signItpItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/items/{itemId}/signoff',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.signoff",
+    internal: false,
+    contentType: "application/json",
+    params: SignItpItemParams,
+    query: null,
+    body: SignItpItemBody,
+  },
+  getItpTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/itp-templates',
+    module: "documents",
+    auth: "required",
+    permission: "documents.itp.read",
+    internal: false,
+    contentType: null,
+    params: GetItpTemplateParams,
+    query: GetItpTemplateQuery,
+    body: null,
+  },
   listTransmittals: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals',
@@ -8275,6 +8618,30 @@ export const operations = {
     contentType: null,
     params: GetReadinessPackPdfParams,
     query: null,
+    body: null,
+  },
+  getSafetyEvidencePack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackParams,
+    query: GetSafetyEvidencePackQuery,
+    body: null,
+  },
+  getSafetyEvidencePackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackPdfParams,
+    query: GetSafetyEvidencePackPdfQuery,
     body: null,
   },
   listDashboardSnapshots: {
@@ -11160,6 +11527,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  allClearRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AllClearRollCallParams,
+    query: null,
+    body: AllClearRollCallBody,
+  },
+  getRollCallRecord: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: GetRollCallRecordParams,
+    query: null,
+    body: null,
+  },
   listInductions: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inductions',
@@ -13274,6 +13665,18 @@ export const operations = {
     contentType: null,
     params: GetPretaskInsightsParams,
     query: GetPretaskInsightsQuery,
+    body: null,
+  },
+  listSafetyScorecards: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards',
+    module: "safety",
+    auth: "required",
+    permission: "safety.scorecards.read",
+    internal: false,
+    contentType: null,
+    params: ListSafetyScorecardsParams,
+    query: null,
     body: null,
   },
   copyPretaskPlan: {

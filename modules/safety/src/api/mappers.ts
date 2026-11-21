@@ -6,6 +6,7 @@ import type {
   IncidentDetail,
   PretaskCrew,
   PretaskInsights,
+  SafetyScorecard,
   PretaskTemplate,
   PretaskPlan,
   PretaskPlanDetail,
@@ -20,6 +21,7 @@ import type {
 } from '@archova/contracts';
 import { incidentLabel } from '../domain/incident';
 import type { IncidentService } from '../application/incidents';
+import type { CompanyScorecard } from '../application/scorecards';
 import { swmsLabel, type HrcwCategory } from '../domain/swms';
 import type { SwmsService, SwmsView } from '../application/swms';
 import { pretaskLabel, type HazardSuggestion } from '../domain/pretask';
@@ -371,4 +373,16 @@ export const toInsightsDto = (
     ...c,
     companyId: c.companyId ? encodeId('company', c.companyId) : null,
   })),
+});
+
+export const toScorecardDto = (c: CompanyScorecard): SafetyScorecard => ({
+  companyId: encodeId('company', c.companyId),
+  name: c.name,
+  score: c.scorecard.score,
+  rating: c.scorecard.rating,
+  trend: c.scorecard.trend,
+  components: c.scorecard.components,
+  flags: c.scorecard.flags,
+  riskFlag: c.riskFlag,
+  counts: c.scorecard.counts,
 });

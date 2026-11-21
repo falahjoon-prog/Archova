@@ -50,6 +50,15 @@ export interface SafetyDeps {
       userIds: string[],
     ): Promise<Map<string, InductionState>>;
   };
+  /** Safety observations assigned to each company across the org; provided by `quality`, built after `safety`. */
+  findings?: {
+    safetyByCompany(
+      scope: TenantScope,
+      companyIds: string[],
+      since: Date,
+      today: string,
+    ): Promise<Map<string, { raised: number; overdueOpen: number }>>;
+  };
   now?: () => Date;
 }
 

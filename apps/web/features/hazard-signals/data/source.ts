@@ -14,7 +14,7 @@ export interface HazardSignalSource {
   review(
     projectId: string,
     id: string,
-    input: { decision: 'confirmed' | 'dismissed'; note?: string },
+    input: { decision: 'confirmed' | 'dismissed'; note?: string; raiseObservation?: boolean },
   ): Promise<HazardSignal>;
   patterns(projectId: string, days: number): Promise<HazardPattern[]>;
 }
@@ -48,6 +48,7 @@ export const hazardSignalsPreview: HazardSignalSource = {
         status: 'open',
         reviewNote: null,
         reviewedAt: null,
+        observationId: null,
         createdAt: nowIso(),
       }),
     );
@@ -70,6 +71,8 @@ export const hazardSignalsPreview: HazardSignalSource = {
     s.status = input.decision;
     s.reviewNote = input.note?.trim() || null;
     s.reviewedAt = nowIso();
+    s.observationId =
+      input.decision === 'confirmed' && input.raiseObservation ? mockId('obs') : null;
     return delay({ ...s });
   },
   async patterns(projectId) {

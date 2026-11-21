@@ -144,6 +144,11 @@ export function projectToolGroups(
       icon: DocumentsIcon,
     },
     canRead('documents') && {
+      href: webRoutes.itp(orgSlug, projectId),
+      label: 'ITP packages',
+      icon: DocumentsIcon,
+    },
+    canRead('documents') && {
       href: webRoutes.transmittals(orgSlug, projectId),
       label: 'Transmittals',
       icon: TransmittalsIcon,
@@ -213,6 +218,11 @@ export function projectToolGroups(
       href: webRoutes.inductions(orgSlug, projectId),
       label: 'Inductions',
       icon: InductionsIcon,
+    },
+    canAdmin('inspections') && {
+      href: webRoutes.safetyEvidencePack(orgSlug, projectId),
+      label: 'Safety evidence pack',
+      icon: IncidentsIcon,
     },
     canRead('payment_claims') && {
       href: webRoutes.contracts(orgSlug, projectId),
@@ -288,6 +298,11 @@ export function projectToolGroups(
       href: webRoutes.pretaskPlans(orgSlug, projectId),
       label: 'Pre-task plans',
       icon: PretaskIcon,
+    },
+    canAdmin('inspections') && {
+      href: webRoutes.safetyScorecards(orgSlug, projectId),
+      label: 'Safety scorecards',
+      icon: SwmsIcon,
     },
     canRead('inspections') && {
       href: webRoutes.incidents(orgSlug, projectId),
@@ -441,9 +456,11 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'SWMS',
       'Toolbox talks',
       'Pre-task plans',
+      'Safety scorecards',
       'Incidents',
       'Safety signals',
       'Inductions',
+      'Safety evidence pack',
     ],
   },
   {

@@ -2862,6 +2862,282 @@ export interface paths {
         patch: operations["updateMarkup"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** The review matrix for the document (open round first, then past rounds) and its open comment count. */
+        get: operations["getDocumentReview"];
+        put?: never;
+        /** Put the current revision out for review with a matrix of reviewers and approvers. 409 `document_review.already_open` if a round is open. */
+        post: operations["startDocumentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel the open round. The document goes back to draft. */
+        post: operations["cancelDocumentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The person a step is assigned to approves it, approves with comments or rejects it. Anyone else gets 403. */
+        post: operations["decideDocumentReviewStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review/steps/{stepId}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand a step that has not been decided to another project member. */
+        post: operations["reassignDocumentReviewStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/review-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's suggested reviewers, from who reviewed documents of the same type before (rules only). */
+        get: operations["suggestDocumentReviewers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/document-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every document out for review in folders the caller can open, with who it waits on and how late it is. */
+        get: operations["listOpenDocumentReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** Comment threads on the document, oldest first. */
+        get: operations["listDocumentComments"];
+        put?: never;
+        /** Start a thread, or reply to one with `parentId`. Replying to a resolved thread reopens it. */
+        post: operations["addDocumentComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/comments/{commentId}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                commentId: components["parameters"]["DocumentCommentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve or reopen a thread (the first comment of it). */
+        post: operations["setDocumentCommentResolution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listItpPackages"];
+        put?: never;
+        /** Create a draft ITP, optionally tied to a document and filled from Nova's starter points for the discipline. */
+        post: operations["createItpPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getItpPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft ITP. Sending `items` replaces all points. 409 `itp.not_editable` once active. */
+        patch: operations["updateItpPackage"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the work. 422 `itp.document_not_approved` if the linked document is not approved or for construction. */
+        post: operations["activateItpPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-packages/{itpId}/items/{itemId}/signoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+                itemId: components["parameters"]["ItpItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pass, fail or waive a point, or set it back to pending. A hold point blocks later points; 409 `itp.hold_point_open`. The package completes when nothing is pending or failed. */
+        post: operations["signItpItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/itp-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova's starter points for a discipline (concrete, waterproofing, fire, or general). Rules only. */
+        get: operations["getItpTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/transmittals": {
         parameters: {
             query?: never;
@@ -3464,7 +3740,9 @@ export interface paths {
          * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
          *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
          *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
-         *     the manager reports one from the incidents screen if it warrants it.
+         *     the manager reports one from the incidents screen if it warrants it. With `raiseObservation` a confirmed
+         *     signal also becomes a safety observation (photo attached, priority from Nova's confidence) in the same
+         *     step, and the signal keeps its `observationId`; the caller needs `quality.observations.create`.
          */
         post: operations["reviewHazardSignal"];
         delete?: never;
@@ -4783,6 +5061,59 @@ export interface paths {
         };
         /** The tender-readiness pack as a PDF. */
         get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack": {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The regulator evidence pack for a project and date range, with the gaps found before export.
+         * @description Inductions, pre-task plans, inspections, incidents, corrective actions and toolbox talks recorded in the range
+         *     (local dates in the project's time zone, up to two years), as they stand today. Each section is limited to what
+         *     the caller may read and is marked `restricted` when they cannot. `gaps` is Nova's pre-check, plain rules over the
+         *     records: it lists what is missing or open so it can be fixed before the pack is handed over. It never says the site
+         *     complied. Archova does not notify the regulator.
+         */
+        get: operations["getSafetyEvidencePack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf": {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The regulator evidence pack as a PDF. */
+        get: operations["getSafetyEvidencePackPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8773,6 +9104,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/all-clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One tap: mark everyone not yet ticked as accounted for, at one moment, and end the roll call. Refused while anyone is marked missing. */
+        post: operations["allClearRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        /** The compliance record of a roll call as CSV: a summary, then every mark in order with who made it and when. */
+        get: operations["getRollCallRecord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inductions": {
         parameters: {
             query?: never;
@@ -11439,6 +11812,26 @@ export interface paths {
         };
         /** What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person. */
         get: operations["getPretaskInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/safety-scorecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Safety scorecard for every company on the project, worst first. The history is the company's record across all the org's projects (incidents, overdue corrective actions, SWMS, induction at pre-task sign-on, safety observations), so a repeat offender shows before they are re-engaged. Builder staff only. A prompt to look, never a ban. */
+        get: operations["listSafetyScorecards"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16465,6 +16858,128 @@ export interface components {
             contentType: "application/pdf";
             dataBase64: string;
         };
+        EvidencePackIncident: {
+            ref: string;
+            title: string;
+            type: string;
+            severity: string;
+            occurredAt: string;
+            location: string | null;
+            /** @enum {string} */
+            status: "reported" | "investigating" | "closed";
+            isNotifiable: boolean;
+            notifiableClass: string | null;
+            regulatorNotifiedAt: string | null;
+            writtenNoticeRequestedAt: string | null;
+            hasRootCause: boolean;
+            closedAt: string | null;
+        };
+        EvidencePackAction: {
+            incidentRef: string;
+            number: number;
+            title: string;
+            dueDate: string | null;
+            /** @enum {string} */
+            status: "open" | "done" | "verified";
+            completedAt: string | null;
+            verifiedAt: string | null;
+        };
+        EvidencePackPretask: {
+            ref: string;
+            taskTitle: string;
+            workDate: string;
+            location: string | null;
+            supervisorName: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            hazards: number;
+            hazardsWithoutControls: number;
+            crew: number;
+            signed: number;
+            notCurrentlyInducted: number;
+            reviewed: boolean;
+        };
+        EvidencePackToolbox: {
+            ref: string;
+            title: string;
+            heldOn: string;
+            presenterName: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            attendees: number;
+            signed: number;
+        };
+        EvidencePackInduction: {
+            workerName: string;
+            completedOn: string;
+            quizScore: number | null;
+            expiresOn: string | null;
+            /** @enum {string} */
+            method: "self" | "assisted" | "link";
+        };
+        EvidencePackInspection: {
+            ref: string;
+            title: string;
+            status: string;
+            scheduledFor: string | null;
+            completedOn: string | null;
+            pass: number;
+            fail: number;
+        };
+        EvidenceSectionIncidents: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackIncident"][];
+        };
+        EvidenceSectionActions: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackAction"][];
+        };
+        EvidenceSectionPretasks: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackPretask"][];
+        };
+        EvidenceSectionToolbox: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackToolbox"][];
+        };
+        EvidenceSectionInductions: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackInduction"][];
+        };
+        EvidenceSectionInspections: {
+            restricted: boolean;
+            truncated: boolean;
+            rows: components["schemas"]["EvidencePackInspection"][];
+        };
+        EvidencePackGap: {
+            /** @enum {string} */
+            section: "incidents" | "actions" | "pretasks" | "toolbox" | "inductions" | "inspections" | "pack";
+            /** @enum {string} */
+            severity: "high" | "medium" | "low";
+            message: string;
+        };
+        SafetyEvidencePack: {
+            project: {
+                name: string;
+                number: string | null;
+                timeZone: string;
+            };
+            from: string;
+            to: string;
+            generatedOn: string;
+            incidents: components["schemas"]["EvidenceSectionIncidents"];
+            actions: components["schemas"]["EvidenceSectionActions"];
+            pretasks: components["schemas"]["EvidenceSectionPretasks"];
+            toolbox: components["schemas"]["EvidenceSectionToolbox"];
+            inductions: components["schemas"]["EvidenceSectionInductions"];
+            inspections: components["schemas"]["EvidenceSectionInspections"];
+            gaps: components["schemas"]["EvidencePackGap"][];
+        };
         ReadinessPack: {
             /** @description Local date the pack was built. */
             generatedOn: string;
@@ -19678,6 +20193,8 @@ export interface components {
             reviewNote: string | null;
             /** Format: date-time */
             reviewedAt: string | null;
+            /** @description The safety observation raised when this signal was confirmed (obs_), if any */
+            observationId: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -20309,6 +20826,203 @@ export interface components {
         DocumentDetail: {
             document: components["schemas"]["Document"];
             revisions: components["schemas"]["DocumentRevision"][];
+        };
+        /** @enum {string} */
+        ReviewMode: "sequential" | "parallel";
+        /** @enum {string} */
+        ReviewStepRole: "reviewer" | "approver";
+        /** @enum {string} */
+        ReviewStepStatus: "waiting" | "pending" | "approved" | "approved_with_comments" | "rejected" | "skipped";
+        DocumentReviewStep: {
+            id: string;
+            userId: string;
+            userName: string | null;
+            role: components["schemas"]["ReviewStepRole"];
+            order: number;
+            status: components["schemas"]["ReviewStepStatus"];
+            /** Format: date-time */
+            activatedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        DocumentReview: {
+            id: string;
+            documentId: string;
+            revisionId: string;
+            mode: components["schemas"]["ReviewMode"];
+            /** @enum {string} */
+            status: "open" | "approved" | "rejected" | "cancelled";
+            /** Format: date-time */
+            dueAt: string | null;
+            note: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The document has a newer revision than the one this round reviewed. */
+            stale: boolean;
+            /** @description Whole days past the due date (or the default 5-day SLA when none was set); 0 when on time or closed. */
+            overdueDays: number;
+            steps: components["schemas"]["DocumentReviewStep"][];
+        };
+        DocumentReviewState: {
+            current: components["schemas"]["DocumentReview"] | null;
+            history: components["schemas"]["DocumentReview"][];
+            openComments: number;
+        };
+        OpenDocumentReview: {
+            documentId: string;
+            documentTitle: string;
+            docNumber: string | null;
+            review: components["schemas"]["DocumentReview"];
+        };
+        ReviewerSuggestion: {
+            userId: string;
+            userName: string | null;
+            role: components["schemas"]["ReviewStepRole"];
+            count: number;
+        };
+        StartDocumentReviewRequest: {
+            mode: components["schemas"]["ReviewMode"];
+            /** Format: date-time */
+            dueAt?: string | null;
+            note?: string | null;
+            steps: {
+                userId: string;
+                role: components["schemas"]["ReviewStepRole"];
+                order: number;
+            }[];
+        };
+        DecideReviewStepRequest: {
+            /** @enum {string} */
+            decision: "approved" | "approved_with_comments" | "rejected";
+            note?: string | null;
+        };
+        ReassignReviewStepRequest: {
+            userId: string;
+        };
+        DocumentComment: {
+            id: string;
+            documentId: string;
+            revisionId: string | null;
+            parentId: string | null;
+            body: string;
+            page: number | null;
+            /** @enum {string} */
+            status: "open" | "resolved";
+            authorId: string | null;
+            authorName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            resolvedById: string | null;
+            resolvedByName: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolutionNote: string | null;
+        };
+        DocumentCommentThread: {
+            root: components["schemas"]["DocumentComment"];
+            replies: components["schemas"]["DocumentComment"][];
+        };
+        DocumentCommentList: {
+            data: components["schemas"]["DocumentCommentThread"][];
+        };
+        AddDocumentCommentRequest: {
+            body: string;
+            parentId?: string;
+            revisionId?: string;
+            page?: number;
+        };
+        ResolveDocumentCommentRequest: {
+            resolved: boolean;
+            note?: string | null;
+        };
+        /** @enum {string} */
+        ItpPointType: "hold" | "witness" | "surveillance";
+        /** @enum {string} */
+        ItpItemStatus: "pending" | "passed" | "failed" | "waived";
+        ItpItemInput: {
+            description: string;
+            acceptanceCriteria?: string | null;
+            pointType: components["schemas"]["ItpPointType"];
+        };
+        ItpItem: {
+            id: string;
+            sort: number;
+            description: string;
+            acceptanceCriteria: string | null;
+            pointType: components["schemas"]["ItpPointType"];
+            status: components["schemas"]["ItpItemStatus"];
+            signedById: string | null;
+            signedByName: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            note: string | null;
+        };
+        ItpProgress: {
+            total: number;
+            done: number;
+            failed: number;
+            holdOpen: number;
+        };
+        ItpPackage: {
+            id: string;
+            number: string;
+            name: string;
+            discipline: string | null;
+            documentId: string | null;
+            responsibleCompanyId: string | null;
+            /** @enum {string} */
+            status: "draft" | "active" | "complete";
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        ItpPackageSummary: {
+            package: components["schemas"]["ItpPackage"];
+            progress: components["schemas"]["ItpProgress"];
+        };
+        ItpPackageDetail: {
+            package: components["schemas"]["ItpPackage"];
+            items: components["schemas"]["ItpItem"][];
+            progress: components["schemas"]["ItpProgress"];
+            document: {
+                id: string;
+                title: string;
+                docNumber: string | null;
+                status: components["schemas"]["DocumentStatus"];
+            } | null;
+        };
+        CreateItpPackageRequest: {
+            name: string;
+            discipline?: string | null;
+            documentId?: string | null;
+            responsibleCompanyId?: string | null;
+            /** @description Fill the points from the starter for the discipline when `items` is not sent. */
+            fromTemplate?: boolean;
+            items?: components["schemas"]["ItpItemInput"][];
+        };
+        UpdateItpPackageRequest: {
+            name?: string;
+            discipline?: string | null;
+            documentId?: string | null;
+            responsibleCompanyId?: string | null;
+            items?: components["schemas"]["ItpItemInput"][];
+        };
+        SignItpItemRequest: {
+            status: components["schemas"]["ItpItemStatus"];
+            note?: string | null;
+        };
+        ItpTemplate: {
+            key: string;
+            items: {
+                description: string;
+                acceptanceCriteria: string;
+                pointType: components["schemas"]["ItpPointType"];
+            }[];
         };
         DocumentPage: {
             data: components["schemas"]["Document"][];
@@ -25248,6 +25962,24 @@ export interface components {
             workerId: string;
             /** @enum {string} */
             status: "accounted_for" | "missing" | "not_on_site";
+            /**
+             * Format: date-time
+             * @description When the mark was tapped on a phone with no signal. Kept inside the roll call's own window (never before it started, never in the future).
+             */
+            clientAt?: string;
+        };
+        AllClearRollCallRequest: {
+            /**
+             * Format: date-time
+             * @description When all clear was tapped on a phone with no signal.
+             */
+            clientAt?: string;
+        };
+        RollCallRecord: {
+            filename: string;
+            csv: string;
+            /** @description Marks in the record. */
+            count: number;
         };
         /**
          * @description The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.
@@ -27633,6 +28365,42 @@ export interface components {
             topHazards: components["schemas"]["PretaskInsightHazard"][];
             byCompany: components["schemas"]["PretaskInsightCompany"][];
         };
+        SafetyScorecardComponent: {
+            /** @enum {string} */
+            key: "incidents" | "actions" | "swms" | "inductions" | "findings";
+            label: string;
+            /** @description Points lost */
+            lost: number;
+            max: number;
+            detail: string;
+        };
+        SafetyScorecard: {
+            companyId: string;
+            name: string;
+            /** @description 100 is best. */
+            score: number;
+            /** @enum {string} */
+            rating: "good" | "watch" | "elevated" | "high";
+            /**
+             * @description Last 90 days of incidents against the 90 before.
+             * @enum {string}
+             */
+            trend: "improving" | "steady" | "worsening";
+            components: components["schemas"]["SafetyScorecardComponent"][];
+            flags: string[];
+            /** @description One line Nova shows before the company is added to a project. Null when there is nothing to flag. */
+            riskFlag: string | null;
+            counts: {
+                incidents12m: number;
+                incidents90d: number;
+                notifiable12m: number;
+                projects: number;
+                overdueActions: number;
+            };
+        };
+        SafetyScorecardList: {
+            data: components["schemas"]["SafetyScorecard"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -28989,6 +29757,10 @@ export interface components {
         SpecBookId: string;
         FolderId: string;
         DocumentId: string;
+        DocumentReviewStepId: string;
+        DocumentCommentId: string;
+        ItpPackageId: string;
+        ItpItemId: string;
         DrawingSetId: string;
         DrawingSheetId: string;
         DrawingRevisionId: string;
@@ -33869,6 +34641,492 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matrix */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartDocumentReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description The round started */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelDocumentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matrix after cancelling */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideDocumentReviewStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideReviewStepRequest"];
+            };
+        };
+        responses: {
+            /** @description The matrix after the decision. The round closes when everyone has decided or someone rejects. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reassignDocumentReviewStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                stepId: components["parameters"]["DocumentReviewStepId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignReviewStepRequest"];
+            };
+        };
+        responses: {
+            /** @description The matrix after reassigning */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewState"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestDocumentReviewers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to five project members, most frequent first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReviewerSuggestion"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOpenDocumentReviews: {
+        parameters: {
+            query?: {
+                /** @description Send `true` for only the reviews past their due date (or past the default SLA when none was set). */
+                overdue?: "true";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open reviews, soonest due first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["OpenDocumentReview"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDocumentComments: {
+        parameters: {
+            query?: {
+                revisionId?: string;
+                status?: "open" | "resolved";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Threads with their replies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDocumentComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDocumentCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description All threads after adding */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setDocumentCommentResolution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+                commentId: components["parameters"]["DocumentCommentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDocumentCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description All threads after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCommentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listItpPackages: {
+        parameters: {
+            query?: {
+                documentId?: string;
+                status?: "draft" | "active" | "complete";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ITP packages, newest first, with progress */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ItpPackageSummary"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createItpPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItpPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getItpPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package with its points */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateItpPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateItpPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    activateItpPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signItpItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itpId: components["parameters"]["ItpPackageId"];
+                itemId: components["parameters"]["ItpItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignItpItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The package after signing */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpPackageDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getItpTemplate: {
+        parameters: {
+            query?: {
+                discipline?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The starter points */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItpTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listTransmittals: {
         parameters: {
             query?: {
@@ -34687,6 +35945,8 @@ export interface operations {
                     /** @enum {string} */
                     decision: "confirmed" | "dismissed";
                     note?: string;
+                    /** @description Only with confirmed: also raise a safety observation from the signal. */
+                    raiseObservation?: boolean;
                 };
             };
         };
@@ -36185,6 +37445,60 @@ export interface operations {
             header?: never;
             path: {
                 orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSafetyEvidencePack: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyEvidencePack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSafetyEvidencePackPdf: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
             };
             cookie?: never;
         };
@@ -43028,6 +44342,60 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    allClearRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AllClearRollCallRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRollCallRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCallRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listInductions: {
         parameters: {
             query?: never;
@@ -47935,6 +49303,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PretaskInsights"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSafetyScorecards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SafetyScorecardList"];
                 };
             };
             default: components["responses"]["Problem"];

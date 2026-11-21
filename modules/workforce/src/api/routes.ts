@@ -695,11 +695,33 @@ export function workforceRoutes(
           {
             workerId: ref('worker', input.body.workerId, 'workerId'),
             status: input.body.status,
+            ...(input.body.clientAt ? { at: new Date(input.body.clientAt) } : {}),
           },
         ),
       );
       return { status: 200, body: toRollCallDto(r.call, r.marks) };
     },
+    allClearRollCall: async (input) => {
+      const r = await tx(input, (s) =>
+        svc.allClearRollCall(
+          s,
+          project(input.params),
+          id('rollCall', input.params.rollCallId, 'roll_call.not_found'),
+          input.body?.clientAt ? { at: new Date(input.body.clientAt) } : {},
+        ),
+      );
+      return { status: 200, body: toRollCallDto(r.call, r.marks) };
+    },
+    getRollCallRecord: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        svc.recordRollCall(
+          s,
+          project(input.params),
+          id('rollCall', input.params.rollCallId, 'roll_call.not_found'),
+        ),
+      ),
+    }),
     endRollCall: async (input) => {
       const r = await tx(input, (s) =>
         svc.endRollCall(

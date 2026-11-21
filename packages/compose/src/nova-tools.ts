@@ -55,6 +55,9 @@ export interface NovaToolSources {
       findings: Array<{ summary: string }>;
     }>;
   };
+  documents: {
+    stuckReviews: (s: TenantScope, projectId: string, o: { limit: number }) => Promise<Listing>;
+  };
   quality: {
     overdueInspections: (
       s: TenantScope,
@@ -88,6 +91,12 @@ export interface NovaToolSources {
         };
       }>
     >;
+  };
+  safety: {
+    subcontractorRisk: (
+      s: TenantScope,
+      projectId: string,
+    ) => Promise<{ restricted: boolean; rows: Array<{ name: string; riskFlag: string | null }> }>;
   };
   /** Created after `ai`, so read lazily. */
   workforce: () => {
@@ -199,6 +208,21 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
         ),
     },
     {
+      name: 'stuck_document_reviews',
+      description:
+        'Documents out for review that are past their due date (or 5 days with no due date), most late first, and how many people each is waiting on.',
+      params: {},
+      run: async (scope, projectId) =>
+        listing(
+          'Documents stuck in review',
+          'document',
+          'document reviews',
+          projectId,
+          'No document is stuck in review.',
+          await src.documents.stuckReviews(scope, projectId, { limit: LIMIT }),
+        ),
+    },
+    {
       name: 'overdue_inspections',
       description: 'Inspections not yet closed that are past their due date, oldest due first.',
       params: {},
@@ -270,6 +294,30 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
             id: raw,
             text: `${r.ref} ${r.title}. Status: ${r.status}. Due: ${r.dueDate ?? 'no due date'}. Reopened ${r.reopenCount} times. Items: ${r.summary.pass} pass, ${r.summary.fail} fail, ${r.summary.na} N/A, ${r.summary.unanswered} not yet answered, of ${r.summary.total}.`,
           },
+        ];
+      },
+    },
+    {
+      name: 'subcontractor_safety_risk',
+      description:
+        'Companies on this project whose safety scorecard is below good or getting worse, with the reasons (builder staff only).',
+      params: {},
+      run: async (scope, projectId) => {
+        const title = 'Subcontractor safety risk';
+        const r = await src.safety.subcontractorRisk(scope, projectId);
+        if (r.restricted)
+          return [{ title, type: 'safety', id: projectId, text: noAccess('safety scorecards') }];
+        if (r.rows.length === 0)
+          return [
+            {
+              title,
+              type: 'safety',
+              id: projectId,
+              text: 'No company on this project has a safety scorecard that needs a closer look.',
+            },
+          ];
+        return [
+          { title, type: 'safety', id: projectId, text: r.rows.map((x) => x.riskFlag).join('\n') },
         ];
       },
     },

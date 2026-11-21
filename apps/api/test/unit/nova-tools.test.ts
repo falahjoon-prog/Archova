@@ -20,6 +20,9 @@ const denied: NovaToolSources = {
   defects: {
     openForMeeting: async () => ({ rows: [], truncated: false, restricted: true }),
   },
+  documents: {
+    stuckReviews: async () => ({ rows: [], truncated: false, restricted: true }),
+  },
   quality: {
     overdueInspections: async () => ({ rows: [], truncated: false, restricted: true }),
     failedInspectionItems: async () => ({ rows: [], truncated: false, restricted: true }),
@@ -33,6 +36,9 @@ const denied: NovaToolSources = {
   workforce: () => ({
     expiringInductionsForNova: async () => ({ rows: [], truncated: false, restricted: true }),
   }),
+  safety: {
+    subcontractorRisk: async () => ({ restricted: true, rows: [] }),
+  },
   scheduling: () => ({
     slipSignals: async () => ({ restricted: true, hasProgramme: false, lateCount: 0, worst: [] }),
   }),

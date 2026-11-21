@@ -2,11 +2,11 @@
 // versions, each worker's completion (progress, quiz, declaration and signature), white cards and licences, and
 // the gate rule that reads them (G2, G3).
 import { randomBytes } from 'node:crypto';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { INDUCTION_FIXED_TEXT } from '@archova/mod-ai';
-import { localDateOf, type LocalDate } from '@archova/time';
+import { endOfLocalDay, localDateOf, startOfLocalDay, type LocalDate } from '@archova/time';
 import type { EligibilityReason } from '../domain/attendance';
 import type { NumberVault } from '../domain/number-vault';
 import {
@@ -1187,6 +1187,53 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     return out;
   }
 
+  /**
+   * Completed site inductions in a local date range, for the regulator evidence pack (`reporting`). Names are the
+   * worker's own record, so it needs `workforce.inductions.manage` on the project. Signature, IP and device detail
+   * stay out.
+   */
+  async function evidenceRecords(
+    scope: TenantScope,
+    projectId: string,
+    range: { from: string; to: string },
+  ) {
+    if (!(await can(scope, 'workforce.inductions.manage', projectId)))
+      return { restricted: true, truncated: false, rows: [] };
+    const { timezone } = await deps.platform.getProject(scope, projectId);
+    const LIMIT = 2000;
+    const found = await scope.tx
+      .select({
+        workerName: workers.fullName,
+        completedAt: inductionCompletions.completedAt,
+        quizScore: inductionCompletions.quizScore,
+        expiresOn: inductionCompletions.expiresOn,
+        method: inductionCompletions.method,
+      })
+      .from(inductionCompletions)
+      .innerJoin(workers, eq(workers.id, inductionCompletions.workerId))
+      .where(
+        and(
+          eq(inductionCompletions.projectId, projectId),
+          eq(inductionCompletions.status, 'completed'),
+          gte(inductionCompletions.completedAt, startOfLocalDay(range.from, timezone)),
+          lte(inductionCompletions.completedAt, endOfLocalDay(range.to, timezone)),
+        ),
+      )
+      .orderBy(asc(inductionCompletions.completedAt))
+      .limit(LIMIT + 1);
+    return {
+      restricted: false,
+      truncated: found.length > LIMIT,
+      rows: found.slice(0, LIMIT).map((r) => ({
+        workerName: r.workerName,
+        completedOn: localDateOf(r.completedAt!, timezone),
+        quizScore: r.quizScore,
+        expiresOn: r.expiresOn,
+        method: r.method,
+      })),
+    };
+  }
+
   /** G2 site induction and G3 white card recorded (compliance/04 §5), registered with the X54 interface. */
   const gateSource: ComplianceSource = async (scope, q) => {
     if (q.worker.kind !== 'worker') return { reasons: [], sources: [] };
@@ -1358,6 +1405,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     sign,
     gateSource,
     statusForUsers,
+    evidenceRecords,
     register,
   };
 }

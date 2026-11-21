@@ -66,6 +66,8 @@ export const webRoutes = {
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
     `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
   transmittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/transmittals`,
+  /** Inspection and test plan packages tied to document control. */
+  itp: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/itp`,
   newTransmittal: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/transmittals/new`,
   transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>
@@ -140,6 +142,10 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/toolbox-talks${talkId ? `?id=${enc(talkId)}` : ''}`,
   pretaskPlans: (orgSlug: string, projectId: string, planId?: string) =>
     `${p(orgSlug, projectId)}/pre-task-plans${planId ? `?id=${enc(planId)}` : ''}`,
+  safetyScorecards: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/safety-scorecards`,
+  safetyEvidencePack: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/safety-evidence-pack`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
   handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,

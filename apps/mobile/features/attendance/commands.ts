@@ -61,7 +61,12 @@ export async function markRollCall(
   api: ApiClient,
   t: GateTarget,
   rollCallId: string,
-  mark: { workerId: string; status: 'accounted_for' | 'missing' | 'not_on_site' },
+  mark: {
+    workerId: string;
+    status: 'accounted_for' | 'missing' | 'not_on_site';
+    /** When it was tapped, if that was earlier than now. */
+    clientAt?: string;
+  },
 ) {
   return unwrap(
     await api.POST(`${rollCallPath}/{rollCallId}/marks`, {
@@ -71,9 +76,32 @@ export async function markRollCall(
   );
 }
 
+/** One tap for "everyone is accounted for": ticks everyone left and ends the roll call. */
+export async function allClearRollCall(
+  api: ApiClient,
+  t: GateTarget,
+  rollCallId: string,
+  input: { clientAt?: string } = {},
+) {
+  return unwrap(
+    await api.POST(`${rollCallPath}/{rollCallId}/all-clear`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, rollCallId } },
+      body: input,
+    }),
+  );
+}
+
 export async function endRollCall(api: ApiClient, t: GateTarget, rollCallId: string) {
   return unwrap(
     await api.POST(`${rollCallPath}/{rollCallId}/end`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, rollCallId } },
+    }),
+  );
+}
+
+export async function getRollCall(api: ApiClient, t: GateTarget, rollCallId: string) {
+  return unwrap(
+    await api.GET(`${rollCallPath}/{rollCallId}`, {
       params: { path: { orgId: t.orgId, projectId: t.projectId, rollCallId } },
     }),
   );

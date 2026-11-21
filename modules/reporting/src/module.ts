@@ -7,6 +7,7 @@ import { createDbpService } from './application/dbp';
 import { createPortfolioService } from './application/portfolio';
 import { createRiskService, type RiskDeps } from './application/risk';
 import { createSustainabilityService } from './application/sustainability';
+import { createEvidencePackService } from './application/evidence-pack';
 import { createReadinessService } from './application/readiness';
 import { createTimeService } from './application/time';
 import { createIncidentAnalyticsService } from './application/incident-analytics';
@@ -28,6 +29,7 @@ export function createReportingModule(
   const reports = createReportsService(deps);
   const risk = createRiskService(deps);
   const readiness = createReadinessService(deps);
+  const evidencePack = createEvidencePackService(deps);
   const myWork = createMyWorkService(deps);
   const riskRegister = createRiskRegisterService(deps);
   const audit = createAuditService(deps);
@@ -52,6 +54,7 @@ export function createReportingModule(
       dbp,
       riskRegister,
       incidentAnalytics,
+      evidencePack,
     ),
     api: {
       /** Open risks by level and the risk RAG, for the project health model. */

@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import { packLines, type ReadinessPack } from '../domain/readiness';
+import type { PdfLine } from '../domain/evidence-pack';
 
 const PAGE = { w: 595.28, h: 841.89, margin: 48 } as const;
 const SIZE = { title: 18, heading: 12, body: 10, small: 8.5 } as const;
@@ -23,17 +24,26 @@ export async function renderReadinessPdf(
   pack: ReadinessPack,
   createdAt: Date,
 ): Promise<Uint8Array> {
+  return renderLinesPdf('Tender-readiness pack', packLines(pack), createdAt);
+}
+
+/** The same plain PDF for any list of styled lines (the safety evidence pack uses it too). */
+export async function renderLinesPdf(
+  title: string,
+  lines: readonly PdfLine[],
+  createdAt: Date,
+): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setCreationDate(createdAt);
   doc.setModificationDate(createdAt);
   doc.setProducer('Archova');
   doc.setCreator('Archova');
-  doc.setTitle('Tender-readiness pack');
+  doc.setTitle(title);
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   let page = doc.addPage([PAGE.w, PAGE.h]);
   let y = PAGE.h - PAGE.margin;
-  for (const l of packLines(pack)) {
+  for (const l of lines) {
     const font = l.style === 'title' || l.style === 'heading' ? bold : regular;
     const size = SIZE[l.style];
     const text = l.text.replace(/[^\x20-\x7e\xa1-\xff]/g, '?');

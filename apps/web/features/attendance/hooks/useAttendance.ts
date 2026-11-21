@@ -135,6 +135,13 @@ export function useRollCallMutations() {
       mutationFn: async (rollCallId: string) =>
         put(await source.endRollCall(projectId, rollCallId)),
     }),
+    allClear: useMutation({
+      mutationFn: async (rollCallId: string) =>
+        put(await source.allClearRollCall(projectId, rollCallId)),
+    }),
+    record: useMutation({
+      mutationFn: (rollCallId: string) => source.rollCallRecord(projectId, rollCallId),
+    }),
   };
 }
 
