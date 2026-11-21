@@ -72,6 +72,9 @@ const Env = z.object({
   // the same setting as WORKER_WEBHOOK_SECRET_KEY, and must be given a new key before the API starts using it.
   // Required in production; elsewhere a fixed development key is used.
   API_WEBHOOK_SECRET_KEY: z.string().optional(),
+  // Pepper for the keyed hash that names an account in failed sign-in events of the security audit log, so the log
+  // never holds a bare hash of an email address. Held in Secrets Manager. Required in production (at least 32 characters).
+  API_AUDIT_PEPPER: z.string().min(32).optional(),
   // Seals Xero and MYOB OAuth tokens (32 bytes, base64): its own key, never the webhook key, so a leak of one does not
   // open the other. The worker reads the same key as WORKER_ACCOUNTING_SECRET_KEY. Required in production once a
   // provider is configured; elsewhere a fixed development key is used.
@@ -110,6 +113,8 @@ export const DEV_EVIDENCE_SIGNING_KEY = `-----BEGIN PRIVATE KEY-----\n${Buffer.c
   Buffer.from('302e020100300506032b657004220420', 'hex'),
   Buffer.alloc(32, 11),
 ]).toString('base64')}\n-----END PRIVATE KEY-----\n`;
+/** Development and test only: production refuses to start without API_AUDIT_PEPPER. */
+export const DEV_AUDIT_PEPPER = 'development-audit-pepper-not-secret';
 export const DEV_WALLET_KEY = Buffer.alloc(32, 11).toString('base64');
 export const DEV_ACCOUNTING_KEY = Buffer.alloc(32, 9).toString('base64');
 
@@ -160,6 +165,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
+    auditPepper: e.API_AUDIT_PEPPER ?? null,
     accountingSecretKey: e.API_ACCOUNTING_SECRET_KEY ?? null,
     walletSecretKey: e.API_WALLET_SECRET_KEY ?? null,
     evidenceSigning: e.API_EVIDENCE_SIGNING_KEY
@@ -259,6 +265,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   if (config.env === 'production') {
     const missing: string[] = [];
     if (!config.jwtPrivateJwk) missing.push('API_JWT_PRIVATE_JWK');
+    if (!config.auditPepper)
+      missing.push('API_AUDIT_PEPPER (32+ characters, from Secrets Manager)');
     if (!config.redisUrl) missing.push('API_REDIS_URL (sessions, revocation, idempotency)');
     if (config.files.store !== 's3') missing.push('API_FILES_STORE=s3');
     if (config.files.scanner === 'none') missing.push('API_FILES_SCANNER=guardduty or clamav');

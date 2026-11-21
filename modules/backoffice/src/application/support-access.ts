@@ -318,6 +318,9 @@ export function createSupportAccessService(
         startedAt: at,
         expiresAt,
       });
+      // Staff act from a global transaction, but the event belongs to the customer's chain, so the transaction is
+      // pointed at that org for this one write (the audit function refuses any other mismatch).
+      await t.execute(sql`select set_config('app.org_id', ${orgId}, true)`);
       await recordSecurityEvent(t, {
         orgId,
         action: 'support.session.started',

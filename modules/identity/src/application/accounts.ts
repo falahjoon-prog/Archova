@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { AppError, recordSecurityEvent, type Database, type Principal } from '@archova/kernel';
 import {
   credentials,
@@ -37,7 +37,11 @@ const toRecord = (u: typeof users.$inferSelect): UserRecord => ({
   emailVerified: u.emailVerifiedAt !== null,
 });
 
-export function createAccountService(database: Database, sessions: SessionService) {
+export function createAccountService(
+  database: Database,
+  sessions: SessionService,
+  auditPepper: string,
+) {
   async function signup(
     input: { email: string; password: string; name: string },
     meta: RequestMeta,
@@ -101,8 +105,8 @@ export function createAccountService(database: Database, sessions: SessionServic
     const stored = found?.credential?.secretHash ?? (await dummyPasswordHash());
     const ok = await verifyPassword(stored, input.password);
     if (!found || !found.credential || !ok || found.user.status !== 'active') {
-      // Recorded before the refusal so the attempt is kept. The account is named by a hash of the address: an
-      // address nobody owns is not stored, and a repeat attacker still lands on one target.
+      // Recorded before the refusal so the attempt is kept. The account is named by a keyed hash of the address
+      // (HMAC with a secret pepper): an address nobody owns is never stored, and the hash cannot be guessed offline.
       await database.withGlobalTx('identity', (tx) =>
         recordSecurityEvent(tx, {
           orgId: null,
@@ -110,7 +114,9 @@ export function createAccountService(database: Database, sessions: SessionServic
           actorType: found ? 'user' : 'anonymous',
           actorId: found?.user.id ?? null,
           targetType: 'account',
-          targetId: createHash('sha256').update(input.email.trim().toLowerCase()).digest('hex'),
+          targetId: createHmac('sha256', auditPepper)
+            .update(input.email.trim().toLowerCase())
+            .digest('hex'),
           ip: meta.ip,
           userAgent: meta.userAgent,
           client: 'web',

@@ -1,7 +1,7 @@
 import { decodeId } from '@archova/domain';
 import { anchorChain, verifyChain } from '@archova/mod-audit';
 import { TEST_PASSWORD } from '@archova/testing';
-import type { TenantContext } from '@archova/kernel';
+import { PLATFORM_AUDIT_SHARDS, type TenantContext } from '@archova/kernel';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -193,23 +193,83 @@ describe('Security audit log', () => {
       password: TEST_PASSWORD,
     });
     expect(okLogin.statusCode).toBe(200);
-    const nil = '00000000-0000-0000-0000-000000000000';
+    const nil = '00000000-0000-0000-0000-0000000000%';
     const failed = await t.adminDb.pool.query(
       `select count(*)::int as n, bool_and(target_id <> $2) as hashed from audit.security_events
-        where org_id = $1 and action = 'auth.login.failed' and actor_id = $3`,
+        where org_id::text like $1 and action = 'auth.login.failed' and actor_id = $3`,
       [nil, email, userId],
     );
     expect(failed.rows[0]).toEqual({ n: 10, hashed: true });
     const ok = await t.adminDb.pool.query(
       `select count(*)::int as n from audit.security_events
-        where org_id = $1 and action = 'auth.login.succeeded' and actor_id = $2`,
+        where org_id::text like $1 and action = 'auth.login.succeeded' and actor_id = $2`,
       [nil, userId],
     );
     expect(ok.rows[0].n).toBe(1);
     const alert = await t.adminDb.pool.query(
-      `select count(*)::int as n from audit.alerts where org_id = $1 and rule = 'auth.repeated_failures'`,
+      `select count(*)::int as n from audit.alerts where org_id::text like $1 and rule = 'auth.repeated_failures'`,
       [nil],
     );
     expect(alert.rows[0].n).toBeGreaterThanOrEqual(1);
+  });
+
+  it('binds every write to the transaction org, and keeps writes off the application role', async () => {
+    const a = await setup('sal-bind-a');
+    const b = await setup('sal-bind-b');
+    const call = (ctx: TenantContext, org: string | null) =>
+      t.database.withTenantTx(ctx, (scope) =>
+        scope.tx.execute(
+          sql`select audit.append_event(${org}::uuid, 'user', null, 'test.event.happened')`,
+        ),
+      );
+    await expect(call(a.ctx, b.orgUuid)).rejects.toThrow();
+    await expect(call(a.ctx, null)).rejects.toThrow();
+    await expect(call(a.ctx, a.orgUuid)).resolves.toBeDefined();
+    // Only the definer functions write anchors and runs.
+    await expect(
+      t.database.withTenantTx(a.ctx, (scope) =>
+        scope.tx.execute(
+          sql`insert into audit.chain_anchors (id, org_id, seq, hash) values (gen_random_uuid(), ${a.orgUuid}, 1, '\\x00')`,
+        ),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      t.database.withTenantTx(a.ctx, (scope) =>
+        scope.tx.execute(
+          sql`insert into audit.verification_runs (id, org_id, checked, ok) values (gen_random_uuid(), ${a.orgUuid}, 1, true)`,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('stores at most 20 failed sign-ins per account and address in a window, and verifies the platform shards', async () => {
+    const { email } = await signUp(t.app, 'sal-flood');
+    const attacker = new Browser(t.app);
+    for (let i = 0; i < 25; i++)
+      await attacker.post('/v1/auth/login', { email, password: 'wrong-password-1' });
+    const stored = await t.adminDb.pool.query(
+      `select target_id, count(*)::int as n from audit.security_events
+        where action = 'auth.login.failed' and org_id::text like '00000000-0000-0000-0000-0000000000%'
+        group by target_id order by n desc limit 1`,
+    );
+    expect(stored.rows[0].n).toBeLessThanOrEqual(20);
+    for (const shard of PLATFORM_AUDIT_SHARDS) {
+      const r = await t.database.withTenantTx(ctxFor(shard, shard), (scope) => verifyChain(scope));
+      expect(r.ok).toBe(true);
+    }
+  });
+
+  it('shrinks oversized details instead of storing them', async () => {
+    const s = await setup('sal-size');
+    await t.database.withTenantTx(s.ctx, (scope) =>
+      scope.tx.execute(
+        sql`select audit.append_event(${s.orgUuid}::uuid, 'user', null, 'test.big.event', null, null, null, null, null, null, '{}'::jsonb, jsonb_build_object('x', repeat('a', 20000)))`,
+      ),
+    );
+    const r = await t.adminDb.pool.query(
+      `select metadata from audit.security_events where org_id = $1 and action = 'test.big.event'`,
+      [s.orgUuid],
+    );
+    expect(r.rows[0].metadata).toEqual({ truncated: true });
   });
 });

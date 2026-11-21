@@ -2,7 +2,8 @@
 -- support access, each event hash-chained to the one before it in its org, so an edit or a deletion anywhere breaks the
 -- chain. Events with no org (a sign-in happens before an org is chosen) go in one platform chain under the nil org id.
 --
--- app_rw can neither insert into nor change the events table. The only way to add an event is audit.append_event(),
+-- app_rw can neither insert into nor change any audit table. The only ways to write are the security-definer functions
+-- audit.append_event(), audit.record_anchor() and audit.verify_chain(); each is bound to the caller's tenant context,
 -- which runs as the table owner, takes the chain's row lock, computes the hash and raises alerts. Triggers refuse
 -- UPDATE, DELETE and TRUNCATE for everyone.
 
@@ -40,7 +41,7 @@ create index security_events_org_time on audit.security_events (org_id, occurred
 create index security_events_org_action on audit.security_events (org_id, action, occurred_at desc);
 create index security_events_target on audit.security_events (org_id, action, target_id, occurred_at desc);
 
--- Rows here are written only by the security-definer functions below and by the worker through the app role.
+-- Rows here are written only by the security-definer functions below (record_anchor).
 create table audit.chain_anchors (
   id           uuid primary key,
   org_id       uuid not null,
@@ -129,8 +130,25 @@ returns void language sql as $$
   values (gen_random_uuid(), p_org, p_rule, p_severity, p_summary, p_event)
 $$;
 
--- Appends one event to its org's chain and applies the real-time alert rules (doc 07 §9). The chain head row is locked
--- for the rest of the transaction, so concurrent writers to one org queue briefly and the seq has no gaps.
+-- The platform chain is sharded: an event with no org lands in one of 16 chains, chosen by its target, so unauthenticated
+-- traffic does not queue on one row. Shard n has org id 00000000-0000-0000-0000-0000000000<nn>; real orgs never use them.
+create function audit.platform_shard(p_key text) returns uuid language sql immutable as $$
+  select ('00000000-0000-0000-0000-0000000000' || lpad(to_hex((abs(hashtextextended(coalesce(p_key, ''), 0)) % 16)::int), 2, '0'))::uuid
+$$;
+
+-- The org the caller is acting in, or null when none is set (a global transaction) or it is the self-scope nil id.
+create function audit.current_org() returns uuid language sql stable as $$
+  select nullif(nullif(current_setting('app.org_id', true), ''), '00000000-0000-0000-0000-000000000000')::uuid
+$$;
+
+-- Appends one event to its chain and applies the real-time alert rules (doc 07 §9). The chain head row is locked for the
+-- rest of the transaction, so concurrent writers to one chain queue briefly and the seq has no gaps.
+--
+-- p_org must be the org the transaction runs in (app.org_id), or null in a transaction that has none, in which case the
+-- event joins a platform shard. A caller therefore cannot write into another org's chain. Code that records an event for
+-- an org from a global transaction (support access) first sets app.org_id for that org, deliberately and visibly.
+-- Failed sign-ins beyond 20 per account and address in 15 minutes are not stored (returns null): the alert fires at 10.
+-- changes and metadata over 8 KB are replaced by {"truncated": true}.
 create function audit.append_event(
   p_org uuid, p_actor_type text, p_actor_id uuid, p_action text,
   p_target_type text default null, p_target_id text default null,
@@ -139,11 +157,24 @@ create function audit.append_event(
 ) returns uuid
 language plpgsql security definer set search_path = pg_catalog, audit as $$
 declare
-  org uuid := coalesce(p_org, '00000000-0000-0000-0000-000000000000');
+  cur uuid := audit.current_org();
+  org uuid;
   head audit.chain_heads;
   e audit.security_events;
   failed int;
 begin
+  if p_org is distinct from cur then
+    raise exception 'audit event for org % from a transaction in org %', p_org, cur using errcode = 'insufficient_privilege';
+  end if;
+  org := coalesce(p_org, audit.platform_shard(p_target_id));
+
+  if p_org is null and p_action = 'auth.login.failed' then
+    select count(*) into failed from audit.security_events
+     where org_id = org and action = 'auth.login.failed' and target_id = p_target_id
+       and ip is not distinct from p_ip and occurred_at > clock_timestamp() - interval '15 minutes';
+    if failed >= 20 then return null; end if;
+  end if;
+
   insert into audit.chain_heads (org_id, last_seq, last_hash)
   values (org, 0, decode(repeat('00', 32), 'hex'))
   on conflict (org_id) do nothing;
@@ -155,7 +186,11 @@ begin
   e.occurred_at := date_trunc('microseconds', clock_timestamp());
   e.actor_type := p_actor_type; e.actor_id := p_actor_id; e.ip := p_ip; e.user_agent := left(p_user_agent, 300);
   e.client := p_client; e.action := p_action; e.target_type := p_target_type; e.target_id := p_target_id;
-  e.request_id := p_request_id; e.changes := coalesce(p_changes, '{}'); e.metadata := coalesce(p_metadata, '{}');
+  e.request_id := p_request_id;
+  e.changes := coalesce(p_changes, '{}');
+  e.metadata := coalesce(p_metadata, '{}');
+  if length(e.changes::text) > 8192 then e.changes := '{"truncated": true}'; end if;
+  if length(e.metadata::text) > 8192 then e.metadata := '{"truncated": true}'; end if;
   e.prev_hash := head.last_hash;
   e.hash := audit.link_hash(head.last_hash, e);
   insert into audit.security_events values (e.*);
@@ -184,9 +219,9 @@ begin
   return e.id;
 end $$;
 
--- Re-walks one org's chain from the start: every link, every hash, no gaps, the head, and every anchor. Called for the
--- org in the transaction's own tenant context only.
-create function audit.verify_chain(p_org uuid)
+-- Re-walks one chain from the start: every link, every hash, no gaps, the head, and every anchor. Internal: callers use
+-- audit.verify_chain, which records the run.
+create function audit.walk_chain(p_org uuid)
 returns table (ok boolean, checked bigint, first_bad_seq bigint, problem text, head_seq bigint)
 language plpgsql security definer set search_path = pg_catalog, audit as $$
 declare
@@ -198,9 +233,6 @@ declare
   a audit.chain_anchors;
   stored bytea;
 begin
-  if p_org is distinct from nullif(current_setting('app.org_id', true), '')::uuid then
-    raise exception 'verify_chain runs for the current org only' using errcode = 'insufficient_privilege';
-  end if;
   for e in select * from audit.security_events where org_id = p_org order by seq loop
     n := n + 1;
     if e.seq <> expect then
@@ -227,20 +259,40 @@ begin
   return query select true, n, null::bigint, null::text, coalesce(h.last_seq, 0);
 end $$;
 
-revoke all on function audit.append_event, audit.verify_chain from public;
-grant execute on function audit.append_event, audit.verify_chain to app_rw;
-grant select on audit.security_events, audit.chain_heads, audit.chain_anchors, audit.verification_runs, audit.alerts to app_rw;
--- The worker records anchors and verification results as the org (rows are append-only; see the triggers above).
-grant insert on audit.chain_anchors, audit.verification_runs to app_rw;
+-- Verifies the chain of the org the transaction runs in (a platform shard is "an org" here: the job runs with the
+-- shard id as app.org_id), records the run, and raises an alert when it fails.
+create function audit.verify_chain(p_org uuid)
+returns table (ok boolean, checked bigint, first_bad_seq bigint, problem text, head_seq bigint)
+language plpgsql security definer set search_path = pg_catalog, audit as $$
+declare
+  r record;
+begin
+  if p_org is distinct from nullif(current_setting('app.org_id', true), '')::uuid then
+    raise exception 'verify_chain runs for the current org only' using errcode = 'insufficient_privilege';
+  end if;
+  select * into r from audit.walk_chain(p_org);
+  insert into audit.verification_runs (id, org_id, checked, ok, first_bad_seq, problem, head_seq)
+  values (gen_random_uuid(), p_org, r.checked, r.ok, r.first_bad_seq, r.problem, r.head_seq);
+  if not r.ok then
+    perform audit.raise_alert(p_org, 'audit.chain_broken', 'high', 'Security log verification failed: ' || left(r.problem, 200), null);
+  end if;
+  return query select r.ok, r.checked, r.first_bad_seq, r.problem, r.head_seq;
+end $$;
 
--- A failed verification is itself an alert, raised by the job that found it (the job cannot insert alerts directly).
-create function audit.raise_integrity_alert(p_org uuid, p_problem text) returns void
+-- Records that the chain up to p_seq was pinned outside the database. The hash is read from the event itself, never
+-- supplied by the caller. A no-op if that seq is already anchored.
+create function audit.record_anchor(p_org uuid, p_seq bigint, p_object_key text) returns void
 language plpgsql security definer set search_path = pg_catalog, audit as $$
 begin
   if p_org is distinct from nullif(current_setting('app.org_id', true), '')::uuid then
-    raise exception 'current org only' using errcode = 'insufficient_privilege';
+    raise exception 'record_anchor runs for the current org only' using errcode = 'insufficient_privilege';
   end if;
-  perform audit.raise_alert(p_org, 'audit.chain_broken', 'high', 'Security log verification failed: ' || left(p_problem, 200), null);
+  insert into audit.chain_anchors (id, org_id, seq, hash, object_key)
+  select gen_random_uuid(), org_id, seq, hash, p_object_key
+    from audit.security_events where org_id = p_org and seq = p_seq
+  on conflict (org_id, seq) do nothing;
 end $$;
-revoke all on function audit.raise_integrity_alert from public;
-grant execute on function audit.raise_integrity_alert to app_rw;
+
+revoke all on function audit.append_event, audit.verify_chain, audit.record_anchor from public;
+grant execute on function audit.append_event, audit.verify_chain, audit.record_anchor to app_rw;
+grant select on audit.security_events, audit.chain_heads, audit.chain_anchors, audit.verification_runs, audit.alerts to app_rw;

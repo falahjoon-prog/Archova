@@ -23,16 +23,26 @@ export interface SecurityEvent {
 }
 
 /**
- * Appends an event to the security log in the caller's transaction, so the event exists if and only if the change it
- * describes commits. Works in any transaction (tenant or global): the database function does the chaining and alerting
- * and is the only way to write the log. Returns the event id.
+ * The org ids of the 16 platform chains that hold events with no org (sign-ins). Jobs that verify or anchor chains run
+ * for each of these as well as for every live org.
  */
-export async function recordSecurityEvent(tx: Tx, e: SecurityEvent): Promise<string> {
+export const PLATFORM_AUDIT_SHARDS: readonly string[] = Array.from(
+  { length: 16 },
+  (_, n) => `00000000-0000-0000-0000-0000000000${n.toString(16).padStart(2, '0')}`,
+);
+
+/**
+ * Appends an event to the security log in the caller's transaction, so the event exists if and only if the change it
+ * describes commits. Works in any transaction: the database function does the chaining and alerting and is the only way
+ * to write the log. `orgId` must be the org the transaction runs in, or null in one that has none (the database refuses
+ * anything else). Returns the event id, or null when a flood of failed sign-ins was not stored.
+ */
+export async function recordSecurityEvent(tx: Tx, e: SecurityEvent): Promise<string | null> {
   const res = await tx.execute<{ id: string }>(sql`
     select audit.append_event(
       ${e.orgId}::uuid, ${e.actorType}, ${e.actorId ?? null}::uuid, ${e.action},
       ${e.targetType ?? null}, ${e.targetId ?? null}, ${e.ip ?? null}, ${e.userAgent ?? null}, ${e.client ?? null},
       ${e.requestId ?? null}, ${JSON.stringify(e.changes ?? {})}::jsonb, ${JSON.stringify(e.metadata ?? {})}::jsonb
     ) as id`);
-  return res.rows[0]!.id;
+  return res.rows[0]?.id ?? null;
 }

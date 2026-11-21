@@ -10,6 +10,7 @@ export function auditAnchor(store: AnchorStore | null): TenantJob {
   return {
     name: 'audit.anchor',
     cron: '20 * * * *',
+    platformShards: true,
     async run(database, orgId, now) {
       const r = await database.withTenantTx(jobContext(orgId, `audit.anchor:${orgId}`), (s) =>
         anchorChain(s, store, now),
@@ -23,6 +24,7 @@ export function auditAnchor(store: AnchorStore | null): TenantJob {
 export const auditVerify: TenantJob = {
   name: 'audit.verify',
   cron: '10 17 * * 0',
+  platformShards: true,
   async run(database, orgId) {
     const r = await database.withTenantTx(
       jobContext(orgId, `audit.verify:${orgId}`),

@@ -1,4 +1,3 @@
-import { uuidv7 } from '@archova/domain';
 import type { TenantScope } from '@archova/kernel';
 import { sql } from 'drizzle-orm';
 
@@ -18,26 +17,17 @@ export interface VerifyResult {
   problem: string | null;
 }
 
-/** Re-walks the org's chain and records the result. A failure is also an alert, so an admin sees it. */
+/** Re-walks the chain of the org the transaction runs in. The database records the run and raises the alert. */
 export async function verifyChain(scope: TenantScope): Promise<VerifyResult> {
-  const orgId = scope.ctx.orgId;
   const { rows } = await scope.tx.execute(
-    sql`select ok, checked::text, first_bad_seq::text, problem, head_seq::text from audit.verify_chain(${orgId}::uuid)`,
+    sql`select ok, checked::text, first_bad_seq::text, problem from audit.verify_chain(${scope.ctx.orgId}::uuid)`,
   );
   const r = rows[0] as {
     ok: boolean;
     checked: string;
     first_bad_seq: string | null;
     problem: string | null;
-    head_seq: string | null;
   };
-  await scope.tx.execute(sql`
-    insert into audit.verification_runs (id, org_id, checked, ok, first_bad_seq, problem, head_seq)
-    values (${uuidv7()}, ${orgId}, ${r.checked}::bigint, ${r.ok}, ${r.first_bad_seq}::bigint, ${r.problem}, ${r.head_seq}::bigint)`);
-  if (!r.ok)
-    await scope.tx.execute(
-      sql`select audit.raise_integrity_alert(${orgId}::uuid, ${r.problem ?? 'unknown'})`,
-    );
   return {
     ok: r.ok,
     checked: Number(r.checked),
@@ -88,9 +78,8 @@ export async function anchorChain(
     if (put.created && put.sha256Base64 !== sha256Base64)
       throw new Error('The store reported a different checksum');
   }
-  await scope.tx.execute(sql`
-    insert into audit.chain_anchors (id, org_id, seq, hash, object_key, anchored_at)
-    values (${uuidv7()}, ${orgId}, ${head.seq}::bigint, decode(${head.hash}, 'hex'), ${objectKey}, ${now.toISOString()}::timestamptz)
-    on conflict (org_id, seq) do nothing`);
+  await scope.tx.execute(
+    sql`select audit.record_anchor(${orgId}::uuid, ${head.seq}::bigint, ${objectKey})`,
+  );
   return { anchored: true, seq: Number(head.seq) };
 }

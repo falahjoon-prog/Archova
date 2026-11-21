@@ -10,6 +10,8 @@ import { identityRoutes } from './api/routes';
 
 export interface IdentityConfig extends TokenConfig {
   webSignInUrl: string;
+  /** Pepper for the keyed hash that names an account in failed sign-in audit events. */
+  auditPepper: string;
   /** Third-party partner apps (integrations/06). Off unless `enabled`; `notifyAdmins` is wired by the composition root. */
   partnerApps?: Partial<PartnerAppsDeps>;
 }
@@ -17,7 +19,7 @@ export interface IdentityConfig extends TokenConfig {
 /** Composition root for the identity module (global layer, ADR-0005). */
 export async function createIdentityModule(services: KernelServices, config: IdentityConfig) {
   const sessions = createSessionService(services);
-  const accounts = createAccountService(services.database, sessions);
+  const accounts = createAccountService(services.database, sessions, config.auditPepper);
   const signer = await createTokenSigner(config);
   const partnerApps = createPartnerAppService(services.database, {
     enabled: config.partnerApps?.enabled ?? false,

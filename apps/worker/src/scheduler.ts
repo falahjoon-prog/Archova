@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import type { Database } from '@archova/kernel';
+import { PLATFORM_AUDIT_SHARDS, type Database } from '@archova/kernel';
 import { jobContext, type SubscriberQueue } from './subscribers';
 
 /**
@@ -12,6 +12,8 @@ export interface TenantJob {
   name: string;
   /** Standard 5-field cron, in UTC. */
   cron: string;
+  /** Also run once for each platform audit shard, as if it were an org (security audit chains with no org). */
+  platformShards?: boolean;
   /** Idempotent: the same org may be handed this twice. Returns a small summary for the log. */
   run(database: Database, orgId: string, now: Date): Promise<Record<string, number>>;
 }
@@ -59,7 +61,7 @@ export interface FanOutQueue {
 export async function fanOut(
   pool: pg.Pool,
   queue: FanOutQueue,
-  job: Pick<TenantJob, 'name' | 'cron'>,
+  job: Pick<TenantJob, 'name' | 'cron'> & { platformShards?: boolean },
   now: Date,
 ): Promise<number> {
   let n = 0;
@@ -73,6 +75,17 @@ export async function fanOut(
       })),
     );
     n += orgs.length;
+  }
+  if (job.platformShards) {
+    const period = periodOf(now, job.cron);
+    await queue.addBulk(
+      PLATFORM_AUDIT_SHARDS.map((id) => ({
+        name: job.name,
+        data: { job: job.name, orgId: id },
+        opts: { jobId: `${job.name}.${id}.${period}` },
+      })),
+    );
+    n += PLATFORM_AUDIT_SHARDS.length;
   }
   return n;
 }

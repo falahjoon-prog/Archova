@@ -25,6 +25,7 @@ import {
   DEV_EVIDENCE_KEY_ID,
   DEV_EVIDENCE_SIGNING_KEY,
   DEV_WALLET_KEY,
+  DEV_AUDIT_PEPPER,
   DEV_WEBHOOK_KEY,
   type ApiConfig,
 } from './config';
@@ -97,6 +98,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         privateJwk: config.jwtPrivateJwk,
         webSignInUrl: config.webSignInUrl,
         partnerApps: { enabled: config.partnerAppsEnabled },
+        auditPepper: config.auditPepper ?? DEV_AUDIT_PEPPER,
       },
       files: {
         store: deps.store,

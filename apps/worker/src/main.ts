@@ -169,9 +169,11 @@ async function main() {
     );
   } else {
     // Anchors still go in the database, so the verifier works; they are not pinned outside it.
-    jobs.push(auditAnchor(null));
     if (process.env.NODE_ENV === 'production')
-      log.warn({}, 'WORKER_AUDIT_ANCHOR_STORE is not s3: security log anchors are not write-once');
+      throw new Error(
+        'WORKER_AUDIT_ANCHOR_STORE=s3 is required in production: security log anchors must be write-once',
+      );
+    jobs.push(auditAnchor(null));
   }
   if (config.evidenceStore.store === 's3') {
     if (!config.evidenceStore.bucket)
