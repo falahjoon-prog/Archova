@@ -10,7 +10,7 @@ const W = 1682; // 2 px per paper mm: 1 px = 0.5 mm, so 1 m at 1:100 is 20 px
 const H = 1188;
 
 /** mulberry32: small seeded generator so a seed always draws the same plan. */
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -21,15 +21,21 @@ function rng(seed: number) {
   };
 }
 
-class Canvas {
-  readonly data = new Uint8Array(W * H).fill(255);
+export class Canvas {
+  readonly data: Uint8Array;
+  constructor(
+    readonly w = W,
+    readonly h = H,
+  ) {
+    this.data = new Uint8Array(w * h).fill(255);
+  }
   dot(x: number, y: number, r: number) {
     for (let dy = -r; dy <= r; dy++)
       for (let dx = -r; dx <= r; dx++) {
         const px = Math.round(x + dx);
         const py = Math.round(y + dy);
-        if (px >= 0 && py >= 0 && px < W && py < H && dx * dx + dy * dy <= r * r + 0.5)
-          this.data[py * W + px] = 0;
+        if (px >= 0 && py >= 0 && px < this.w && py < this.h && dx * dx + dy * dy <= r * r + 0.5)
+          this.data[py * this.w + px] = 0;
       }
   }
   line(a: Pt, b: Pt, thick = 1) {
@@ -43,8 +49,9 @@ class Canvas {
     this.line({ x: x1, y: y1 }, { x: x0, y: y1 }, thick);
     this.line({ x: x0, y: y1 }, { x: x0, y: y0 }, thick);
   }
-  circle(cx: number, cy: number, r: number) {
+  circle(cx: number, cy: number, r: number, dashed = false) {
     for (let i = 0; i < 48; i++) {
+      if (dashed && i % 4 >= 2) continue;
       const t = (i / 48) * Math.PI * 2;
       this.dot(cx + Math.cos(t) * r, cy + Math.sin(t) * r, 1);
     }
