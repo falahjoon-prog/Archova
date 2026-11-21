@@ -19,6 +19,7 @@ export type ToolId =
   | 'submittals'
   | 'rfis'
   | 'toolbox'
+  | 'pretask'
   | 'swms'
   | 'timesheets'
   | 'crews'
@@ -146,6 +147,12 @@ export const TOOLS: readonly ToolDef[] = [
     label: 'Toolbox talks',
     icon: ['M3 8h18v12H3z', 'M9 8V5h6v3', 'M3 13h18', 'M11 13v2h2v-2'],
     route: mobileRoutes.toolboxTalks,
+  },
+  {
+    id: 'pretask',
+    label: 'Pre-task plans',
+    icon: ['M6 3h12v18H6z', 'M9 8h6', 'M9 12h6', 'M9 16l1.5 1.5L14 14'],
+    route: mobileRoutes.pretaskPlans,
   },
   {
     id: 'swms',

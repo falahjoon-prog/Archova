@@ -1,12 +1,26 @@
 // Replays a queued action through the typed client: the same endpoints the online screens call.
 import { unwrap, type ApiClient } from '@archova/api-client';
 import type { ActionSender } from './action-queue';
+import { sendPretaskPlan, type SignatureUploader } from './pretask-send';
 
-export function createActionSender(api: ApiClient, orgId: string): ActionSender {
+export interface ActionSenderDeps {
+  /** Stores a drawn signature; needed to replay a pre-task plan. */
+  uploadSignature?: SignatureUploader;
+}
+
+export function createActionSender(
+  api: ApiClient,
+  orgId: string,
+  deps: ActionSenderDeps = {},
+): ActionSender {
   return async (a) => {
     const base = { orgId, projectId: a.projectId };
     const p = a.payload;
     switch (a.kind) {
+      case 'pretask.submit':
+        if (!deps.uploadSignature) throw new Error('Signatures cannot be sent from here');
+        await sendPretaskPlan(api, orgId, a, deps.uploadSignature);
+        return;
       case 'submittal.respond':
         unwrap(
           await api.POST(

@@ -142,6 +142,14 @@ export const MIGRATIONS: readonly string[] = [
     cached_at  TEXT NOT NULL
   ) WITHOUT ROWID;
   `,
+  // 9: the last pre-task plan seen on each project, so the next one can start from it with no signal.
+  `
+  CREATE TABLE pretask_cache (
+    project_id TEXT PRIMARY KEY,
+    payload    TEXT NOT NULL,
+    saved_at   TEXT NOT NULL
+  ) WITHOUT ROWID;
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

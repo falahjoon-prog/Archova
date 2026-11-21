@@ -255,6 +255,8 @@ export const mobileRoutes = {
   toolboxTalks: (projectId: string) => `/project/${enc(projectId)}/toolbox`,
   toolboxTalk: (projectId: string, talkId: string) =>
     `/project/${enc(projectId)}/toolbox/${enc(talkId)}`,
+  pretaskPlans: (projectId: string) => `/project/${enc(projectId)}/pre-task`,
+  pretaskNew: (projectId: string) => `/project/${enc(projectId)}/pre-task/new`,
   swmsRegister: (projectId: string) => `/project/${enc(projectId)}/swms`,
   swms: (projectId: string, swmsId: string) => `/project/${enc(projectId)}/swms/${enc(swmsId)}`,
   timesheets: (projectId: string) => `/project/${enc(projectId)}/timesheets`,

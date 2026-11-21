@@ -45,4 +45,5 @@ export const ACTION_TEXT: Record<ActionKind, string> = {
   'rollcall.mark': 'Roll call mark',
   'rollcall.allClear': 'Roll call all clear',
   'rollcall.end': 'End roll call',
+  'pretask.submit': 'Pre-task plan',
 };

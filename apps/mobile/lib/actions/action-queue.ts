@@ -25,7 +25,8 @@ export type ActionKind =
   | 'toolbox.transition'
   | 'rollcall.mark'
   | 'rollcall.allClear'
-  | 'rollcall.end';
+  | 'rollcall.end'
+  | 'pretask.submit';
 
 export interface QueuedAction {
   id: string;
