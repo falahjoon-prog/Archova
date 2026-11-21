@@ -18,12 +18,16 @@ const NON_CONCURRENT_INDEX_OK = new Set([
 const NOT_NULL_NO_DEFAULT_OK = new Set([
   // Merged on 8 Nov before the integration job had run on it.
   'modules/financials/db/migrations/20261108093517_financials_tm_review_stage.sql',
+  // Merged 20 Nov; the columns it adds are nullable or have a default. The match is the later `alter column ... drop not null`.
+  'modules/plant/db/migrations/20261120130000_plant_contractor_phone.sql',
 ]);
 
 /** Session-level SET check: merged files it flags wrongly. Don't add new files. */
 const SESSION_SET_OK = new Set([
   // Merged 18 Nov; the line it flags is the `set` clause of an UPDATE, not a session SET.
   'modules/billing/db/migrations/20261118171500_plan_modules_v2.sql',
+  // Merged 20 Nov; the line it flags is the `set` clause of an INSERT ... ON CONFLICT DO UPDATE, not a session SET.
+  'modules/contractors/db/migrations/20261120140000_contractors.sql',
 ]);
 
 export function lintMigrationFiles(): string[] {
