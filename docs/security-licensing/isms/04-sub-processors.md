@@ -1,6 +1,6 @@
 # Sub-processor and supplier register (v1, 21 Nov 2026)
 
-Owner: Sam, with Grace for privacy. Supports APP 8 (cross-border disclosure, doc 08 §3), policy P8, and customer DPAs. Not legal advice; a lawyer must review before it is published to customers (Grace D1).
+Owner: Sam, with Grace for privacy. Supports APP 8 (cross-border disclosure, doc 08 §3), policy P8, and customer DPAs. Not legal advice; a lawyer must review before it is published to customers (lawyer engaged by John, D1).
 
 **Rules (P8):** no supplier touches customer data before a security review, signed DPA and a row here. Customers get 30 days' notice of a new sub-processor before use, with a right to object (all tiers; to be settled in the DPA). No AI vendor outside the `ai` module or outside Australia (X25/X26).
 
@@ -56,7 +56,7 @@ The customer connects these themselves (OAuth). We store the tokens and send or 
 
 ## What we tell customers (draft for lawyer review)
 
-"Our production design hosts customer data in Amazon Web Services in Sydney with backups in Melbourne, and AI processing is designed to stay in Australia (to be stated as fact only once production is live). A small number of suppliers outside Australia may receive limited data: Stripe (United States, billing), Twilio (United States, SMS), and, once enabled, crash reporting and push services. We list them with their countries and what they receive, and give 30 days' notice before adding a sub-processor." Do not publish until the AWS production environment exists (R-02), the pilot tunnel is gone and the Sentry and Twilio rows are resolved.
+"Our production design hosts customer data in Amazon Web Services in Sydney with backups in Melbourne, and AI processing is designed to stay in Australia. A small number of suppliers outside Australia may receive limited data: Stripe (United States, billing), Twilio (United States, SMS), and, once enabled, crash reporting and push services. We list them with their countries and what they receive, and give 30 days' notice before adding a sub-processor." (Say "designed to" until production is live. "30 days, all tiers" is a commercial call for John, and the 72 h customer notice in the DPA outline is our recommendation, not yet law.) Do not publish until the AWS production environment exists (R-02), the pilot tunnel is gone and the Sentry and Twilio rows are resolved.
 
 ## Actions to make this register true
 
