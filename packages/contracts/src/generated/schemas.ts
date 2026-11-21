@@ -13832,7 +13832,7 @@ export const WorkerClearanceSchema = z.object({
   "checkedAt": z.string().datetime({ offset: true }),
   "result": z.enum(["cleared", "warning", "blocked"]),
   "checks": z.array(z.object({
-  "key": z.enum(["worker", "white_card", "licences", "induction", "swms", "insurance"]),
+  "key": z.enum(["worker", "white_card", "licences", "induction", "swms", "insurance", "pretask"]),
   "label": z.string(),
   "status": z.enum(["pass", "warn", "fail", "na"]),
   "detail": z.string(),

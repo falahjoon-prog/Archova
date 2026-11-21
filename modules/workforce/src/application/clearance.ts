@@ -7,6 +7,7 @@ import { workerCredentials, type workers } from '../infra/tables';
 import {
   evaluateClearance,
   type ClearanceInsurance,
+  type ClearancePretask,
   type ClearanceOutcome,
   type ClearanceSwms,
 } from '../domain/clearance';
@@ -31,6 +32,12 @@ export interface ClearanceDeps {
     projectId: string,
     companyId: string,
   ) => Promise<ClearanceInsurance>;
+  /** Whether the worker has signed on to today's pre-task plan, from `safety`. Absent: the check is skipped. */
+  pretask?: (
+    scope: TenantScope,
+    projectId: string,
+    worker: { companyId: string | null; userId: string | null },
+  ) => Promise<ClearancePretask>;
   now?: () => Date;
 }
 
@@ -83,7 +90,7 @@ export function createClearanceService(deps: ClearanceDeps) {
       : (sites.find((s) => s.site.active !== false) ?? sites[0]);
     if (input.siteId && !site) throw new AppError('workforce_site.not_found');
 
-    const [creds, companies, inductionResult, swms, insurance] = await Promise.all([
+    const [creds, companies, inductionResult, swms, insurance, pretask] = await Promise.all([
       scope.tx
         .select()
         .from(workerCredentials)
@@ -101,6 +108,9 @@ export function createClearanceService(deps: ClearanceDeps) {
       worker.kind === 'worker' && worker.companyId && deps.insurance
         ? deps.insurance(scope, projectId, worker.companyId)
         : Promise.resolve(null),
+      worker.kind === 'worker' && worker.userId && deps.pretask
+        ? deps.pretask(scope, projectId, { companyId: worker.companyId, userId: worker.userId })
+        : Promise.resolve(null),
     ]);
     const photo = worker.photoFileId
       ? await deps.files
@@ -115,6 +125,7 @@ export function createClearanceService(deps: ClearanceDeps) {
       inductionReasons: inductionResult ? inductionResult.reasons : null,
       swms,
       insurance,
+      pretask,
     });
     return {
       ...outcome,

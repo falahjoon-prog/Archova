@@ -25924,7 +25924,7 @@ export interface components {
             result: "cleared" | "warning" | "blocked";
             checks: {
                 /** @enum {string} */
-                key: "worker" | "white_card" | "licences" | "induction" | "swms" | "insurance";
+                key: "worker" | "white_card" | "licences" | "induction" | "swms" | "insurance" | "pretask";
                 label: string;
                 /** @enum {string} */
                 status: "pass" | "warn" | "fail" | "na";

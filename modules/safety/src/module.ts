@@ -38,6 +38,8 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
       syncCommands: incidentSyncCommands(incidents, deps),
       /** For `workforce` (site clearance): the SWMS a worker's company works under and whether the worker has read each. */
       workerSwms: clearance.workerSwms,
+      /** For `workforce` (site clearance): whether the worker has signed on to today's pre-task plan. */
+      workerPretask: clearance.workerPretask,
       /** Counts for the tender-readiness pack (`reporting`): last 12 months' incidents and SWMS status on a project. */
       readinessSummary: readiness.summary,
       /** Portfolio dashboard and report builder (`reporting`): incident counts and rows. */

@@ -5,7 +5,7 @@ import type { EligibilityReason } from './attendance';
 // service gathers the facts. Rule-based on purpose: no model call and no credit cost, so it can run on every scan.
 
 export type ClearanceCheckKey =
-  'worker' | 'white_card' | 'licences' | 'induction' | 'swms' | 'insurance';
+  'worker' | 'white_card' | 'licences' | 'induction' | 'swms' | 'insurance' | 'pretask';
 export type ClearanceStatus = 'pass' | 'warn' | 'fail' | 'na';
 export type ClearanceResult = 'cleared' | 'warning' | 'blocked';
 
@@ -38,6 +38,12 @@ export interface ClearanceSwms {
   acknowledged: boolean | null;
 }
 
+/** What `safety` reports about today's pre-task plans for this worker. */
+export interface ClearancePretask {
+  signedPlans: number;
+  waitingPlans: number;
+}
+
 /** What `insurance` reports about the worker's company on this project: certificates of currency and bonds. */
 export interface ClearanceInsurance {
   state: 'cleared' | 'warning' | 'blocked';
@@ -56,6 +62,8 @@ export interface ClearanceFacts {
   swms: ClearanceSwms[];
   /** Null when the worker has no company or the insurance register is not connected. */
   insurance?: ClearanceInsurance | null;
+  /** Null when pre-task plans are not connected or the worker has no login to sign with. */
+  pretask?: ClearancePretask | null;
 }
 
 export interface ClearanceOutcome {
@@ -238,6 +246,33 @@ export function evaluateClearance(f: ClearanceFacts): ClearanceOutcome {
         .join('; '),
     });
 
+  // Today's pre-task plan: never blocks the gate (the plan is signed at the work face), but a gap is shown.
+  const pt = f.pretask;
+  if (!pt || (pt.signedPlans === 0 && pt.waitingPlans === 0))
+    checks.push({
+      key: 'pretask',
+      label: "Today's pre-task plan",
+      status: 'na',
+      detail: pt ? 'No plan for this worker today' : 'Not checked',
+    });
+  else if (pt.signedPlans > 0)
+    checks.push({
+      key: 'pretask',
+      label: "Today's pre-task plan",
+      status: 'pass',
+      detail: pt.signedPlans === 1 ? 'Signed on' : `Signed on to ${pt.signedPlans} plans`,
+    });
+  else
+    checks.push({
+      key: 'pretask',
+      label: "Today's pre-task plan",
+      status: 'warn',
+      detail:
+        pt.waitingPlans === 1
+          ? 'A plan is open for their work and they have not signed on'
+          : `${pt.waitingPlans} open plans and they have not signed on`,
+    });
+
   const failed = checks.filter((c) => c.status === 'fail');
   const warned = checks.filter((c) => c.status === 'warn');
   const result: ClearanceResult = failed.length ? 'blocked' : warned.length ? 'warning' : 'cleared';
@@ -250,6 +285,7 @@ const ACTION: Record<ClearanceCheckKey, string> = {
   licences: 'Stop high-risk work for this person until the licence is renewed and recorded.',
   induction: 'Send them the site induction link and hold entry until it is signed.',
   insurance: 'Hold the company at the gate until a current certificate or bond is recorded.',
+  pretask: 'Have them read the plan and sign on before they start the task.',
   swms: 'Have them open and acknowledge the SWMS on their phone before starting work.',
 };
 

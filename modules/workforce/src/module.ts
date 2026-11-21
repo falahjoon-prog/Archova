@@ -29,6 +29,12 @@ export function createWorkforceModule(
       projectId: string,
       worker: { companyId: string | null; userId: string | null },
     ) => Promise<ClearanceSwms[]>;
+    /** Site clearance: whether the worker has signed on to today's pre-task plan, read from `safety`. */
+    clearancePretask?: (
+      scope: Parameters<ComplianceSource>[0],
+      projectId: string,
+      worker: { companyId: string | null; userId: string | null },
+    ) => Promise<{ signedPlans: number; waitingPlans: number }>;
     /** Site clearance: the worker's company's insurance and bonds, read from `insurance`. */
     clearanceInsurance?: (
       scope: Parameters<ComplianceSource>[0],
@@ -60,6 +66,7 @@ export function createWorkforceModule(
     files: deps.files,
     inductionSource: inductions.gateSource,
     ...(deps.clearanceSwms ? { swms: deps.clearanceSwms } : {}),
+    ...(deps.clearancePretask ? { pretask: deps.clearancePretask } : {}),
     ...(deps.clearanceInsurance ? { insurance: deps.clearanceInsurance } : {}),
     ...(deps.now ? { now: deps.now } : {}),
   });
