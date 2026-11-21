@@ -56,10 +56,16 @@ export function useHazardMutations() {
       onSuccess: refresh,
     }),
     review: useMutation({
-      mutationFn: (v: { id: string; decision: 'confirmed' | 'dismissed'; note?: string }) =>
+      mutationFn: (v: {
+        id: string;
+        decision: 'confirmed' | 'dismissed';
+        note?: string;
+        raiseObservation?: boolean;
+      }) =>
         source.review(projectId, v.id, {
           decision: v.decision,
           ...(v.note ? { note: v.note } : {}),
+          ...(v.raiseObservation ? { raiseObservation: true } : {}),
         }),
       onSuccess: refresh,
     }),

@@ -1083,6 +1083,7 @@ export const ReviewHazardSignalParams = z.object({
 export const ReviewHazardSignalBody = z.object({
   "decision": z.enum(["confirmed", "dismissed"]),
   "note": z.string().max(1000).optional(),
+  "raiseObservation": z.boolean().optional(),
 }).strict();
 export const ScanCaptureViewWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),

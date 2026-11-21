@@ -271,6 +271,20 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
         failedInspectionItems: inspections.failedItemsForNova,
         inspectionSummaries: inspections.summariesForNova,
       },
+      /** A safety observation raised from a confirmed Nova hazard signal (`ai`, which checks the caller's create permission). */
+      raiseObservation: async (
+        scope: TenantScope,
+        projectId: string,
+        input: {
+          description: string;
+          hazard: string;
+          priority: 'low' | 'medium' | 'high';
+          fileIds: string[];
+        },
+      ) => {
+        const o = await observations.create(scope, projectId, { ...input, type: 'safety' });
+        return { id: o.observation.id, number: o.observation.number };
+      },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (
         scope: TenantScope,

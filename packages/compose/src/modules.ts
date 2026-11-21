@@ -531,6 +531,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     readFile: (scope, fileId, maxBytes) => files.api.readFileBytes(scope, fileId, maxBytes),
     fileSafetyRisk: (scope, projectId, fileId) =>
       files.api.fileSafetyRisk(scope, projectId, fileId),
+    raiseObservation: (scope, projectId, input) =>
+      quality.api.raiseObservation(scope, projectId, input),
     assert: async (scope, key, target) => {
       await access!.api.assert(scope, key, target);
     },

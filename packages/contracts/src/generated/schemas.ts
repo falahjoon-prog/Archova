@@ -6317,6 +6317,7 @@ export const HazardSignalSchema = z.object({
   "status": HazardSignalStatusSchema,
   "reviewNote": z.string().nullable(),
   "reviewedAt": z.string().datetime({ offset: true }).nullable(),
+  "observationId": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
 });
 export type HazardSignal = z.infer<typeof HazardSignalSchema>;

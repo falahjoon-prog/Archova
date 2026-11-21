@@ -12,6 +12,8 @@ export interface HazardSignal {
   status: SignalStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
+  /** The safety observation raised when it was confirmed (`obs_`), if any. */
+  observationId: string | null;
   createdAt: string;
 }
 
