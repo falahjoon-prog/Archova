@@ -11,6 +11,7 @@ import {
 import { createActionPlanService } from './application/action-plans';
 import { createInspectionService, type InspectionService } from './application/inspections';
 import type { ResponseInput } from './application/inspections';
+import { createEvidenceSources } from './application/evidenceSources';
 import { createDbpSources } from './application/dbpSources';
 import { createObservationService } from './application/observations';
 import { createObservationTypeService } from './application/observation-types';
@@ -258,6 +259,8 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     api: {
       /** Per-project rows for the DBP Act insights view in `reporting`. */
       dbp: createDbpSources(deps),
+      /** Inspections in a date range for the regulator evidence pack in `reporting`. */
+      evidence: createEvidenceSources(deps),
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
       /** Portfolio dashboard (`reporting`): open and overdue counts of observations and inspections per project. */
@@ -303,6 +306,20 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
           out.set(r.companyId, e);
         }
         return out;
+      },
+      /** A safety observation raised from a confirmed Nova hazard signal (`ai`, which checks the caller's create permission). */
+      raiseObservation: async (
+        scope: TenantScope,
+        projectId: string,
+        input: {
+          description: string;
+          hazard: string;
+          priority: 'low' | 'medium' | 'high';
+          fileIds: string[];
+        },
+      ) => {
+        const o = await observations.create(scope, projectId, { ...input, type: 'safety' });
+        return { id: o.observation.id, number: o.observation.number };
       },
       /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
       sourceExists: async (

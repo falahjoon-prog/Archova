@@ -142,6 +142,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/pre-task-plans${planId ? `?id=${enc(planId)}` : ''}`,
   safetyScorecards: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/safety-scorecards`,
+  safetyEvidencePack: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/safety-evidence-pack`,
   permits: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/permits`,
   handover: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/handover`,
   geotech: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/geotech`,

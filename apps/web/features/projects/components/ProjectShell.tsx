@@ -214,6 +214,11 @@ export function projectToolGroups(
       label: 'Inductions',
       icon: InductionsIcon,
     },
+    canAdmin('inspections') && {
+      href: webRoutes.safetyEvidencePack(orgSlug, projectId),
+      label: 'Safety evidence pack',
+      icon: IncidentsIcon,
+    },
     canRead('payment_claims') && {
       href: webRoutes.contracts(orgSlug, projectId),
       label: 'Contracts',
@@ -450,6 +455,7 @@ const TOOL_CATEGORIES: ReadonlyArray<{
       'Incidents',
       'Safety signals',
       'Inductions',
+      'Safety evidence pack',
     ],
   },
   {

@@ -36,6 +36,7 @@ describe('projectToolGroups', () => {
       'Incidents',
       'Safety signals',
       'Inductions',
+      'Safety evidence pack',
       'Contracts',
       'Payment claims',
       'T&M tickets',

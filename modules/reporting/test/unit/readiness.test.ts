@@ -148,7 +148,11 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
         requiredForTenders: true,
       }),
     },
+    inspectionEvidence: {
+      inspections: async () => ({ restricted: true, truncated: false, rows: [] }),
+    },
     workforce: {
+      inductionEvidence: async () => ({ restricted: true, truncated: false, rows: [] }),
       hoursWorked: async () => null,
       credentialSummary: async () => ({
         counts: { current: 1, expiring: 0, expired: 1, no_expiry: 0 },
@@ -165,6 +169,10 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
       }),
     },
     safety: {
+      evidenceRecords: async () => {
+        const none = { restricted: true, truncated: false, rows: [] };
+        return { incidents: none, actions: none, pretasks: none, toolbox: none };
+      },
       injuryRows: async () => ({
         restricted: true,
         rows: [],

@@ -32,7 +32,7 @@ import { createRfiDraftService } from './application/rfi-draft';
 import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createCaptureScanService } from './application/capture-scan';
-import { createHazardScanService } from './application/hazard-scan';
+import { createHazardScanService, type HazardScanDeps } from './application/hazard-scan';
 import { createImportMappingService } from './application/import-mapping';
 import { createAnnouncementDraftService } from './application/announcement-draft';
 import {
@@ -217,6 +217,8 @@ export function createAiModule(
     readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
     /** files.fileSafetyRisk: a confirmed hazard signal files its photo under Safety risk. */
     fileSafetyRisk?: (scope: TenantScope, projectId: string, fileId: string) => Promise<unknown>;
+    /** quality.raiseObservation: a confirmed hazard signal can be raised as a safety observation. */
+    raiseObservation?: HazardScanDeps['raiseObservation'];
     /** access.assert */
     assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
     /** access.can: like `assert`, but answers instead of throwing (who may see a suggestion). */
@@ -461,6 +463,7 @@ export function createAiModule(
     assert: deps.assert,
     readFile: deps.readFile,
     fileSafetyRisk: deps.fileSafetyRisk,
+    raiseObservation: deps.raiseObservation,
   });
   const importMappings = createImportMappingService({
     database: services.database,
