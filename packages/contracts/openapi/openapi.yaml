@@ -19101,6 +19101,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/adjudication:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    put:
+      operationId: recordClaimAdjudication
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: Record what has happened in adjudication on a claim (builder staff).
+      description: Send the whole record each time; a field left out is cleared, so a wrong date is corrected by sending it again. Dates for things that happened can't be in the future or out of order. The adjudicator's response and determination due dates are typed in from the adjudicator's notice, never calculated. The claim's `timeline` shows the steps that follow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimAdjudicationRequest' }
+      responses:
+        '200':
+          description: The claim with its adjudication record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -36485,6 +36509,11 @@ components:
       type: object
       required: [claim, lines, schedule, statement, warnings, timeline]
       properties:
+        adjudication:
+          oneOf:
+            - { $ref: '#/components/schemas/ClaimAdjudication' }
+            - { type: 'null' }
+          description: What staff recorded once adjudication began. Null until something is recorded.
         timeline:
           type: array
           description: The claim's SOPA path from service to payment and the adjudication windows that apply now. Empty for a claim that is not valid. Dates come from the stored claim dates and the rule row in force on the service date.
@@ -36521,6 +36550,11 @@ components:
               adjudication_unpaid,
               adjudication_notice,
               adjudication_apply,
+              adjudication_respondent,
+              adjudication_application,
+              adjudication_adjudicator,
+              adjudication_response,
+              adjudication_determination,
             ]
         label: { type: string }
         dueOn:
@@ -36538,6 +36572,64 @@ components:
         signedOn: { type: [string, 'null'], format: date }
         note: { type: [string, 'null'] }
         recordedAt: { type: string, format: date-time }
+    ClaimAdjudication:
+      type: object
+      required:
+        [
+          noticeServedOn,
+          applicationLodgedOn,
+          nominatingAuthority,
+          adjudicatorName,
+          adjudicatorAppointedOn,
+          responseDueOn,
+          responseLodgedOn,
+          determinationDueOn,
+          determinedOn,
+          adjudicatedAmount,
+          outcome,
+          notes,
+          updatedAt,
+        ]
+      properties:
+        noticeServedOn: { type: [string, 'null'], format: date }
+        applicationLodgedOn: { type: [string, 'null'], format: date }
+        nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
+        adjudicatorName: { type: [string, 'null'], maxLength: 200 }
+        adjudicatorAppointedOn: { type: [string, 'null'], format: date }
+        responseDueOn: { type: [string, 'null'], format: date }
+        responseLodgedOn: { type: [string, 'null'], format: date }
+        determinationDueOn: { type: [string, 'null'], format: date }
+        determinedOn: { type: [string, 'null'], format: date }
+        adjudicatedAmount:
+          { oneOf: [{ $ref: '#/components/schemas/FinancialsMoney' }, { type: 'null' }] }
+        outcome:
+          {
+            type: [string, 'null'],
+            enum: [upheld, part_upheld, dismissed, withdrawn, settled, null],
+          }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        updatedAt: { type: string, format: date-time }
+    RecordClaimAdjudicationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        noticeServedOn: { type: [string, 'null'], format: date }
+        applicationLodgedOn: { type: [string, 'null'], format: date }
+        nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
+        adjudicatorName: { type: [string, 'null'], maxLength: 200 }
+        adjudicatorAppointedOn: { type: [string, 'null'], format: date }
+        responseDueOn: { type: [string, 'null'], format: date }
+        responseLodgedOn: { type: [string, 'null'], format: date }
+        determinationDueOn: { type: [string, 'null'], format: date }
+        determinedOn: { type: [string, 'null'], format: date }
+        adjudicatedAmount:
+          { oneOf: [{ $ref: '#/components/schemas/FinancialsMoney' }, { type: 'null' }] }
+        outcome:
+          {
+            type: [string, 'null'],
+            enum: [upheld, part_upheld, dismissed, withdrawn, settled, null],
+          }
+        notes: { type: [string, 'null'], maxLength: 2000 }
     RecordClaimStatementRequest:
       type: object
       additionalProperties: false

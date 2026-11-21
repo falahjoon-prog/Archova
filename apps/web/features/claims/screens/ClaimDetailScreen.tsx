@@ -22,6 +22,7 @@ import { ClaimTimeline } from '../components/ClaimTimeline';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { IssueScheduleForm } from '../components/IssueScheduleForm';
 import { PaymentsCard } from '../components/PaymentsCard';
+import { AdjudicationCard } from '../components/AdjudicationCard';
 import { StatementCard } from '../components/StatementCard';
 import type { PaymentClaimDetail } from '../data/api';
 import { useContract, useVariations, usePaymentClaim } from '../hooks/useClaims';
@@ -198,6 +199,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
         </Card>
       ) : null}
       <PaymentsCard detail={d} canRecord={canAssess} />
+      <AdjudicationCard detail={d} canRecord={canAssess} />
     </div>
   );
 }
