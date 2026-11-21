@@ -16,6 +16,9 @@ import type {
 import type { RegisterRow } from '../domain/distribution';
 import type { DocumentWithCurrent } from '../application/documents';
 import type { RevisionView } from '../application/drawings';
+import type { CommentThread } from '../application/comments';
+import type { ItpService } from '../application/itp';
+import type { ReviewService } from '../application/reviews';
 import type { SheetGeometryRow } from '../application/geometry';
 import type {
   documentRevisions,
@@ -24,6 +27,8 @@ import type {
   drawingSets,
   drawingSheets,
   folders,
+  itpItems,
+  itpPackages,
   specBooks,
   specSections,
   transmittalRecipients,
@@ -253,4 +258,123 @@ export const toRegisterRowDto = (r: RegisterRow): DocumentRegisterRow => ({
     acknowledgedAt: isoOrNull(x.acknowledgedAt),
   })),
   flags: r.flags,
+});
+
+// ---- Review matrix, comments and ITP ---------------------------------------------------------------------------
+
+/** User names are resolved by the route (one identity lookup per request); a missing user shows as null. */
+export type Names = ReadonlyMap<string, string>;
+const nameOf = (names: Names, id: string | null) => (id ? (names.get(id) ?? null) : null);
+
+type ReviewView = Awaited<ReturnType<ReviewService['forDocument']>>;
+type ReviewViewRound = NonNullable<ReviewView['current']>;
+
+export const toReviewDto = (v: ReviewViewRound, names: Names) => ({
+  id: encodeId('documentReview', v.review.id),
+  documentId: encodeId('document', v.review.documentId),
+  revisionId: encodeId('revision', v.review.revisionId),
+  mode: v.review.mode,
+  status: v.review.status,
+  dueAt: isoOrNull(v.review.dueAt),
+  note: v.review.note,
+  closedAt: isoOrNull(v.review.closedAt),
+  createdAt: iso(v.review.createdAt),
+  stale: v.stale,
+  overdueDays: v.overdueDays,
+  steps: v.steps.map((s) => ({
+    id: encodeId('documentReviewStep', s.id),
+    userId: encodeId('user', s.userId),
+    userName: nameOf(names, s.userId),
+    role: s.role,
+    order: s.stepOrder,
+    status: s.status,
+    activatedAt: isoOrNull(s.activatedAt),
+    decidedAt: isoOrNull(s.decidedAt),
+    decisionNote: s.decisionNote,
+  })),
+});
+
+export const toReviewStateDto = (v: ReviewView, names: Names) => ({
+  current: v.current ? toReviewDto(v.current, names) : null,
+  history: v.history.map((h) => toReviewDto(h, names)),
+  openComments: v.openComments,
+});
+
+/** Every user id a review state shows, for the one name lookup. */
+export const reviewUserIds = (v: ReviewView) =>
+  [v.current, ...v.history].flatMap((r) => (r ? r.steps.map((s) => s.userId) : []));
+
+type CommentRow = CommentThread['root'];
+export const toCommentDto = (c: CommentRow, names: Names) => ({
+  id: encodeId('documentComment', c.id),
+  documentId: encodeId('document', c.documentId),
+  revisionId: c.revisionId ? encodeId('revision', c.revisionId) : null,
+  parentId: c.parentId ? encodeId('documentComment', c.parentId) : null,
+  body: c.body,
+  page: c.page,
+  status: c.status,
+  authorId: userOrNull(c.createdBy),
+  authorName: nameOf(names, c.createdBy),
+  createdAt: iso(c.createdAt),
+  resolvedById: userOrNull(c.resolvedBy),
+  resolvedByName: nameOf(names, c.resolvedBy),
+  resolvedAt: isoOrNull(c.resolvedAt),
+  resolutionNote: c.resolutionNote,
+});
+
+export const commentUserIds = (threads: CommentThread[]) =>
+  threads.flatMap((t) =>
+    [t.root, ...t.replies].flatMap((c) =>
+      [c.createdBy, c.resolvedBy].filter((x): x is string => !!x),
+    ),
+  );
+
+export const toCommentListDto = (threads: CommentThread[], names: Names) => ({
+  data: threads.map((t) => ({
+    root: toCommentDto(t.root, names),
+    replies: t.replies.map((r) => toCommentDto(r, names)),
+  })),
+});
+
+type ItpPackageRow = typeof itpPackages.$inferSelect;
+type ItpItemRow = typeof itpItems.$inferSelect;
+
+export const toItpPackageDto = (p: ItpPackageRow) => ({
+  id: encodeId('itpPackage', p.id),
+  number: p.number,
+  name: p.name,
+  discipline: p.discipline,
+  documentId: p.documentId ? encodeId('document', p.documentId) : null,
+  responsibleCompanyId: companyOrNull(p.responsibleCompanyId),
+  status: p.status,
+  completedAt: isoOrNull(p.completedAt),
+  createdAt: iso(p.createdAt),
+  version: p.version,
+});
+
+export const toItpItemDto = (i: ItpItemRow, names: Names) => ({
+  id: encodeId('itpItem', i.id),
+  sort: i.sort,
+  description: i.description,
+  acceptanceCriteria: i.acceptanceCriteria,
+  pointType: i.pointType,
+  status: i.status,
+  signedById: userOrNull(i.signedBy),
+  signedByName: nameOf(names, i.signedBy),
+  signedAt: isoOrNull(i.signedAt),
+  note: i.note,
+});
+
+export const toItpDetailDto = (d: Awaited<ReturnType<ItpService['detail']>>, names: Names) => ({
+  package: toItpPackageDto(d.package),
+  items: d.items.map((i) => toItpItemDto(i, names)),
+  progress: d.progress,
+  document: d.document
+    ? {
+        id: encodeId('document', d.document.id),
+        title: d.document.title,
+        docNumber: d.document.docNumber,
+        status: d.document.status,
+      }
+    : null,
 });

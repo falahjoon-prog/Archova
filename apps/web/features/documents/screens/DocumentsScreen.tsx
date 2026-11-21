@@ -14,6 +14,8 @@ import {
   type DataTableColumn,
 } from '@archova/ui';
 import { Calendar, DocumentsIcon, Star, Trash2 } from '@archova/ui/icons';
+import { OpenReviews } from './OpenReviews';
+import { ReviewPanel } from './ReviewPanel';
 import { fileDownloadUrl } from '@/shared/lib/uploads';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -61,13 +63,20 @@ export function DocumentsScreen() {
   });
   const [params, setParams] = useUrlState(['folder', 'doc', 'view'] as const);
   // `view` is a sidebar shortcut: it replaces the folder choice until a folder is picked again.
-  const view: DocumentsView | 'bin' =
-    params.view === 'week' || params.view === 'tracked' || params.view === 'bin'
+  const view: DocumentsView | 'bin' | 'review' =
+    params.view === 'week' ||
+    params.view === 'tracked' ||
+    params.view === 'bin' ||
+    params.view === 'review'
       ? params.view
       : 'all';
   const folderId = view === 'all' ? params.folder || null : null;
   const folders = useFolders(project.projectId);
-  const docs = useDocuments(project.projectId, folderId, view === 'bin' ? 'all' : view);
+  const docs = useDocuments(
+    project.projectId,
+    folderId,
+    view === 'bin' || view === 'review' ? 'all' : view,
+  );
   const bin = useDocumentBin(project.projectId, view === 'bin');
   const setTracked = useSetTracked(project.projectId);
   const deleteDoc = useDeleteDocument(project.projectId);
@@ -201,6 +210,7 @@ export function DocumentsScreen() {
               [
                 ['week', 'New documents this week', Calendar],
                 ['tracked', 'Items you are tracking', Star],
+                ['review', 'Out for review', DocumentsIcon],
                 ['bin', 'Recycle bin', Trash2],
               ] as const
             ).map(([key, label, Icon]) => (
@@ -221,7 +231,11 @@ export function DocumentsScreen() {
           </ul>
         </nav>
         <div className="stack">
-          {view === 'bin' ? (
+          {view === 'review' ? (
+            <OpenReviews
+              onOpen={(documentId) => setParams({ view: null, folder: null, doc: documentId })}
+            />
+          ) : view === 'bin' ? (
             <RecycleBin
               caption="Recycle bin"
               icon={DocumentsIcon}
@@ -276,7 +290,7 @@ export function DocumentsScreen() {
               }
             />
           )}
-          {view !== 'bin' && selected ? (
+          {view !== 'bin' && view !== 'review' && selected ? (
             <section aria-labelledby="doc-history" className="ac-card">
               <h2 id="doc-history" className="panel-heading">
                 Versions of {selected.title}
@@ -316,6 +330,9 @@ export function DocumentsScreen() {
                 </ol>
               )}
             </section>
+          ) : null}
+          {view !== 'bin' && view !== 'review' && selected && !previewDataOnly ? (
+            <ReviewPanel document={selected} />
           ) : null}
         </div>
       </div>

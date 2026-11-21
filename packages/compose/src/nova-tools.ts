@@ -55,6 +55,9 @@ export interface NovaToolSources {
       findings: Array<{ summary: string }>;
     }>;
   };
+  documents: {
+    stuckReviews: (s: TenantScope, projectId: string, o: { limit: number }) => Promise<Listing>;
+  };
   quality: {
     overdueInspections: (
       s: TenantScope,
@@ -188,6 +191,21 @@ export function buildNovaTools(src: NovaToolSources): NovaTool[] {
           projectId,
           'There are no open defects.',
           await src.defects.openForMeeting(scope, projectId, { limit: LIMIT }),
+        ),
+    },
+    {
+      name: 'stuck_document_reviews',
+      description:
+        'Documents out for review that are past their due date (or 5 days with no due date), most late first, and how many people each is waiting on.',
+      params: {},
+      run: async (scope, projectId) =>
+        listing(
+          'Documents stuck in review',
+          'document',
+          'document reviews',
+          projectId,
+          'No document is stuck in review.',
+          await src.documents.stuckReviews(scope, projectId, { limit: LIMIT }),
         ),
     },
     {

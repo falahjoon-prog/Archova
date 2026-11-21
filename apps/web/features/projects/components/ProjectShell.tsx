@@ -144,6 +144,11 @@ export function projectToolGroups(
       icon: DocumentsIcon,
     },
     canRead('documents') && {
+      href: webRoutes.itp(orgSlug, projectId),
+      label: 'ITP packages',
+      icon: DocumentsIcon,
+    },
+    canRead('documents') && {
       href: webRoutes.transmittals(orgSlug, projectId),
       label: 'Transmittals',
       icon: TransmittalsIcon,

@@ -15,6 +15,9 @@ import { createMarkupService } from './application/markups';
 import { createSpecService } from './application/specs';
 import { createTileService } from './application/tiles';
 import { createRegisterService } from './application/register';
+import { createReviewService } from './application/reviews';
+import { createCommentService } from './application/comments';
+import { createItpService } from './application/itp';
 import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
@@ -31,9 +34,12 @@ export function createDocumentsModule(
   services: KernelServices,
   deps: {
     access: AccessService;
-    platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
+    platform: Pick<
+      PlatformApi,
+      'getProject' | 'getOrg' | 'resolveTenantAccess' | 'getProjectMembership' | 'projectCompanies'
+    >;
     files: Pick<FilesModule['api'], 'getFile' | 'signTiles' | 'downloadUrl'>;
-    identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
+    identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser' | 'getUsers'>;
     /** Transmittal emails for recipients without an account (X45). */
     links: {
       messages: MessageSender;
@@ -53,6 +59,9 @@ export function createDocumentsModule(
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
   const register = createRegisterService(c, folders);
+  const reviews = createReviewService(c, documents, folders);
+  const comments = createCommentService(c, documents);
+  const itp = createItpService(c, documents);
   const transmittalLinks = createTransmittalLinkService({
     database: services.database,
     transmittals,
@@ -102,6 +111,9 @@ export function createDocumentsModule(
       tiles,
       transmittals,
       register,
+      reviews,
+      comments,
+      itp,
       links: transmittalLinks,
       platform: deps.platform,
       messages: deps.links.messages,
@@ -131,6 +143,31 @@ export function createDocumentsModule(
       getDocumentRef: documents.ref,
       /** For inductions: a SWMS document's current file, for a worker the induction itself authorises. */
       getDocumentFileAuthorised: documents.currentFileAuthorised,
+      /** Nova: documents stuck in review past their due date or the default SLA. Honours `documents.reviews.read`. */
+      nova: {
+        stuckReviews: async (
+          scope: Parameters<typeof reviews.openReviews>[0],
+          projectId: string,
+          o: { limit: number },
+        ) => {
+          if (!(await c.access.can(scope, 'documents.reviews.read', { projectId })))
+            return { rows: [], truncated: false, restricted: true };
+          const all = await reviews.openReviews(scope, projectId, { overdueOnly: true });
+          const rows = all
+            .sort((a, b) => b.overdueDays - a.overdueDays)
+            .slice(0, o.limit)
+            .map((r) => {
+              const waiting = r.steps.filter((x) => x.status === 'pending').length;
+              return {
+                id: encodeId('document', r.document.id),
+                ref: r.document.docNumber ?? 'Document',
+                title: r.document.title,
+                detail: `${r.overdueDays} day${r.overdueDays === 1 ? '' : 's'} late, waiting on ${waiting} ${waiting === 1 ? 'person' : 'people'}`,
+              };
+            });
+          return { rows, truncated: all.length > o.limit, restricted: false };
+        },
+      },
       /** For Nova revision compare (F21): the revision this one superseded on its sheet, or null. */
       getPreviousDrawingRevision: drawings.getPreviousRevision,
       /** For Nova RFI drafts (F3): a markup the caller may see on a revision, or markup.not_found. */

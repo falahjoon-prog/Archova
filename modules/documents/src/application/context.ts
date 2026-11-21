@@ -6,7 +6,10 @@ import type { PlatformApi } from '@archova/mod-platform';
 /** Other modules' public interfaces `documents` uses (no cross-module SQL). */
 export interface DocumentsDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
+  platform: Pick<
+    PlatformApi,
+    'getProject' | 'getOrg' | 'resolveTenantAccess' | 'getProjectMembership' | 'projectCompanies'
+  >;
   files: Pick<FilesModule['api'], 'getFile'>;
 }
 
@@ -32,7 +35,40 @@ export function createContext(deps: DocumentsDeps) {
     return { userId: scope.ctx.userId, companyId: perms.companyId };
   }
 
-  return { requireProject, requireReadyFile, viewer, access: deps.access };
+  /** People named in a request must be on this project (so a review can't be assigned to an outsider). */
+  async function requireMembers(
+    scope: TenantScope,
+    projectId: string,
+    userIds: readonly string[],
+    path: string,
+  ) {
+    for (const [i, userId] of userIds.entries()) {
+      if (!(await deps.platform.getProjectMembership(scope, projectId, userId)))
+        throw new AppError('validation_failed', 'Choose people who are on this project.', [
+          {
+            path: userIds.length > 1 ? `${path}/${i}` : path,
+            message: 'Not a member of the project',
+          },
+        ]);
+    }
+  }
+
+  async function requireCompany(scope: TenantScope, projectId: string, companyId: string) {
+    const onProject = await deps.platform.projectCompanies(scope, projectId);
+    if (!onProject.some((c) => c.id === companyId))
+      throw new AppError('validation_failed', 'Choose a company on this project.', [
+        { path: 'responsibleCompanyId', message: 'Not a company on the project' },
+      ]);
+  }
+
+  return {
+    requireProject,
+    requireMembers,
+    requireCompany,
+    requireReadyFile,
+    viewer,
+    access: deps.access,
+  };
 }
 
 export type DocumentsContext = ReturnType<typeof createContext>;
