@@ -1,6 +1,12 @@
 import { and, asc, eq, gt, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, decodeCursor, toPage, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  decodeCursor,
+  recordSecurityEvent,
+  toPage,
+  type TenantScope,
+} from '@archova/kernel';
 import type { AccessService, ProjectMembershipInfo } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { memberships, projectMembers } from '../infra/tables';
@@ -33,6 +39,26 @@ export async function lookupProjectMembership(
         isExternal: row.isExternal,
       }
     : null;
+}
+
+/** Who gained or lost access to which project, for the security log. The removal reason is free text and is not logged. */
+async function recordMemberChange(
+  scope: TenantScope,
+  action: string,
+  projectId: string,
+  userId: string,
+  metadata: Record<string, unknown>,
+) {
+  await recordSecurityEvent(scope.tx, {
+    orgId: scope.ctx.orgId,
+    action,
+    actorType: 'user',
+    actorId: scope.ctx.userId,
+    targetType: 'project_member',
+    targetId: userId,
+    requestId: scope.ctx.requestId,
+    metadata: { projectId, ...metadata },
+  });
 }
 
 export function createMemberService(deps: {
@@ -256,6 +282,10 @@ export function createMemberService(deps: {
         version: row!.version,
         projectId,
       });
+      await recordMemberChange(scope, 'project_member.added', projectId, user.id, {
+        companyId: input.companyId,
+        permissionTemplateId: input.permissionTemplateId,
+      });
       scope.events.add({
         type: 'platform.project_member.added.v1',
         projectId,
@@ -296,6 +326,10 @@ export function createMemberService(deps: {
         op: 'upsert',
         version: 1,
         projectId,
+      });
+      await recordMemberChange(scope, 'project_member.added', projectId, user.id, {
+        companyId: input.companyId,
+        permissionTemplateId: input.permissionTemplateId,
       });
       scope.events.add({
         type: 'platform.project_member.added.v1',
@@ -369,6 +403,9 @@ export function createMemberService(deps: {
       op: 'upsert',
       version: done!.version,
       projectId,
+    });
+    await recordMemberChange(scope, 'project_member.removed', projectId, row.userId, {
+      kind: input.kind,
     });
     scope.events.add({
       type: 'platform.project_member.removed.v1',

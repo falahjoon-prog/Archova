@@ -51,6 +51,9 @@ export const SENSITIVE_COLUMN =
 
 /** Columns that match {@link SENSITIVE_COLUMN} and were checked: a content checksum, or evidence kept on purpose. */
 export const REVIEWED_COLUMNS: ReadonlySet<string> = new Set([
+  // The security audit log's hash chain: SHA-256 links that prove the log was not edited, kept as evidence.
+  'audit.security_events.prev_hash',
+  'audit.chain_heads.last_hash',
   'correspondence.items.content_hash',
   'financials.evidence_records.evidence_hash',
   'financials.evidence_timestamps.token',

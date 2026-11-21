@@ -43,6 +43,7 @@
     "@archova/mod-platform": "workspace:*",
     "@archova/mod-precon": "workspace:*",
     "@archova/mod-quality": "workspace:*",
+    "@archova/mod-audit": "workspace:*",
     "@archova/mod-reporting": "workspace:*",
     "@archova/mod-search": "workspace:*",
     "@archova/mod-rfis": "workspace:*",

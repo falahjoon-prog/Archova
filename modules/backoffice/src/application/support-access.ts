@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type KernelServices, type Tx } from '@archova/kernel';
+import { AppError, recordSecurityEvent, type KernelServices, type Tx } from '@archova/kernel';
 import {
   staffUsers,
   supportEvents,
@@ -317,6 +317,15 @@ export function createSupportAccessService(
         ticketRef: g.ticketRef,
         startedAt: at,
         expiresAt,
+      });
+      await recordSecurityEvent(t, {
+        orgId,
+        action: 'support.session.started',
+        actorType: 'staff',
+        actorId: staff.staffId,
+        targetType: 'support_session',
+        targetId: id,
+        metadata: { ticketRef: g.ticketRef, grantId: g.id, expiresAt: expiresAt.toISOString() },
       });
       notice = {
         orgId,

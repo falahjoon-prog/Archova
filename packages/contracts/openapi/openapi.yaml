@@ -63,6 +63,7 @@ tags:
   - name: recents
   - name: plant
   - name: reporting
+  - name: audit
   - name: search
   - name: data-export
   - name: workflows
@@ -6310,6 +6311,66 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuditLogPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/security-audit-events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listSecurityAuditEvents
+      tags: [audit]
+      x-module: platform
+      x-permission: audit.security.read
+      summary: The security audit log, newest first. Org owners and admins only.
+      description: |
+        Sign-ins, API tokens, data exports, project access changes and support access for the company, each in a
+        hash chain so a later edit or deletion is detectable (security-licensing/07 §4). Passwords, tokens and secrets
+        are never recorded. `action` matches the action or any action under it (`auth` or `auth.login.failed`);
+        `to` is exclusive.
+      parameters:
+        - { name: action, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: actorId, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecurityAuditEventPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/security-audit-alerts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listSecurityAuditAlerts
+      tags: [audit]
+      x-module: platform
+      x-permission: audit.security.read
+      summary: Alerts raised from the security log (support access, broad API tokens, exports, single sign-on changes).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecurityAuditAlertList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/security-audit-integrity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSecurityAuditIntegrity
+      tags: [audit]
+      x-module: platform
+      x-permission: audit.security.read
+      summary: How many events the log holds, the last chain verification, and the last anchor.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecurityAuditIntegrity' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
@@ -23592,6 +23653,70 @@ components:
             kind: { type: string, enum: [user, link, system] }
             id: { type: [string, 'null'] }
             name: { type: [string, 'null'] }
+    SecurityAuditEventPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SecurityAuditEvent' }
+        nextCursor: { type: [string, 'null'] }
+    SecurityAuditEvent:
+      type: object
+      required: [id, seq, at, action, actorType, actorId, targetType, targetId, ip, client, changes]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        at: { type: string, format: date-time }
+        action: { type: string }
+        actorType: { type: string, enum: [user, api_client, system, support, staff, anonymous] }
+        actorId: { type: [string, 'null'] }
+        targetType: { type: [string, 'null'] }
+        targetId: { type: [string, 'null'] }
+        ip: { type: [string, 'null'] }
+        client: { type: [string, 'null'], enum: [web, ios, android, api, null] }
+        changes: { type: object, additionalProperties: true }
+    SecurityAuditAlertList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, rule, severity, summary, eventId, at]
+            properties:
+              id: { type: string, format: uuid }
+              rule: { type: string }
+              severity: { type: string, enum: [info, medium, high] }
+              summary: { type: string }
+              eventId: { type: [string, 'null'], format: uuid }
+              at: { type: string, format: date-time }
+    SecurityAuditIntegrity:
+      type: object
+      required: [eventCount, lastVerification, lastAnchor]
+      properties:
+        eventCount: { type: integer }
+        lastVerification:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [ok, checked, firstBadSeq, problem, at]
+              properties:
+                ok: { type: boolean }
+                checked: { type: integer }
+                firstBadSeq: { type: [integer, 'null'] }
+                problem: { type: [string, 'null'] }
+                at: { type: string, format: date-time }
+        lastAnchor:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [seq, at, writeOnce]
+              properties:
+                seq: { type: integer }
+                at: { type: string, format: date-time }
+                writeOnce: { type: boolean }
     ReportList:
       type: object
       required: [data]

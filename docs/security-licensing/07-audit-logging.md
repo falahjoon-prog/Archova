@@ -90,3 +90,17 @@ Estimate at 100k users: ~50 events/user/working day → ~5M events/day, ~1.2B/ye
 ## 9. Alerts from the security log
 
 Real-time rules (examples): 10+ failed logins on one account; login from a new country for an admin; SSO config changed; bulk export > N files; API token created with admin scopes; support access session started. Alerts go to the org's admins (their settings) and to our security on-call for platform-level patterns.
+
+## 10. Implementation status (`modules/audit`)
+
+Built: the security audit log (§3, §4, §9, and the viewer API in §7).
+
+- **Write path:** `recordSecurityEvent(tx, …)` in `@archova/kernel` calls `audit.append_event()`, a security-definer function that is the only way to add an event. `app_rw` has no insert, update or delete on `audit.security_events`; triggers refuse UPDATE, DELETE and TRUNCATE for every role. The event is written in the caller's transaction, so it exists if and only if the change commits.
+- **Chain:** one chain per org, plus one platform chain (nil org id) for events with no org, such as sign-ins. Each event stores `seq`, `prev_hash` and `hash = SHA-256(prev_hash || canonical JSON)`. The canonical text and the hash are computed in SQL (`audit.canonical`, `audit.link_hash`), so writing and verifying cannot drift.
+- **Anchors:** `audit.anchor` job (hourly, only when the chain moved) writes `{orgId, seq, hash}` to the Object Lock bucket named by `WORKER_AUDIT_ANCHOR_BUCKET` (`WORKER_AUDIT_ANCHOR_STORE=s3`) and records an anchor row. Without a bucket the anchor is recorded in the database only; production must set the bucket.
+- **Verifier:** `audit.verify` job (weekly) re-walks each org's chain: links, hashes, gaps, the head, and every anchor. A break is recorded and raises an `audit.chain_broken` alert.
+- **Events recorded today:** `auth.login.succeeded`, `auth.login.failed` (account named by a hash of the address), `auth.session.revoked`, `api_token.created`, `api_token.revoked`, `project_member.added`, `project_member.removed`, `export.requested`, `export.downloaded`, `support.session.started`.
+- **Alerts (real time, in the write):** ten failed sign-ins on one account in 15 minutes; support session started; SSO settings changed; API token with write scope; full data export requested.
+- **API:** `GET /v1/orgs/{orgId}/security-audit-events` (filters, cursor), `…/security-audit-alerts`, `…/security-audit-integrity`; permission `audit.security.read` (owners and admins).
+
+Not built yet: MFA and SSO events (the code paths do not exist yet), org role and permission-template changes, monthly partitioning and the 7-year purge, Parquet archive, CSV export and SIEM streaming, delivery of alerts to admins and the platform on-call, a web screen, and a read-capable verifier that compares the database against the Object Lock copies (the worker's role can only put). Sign-ins from the platform chain are not yet shown to the org's admins.

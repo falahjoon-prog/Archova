@@ -77,6 +77,7 @@ import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { WORKFLOWS_PERMISSIONS, createWorkflowsModule } from '@archova/mod-workflows';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import { AUDIT_PERMISSIONS, createAuditModule } from '@archova/mod-audit';
 import { SEARCH_PERMISSIONS, createSearchModule } from '@archova/mod-search';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
@@ -106,6 +107,7 @@ export const MODULE_PERMISSIONS = [
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  AUDIT_PERMISSIONS,
   SEARCH_PERMISSIONS,
   EXPORTS_PERMISSIONS,
   WORKFLOWS_PERMISSIONS,
@@ -669,6 +671,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
   prefabApi = prefab.api;
 
+  const audit = createAuditModule(services);
+
   // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
   const reporting = createReportingModule({
     database: services.database as Database,
@@ -790,6 +794,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    audit,
     search,
     exportsModule,
     workflows,
@@ -847,6 +852,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    audit,
     search,
     exportsModule,
     workflows,

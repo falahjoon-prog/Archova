@@ -1475,6 +1475,23 @@ export const ListAuditLogQuery = z.object({
   "limit": z.coerce.number().int().min(1).max(200).default(50),
   "cursor": z.string().max(200).optional(),
 });
+export const ListSecurityAuditEventsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListSecurityAuditEventsQuery = z.object({
+  "action": z.string().max(80).optional(),
+  "actorId": z.string().optional(),
+  "from": z.string().datetime({ offset: true }).optional(),
+  "to": z.string().datetime({ offset: true }).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const ListSecurityAuditAlertsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSecurityAuditIntegrityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -8335,6 +8352,42 @@ export const operations = {
     contentType: null,
     params: ListAuditLogParams,
     query: ListAuditLogQuery,
+    body: null,
+  },
+  listSecurityAuditEvents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/security-audit-events',
+    module: "platform",
+    auth: "required",
+    permission: "audit.security.read",
+    internal: false,
+    contentType: null,
+    params: ListSecurityAuditEventsParams,
+    query: ListSecurityAuditEventsQuery,
+    body: null,
+  },
+  listSecurityAuditAlerts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/security-audit-alerts',
+    module: "platform",
+    auth: "required",
+    permission: "audit.security.read",
+    internal: false,
+    contentType: null,
+    params: ListSecurityAuditAlertsParams,
+    query: null,
+    body: null,
+  },
+  getSecurityAuditIntegrity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/security-audit-integrity',
+    module: "platform",
+    auth: "required",
+    permission: "audit.security.read",
+    internal: false,
+    contentType: null,
+    params: GetSecurityAuditIntegrityParams,
+    query: null,
     body: null,
   },
   listReports: {

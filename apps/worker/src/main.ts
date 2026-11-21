@@ -43,6 +43,7 @@ import { createTwilioSender } from './sms';
 import { plantContractorNotices } from './jobs/plant-contractor-notices';
 import { plantHireCosts } from './jobs/plant-hire-costs';
 import { walletRetention } from './jobs/wallet-retention';
+import { auditAnchor, auditVerify } from './jobs/security-audit';
 import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
 
@@ -134,6 +135,7 @@ async function main() {
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(walletExpiryNotices),
     walletRetention(),
+    auditVerify,
     warrantyExpiry,
     plantHireCosts,
     plantContractorNotices(emailSender, config.sms ? createTwilioSender({ ...config.sms }) : null),
@@ -153,6 +155,23 @@ async function main() {
     jobs.push(webhooks.sweep);
   } else {
     log.warn({}, 'WORKER_WEBHOOK_SECRET_KEY is not set: webhooks are not delivered');
+  }
+  if (config.auditAnchorStore.store === 's3') {
+    if (!config.auditAnchorStore.bucket)
+      throw new Error('WORKER_AUDIT_ANCHOR_STORE=s3 needs WORKER_AUDIT_ANCHOR_BUCKET');
+    jobs.push(
+      auditAnchor(
+        createS3WriteOnceStore({
+          bucket: config.auditAnchorStore.bucket,
+          region: config.auditAnchorStore.region,
+        }),
+      ),
+    );
+  } else {
+    // Anchors still go in the database, so the verifier works; they are not pinned outside it.
+    jobs.push(auditAnchor(null));
+    if (process.env.NODE_ENV === 'production')
+      log.warn({}, 'WORKER_AUDIT_ANCHOR_STORE is not s3: security log anchors are not write-once');
   }
   if (config.evidenceStore.store === 's3') {
     if (!config.evidenceStore.bucket)

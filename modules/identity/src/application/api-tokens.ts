@@ -1,7 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import { and, desc, eq, gt, isNull, lt, or } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type Database, type Principal, type TenantContext } from '@archova/kernel';
+import {
+  AppError,
+  recordSecurityEvent,
+  type Database,
+  type Principal,
+  type TenantContext,
+} from '@archova/kernel';
 import {
   DEFAULT_TOKEN_LIFETIME_DAYS,
   MAX_TOKEN_LIFETIME_DAYS,
@@ -97,6 +103,21 @@ export function createApiTokenService(database: Database, now: () => Date = () =
         ip,
         createdAt: at,
       });
+      await recordSecurityEvent(tx, {
+        orgId,
+        action: 'api_token.created',
+        actorType: 'user',
+        actorId: userId,
+        targetType: 'api_token',
+        targetId: r!.id,
+        ip,
+        requestId: tenant.requestId,
+        metadata: {
+          scopes,
+          expiresInDays: days,
+          hasWriteScope: scopes.some((s) => s.endsWith(':write') || s.endsWith('.write')),
+        },
+      });
       return r!;
     });
     return { row, secret };
@@ -140,6 +161,17 @@ export function createApiTokenService(database: Database, now: () => Date = () =
           userId,
           ip,
           createdAt: now(),
+        });
+      if (done.length)
+        await recordSecurityEvent(tx, {
+          orgId,
+          action: 'api_token.revoked',
+          actorType: 'user',
+          actorId: userId,
+          targetType: 'api_token',
+          targetId: tokenId,
+          ip,
+          requestId: tenant.requestId,
         });
       return done;
     });

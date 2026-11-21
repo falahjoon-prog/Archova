@@ -18,3 +18,4 @@ export * from './flags';
 export * from './email';
 export * from './search';
 export * from './links';
+export * from './security-audit';
