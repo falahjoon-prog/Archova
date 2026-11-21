@@ -1,4 +1,4 @@
--- Composed from modules/documents/db/migrations/20261121130000_documents_review_matrix_itp.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/documents/db/migrations/20261121131500_documents_review_matrix_itp.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- documents: review matrix (who reviews/approves a document, in what order), threaded comments with a
 -- resolution status, and ITP (inspection and test plan) packages tied to a document.
 
