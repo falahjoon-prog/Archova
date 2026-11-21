@@ -18,6 +18,7 @@ const toSignal = (s: ApiSignal): HazardSignal => ({
   status: s.status,
   reviewNote: s.reviewNote,
   reviewedAt: s.reviewedAt,
+  observationId: s.observationId,
   createdAt: s.createdAt,
 });
 
@@ -58,7 +59,11 @@ export function createHazardSignalsApi(orgId: string): HazardSignalSource {
             '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review',
             {
               params: { path: { orgId, projectId, signalId: id } },
-              body: { decision: input.decision, ...(input.note ? { note: input.note } : {}) },
+              body: {
+                decision: input.decision,
+                ...(input.note ? { note: input.note } : {}),
+                ...(input.raiseObservation ? { raiseObservation: true } : {}),
+              },
             },
           ),
         ),

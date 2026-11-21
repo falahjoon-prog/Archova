@@ -3464,7 +3464,9 @@ export interface paths {
          * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
          *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
          *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
-         *     the manager reports one from the incidents screen if it warrants it.
+         *     the manager reports one from the incidents screen if it warrants it. With `raiseObservation` a confirmed
+         *     signal also becomes a safety observation (photo attached, priority from Nova's confidence) in the same
+         *     step, and the signal keeps its `observationId`; the caller needs `quality.observations.create`.
          */
         post: operations["reviewHazardSignal"];
         delete?: never;
@@ -19678,6 +19680,8 @@ export interface components {
             reviewNote: string | null;
             /** Format: date-time */
             reviewedAt: string | null;
+            /** @description The safety observation raised when this signal was confirmed (obs_), if any */
+            observationId: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -34683,6 +34687,8 @@ export interface operations {
                     /** @enum {string} */
                     decision: "confirmed" | "dismissed";
                     note?: string;
+                    /** @description Only with confirmed: also raise a safety observation from the signal. */
+                    raiseObservation?: boolean;
                 };
             };
         };

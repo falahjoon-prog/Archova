@@ -5,6 +5,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   DataTable,
   Dialog,
   EmptyState,
@@ -191,6 +192,7 @@ function ReviewPanel() {
     decision: 'confirmed' | 'dismissed';
   } | null>(null);
   const [note, setNote] = useState('');
+  const [raise, setRaise] = useState(true);
 
   const columns: DataTableColumn<HazardSignal>[] = [
     {
@@ -237,7 +239,10 @@ function ReviewPanel() {
             </Button>
           </span>
         ) : (
-          (s.reviewNote ?? '—')
+          <span className="stack">
+            <span>{s.reviewNote ?? '—'}</span>
+            {s.observationId ? <StatusPill tone="info">Observation raised</StatusPill> : null}
+          </span>
         ),
     },
   ];
@@ -245,6 +250,7 @@ function ReviewPanel() {
   const close = () => {
     setDeciding(null);
     setNote('');
+    setRaise(true);
   };
 
   return (
@@ -303,6 +309,9 @@ function ReviewPanel() {
                     id: deciding.signal.id,
                     decision: deciding.decision,
                     ...(note.trim() ? { note: note.trim() } : {}),
+                    ...(deciding.decision === 'confirmed' && raise
+                      ? { raiseObservation: true }
+                      : {}),
                   },
                   { onSuccess: close },
                 )
@@ -321,6 +330,14 @@ function ReviewPanel() {
           rows={3}
           onChange={(e) => setNote(e.target.value)}
         />
+        {deciding?.decision === 'confirmed' ? (
+          <Checkbox
+            label="Raise a safety observation"
+            hint="Adds this photo and what it shows to Observations so someone can follow it up."
+            checked={raise}
+            onChange={(e) => setRaise(e.target.checked)}
+          />
+        ) : null}
       </Dialog>
     </div>
   );

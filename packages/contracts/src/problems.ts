@@ -188,6 +188,7 @@ export const PROBLEM_CODES = {
   'ai.suggestion.not_found': 404,
   'ai.hazard_signal.not_found': 404,
   'ai.hazard_signal.already_reviewed': 409,
+  'ai.hazard_signal.observation_unavailable': 422,
   // rfis
   'rfi.not_found': 404,
   'rfi.invalid_transition': 409,

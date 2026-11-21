@@ -4480,7 +4480,9 @@ paths:
         A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
         project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
         is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
-        the manager reports one from the incidents screen if it warrants it.
+        the manager reports one from the incidents screen if it warrants it. With `raiseObservation` a confirmed
+        signal also becomes a safety observation (photo attached, priority from Nova's confidence) in the same
+        step, and the signal keeps its `observationId`; the caller needs `quality.observations.create`.
       requestBody:
         required: true
         content:
@@ -4492,6 +4494,9 @@ paths:
               properties:
                 decision: { type: string, enum: [confirmed, dismissed] }
                 note: { type: string, maxLength: 1000 }
+                raiseObservation:
+                  type: boolean
+                  description: 'Only with confirmed: also raise a safety observation from the signal.'
       responses:
         '200':
           description: The decided signal
@@ -28171,6 +28176,7 @@ components:
           status,
           reviewNote,
           reviewedAt,
+          observationId,
           createdAt,
         ]
       properties:
@@ -28188,6 +28194,9 @@ components:
         status: { $ref: '#/components/schemas/HazardSignalStatus' }
         reviewNote: { type: [string, 'null'] }
         reviewedAt: { type: [string, 'null'], format: date-time }
+        observationId:
+          type: [string, 'null']
+          description: 'The safety observation raised when this signal was confirmed (obs_), if any'
         createdAt: { type: string, format: date-time }
     NovaHazardScan:
       type: object

@@ -33,6 +33,17 @@ export interface HazardScanDeps {
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
   /** Files a confirmed hazard's photo under the Photos tool's Safety risk album. */
   fileSafetyRisk?: (scope: TenantScope, projectId: string, fileId: string) => Promise<unknown>;
+  /** Raises a safety observation in `quality` (its own create rules apply). */
+  raiseObservation?: (
+    scope: TenantScope,
+    projectId: string,
+    input: {
+      description: string;
+      hazard: string;
+      priority: 'low' | 'medium' | 'high';
+      fileIds: string[];
+    },
+  ) => Promise<{ id: string; number: number }>;
   now?: () => Date;
 }
 
@@ -46,6 +57,8 @@ export interface HazardSignalView {
   status: HazardSignalStatus;
   reviewNote: string | null;
   reviewedAt: Date | null;
+  /** The observation raised from this signal when it was confirmed. */
+  observationId: string | null;
   createdAt: Date;
 }
 
@@ -69,6 +82,7 @@ const view = (r: typeof hazardSignals.$inferSelect): HazardSignalView => ({
   status: r.status,
   reviewNote: r.reviewNote,
   reviewedAt: r.reviewedAt,
+  observationId: r.observationId,
   createdAt: r.createdAt,
 });
 
@@ -179,7 +193,7 @@ export function createHazardScanService(deps: HazardScanDeps) {
     scope: TenantScope,
     projectId: string,
     signalId: string,
-    input: { decision: 'confirmed' | 'dismissed'; note?: string },
+    input: { decision: 'confirmed' | 'dismissed'; note?: string; raiseObservation?: boolean },
   ): Promise<HazardSignalView> {
     await deps.assert(scope, 'ai.safety.review', { projectId });
     const [row] = await scope.tx
@@ -189,9 +203,24 @@ export function createHazardScanService(deps: HazardScanDeps) {
       .for('update');
     if (!row) throw new AppError('ai.hazard_signal.not_found');
     if (row.status !== 'open') throw new AppError('ai.hazard_signal.already_reviewed');
+    const raise = input.decision === 'confirmed' && input.raiseObservation === true;
+    if (raise && !deps.raiseObservation)
+      throw new AppError('ai.hazard_signal.observation_unavailable');
+    if (raise) await deps.assert(scope, 'quality.observations.create', { projectId });
+    // The observation is the manager's decision made into follow-up work: it states what the photo shows, with
+    // the photo attached. Higher confidence starts at higher priority; the manager can change it in Observations.
+    const observation = raise
+      ? await deps.raiseObservation!(scope, projectId, {
+          description: `${row.observation}${input.note?.trim() ? `\n\nSafety manager's note: ${input.note.trim()}` : ''}\n\nFlagged by Nova from a site photo and confirmed by a person.`,
+          hazard: labelOfHazard(row.category),
+          priority: row.confidence === 'high' ? 'high' : 'medium',
+          fileIds: [row.fileId],
+        })
+      : null;
     const [updated] = await scope.tx
       .update(hazardSignals)
       .set({
+        observationId: observation?.id ?? null,
         status: input.decision,
         reviewNote: input.note?.trim() || null,
         reviewedBy: scope.ctx.userId,
@@ -212,6 +241,7 @@ export function createHazardScanService(deps: HazardScanDeps) {
         decision: input.decision,
         category: row.category,
         fileId: row.fileId,
+        observationId: observation?.id ?? null,
         actorId: scope.ctx.userId,
       },
     });

@@ -284,6 +284,8 @@ export const hazardSignals = ai.table('ai_hazard_signals', {
   reviewNote: text('review_note'),
   reviewedBy: uuid('reviewed_by'),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  /** The safety observation raised when the signal was confirmed (`quality`), if the manager chose to. */
+  observationId: uuid('observation_id'),
   ...audit,
 });
 
