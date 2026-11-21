@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { webRoutes } from '@archova/routes';
 import {
@@ -34,7 +35,13 @@ import {
   type CrewMember,
   type Hazard,
 } from '../lib/types';
-import { AddCrewDialog, EditHazardsDialog, ReviewDialog, SignDialog } from './dialogs';
+import {
+  AddCrewDialog,
+  EditHazardsDialog,
+  ReviewDialog,
+  SaveTemplateDialog,
+  SignDialog,
+} from './dialogs';
 import { RowMenu } from './RowMenu';
 
 export function PretaskDetailView({ id }: { id: string }) {
@@ -46,6 +53,8 @@ export function PretaskDetailView({ id }: { id: string }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const router = useRouter();
   const [signing, setSigning] = useState<CrewMember | null>(null);
   usePublishAssistantScope({ projectId: project.projectId, record: { type: 'pretask', id } });
   const d = q.data;
@@ -200,6 +209,23 @@ export function PretaskDetailView({ id }: { id: string }) {
             {!isOpen && d.canReview && !p.reviewedAt ? (
               <Button onClick={() => setReviewing(true)}>Review</Button>
             ) : null}
+            <Button
+              variant="secondary"
+              disabled={m.copyPlan.isPending}
+              onClick={() =>
+                m.copyPlan.mutate(d, {
+                  onSuccess: (n) =>
+                    router.push(webRoutes.pretaskPlans(org.orgSlug, project.projectId, n.plan.id)),
+                })
+              }
+            >
+              Copy to today
+            </Button>
+            {d.canReview ? (
+              <Button variant="secondary" onClick={() => setSavingTemplate(true)}>
+                Save as template
+              </Button>
+            ) : null}
             {!isOpen && d.canReview ? (
               <Button
                 variant="secondary"
@@ -213,6 +239,26 @@ export function PretaskDetailView({ id }: { id: string }) {
         }
       />
       <ErrorAlert error={m.transition.error} title="We couldn't change the plan" />
+      <ErrorAlert error={m.copyPlan.error} title="We couldn't copy the plan" />
+      {savingTemplate ? (
+        <SaveTemplateDialog
+          defaultName={p.taskTitle}
+          pending={m.createTemplate.isPending}
+          error={m.createTemplate.error}
+          onClose={() => setSavingTemplate(false)}
+          onSave={(name) =>
+            m.createTemplate.mutate(
+              {
+                name,
+                taskTitle: p.taskTitle,
+                hazards: p.hazards,
+                ...(p.swmsId ? { swmsId: p.swmsId } : {}),
+              },
+              { onSuccess: () => setSavingTemplate(false) },
+            )
+          }
+        />
+      ) : null}
       {isOpen && d.closeBlockers.length ? (
         <Alert tone="info" title="Before this plan can close">
           {d.closeBlockers[0]}

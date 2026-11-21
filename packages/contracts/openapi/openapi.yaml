@@ -15544,6 +15544,120 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPretaskTemplates
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.read
+      summary: Reusable plan templates on the project. Retired ones only with includeInactive.
+      parameters:
+        - { name: includeInactive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPretaskTemplate
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: Save the hazards and controls a kind of task usually has, so a plan can start from them. Needs the review permission.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePretaskTemplateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskTemplateId'
+    patch:
+      operationId: updatePretaskTemplate
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: Retire or restore a template.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePretaskTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/insights:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getPretaskInsights
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.review
+      summary: What keeps coming up on pre-task plans in the last days (30 by default), the most common hazards and how many started high risk, and plans by company. Counts only, and nothing is inferred about a person.
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskInsights' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/pretask-plans/{planId}/copy:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PretaskPlanId'
+    post:
+      operationId: copyPretaskPlan
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.pretask.run
+      summary: Start a new open plan from an earlier one with the same task, hazards, SWMS and people, and nobody signed. Today's date unless workDate is given.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyPretaskPlanRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PretaskPlanDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20950,6 +21064,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^ptk_[0-9A-Za-z]{26}$' }
+    PretaskTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ptt_[0-9A-Za-z]{26}$' }
     PretaskCrewId:
       name: crewId
       in: path
@@ -40732,6 +40851,84 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PretaskSuggestion' }
+    PretaskTemplate:
+      type: object
+      required: [id, name, taskTitle, swmsId, hazards, isActive, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        taskTitle: { type: string }
+        swmsId: { type: [string, 'null'] }
+        hazards:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+        isActive: { type: boolean }
+        version: { type: integer }
+    PretaskTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskTemplate' }
+    CreatePretaskTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, taskTitle, hazards]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        taskTitle: { type: string, minLength: 1, maxLength: 200 }
+        swmsId: { type: [string, 'null'] }
+        hazards:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/PretaskHazard' }
+    UpdatePretaskTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [isActive]
+      properties:
+        isActive: { type: boolean }
+    CopyPretaskPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        workDate: { type: string, format: date }
+    PretaskInsightHazard:
+      type: object
+      required: [hazard, plans, highRiskPlans, lastSeen, companyIds]
+      properties:
+        hazard: { type: string }
+        plans: { type: integer }
+        highRiskPlans:
+          { type: integer, description: Plans where this hazard started at high or extreme risk. }
+        lastSeen: { type: string, format: date }
+        companyIds:
+          type: array
+          items: { type: string }
+    PretaskInsightCompany:
+      type: object
+      required: [companyId, plans, closed, highRiskHazards]
+      properties:
+        companyId: { type: [string, 'null'] }
+        plans: { type: integer }
+        closed: { type: integer }
+        highRiskHazards: { type: integer }
+    PretaskInsights:
+      type: object
+      required: [days, plans, closed, reviewed, toReview, topHazards, byCompany]
+      properties:
+        days: { type: integer }
+        plans: { type: integer }
+        closed: { type: integer }
+        reviewed: { type: integer }
+        toReview: { type: integer }
+        topHazards:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskInsightHazard' }
+        byCompany:
+          type: array
+          items: { $ref: '#/components/schemas/PretaskInsightCompany' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

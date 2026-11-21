@@ -7,9 +7,12 @@ import type {
   Hazard,
   Plan,
   PlanDetail,
+  Insights,
   PlanInput,
   Suggestion,
   SwmsOption,
+  Template,
+  TemplateInput,
 } from '../lib/types';
 
 export interface PretaskSource {
@@ -30,12 +33,20 @@ export interface PretaskSource {
   sign(projectId: string, d: PlanDetail, crewId: string, image: Blob): Promise<PlanDetail>;
   clearSignature(projectId: string, d: PlanDetail, crewId: string): Promise<PlanDetail>;
   suggestions(projectId: string, opts: { planId?: string; swmsId?: string }): Promise<Suggestion[]>;
+  /** A new open plan from an earlier one: same task, hazards and people, nobody signed. */
+  copyPlan(projectId: string, d: PlanDetail): Promise<PlanDetail>;
+  listTemplates(projectId: string): Promise<Template[]>;
+  createTemplate(projectId: string, input: TemplateInput): Promise<Template>;
+  setTemplateActive(projectId: string, t: Template, isActive: boolean): Promise<Template>;
+  /** Null when the caller may not see insights (not a supervisor). */
+  insights(projectId: string): Promise<Insights | null>;
   /** SWMS on the project a plan can link to. */
   listSwms(projectId: string): Promise<SwmsOption[]>;
 }
 
 interface Store {
   plans: PlanDetail[];
+  templates: Template[];
   next: number;
 }
 
@@ -67,6 +78,24 @@ export function closeBlockers(hazards: Hazard[], crew: CrewMember[]): string[] {
 
 const seed = (): Store => ({
   next: 2,
+  templates: [
+    {
+      id: 'ptt_0001',
+      name: 'Edge protection install',
+      taskTitle: 'Install edge protection',
+      swmsId: null,
+      hazards: [
+        {
+          hazard: 'Falls from the slab edge',
+          riskBefore: 'high',
+          controls: 'Edge protection checked before starting',
+          riskAfter: 'low',
+        },
+      ],
+      isActive: true,
+      version: 1,
+    },
+  ],
   plans: [
     {
       plan: {
@@ -288,6 +317,72 @@ export const pretaskPreview: PretaskSource = {
     c.signatureFileId = null;
     c.inductionStatus = null;
     return delay(settle(s, cur, { action: 'signature_cleared', note: c.personName }));
+  },
+  async copyPlan(projectId, d) {
+    return pretaskPreview.createPlan(projectId, {
+      taskTitle: d.plan.taskTitle,
+      workDate: nowIso().slice(0, 10),
+      supervisorName: d.plan.supervisorName,
+      ...(d.plan.location ? { location: d.plan.location } : {}),
+      ...(d.plan.companyId ? { companyId: d.plan.companyId } : {}),
+      ...(d.plan.swmsId ? { swmsId: d.plan.swmsId } : {}),
+      hazards: d.plan.hazards,
+      crew: d.crew.map((c) => ({
+        personName: c.personName,
+        ...(c.companyId ? { companyId: c.companyId } : {}),
+      })),
+    });
+  },
+  async listTemplates(projectId) {
+    return delay(stores.get(projectId).templates);
+  },
+  async createTemplate(projectId, input) {
+    const t: Template = {
+      id: mockId('ptt'),
+      name: input.name,
+      taskTitle: input.taskTitle,
+      swmsId: input.swmsId ?? null,
+      hazards: input.hazards,
+      isActive: true,
+      version: 1,
+    };
+    stores.get(projectId).templates.push(t);
+    return delay(t);
+  },
+  async setTemplateActive(projectId, t, isActive) {
+    const cur = stores.get(projectId).templates.find((x) => x.id === t.id);
+    if (!cur) problem(404, 'pretask.template_not_found', 'Template not found.');
+    cur.isActive = isActive;
+    cur.version += 1;
+    return delay(cur);
+  },
+  async insights(projectId) {
+    const plans = stores.get(projectId).plans;
+    const by = new Map<string, { hazard: string; plans: number; high: number }>();
+    for (const p of plans)
+      for (const h of p.plan.hazards) {
+        const e = by.get(h.hazard.toLowerCase()) ?? { hazard: h.hazard, plans: 0, high: 0 };
+        e.plans += 1;
+        if (h.riskBefore === 'high' || h.riskBefore === 'extreme') e.high += 1;
+        by.set(h.hazard.toLowerCase(), e);
+      }
+    return delay({
+      days: 30,
+      plans: plans.length,
+      closed: plans.filter((p) => p.plan.status === 'closed').length,
+      reviewed: plans.filter((p) => p.plan.reviewedAt).length,
+      toReview: plans.filter((p) => p.plan.status === 'closed' && !p.plan.reviewedAt).length,
+      topHazards: [...by.values()]
+        .sort((a, b) => b.plans - a.plans)
+        .map((e) => ({
+          hazard: e.hazard,
+          plans: e.plans,
+          highRiskPlans: e.high,
+          lastSeen: nowIso().slice(0, 10),
+          companyIds: [],
+        })),
+      byCompany: [{ companyId: null, plans: plans.length, closed: 0, highRiskHazards: 0 }],
+    });
   },
   async listSwms() {
     return delay([

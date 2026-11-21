@@ -274,3 +274,19 @@ export const pretaskEvents = safetySchema.table('pretask_events', {
   actorId: uuid('actor_id'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const pretaskTemplates = safetySchema.table('pretask_templates', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  taskTitle: text('task_title').notNull(),
+  swmsId: uuid('swms_id'),
+  hazards: jsonb('hazards').$type<PretaskHazard[]>().notNull().default([]),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+});

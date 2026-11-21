@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, nav, renderInProject } from '@/test/render';
@@ -85,5 +85,30 @@ describe('PretaskScreen', () => {
     expect(
       (within(dialog).getByRole('button', { name: 'Sign on' }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  it('starts a plan from a template and shows the insights tab', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PretaskScreen />);
+    await screen.findByRole('table', { name: 'Pre-task plans' });
+    await user.click(screen.getByRole('button', { name: /New plan/ }));
+    const dialog = screen.getByRole('dialog');
+    const picker = await within(dialog).findByLabelText('Start from a template');
+    await user.selectOptions(picker, 'ptt_0001');
+    const task = within(dialog).getByLabelText('Task') as HTMLInputElement;
+    await waitFor(() => expect(task.value).not.toBe(''));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    cleanup();
+    nav.search = 'view=insights';
+    renderInProject(<PretaskScreen />);
+    expect(await screen.findByRole('table', { name: 'Hazards that keep coming up' })).toBeTruthy();
+  });
+
+  it('copies a plan from its detail view', async () => {
+    const user = userEvent.setup();
+    nav.search = 'id=ptk_0001';
+    renderInProject(<PretaskScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Copy to today' }));
+    await waitFor(async () => expect((await pretaskPreview.listPlans('prj_test')).length).toBe(2));
   });
 });
