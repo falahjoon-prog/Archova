@@ -38,7 +38,7 @@ ISO/IEC 27001:2022 Annex A, 93 controls. Owner: Sam. Approval: John ______ date 
 | 5.28 | Collection of evidence | Y | Partial | Append-only support tables; Object Lock `claims-evidence` bucket (PR #375) | Security log missing (R-04) |
 | 5.29 | Security during disruption | Y | Designed | infra/06, `runbooks/linode-restore.md` | Never tested (R-15) |
 | 5.30 | ICT readiness for continuity | Y | Designed | Melbourne copies, restore runbook | R-15, R-16 |
-| 5.31 | Legal, statutory, regulatory requirements | Y | Partial | docs/compliance (SOPA, WHS, privacy), doc 08 | Lawyer review pending (Grace D1) |
+| 5.31 | Legal, statutory, regulatory requirements | Y | Partial | docs/compliance (SOPA, WHS, privacy), doc 08 | Pending lawyer engagement (John) |
 | 5.32 | Intellectual property rights | Y | Partial | Licensed deps tracked by pnpm | No licence-scan in CI (confirm) |
 | 5.33 | Protection of records | Y | Partial | Retention docs 07 §6; Object Lock evidence bucket | Deletion jobs not evidenced (R-18) |
 | 5.34 | Privacy and PII protection | Y | Partial | doc 08 APP mapping; docs/compliance/06 | Privacy policy unpublished (R-18, R-19) |
