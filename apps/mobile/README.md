@@ -118,3 +118,5 @@ The app needs SQLCipher and native speech modules, so it does **not** run in Exp
 
 The app id is `com.archova.app.preview`, so it installs beside any other build. iPhone builds need an Apple Developer
 account and a registered device (`eas device:create`), then `--platform ios`.
+
+No Expo or GitHub account? With JDK 17 and the Android SDK installed, `tools/mobile/build-apk-local.sh` (from the repo root) builds the same APK on your own machine.
