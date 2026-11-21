@@ -262,6 +262,8 @@ export const inductionCompletions = workforceSchema.table('induction_completions
   language: text('language').notNull().default('en'),
   translationHash: text('translation_hash'),
   evidenceHash: text('evidence_hash'),
+  /** 2 and up: a redo of the same version after the earlier signed completion expired. */
+  cycle: integer('cycle').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   version: integer('version').notNull().default(1),

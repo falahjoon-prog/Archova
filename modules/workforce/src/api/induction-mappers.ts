@@ -196,6 +196,8 @@ export function toRegisterDto(
     data: r.entries.map((e) => ({
       worker: toWorkerDto(e.worker, viewer),
       status: e.status,
+      daysToExpiry: e.daysToExpiry,
+      expiringSoon: e.expiringSoon,
       completion: e.completion
         ? {
             id: encodeId('inductionCompletion', e.completion.id),

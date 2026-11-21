@@ -15,7 +15,8 @@ export type NotificationEntity =
   | 'cover'
   | 'warranty_item'
   | 'declaration'
-  | 'defect';
+  | 'defect'
+  | 'induction';
 
 export const notifications = notificationsSchema.table('notifications', {
   id: uuid('id').primaryKey(),

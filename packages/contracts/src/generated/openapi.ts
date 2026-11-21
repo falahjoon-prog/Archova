@@ -18516,7 +18516,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item" | "declaration";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document" | "conversation" | "announcement" | "defect" | "permit" | "cover" | "warranty_item" | "declaration" | "induction";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -25980,6 +25980,10 @@ export interface components {
             worker: components["schemas"]["Worker"];
             /** @enum {string} */
             status: "current" | "needs_reinduction" | "expired" | "in_progress" | "not_inducted";
+            /** @description Whole days until the signed induction runs out (negative once it has). Null when there is no signed induction or it never expires. */
+            daysToExpiry: number | null;
+            /** @description A current induction that runs out within 30 days, so it can be redone before it blocks sign-in. */
+            expiringSoon: boolean;
             completion: {
                 id: string;
                 versionNumber: number;

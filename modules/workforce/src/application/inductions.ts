@@ -14,6 +14,8 @@ import {
   addMonths,
   canonicalJson,
   completionStatus,
+  daysToExpiry,
+  isExpiringSoon,
   contentHash,
   contentProblems,
   normaliseContent,
@@ -151,6 +153,37 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
   }
 
   // ------------------------------------------------------------------------------------------- builder
+
+  /**
+   * The worker's open or signed completion of this version, or the cycle number for a fresh one. A signed completion
+   * that has expired on the version still in force is redone as the next cycle (the signed record stays sealed).
+   */
+  async function latestOnVersion(
+    scope: TenantScope,
+    projectId: string,
+    versionId: string,
+    workerId: string,
+  ): Promise<{ existing: CompletionRow | null; cycle: number }> {
+    const [last] = await scope.tx
+      .select()
+      .from(inductionCompletions)
+      .where(
+        and(
+          eq(inductionCompletions.versionId, versionId),
+          eq(inductionCompletions.workerId, workerId),
+        ),
+      )
+      .orderBy(desc(inductionCompletions.cycle))
+      .limit(1);
+    if (!last) return { existing: null, cycle: 1 };
+    if (
+      last.status === 'completed' &&
+      last.expiresOn &&
+      last.expiresOn < (await today(scope, projectId))
+    )
+      return { existing: null, cycle: last.cycle + 1 };
+    return { existing: last, cycle: last.cycle };
+  }
 
   async function getRow(scope: TenantScope, projectId: string, inductionId: string) {
     const [row] = await scope.tx
@@ -598,16 +631,12 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     const induction = await activeInduction(scope, projectId, input.siteId ?? null);
     if (!induction?.currentVersionId)
       throw new AppError('induction.not_published', 'This site has no induction to take yet.');
-    const [existing] = await scope.tx
-      .select()
-      .from(inductionCompletions)
-      .where(
-        and(
-          eq(inductionCompletions.versionId, induction.currentVersionId),
-          eq(inductionCompletions.workerId, worker.id),
-        ),
-      )
-      .limit(1);
+    const { existing, cycle } = await latestOnVersion(
+      scope,
+      projectId,
+      induction.currentVersionId,
+      worker.id,
+    );
     if (existing) return view(scope, existing, viewer);
     const [row] = await scope.tx
       .insert(inductionCompletions)
@@ -618,6 +647,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
         inductionId: induction.id,
         versionId: induction.currentVersionId,
         workerId: worker.id,
+        cycle,
         method: input.workerId ? 'assisted' : 'self',
         assistedBy: input.workerId ? scope.ctx.userId : null,
         startedAt: now(),
@@ -640,16 +670,12 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     const row = await getRow(scope, projectId, inductionId);
     if (row.status === 'archived' || !row.currentVersionId)
       throw new AppError('induction.not_published', 'This site has no induction to take yet.');
-    const [existing] = await scope.tx
-      .select()
-      .from(inductionCompletions)
-      .where(
-        and(
-          eq(inductionCompletions.versionId, row.currentVersionId),
-          eq(inductionCompletions.workerId, workerId),
-        ),
-      )
-      .limit(1);
+    const { existing, cycle } = await latestOnVersion(
+      scope,
+      projectId,
+      row.currentVersionId,
+      workerId,
+    );
     if (existing) return existing;
     const [created] = await scope.tx
       .insert(inductionCompletions)
@@ -660,6 +686,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
         inductionId,
         versionId: row.currentVersionId,
         workerId,
+        cycle,
         method: 'link',
         accessLinkId: link.linkId,
         verifiedChannel: link.channel,
@@ -1111,7 +1138,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       );
     // A signed completion beats one in progress; then the newest version.
     const rank = (r: { c: CompletionRow; number: number }) =>
-      (r.c.status === 'completed' ? 1_000_000 : 0) + r.number;
+      (r.c.status === 'completed' ? 1_000_000 : 0) + r.number * 100 + r.c.cycle;
     const out = new Map<string, CompletionRow & { versionNumber: number }>();
     for (const r of rows) {
       const prev = out.get(r.c.workerId);
@@ -1252,17 +1279,58 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       viewer,
       entries: rows.map((worker) => {
         const c = best.get(worker.id) ?? null;
+        const status = completionStatus(c, required?.number ?? null, day);
         return {
           worker,
           completion: c,
-          status: completionStatus(c, required?.number ?? null, day),
+          status,
+          daysToExpiry: c?.status === 'completed' ? daysToExpiry(c.expiresOn, day) : null,
+          expiringSoon: c ? isExpiringSoon(status, c.expiresOn, day) : false,
           credentials: creds.filter((x) => x.workerId === worker.id),
         };
       }),
     };
   }
 
+  /**
+   * For Nova (ai/07): workers on the project whose site induction has lapsed, is out of date, or runs out within 30
+   * days, soonest first, so a supervisor can fix it before rostering them. Site managers only.
+   */
+  async function expiringForNova(
+    scope: TenantScope,
+    projectId: string,
+    o: { limit: number },
+  ): Promise<{
+    rows: Array<{ id: string; ref: string; title: string; detail: string }>;
+    truncated: boolean;
+    restricted: boolean;
+  }> {
+    const viewer = await attendance.viewer(scope, projectId);
+    if (!viewer.canManage) return { rows: [], truncated: false, restricted: true };
+    const r = await register(scope, projectId);
+    const flagged = r.entries
+      .filter((e) => e.expiringSoon || e.status === 'expired' || e.status === 'needs_reinduction')
+      .sort((a, b) => (a.daysToExpiry ?? -9999) - (b.daysToExpiry ?? -9999));
+    const detail = (e: (typeof flagged)[number]) =>
+      e.status === 'needs_reinduction'
+        ? 'induction out of date, needs a redo'
+        : e.status === 'expired'
+          ? `induction expired ${e.completion?.expiresOn ?? ''}`
+          : `induction expires in ${e.daysToExpiry} days (${e.completion?.expiresOn ?? ''})`;
+    return {
+      rows: flagged.slice(0, o.limit).map((e) => ({
+        id: e.worker.id,
+        ref: 'Worker',
+        title: e.worker.fullName,
+        detail: detail(e),
+      })),
+      truncated: flagged.length > o.limit,
+      restricted: false,
+    };
+  }
+
   return {
+    expiringForNova,
     list,
     get,
     create,

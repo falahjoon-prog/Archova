@@ -7007,6 +7007,8 @@ export type InductionQuizResult = z.infer<typeof InductionQuizResultSchema>;
 export const InductionRegisterEntrySchema = z.object({
   "worker": WorkerSchema,
   "status": z.enum(["current", "needs_reinduction", "expired", "in_progress", "not_inducted"]),
+  "daysToExpiry": z.number().int().nullable(),
+  "expiringSoon": z.boolean(),
   "completion": z.union([z.object({
   "id": z.string(),
   "versionNumber": z.number().int(),
@@ -7942,7 +7944,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "announcement", "defect", "permit", "cover", "warranty_item", "declaration"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document", "conversation", "announcement", "defect", "permit", "cover", "warranty_item", "declaration", "induction"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
