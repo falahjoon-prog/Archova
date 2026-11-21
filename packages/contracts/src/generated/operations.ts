@@ -1449,6 +1449,22 @@ export const GetReadinessPackParams = z.object({
 export const GetReadinessPackPdfParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetSafetyEvidencePackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
+export const GetSafetyEvidencePackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetSafetyEvidencePackPdfQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
 export const ListDashboardSnapshotsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -8276,6 +8292,30 @@ export const operations = {
     contentType: null,
     params: GetReadinessPackPdfParams,
     query: null,
+    body: null,
+  },
+  getSafetyEvidencePack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackParams,
+    query: GetSafetyEvidencePackQuery,
+    body: null,
+  },
+  getSafetyEvidencePackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.evidence_pack.export",
+    internal: false,
+    contentType: null,
+    params: GetSafetyEvidencePackPdfParams,
+    query: GetSafetyEvidencePackPdfQuery,
     body: null,
   },
   listDashboardSnapshots: {

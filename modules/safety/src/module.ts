@@ -6,6 +6,7 @@ import { createAnalyticsSource } from './application/analytics';
 import { createClearanceService } from './application/clearance';
 import { createToolboxService } from './application/toolbox';
 import { createPretaskService } from './application/pretask';
+import { createEvidenceSource } from './application/evidence';
 import { createReadinessService } from './application/readiness';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -22,6 +23,7 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const clearance = createClearanceService(deps);
   const reportingSources = createReportingSources(deps);
   const analytics = createAnalyticsSource(deps);
+  const evidence = createEvidenceSource(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
     routes: safetyRoutes(services.database, swms, incidents, toolbox, pretask),
@@ -36,6 +38,8 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
       readinessSummary: readiness.summary,
       /** Portfolio dashboard and report builder (`reporting`): incident counts and rows. */
       reporting: reportingSources,
+      /** Regulator evidence pack (`reporting`): incidents, actions, pre-task plans and toolbox talks in a date range. */
+      evidenceRecords: evidence.evidenceRecords,
       /** Incident analytics (`reporting`): injured people on a project; needs view_medical. */
       injuryRows: analytics.injuryRows,
       /** "Stop work: SWMS not followed" (r300). Called by `quality` only, from an observation. */

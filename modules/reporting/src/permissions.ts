@@ -47,6 +47,9 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'reporting.risks.read', scope: 'project', tool: 'coordination', level: 'read' },
   { key: 'reporting.risks.write', scope: 'project', tool: 'coordination', level: 'standard' },
   { key: 'reporting.risks.manage', scope: 'project', tool: 'coordination', level: 'admin' },
+  // The regulator evidence pack of one project: safety managers only (the safety tools' admin level). Each section
+  // inside it is still narrowed by that tool's own read permission.
+  { key: 'reporting.evidence_pack.export', scope: 'project', tool: 'inspections', level: 'admin' },
   // No orgRoles: org owners and admins only (they hold every org permission). The log names who did what.
   { key: 'reporting.audit.read', scope: 'org', tool: null, level: 'admin' },
 ];

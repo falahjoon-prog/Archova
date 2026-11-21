@@ -6219,6 +6219,50 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: from, in: query, required: true, schema: { type: string, format: date } }
+      - { name: to, in: query, required: true, schema: { type: string, format: date } }
+    get:
+      operationId: getSafetyEvidencePack
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.evidence_pack.export
+      summary: The regulator evidence pack for a project and date range, with the gaps found before export.
+      description: |
+        Inductions, pre-task plans, inspections, incidents, corrective actions and toolbox talks recorded in the range
+        (local dates in the project's time zone, up to two years), as they stand today. Each section is limited to what
+        the caller may read and is marked `restricted` when they cannot. `gaps` is Nova's pre-check, plain rules over the
+        records: it lists what is missing or open so it can be fixed before the pack is handed over. It never says the site
+        complied. Archova does not notify the regulator.
+      responses:
+        '200':
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyEvidencePack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/safety-evidence-pack/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - { name: from, in: query, required: true, schema: { type: string, format: date } }
+      - { name: to, in: query, required: true, schema: { type: string, format: date } }
+    get:
+      operationId: getSafetyEvidencePackPdf
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.evidence_pack.export
+      summary: The regulator evidence pack as a PDF.
+      responses:
+        '200':
+          description: The PDF, base64 encoded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/dashboard-snapshots:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -23175,6 +23219,211 @@ components:
         filename: { type: string }
         contentType: { type: string, enum: [application/pdf] }
         dataBase64: { type: string }
+    EvidencePackIncident:
+      type: object
+      required:
+        [
+          ref,
+          title,
+          type,
+          severity,
+          occurredAt,
+          location,
+          status,
+          isNotifiable,
+          notifiableClass,
+          regulatorNotifiedAt,
+          writtenNoticeRequestedAt,
+          hasRootCause,
+          closedAt,
+        ]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        type: { type: string }
+        severity: { type: string }
+        occurredAt: { type: string }
+        location: { type: string, nullable: true }
+        status: { type: string, enum: [reported, investigating, closed] }
+        isNotifiable: { type: boolean }
+        notifiableClass: { type: string, nullable: true }
+        regulatorNotifiedAt: { type: string, nullable: true }
+        writtenNoticeRequestedAt: { type: string, nullable: true }
+        hasRootCause: { type: boolean }
+        closedAt: { type: string, nullable: true }
+    EvidencePackAction:
+      type: object
+      required: [incidentRef, number, title, dueDate, status, completedAt, verifiedAt]
+      properties:
+        incidentRef: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        dueDate: { type: string, nullable: true }
+        status: { type: string, enum: [open, done, verified] }
+        completedAt: { type: string, nullable: true }
+        verifiedAt: { type: string, nullable: true }
+    EvidencePackPretask:
+      type: object
+      required:
+        [
+          ref,
+          taskTitle,
+          workDate,
+          location,
+          supervisorName,
+          status,
+          hazards,
+          hazardsWithoutControls,
+          crew,
+          signed,
+          notCurrentlyInducted,
+          reviewed,
+        ]
+      properties:
+        ref: { type: string }
+        taskTitle: { type: string }
+        workDate: { type: string }
+        location: { type: string, nullable: true }
+        supervisorName: { type: string }
+        status: { type: string, enum: [open, closed] }
+        hazards: { type: integer }
+        hazardsWithoutControls: { type: integer }
+        crew: { type: integer }
+        signed: { type: integer }
+        notCurrentlyInducted: { type: integer }
+        reviewed: { type: boolean }
+    EvidencePackToolbox:
+      type: object
+      required: [ref, title, heldOn, presenterName, status, attendees, signed]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        heldOn: { type: string }
+        presenterName: { type: string }
+        status: { type: string, enum: [open, closed] }
+        attendees: { type: integer }
+        signed: { type: integer }
+    EvidencePackInduction:
+      type: object
+      required: [workerName, completedOn, quizScore, expiresOn, method]
+      properties:
+        workerName: { type: string }
+        completedOn: { type: string }
+        quizScore: { type: integer, nullable: true }
+        expiresOn: { type: string, nullable: true }
+        method: { type: string, enum: [self, assisted, link] }
+    EvidencePackInspection:
+      type: object
+      required: [ref, title, status, scheduledFor, completedOn, pass, fail]
+      properties:
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        scheduledFor: { type: string, nullable: true }
+        completedOn: { type: string, nullable: true }
+        pass: { type: integer }
+        fail: { type: integer }
+    EvidenceSectionIncidents:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackIncident' }
+    EvidenceSectionActions:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackAction' }
+    EvidenceSectionPretasks:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackPretask' }
+    EvidenceSectionToolbox:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackToolbox' }
+    EvidenceSectionInductions:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackInduction' }
+    EvidenceSectionInspections:
+      type: object
+      required: [restricted, truncated, rows]
+      properties:
+        restricted: { type: boolean }
+        truncated: { type: boolean }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackInspection' }
+    EvidencePackGap:
+      type: object
+      required: [section, severity, message]
+      properties:
+        section:
+          {
+            type: string,
+            enum: [incidents, actions, pretasks, toolbox, inductions, inspections, pack],
+          }
+        severity: { type: string, enum: [high, medium, low] }
+        message: { type: string }
+    SafetyEvidencePack:
+      type: object
+      required:
+        [
+          project,
+          from,
+          to,
+          generatedOn,
+          incidents,
+          actions,
+          pretasks,
+          toolbox,
+          inductions,
+          inspections,
+          gaps,
+        ]
+      properties:
+        project:
+          type: object
+          required: [name, number, timeZone]
+          properties:
+            name: { type: string }
+            number: { type: string, nullable: true }
+            timeZone: { type: string }
+        from: { type: string }
+        to: { type: string }
+        generatedOn: { type: string }
+        incidents: { $ref: '#/components/schemas/EvidenceSectionIncidents' }
+        actions: { $ref: '#/components/schemas/EvidenceSectionActions' }
+        pretasks: { $ref: '#/components/schemas/EvidenceSectionPretasks' }
+        toolbox: { $ref: '#/components/schemas/EvidenceSectionToolbox' }
+        inductions: { $ref: '#/components/schemas/EvidenceSectionInductions' }
+        inspections: { $ref: '#/components/schemas/EvidenceSectionInspections' }
+        gaps:
+          type: array
+          items: { $ref: '#/components/schemas/EvidencePackGap' }
     ReadinessPack:
       type: object
       required: [generatedOn, timeZone, prequal, credentials, safety, trust, attention, truncated]

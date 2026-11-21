@@ -693,6 +693,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       timeForReporting: workforce.api.timeForReporting,
       costCodes: financials.api.costCodes,
     },
+    inspectionEvidence: quality.api.evidence,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,
