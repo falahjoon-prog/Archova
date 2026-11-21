@@ -42,4 +42,5 @@ export const ACTION_TEXT: Record<ActionKind, string> = {
   'environment.startCondition': 'Start condition',
   'toolbox.addAttendee': 'Toolbox talk attendee',
   'toolbox.transition': 'Toolbox talk',
+  'pretask.submit': 'Pre-task plan',
 };

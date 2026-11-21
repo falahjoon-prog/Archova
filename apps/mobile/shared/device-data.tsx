@@ -11,6 +11,8 @@ import { openOrgDatabase, SqliteSyncStore, type SqlDatabase } from '../lib/db';
 import { expoSqlDriver } from '../lib/db/expo-driver';
 import { ActionQueue } from '../lib/actions/action-queue';
 import { createActionSender } from '../lib/actions/send';
+import { PretaskCache } from '../lib/actions/pretask-cache';
+import { createSignatureUploader } from '../lib/platform/signature-upload';
 import { createSignInSender, SignInQueue } from '../lib/attendance/sign-in-queue';
 import { createUploadApi } from '../lib/files/api';
 import { UploadQueue } from '../lib/files/upload-queue';
@@ -51,6 +53,7 @@ export interface DeviceData {
   uploads: UploadQueue;
   signIns: SignInQueue;
   actions: ActionQueue;
+  pretask: PretaskCache;
   offline: OfflineProjects;
   sheets: SheetCache;
   requestSync: (trigger: SyncTrigger) => void;
@@ -96,7 +99,11 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           backgroundFileTransfer,
         );
         const signIns = new SignInQueue(db, createSignInSender(api, orgId));
-        const actions = new ActionQueue(db, createActionSender(api, orgId));
+        const actions = new ActionQueue(
+          db,
+          createActionSender(api, orgId, { uploadSignature: createSignatureUploader(api, orgId) }),
+        );
+        const pretask = new PretaskCache(db);
         const sheets = new SheetCache(db, sheetFiles);
         const offline = new OfflineProjects(db, store, sheets);
         const engine = new SyncEngine({
@@ -143,6 +150,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
             uploads,
             signIns,
             actions,
+            pretask,
             offline,
             sheets,
             requestSync: (t) => scheduler.request(t),

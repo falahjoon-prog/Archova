@@ -21,6 +21,8 @@ vi.mock('../features/rfis/screens/RfisScreen', () => ({}));
 vi.mock('../features/rfis/screens/RfiScreen', () => ({}));
 vi.mock('../features/toolbox/screens/ToolboxScreen', () => ({}));
 vi.mock('../features/toolbox/screens/ToolboxTalkScreen', () => ({}));
+vi.mock('../features/toolbox/screens/StrokePad', () => ({}));
+vi.mock('../features/toolbox/signature-file', () => ({}));
 vi.mock('../features/swms/screens/SwmsRegisterScreen', () => ({}));
 vi.mock('../features/swms/screens/SwmsScreen', () => ({}));
 

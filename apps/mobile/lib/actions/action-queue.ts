@@ -22,7 +22,8 @@ export type ActionKind =
   | 'permit.startRenewal'
   | 'environment.startCondition'
   | 'toolbox.addAttendee'
-  | 'toolbox.transition';
+  | 'toolbox.transition'
+  | 'pretask.submit';
 
 export interface QueuedAction {
   id: string;
