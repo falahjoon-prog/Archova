@@ -12,7 +12,8 @@ import { reviewDetection } from '../../domain/takeoff-detect';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
 import { leaksNone } from '../scorers';
-import { syntheticPlan } from '../synthetic-plans';
+import { syntheticPlan, type SyntheticPlan } from '../synthetic-plans';
+import { SCENARIOS, syntheticScenario, syntheticStoreys } from '../synthetic-scenarios';
 import {
   ACCURACY_BARS,
   scoreDetection,
@@ -109,39 +110,68 @@ const cases = [
   ),
 ];
 
-/** Seeded synthetic plans with known power points, room areas and footing length (ai/10 §4 accuracy set). */
-const PLAN_SEEDS = [11, 12, 13, 14, 15, 16, 17, 18] as const;
-const planCases = PLAN_SEEDS.flatMap((seed) => {
-  const p = syntheticPlan(seed);
+/** Golden cases for one synthetic sheet: power points, room areas and the footing run, each with its known answer. */
+function sheetCases(
+  id: string,
+  label: string,
+  p: SyntheticPlan,
+  tag: string,
+): Array<GoldenCase<TakeoffDetectInput, TakeoffDetectExpected>> {
   const image = { mime: 'image/png' as const, base64: p.base64 };
-  const base = { sheetLabel: `S-${seed} Synthetic floor plan`, legendText: p.legend, image };
+  const base = { sheetLabel: label, legendText: p.legend, image };
   const caseOf = (
     suffix: string,
     target: TakeoffDetectInput['target'],
     shapes: readonly Shape[],
     examples: Array<{ x: number; y: number }>,
   ): GoldenCase<TakeoffDetectInput, TakeoffDetectExpected> => ({
-    id: `plan-${seed}-${suffix}`,
+    id: `${id}-${suffix}`,
     input: { ...base, target, examples },
     expected: { truth: { sheet: p.sheet, shapes } },
-    tags: ['synthetic-plan'],
+    tags: ['synthetic-plan', tag],
   });
   return [
-    caseOf(
-      'gpo',
-      { kind: 'count', what: 'power points (GPOs)' },
-      p.gpos,
-      p.gpos.slice(0, 2).map((g) => g.points[0]!),
-    ),
+    ...(p.gpos.length
+      ? [
+          caseOf(
+            'gpo',
+            { kind: 'count', what: 'power points (GPOs)' },
+            p.gpos,
+            p.gpos.slice(0, 2).map((g) => g.points[0]!),
+          ),
+        ]
+      : []),
     caseOf(
       'rooms',
-      { kind: 'area', what: 'room areas', hint: 'each rectangular room is one region' },
+      { kind: 'area', what: 'room areas', hint: 'each room is one region' },
       p.rooms,
       p.rooms[0]!.points,
     ),
     caseOf('footing', { kind: 'length', what: 'strip footing' }, p.footings, p.footings[0]!.points),
   ];
-});
+}
+
+/** Seeded synthetic plans with known power points, room areas and footing length (ai/10 §4 accuracy set). */
+const PLAN_SEEDS = [11, 12, 13, 14, 15, 16, 17, 18] as const;
+const planCases = PLAN_SEEDS.flatMap((seed) =>
+  sheetCases(`plan-${seed}`, `S-${seed} Synthetic floor plan`, syntheticPlan(seed), 'plain-plan'),
+);
+
+/** Hard situations: touching outlets, other symbols, existing work, other scales, portrait, cut-off and L-shaped. */
+const SCENARIO_SEED = 31;
+const scenarioCases = SCENARIOS.flatMap((name) =>
+  sheetCases(
+    `scenario-${name}`,
+    `S-${name} Synthetic floor plan`,
+    syntheticScenario(name, SCENARIO_SEED),
+    `scenario:${name}`,
+  ),
+);
+
+/** A three-level building: each level is its own sheet and its own answer. */
+const storeyCases = syntheticStoreys(41, 3, syntheticPlan).levels.flatMap((l, i) =>
+  sheetCases(`storey-${i}`, `A-10${i + 1} ${l.label}`, l.plan, 'multi-storey'),
+);
 
 const INSTRUCTION = /\bNOTE (FOR|TO) THE AI\b/i;
 
@@ -174,8 +204,8 @@ export const takeoffDetectSuite: EvalSuite<
 > = {
   prompt: takeoffDetectPrompt,
   source:
-    'synthetic sheets (Harbourside Apartments) plus 8 seeded synthetic floor plans with known answers (ai/10 §4); real scores need a live provider run',
-  cases: [...cases, ...planCases],
+    'synthetic sheets (Harbourside Apartments) plus 8 seeded synthetic floor plans, 9 hard-situation scenarios and a 3-level set, all with known answers (ai/10 §4); real scores need a live provider run',
+  cases: [...cases, ...planCases, ...scenarioCases, ...storeyCases],
   fake: heuristicTakeoffDetect,
   score: (c, r): CaseScores => {
     const ok = r.outcome.kind === 'ok' ? r.outcome.output : null;
