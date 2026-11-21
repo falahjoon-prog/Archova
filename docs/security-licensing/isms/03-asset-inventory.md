@@ -44,7 +44,7 @@ Customer data is tenant-scoped. All of it is at least CC. "Personal" marks perso
 | Asset | Class | Owner | Notes |
 |---|---|---|---|
 | GitHub repo `falahjoon-prog/archova` (private), branches, PRs | R (source), Internal | John | CODEOWNERS and dependabot present; MFA to verify |
-| GitHub Actions workflows (`ci`, `security`, `dast`, `images`, `infra`, `deploy`, `mobile-apk`, `linode-*`) and, when the `CI_RUNNER` variable is set, a self-hosted runner (reported to be on John's PC, WSL2) | R (can reach secrets) | Jeff | A self-hosted runner on an unmanaged host that can reach CI secrets is a risk; prefer GitHub-hosted runners |
+| GitHub Actions workflows (`ci`, `security`, `dast`, `images`, `infra`, `deploy`, `mobile-apk`, `linode-*`) and, when the `CI_RUNNER` variable is set, a self-hosted runner (reported to be on John's PC, WSL2) | R (can reach secrets) | Jeff | A self-hosted runner on an unmanaged host that can reach CI secrets is a risk; prefer GitHub-hosted or ephemeral runners (R-29) |
 | Container images, mobile builds (Android APK, EAS) | Internal | Jeff / Mia | Mobile signing keys held offline by John and Jeff (R-13) |
 | OpenAPI contract `packages/contracts` | Public-ish | Ava | |
 | Documentation `docs/`, `/mnt/project-files` | Internal | Priya | Contains design, no customer data |

@@ -10,7 +10,7 @@ Owner: Sam, with Grace for privacy. Supports APP 8 (cross-border disclosure, doc
 
 | Supplier | Purpose | Customer data sent | Region | State | DPA / review | Residency note |
 |---|---|---|---|---|---|---|
-| Amazon Web Services (AWS) | Hosting: compute (ECS), Aurora Postgres, S3, Valkey, KMS, Secrets Manager, CloudFront/WAF, backups, logs | All tenant data | ap-southeast-2 Sydney; DR ap-southeast-4 Melbourne (SCP denies other regions) | Designed (not applied) | AWS DPA not recorded; AWS Artifact reports to collect | Onshore. Global edge: CloudFront serves cached content from edge locations; confirm cache of non-public content is off or AU-only |
+| Amazon Web Services (AWS) | Hosting: compute (ECS), Aurora Postgres, S3, Valkey (Redis-compatible cache), KMS, Secrets Manager, CloudFront/WAF, backups, logs | All tenant data | ap-southeast-2 Sydney; DR ap-southeast-4 Melbourne (SCP denies other regions) | Designed (not applied) | AWS DPA not recorded; AWS Artifact reports to collect | Onshore. Global edge: CloudFront serves cached content from edge locations; confirm cache of non-public content is off or AU-only |
 | AWS Bedrock | LLM inference for Nova, via the `ai` module only | Prompts and context from the tenant's own data | AU inference profile (Sydney + Melbourne) | Live in code (`modules/ai/src/infra/providers/bedrock.ts`) | Part of AWS DPA | Onshore only. If a model is unavailable in AU, it is not used or the cross-border use is disclosed (doc 08 §3). Customer prompts not used for training |
 | AWS Textract | OCR of uploaded documents | Document images | ap-southeast-2 | Live in code (`providers/textract.ts`) | Part of AWS DPA | Onshore |
 | AWS Transcribe | Voice input to text | Audio clips | ap-southeast-2 | Live in code (`providers/transcribe.ts`) | Part of AWS DPA | Onshore; confirm audio is not retained |
@@ -47,6 +47,8 @@ The customer connects these themselves (OAuth). We store the tokens and send or 
 
 | Supplier | Purpose | Note |
 |---|---|---|
+| Self-hosted CI runner host (John's PC, WSL2, when `CI_RUNNER` is set) | Runs CI jobs for every PR, including agent-authored branches | Not a vendor, but an unmanaged host with repo secrets and personal data; R-29. Move to hosted or ephemeral runners |
+| GitHub Actions artifacts and caches | Build outputs, test reports, logs | Stored by GitHub (US); must contain no customer data or secrets; set short retention |
 | GitHub (Microsoft) | Source, PRs, Actions CI | Private repo; US. No customer data; sample data only (P3). Secrets scanned by gitleaks |
 | Google Workspace | Staff email and docs | Staff and business data; DPA through Google terms |
 | Anthropic and other AI coding tools | Developer assistance on code and sample data | Allowed by P10 on source and sample data only, never customer data or secrets |

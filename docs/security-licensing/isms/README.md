@@ -17,7 +17,7 @@ The Archova platform: web app, mobile app, API and workers, AI gateway (Nova), o
 
 ## Status vocabulary (used in all four files)
 
-- **Implemented**: code or config exists in this repo and is exercised (tests/CI).
+- **Implemented**: code or config exists and is exercised (tests/CI) **and** there is no known lapse in the last quarter.
 - **Partial**: some of it exists; the gap column says what is missing.
 - **Designed**: specified in docs and/or Terraform written, but not applied or not running. No evidence yet.
 - **Planned**: no code; on the readiness plan.
@@ -26,11 +26,11 @@ The Archova platform: web app, mobile app, API and workers, AI gateway (Nova), o
 
 ## Honest summary
 
-Production has never been deployed, so nearly every infrastructure control is **Designed**. The strongest evidenced areas are tenant isolation (RLS), the secure SDLC (CI scans, PR-only merges, CODEOWNERS, dependabot) and staff support-access logging. The biggest gaps are the missing security audit log, absent infra logging, no applied production, and no people-process records. See the register for the top risks.
+Production has never been deployed, so nearly every infrastructure control is **Designed**. Only 4 of 93 controls count as Implemented (5.15, 8.3, 8.26, 8.27): tenant isolation, access restriction and secure architecture. The earlier draft said 12; Sam's review moved the rest because the evidence is missing: merges went in without CI in Nov (8.4, 8.25), CodeQL is off by default (8.28), no DPAs or supplier agreements are on file (5.21), MFA is not mandatory for all roles (8.5), staff identities are not centralised (5.16), nothing has been deployed so there is no operating evidence (8.19), and sample-data rules are not enforced or recorded (8.33). The biggest gaps are the missing security audit log, staff-account protection, unreviewed changes and agent-authored code, and no people-process records. No applied production and no infra logging are go-live gates (R-02, R-05). See the register.
 
 ## Changes since the 20 Nov audit
 
-`.github/CODEOWNERS` and `.github/dependabot.yml` now exist (audit gap 4). `SECURITY.md` still does not, and CodeQL still runs only if `CODE_SCANNING_ENABLED` is set. CODEOWNERS lists John as the only reviewer, so it does not yet give independent security review (R-14).
+`.github/CODEOWNERS` and `.github/dependabot.yml` now exist (audit gap 4). `SECURITY.md` still does not, and CodeQL still runs only if `CODE_SCANNING_ENABLED` is set. CODEOWNERS lists John as the only reviewer, so it does not yet give independent security review (treated under R-12).
 
 ## Needs John or money (not doable in docs)
 

@@ -10,7 +10,7 @@ ISO/IEC 27001:2022 Annex A, 93 controls. Owner: Sam. Approval: John ______ date 
 |---|---|---|---|---|---|
 | 5.1 | Policies for information security | Y | Partial | `policies/isms-policies.md` (P1-P11) | Draft; John must sign (R-26) |
 | 5.2 | Roles and responsibilities | Y | Partial | Named personas in docs; policy P1 gives Sam ownership | No formal RACI or appointment letter |
-| 5.3 | Segregation of duties | Y | Partial | PR review, support grant approval | Thin team; R-13, R-14 |
+| 5.3 | Segregation of duties | Y | Partial | PR review, support grant approval | Thin team; R-13, R-12 |
 | 5.4 | Management responsibilities | Y | Process | P1 top-management sign-off | No records |
 | 5.5 | Contact with authorities | Y | Partial | NDB steps to OAIC (08 §5); ASD ransomware reporting (08) | No contact list |
 | 5.6 | Contact with special interest groups | Y | Planned | None | Join ACSC alerts, AWS security bulletins |
@@ -22,13 +22,13 @@ ISO/IEC 27001:2022 Annex A, 93 controls. Owner: Sam. Approval: John ______ date 
 | 5.12 | Classification of information | Y | Partial | P3 classes; per-asset class in 03 | Labels not applied in tooling |
 | 5.13 | Labelling of information | Y | Planned | None | Low priority |
 | 5.14 | Information transfer | Y | Partial | TLS 1.2+, presigned URLs, email via SES (Sydney) | No transfer rules for staff |
-| 5.15 | Access control | Y | Implemented | RLS, roles (02), support grants, `modules/access`, `modules/identity` | Staff-side IdP designed only (R-07) |
-| 5.16 | Identity management | Y | Implemented | Identity module (01) | Staff identities not centralised |
+| 5.15 | Access control | Y | Implemented | RLS, roles (02), support grants, `modules/access`, `modules/identity` | Staff-side IdP designed only (R-07); no access review yet (5.18) |
+| 5.16 | Identity management | Y | Partial | Identity module (01) | Staff identities not centralised |
 | 5.17 | Authentication information | Y | Partial | Password breach check, TOTP, passkeys; secrets in Secrets Manager (designed) | R-06, R-09 |
 | 5.18 | Access rights | Y | Process | P2 quarterly review | No review records (R-08) |
 | 5.19 | Supplier relationships | Y | Partial | [04-sub-processors.md](04-sub-processors.md) | No supplier reviews (R-19) |
 | 5.20 | Security in supplier agreements | Y | Planned | DPA template promised | None signed that we can show |
-| 5.21 | ICT supply chain | Y | Implemented | dependabot, `pnpm audit`, Trivy, lockfile | R-11 |
+| 5.21 | ICT supply chain | Y | Partial | dependabot, `pnpm audit`, Trivy, lockfile | R-11 |
 | 5.22 | Monitoring supplier services | Y | Planned | P8 yearly review | None done |
 | 5.23 | Cloud services | Y | Designed | AWS org plan, SCP region deny (infra/01, `infra/org/scps.tf`), Linode option | R-02 |
 | 5.24 | Incident management planning | Y | Partial | P6, NDB steps, runbooks index (infra/08) | Never exercised (R-17) |
@@ -85,8 +85,8 @@ ISO/IEC 27001:2022 Annex A, 93 controls. Owner: Sam. Approval: John ______ date 
 | 8.1 | User endpoint devices | Y | Process | P9; mobile encrypted DB (01 §8) | R-24, R-25 |
 | 8.2 | Privileged access rights | Y | Partial | Support grants, console roles (`modules/backoffice`); IAM Identity Center designed | R-07, R-08 |
 | 8.3 | Information access restriction | Y | Implemented | RLS on every tenant table, RBAC (02), `withTenantTx` | R-01 |
-| 8.4 | Access to source code | Y | Implemented | GitHub private repo, CODEOWNERS | Only one reviewer (R-14) |
-| 8.5 | Secure authentication | Y | Implemented | Password, TOTP, passkey, session rules (01) | R-06 |
+| 8.4 | Access to source code | Y | Partial | GitHub private repo, CODEOWNERS | Single reviewer, merges without CI in Nov (R-12) |
+| 8.5 | Secure authentication | Y | Partial | Password, TOTP, passkey, session rules (01) | R-06 |
 | 8.6 | Capacity management | Y | Designed | infra/04 scaling and load, `loadtest` env | No production data |
 | 8.7 | Protection against malware | Y | Partial | `modules/files` ClamAV scanner; GuardDuty Malware Protection designed | R-23 |
 | 8.8 | Management of technical vulnerabilities | Y | Partial | pnpm audit, Trivy, ZAP, dependabot, CodeQL (switchable) | No pen test, no SLA tracking (R-10, R-11) |
@@ -100,26 +100,26 @@ ISO/IEC 27001:2022 Annex A, 93 controls. Owner: Sam. Approval: John ______ date 
 | 8.16 | Monitoring activities | Y | Designed | infra/05 (CloudWatch, Grafana, GuardDuty) | No alerts live |
 | 8.17 | Clock synchronisation | Y | Partial | UTC everywhere (`@archova/time`); AWS NTP inherited | |
 | 8.18 | Use of privileged utility programs | Y | Partial | No BYPASSRLS roles; owner console separate (port 3008, private) | Prod DB access procedure undefined |
-| 8.19 | Installation of software on operational systems | Y | Implemented | Immutable images built in CI (`images.yml`), Trivy | Prod unproven |
+| 8.19 | Installation of software on operational systems | Y | Designed | Immutable images built in CI (`images.yml`), Trivy | No operating evidence: production never deployed |
 | 8.20 | Network security | Y | Designed | VPC, WAF (`cloudfront-waf`), Network Firewall / CoreDNS allow-list | R-02, R-03 |
 | 8.21 | Security of network services | Y | Designed | As 8.20; TLS 1.2+, HSTS at CloudFront | |
 | 8.22 | Segregation of networks | Y | Designed | Per-env accounts, VPC, cells | |
 | 8.23 | Web filtering | Y | Designed | Egress allow-list (`egress-allowlist.yaml`) | |
 | 8.24 | Use of cryptography | Y | Designed | KMS design (09 §2), per-env key for BYO AI secrets, `infra/modules/kms-key` | Key custody R-13 |
-| 8.25 | Secure development life cycle | Y | Implemented | CLAUDE.md rules, ADRs, CI gates, contract-first OpenAPI | |
+| 8.25 | Secure development life cycle | Y | Partial | CLAUDE.md rules, ADRs, CI gates, contract-first OpenAPI | |
 | 8.26 | Application security requirements | Y | Implemented | Doc 09 baseline; per-module threat notes | |
 | 8.27 | Secure system architecture and engineering principles | Y | Implemented | ADRs 0001-0008, module boundaries (`check:boundaries`) | |
-| 8.28 | Secure coding | Y | Implemented | Lint, typecheck, strict boundaries, CodeQL (if enabled) | CodeQL off by default |
+| 8.28 | Secure coding | Y | Partial | Lint, typecheck, strict boundaries, CodeQL (if enabled) | CodeQL off by default |
 | 8.29 | Security testing in development and acceptance | Y | Partial | Unit/integration/cross-tenant tests, ZAP DAST | No pen test (R-10) |
 | 8.30 | Outsourced development | N/A | N/A | No outsourced developers (AI coding assistants covered by P10) | Revisit if contractors added |
 | 8.31 | Separation of development, test, production | Y | Designed | `envs/` dev, staging, prod-cell1 separate | Prod absent |
 | 8.32 | Change management | Y | Partial | PR-only, squash merge, CI; migrations forward-only | R-12 |
-| 8.33 | Test information | Y | Implemented | Sample data only (P3) | |
+| 8.33 | Test information | Y | Process | Sample data only (P3); no check enforces it | Process control, no records |
 | 8.34 | Protection of information systems during audit testing | Y | Process | P4 | Define when audit starts |
 
-## Counts (21 Nov 2026)
+## Counts (21 Nov 2026, after Sam's review)
 
-Of 93 controls: 4 N/A (7.3, 7.6, 7.12, 8.30), 89 applicable. Strictly Implemented today: 5.15, 5.16, 5.21, 8.3, 8.4, 8.5, 8.19, 8.25-8.28, 8.33 (12). The rest are Partial, Designed, Process or Planned. Expect auditors to test operation over time, so Designed and Process controls need records before they count.
+Of 93 controls: 4 N/A (7.3, 7.6, 7.12, 8.30), 89 applicable. **Implemented: 4** (5.15, 8.3, 8.26, 8.27; 5.15 is borderline and kept only because its gap column records "no access review yet"). Everything else is Partial, Designed, Process or Planned. Implemented means exercised with no known lapse in the last quarter (README). Expect auditors to test operation over time, so Designed and Process controls need records before they count.
 
 ## Exclusion rationale
 
