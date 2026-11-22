@@ -193,14 +193,14 @@ export function createSessionService({
   }
 
   /** Ends every open session of a person (account deletion). */
-  async function revokeAllForUser(userId: string): Promise<void> {
+  async function revokeAllForUser(userId: string, exceptSessionId?: string): Promise<void> {
     const open = await database.withGlobalTx('identity', (tx) =>
       tx
         .select({ id: sessions.id })
         .from(sessions)
         .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt))),
     );
-    for (const s of open) await revoke(s.id);
+    for (const s of open) if (s.id !== exceptSessionId) await revoke(s.id);
   }
 
   /** Bearer requests check the `sid` on every call (ADR-0004 §2). */

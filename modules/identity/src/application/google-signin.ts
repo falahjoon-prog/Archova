@@ -1,7 +1,14 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { recordSecurityEvent, type Database } from '@archova/kernel';
-import { credentials, externalIdentities, users } from '../infra/tables';
+import {
+  credentials,
+  externalIdentities,
+  oauthCodes,
+  refreshTokens,
+  sessions as sessionRows,
+  users,
+} from '../infra/tables';
 import { newToken, safeEqual, sha256 } from './crypto';
 import type { RequestMeta } from './accounts';
 import type { SessionService } from './sessions';
@@ -30,7 +37,12 @@ export const GOOGLE_FLOW_COOKIE = '__Host-gsi';
 export const GOOGLE_FLOW_MAX_AGE_S = 600;
 
 export type GoogleFailure =
-  'cancelled' | 'expired' | 'unverified_email' | 'account_disabled' | 'failed';
+  | 'cancelled'
+  | 'expired'
+  | 'unverified_email'
+  | 'link_requires_sign_in'
+  | 'account_disabled'
+  | 'failed';
 
 export class GoogleSignInError extends Error {
   constructor(readonly reason: GoogleFailure) {
@@ -107,26 +119,36 @@ export function createGoogleSignInService(
 
   async function exchange(code: string, flow: GoogleFlowState): Promise<IdTokenClaims> {
     if (!config) throw new GoogleSignInError('failed');
-    const res = await doFetch(TOKEN, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: config.clientId,
-        client_secret: config.clientSecret,
-        redirect_uri: config.redirectUri,
-        grant_type: 'authorization_code',
-        code_verifier: flow.verifier,
-      }).toString(),
-      signal: AbortSignal.timeout(10_000),
-    });
+    let res: Response;
+    try {
+      res = await doFetch(TOKEN, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+          redirect_uri: config.redirectUri,
+          grant_type: 'authorization_code',
+          code_verifier: flow.verifier,
+        }).toString(),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new GoogleSignInError('failed');
+    }
     if (!res.ok) throw new GoogleSignInError('failed');
-    const body = (await res.json()) as { id_token?: string };
-    const part = body.id_token?.split('.')[1];
-    if (!part) throw new GoogleSignInError('failed');
+    let claims: IdTokenClaims;
+    try {
+      const body = (await res.json()) as { id_token?: string };
+      const part = body.id_token?.split('.')[1];
+      if (!part) throw new Error('no id_token');
+      claims = JSON.parse(Buffer.from(part, 'base64url').toString('utf8')) as IdTokenClaims;
+    } catch {
+      throw new GoogleSignInError('failed');
+    }
     // The token came straight from Google's token endpoint over TLS, so OIDC Core §3.1.3.7 lets us skip checking its
     // signature; we still check who issued it, who it is for, that it is fresh and that it answers this request.
-    const claims = JSON.parse(Buffer.from(part, 'base64url').toString('utf8')) as IdTokenClaims;
     if (claims.iss !== 'https://accounts.google.com' && claims.iss !== 'accounts.google.com')
       throw new GoogleSignInError('failed');
     if (claims.aud !== config.clientId) throw new GoogleSignInError('failed');
@@ -151,11 +173,12 @@ export function createGoogleSignInService(
     const email = claims.email!.trim();
     const subject = claims.sub!;
 
-    return database.withGlobalTx('identity', async (tx) => {
+    const result = await database.withGlobalTx('identity', async (tx) => {
       const now = new Date();
       let userId: string;
       let created = false;
       let unlinkedPassword = false;
+      let takeover = false;
       const [linked] = await tx
         .select()
         .from(externalIdentities)
@@ -176,15 +199,36 @@ export function createGoogleSignInService(
         if (existing) {
           if (existing.status !== 'active') throw new GoogleSignInError('account_disabled');
           userId = existing.id;
+          // Anything beyond a password (a second factor, a passkey) must not be bypassed by a Google sign-in:
+          // the person signs in the usual way and links Google from their account instead.
+          const creds = await tx
+            .select({ type: credentials.type })
+            .from(credentials)
+            .where(eq(credentials.userId, userId));
+          if (creds.some((c) => c.type !== 'password'))
+            throw new GoogleSignInError('link_requires_sign_in');
           if (!existing.emailVerifiedAt) {
-            // Sign-up does not verify addresses, so someone else may have registered this one with a password they
-            // chose. Google has just proved this person owns it: that password goes, and the address is now verified.
+            // Sign-up does not verify addresses, so someone else may have registered this one. Google has just proved
+            // this person owns it, so everything the squatter could hold goes: credentials, sessions, API tokens.
             const gone = await tx
               .delete(credentials)
-              .where(and(eq(credentials.userId, userId), eq(credentials.type, 'password')))
+              .where(eq(credentials.userId, userId))
               .returning({ id: credentials.id });
+            takeover = true;
             unlinkedPassword = gone.length > 0;
-            await tx.update(users).set({ emailVerifiedAt: now }).where(eq(users.id, userId));
+            await tx.delete(oauthCodes).where(eq(oauthCodes.userId, userId));
+            const mine = tx
+              .select({ id: sessionRows.id })
+              .from(sessionRows)
+              .where(eq(sessionRows.userId, userId));
+            await tx
+              .update(refreshTokens)
+              .set({ usedAt: now })
+              .where(and(inArray(refreshTokens.sessionId, mine), isNull(refreshTokens.usedAt)));
+            await tx
+              .update(users)
+              .set({ emailVerifiedAt: now, credentialsResetAt: now })
+              .where(eq(users.id, userId));
           }
         } else {
           userId = uuidv7();
@@ -223,13 +267,45 @@ export function createGoogleSignInService(
       const session = await sessions.create(tx, {
         userId,
         client: 'web',
-        authMethod: 'sso',
+        authMethod: 'google',
         ip: meta.ip,
         userAgent: meta.userAgent,
         withCookieToken: true,
       });
-      return { session, next: flow.next };
+      return { session, next: flow.next, takeover, userId };
     });
+    // Sessions live in Redis too, so they are ended after the commit. The new session is kept.
+    if (result.takeover) await sessions.revokeAllForUser(result.userId, result.session.sessionId);
+    return { session: result.session, next: result.next };
+  }
+
+  /** Same as `complete`, but a refusal is written to the security log (no account is named). */
+  async function completeLogged(
+    input: { code: string; state: string; flow: GoogleFlowState | null },
+    meta: RequestMeta,
+  ) {
+    try {
+      return await complete(input, meta);
+    } catch (e) {
+      const reason = e instanceof GoogleSignInError ? e.reason : 'error';
+      await database
+        .withGlobalTx('identity', (tx) =>
+          recordSecurityEvent(tx, {
+            orgId: null,
+            action: 'auth.login.failed',
+            actorType: 'anonymous',
+            actorId: null,
+            targetType: 'account',
+            targetId: null,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            client: 'web',
+            metadata: { method: 'google', reason },
+          }),
+        )
+        .catch(() => undefined);
+      throw e;
+    }
   }
 
   return {
@@ -237,7 +313,7 @@ export function createGoogleSignInService(
     /** The web origin the person returns to. */
     origin: config ? new URL(config.redirectUri).origin : null,
     begin,
-    complete,
+    complete: completeLogged,
   };
 }
 

@@ -244,7 +244,12 @@ export function identityRoutes({
       const fail = (reason: string) => {
         const url = new URL(webSignInUrl);
         url.searchParams.set('error', `google_${reason}`);
-        return { status: 302, redirect: url.toString(), clearCookies: [GOOGLE_FLOW_COOKIE] };
+        return {
+          status: 302,
+          redirect: url.toString(),
+          clearCookies: [GOOGLE_FLOW_COOKIE],
+          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
+        };
       };
       if (!google.enabled || !google.origin) return fail('unavailable');
       // Google sends `error=access_denied` when the person presses Cancel.
@@ -264,6 +269,7 @@ export function identityRoutes({
           redirect: new URL(next ?? '/orgs', google.origin).toString(),
           setCookies: sessionCookies(session.token!, newToken()),
           clearCookies: [GOOGLE_FLOW_COOKIE],
+          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
         };
       } catch (e) {
         if (e instanceof GoogleSignInError) return fail(e.reason);

@@ -195,7 +195,14 @@ export function createApiTokenService(database: Database, now: () => Date = () =
         .select({ token: apiTokens })
         .from(apiTokens)
         .innerJoin(users, eq(users.id, apiTokens.userId))
-        .where(and(eq(apiTokens.tokenHash, hash), eq(users.status, 'active')))
+        .where(
+          and(
+            eq(apiTokens.tokenHash, hash),
+            eq(users.status, 'active'),
+            // Tokens made before a takeover of an unverified account was cut off are dead (google-signin.ts).
+            or(isNull(users.credentialsResetAt), gt(apiTokens.createdAt, users.credentialsResetAt)),
+          ),
+        )
         .limit(1);
       if (!r) return null;
       const t = r.token;
