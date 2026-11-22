@@ -56,6 +56,14 @@ export interface SopaRule {
     unpaidDays: number;
     /** What the claimant may do when no schedule was given by the due date (compliance/01 §2). */
     noSchedule: NoScheduleRule;
+    /**
+     * The respondent's response to an adjudication application (compliance/01b). Due on the later of
+     * `afterApplicationDays` business days after receiving the application and, where the Act has the limb,
+     * `afterAcceptanceDays` after receiving notice of the adjudicator's acceptance. Standard (not complex) claims.
+     */
+    response: { afterApplicationDays: number; afterAcceptanceDays: number | null };
+    /** Business days the adjudicator has to decide. The clock start is a lawyer question for NSW and QLD (⚖). */
+    decisionDays: number;
   };
   verifiedBy: string | null;
   verifiedOn: LocalDate | null;
@@ -209,6 +217,41 @@ export function adjudicationDeadline(input: AdjudicationInput): LocalDate | null
   return null;
 }
 
+export interface ResponseDueInput {
+  rule: SopaRule;
+  holidays: ReadonlySet<LocalDate>;
+  /** The day the respondent received the application. */
+  applicationReceivedOn: LocalDate;
+  /** The day the respondent received notice of the adjudicator's acceptance, once known. */
+  acceptanceReceivedOn?: LocalDate | null;
+}
+
+/**
+ * The respondent's last day to respond (compliance/01b): the later of the two limbs the Act has. With no acceptance
+ * notice yet, only the application limb is known, so the result is a floor that can move later (`final: false`).
+ * Standard claims only: the longer complex-claim periods are not modelled.
+ */
+export function responseDue(input: ResponseDueInput): { dueOn: LocalDate; final: boolean } {
+  const { rule } = input;
+  const r = rule.adjudication.response;
+  const days = (from: LocalDate, n: number) =>
+    addBusinessDays(from, n, sopaCalendar(rule, input.holidays, from));
+  const app = days(input.applicationReceivedOn, r.afterApplicationDays);
+  if (r.afterAcceptanceDays === null) return { dueOn: app, final: true };
+  if (!input.acceptanceReceivedOn) return { dueOn: app, final: false };
+  const acc = days(input.acceptanceReceivedOn, r.afterAcceptanceDays);
+  return { dueOn: compareLocalDates(acc, app) > 0 ? acc : app, final: true };
+}
+
+/** The adjudicator's last day to decide: `decisionDays` business days from `from` (the response lodged or due day). */
+export function decisionDue(
+  rule: SopaRule,
+  holidays: ReadonlySet<LocalDate>,
+  from: LocalDate,
+): LocalDate {
+  return addBusinessDays(from, rule.adjudication.decisionDays, sopaCalendar(rule, holidays, from));
+}
+
 export interface NoScheduleInput {
   rule: SopaRule;
   holidays: ReadonlySet<LocalDate>;
@@ -301,6 +344,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       scheduleLessDays: 10,
       unpaidDays: 20,
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+      response: { afterApplicationDays: 5, afterAcceptanceDays: 2 },
+      decisionDays: 10,
     },
   },
   {
@@ -319,6 +364,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       unpaidDays: 10,
       // ⚖ the notice window and the respondent's 5 BD are not confirmed for VIC.
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+      response: { afterApplicationDays: 5, afterAcceptanceDays: null },
+      decisionDays: 10,
     },
   },
   {
@@ -336,6 +383,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       scheduleLessDays: 30,
       unpaidDays: 20,
       noSchedule: { kind: 'direct', applyWithinDays: 30 },
+      response: { afterApplicationDays: 10, afterAcceptanceDays: 7 },
+      decisionDays: 10,
     },
   },
   {
@@ -353,6 +402,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       scheduleLessDays: 20,
       unpaidDays: 20,
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 20 },
+      response: { afterApplicationDays: 10, afterAcceptanceDays: null },
+      decisionDays: 10,
     },
   },
   {
@@ -370,6 +421,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       scheduleLessDays: 15,
       unpaidDays: 20,
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 15 },
+      response: { afterApplicationDays: 5, afterAcceptanceDays: 2 },
+      decisionDays: 10,
     },
   },
   {
@@ -390,6 +443,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       unpaidDays: 20,
       // ⚖ the apply window after the respondent's 5 BD is not confirmed for TAS.
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+      response: { afterApplicationDays: 10, afterAcceptanceDays: 5 },
+      decisionDays: 10,
     },
   },
   {
@@ -408,6 +463,8 @@ export const SOPA_RULES: readonly SopaRule[] = [
       unpaidDays: 20,
       // ⚖ ACT no-schedule notice timing is unconfirmed.
       noSchedule: { kind: 'notice', noticeWithinDays: 20, respondentDays: 5, applyWithinDays: 10 },
+      response: { afterApplicationDays: 7, afterAcceptanceDays: 5 },
+      decisionDays: 10,
     },
   },
 ];

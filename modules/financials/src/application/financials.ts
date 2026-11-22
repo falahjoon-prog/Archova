@@ -762,6 +762,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
   const adjudicationFacts = (r: typeof claimAdjudications.$inferSelect): AdjudicationFacts => ({
     noticeServedOn: r.noticeServedOn,
     applicationLodgedOn: r.applicationLodgedOn,
+    applicationReceivedOn: r.applicationReceivedOn,
+    acceptanceNoticeReceivedOn: r.acceptanceNoticeReceivedOn,
     nominatingAuthority: r.nominatingAuthority,
     adjudicatorName: r.adjudicatorName,
     adjudicatorAppointedOn: r.adjudicatorAppointedOn,
@@ -842,7 +844,19 @@ export function createFinancialsService(deps: FinancialsDeps) {
       : await scope.tx
           .insert(claimAdjudications)
           .values({ id: uuidv7(), orgId: scope.ctx.orgId, projectId, claimId, ...values })
-          .returning();
+          .returning()
+          .catch((e: unknown) => {
+            // Two first records at once: the second loses to the unique claim, and is told to reload.
+            const code =
+              (e as { code?: string; cause?: { code?: string } }).code ??
+              (e as { cause?: { code?: string } }).cause?.code;
+            if (code === '23505')
+              throw new AppError(
+                'conflict',
+                'Someone else just started this record. Reload it and try again.',
+              );
+            throw e;
+          });
     // Every change leaves its before and after on the event trail: dates here can decide an adjudication.
     scope.events.add({
       type: 'financials.claim_adjudication.recorded.v1',

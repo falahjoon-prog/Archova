@@ -1221,6 +1221,8 @@ export type CheckInDeliveryRequest = z.infer<typeof CheckInDeliveryRequestSchema
 export const ClaimAdjudicationSchema = z.object({
   "noticeServedOn": z.string().date().nullable(),
   "applicationLodgedOn": z.string().date().nullable(),
+  "applicationReceivedOn": z.string().date().nullable(),
+  "acceptanceNoticeReceivedOn": z.string().date().nullable(),
   "nominatingAuthority": z.string().max(200).nullable(),
   "adjudicatorName": z.string().max(200).nullable(),
   "adjudicatorAppointedOn": z.string().date().nullable(),
@@ -1231,7 +1233,7 @@ export const ClaimAdjudicationSchema = z.object({
   "adjudicatedAmount": z.union([FinancialsMoneySchema, z.null()]),
   "outcome": z.enum(["upheld", "part_upheld", "dismissed", "withdrawn", "settled"]).nullable(),
   "notes": z.string().max(2000).nullable(),
-  "version": z.number().int().min(1).optional(),
+  "version": z.number().int().min(1),
   "updatedAt": z.string().datetime({ offset: true }),
 });
 export type ClaimAdjudication = z.infer<typeof ClaimAdjudicationSchema>;
@@ -1367,6 +1369,7 @@ export const ClaimTimelineStepSchema = z.object({
   "label": z.string(),
   "dueOn": z.string().date().nullable(),
   "doneOn": z.string().date().nullable(),
+  "suggestedOn": z.string().date().nullable().optional(),
   "status": z.enum(["done", "upcoming", "due_soon", "overdue", "closed"]),
   "note": z.string().nullable(),
 });
@@ -10767,6 +10770,8 @@ export const RecordClaimAdjudicationRequestSchema = z.object({
   "expectedVersion": z.number().int().min(0).optional(),
   "noticeServedOn": z.string().date().nullable().optional(),
   "applicationLodgedOn": z.string().date().nullable().optional(),
+  "applicationReceivedOn": z.string().date().nullable().optional(),
+  "acceptanceNoticeReceivedOn": z.string().date().nullable().optional(),
   "nominatingAuthority": z.string().max(200).nullable().optional(),
   "adjudicatorName": z.string().max(200).nullable().optional(),
   "adjudicatorAppointedOn": z.string().date().nullable().optional(),

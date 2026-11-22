@@ -1,3 +1,4 @@
+import { SOPA_RULES } from '@archova/domain';
 import { describe, expect, it } from 'vitest';
 import { EMPTY_ADJUDICATION, validateAdjudication } from '../../src/domain/adjudication';
 import { claimTimeline, type TimelineInput } from '../../src/domain/claim-timeline';
@@ -137,5 +138,57 @@ describe('claimTimeline with an adjudication record', () => {
       adjudication: facts({ noticeServedOn: '2026-11-10', applicationLodgedOn: '2027-02-20' }),
     });
     expect(step(t, 'adjudication_application')?.note).toContain('after the likely last day');
+  });
+});
+
+describe('suggested response and determination dates (compliance/01b)', () => {
+  const signed = SOPA_RULES.map((r) => (r.state === 'NSW' ? { ...r, verifiedBy: 'Lawyer' } : r));
+  const run = (adjudication: ReturnType<typeof facts>) =>
+    claimTimeline({ ...base, adjudication, rules: signed });
+  const lodged = { noticeServedOn: '2026-11-10', applicationLodgedOn: '2026-11-20' } as const;
+
+  it('suggests nothing while the state’s rules are not signed off', () => {
+    const t = claimTimeline({
+      ...base,
+      adjudication: facts({ ...lodged, applicationReceivedOn: '2026-11-23' }),
+    });
+    expect(step(t, 'adjudication_response')?.suggestedOn).toBeNull();
+    expect(step(t, 'adjudication_determination')?.suggestedOn).toBeNull();
+  });
+
+  it('suggests the response and decision days beside the typed dates, and flags a difference', () => {
+    const t = run(
+      facts({
+        ...lodged,
+        applicationReceivedOn: '2026-11-23',
+        acceptanceNoticeReceivedOn: '2026-11-25',
+        responseDueOn: '2026-12-01',
+      }),
+    );
+    // 23 Nov + 5 BD = 30 Nov; 25 Nov + 2 BD = 27 Nov; the later is 30 Nov.
+    expect(step(t, 'adjudication_response')).toMatchObject({
+      dueOn: '2026-12-01',
+      suggestedOn: '2026-11-30',
+    });
+    expect(step(t, 'adjudication_response')?.note).toContain('check the notice');
+    // Decision runs from the typed response due date: 1 Dec + 10 BD = 15 Dec.
+    expect(step(t, 'adjudication_determination')?.suggestedOn).toBe('2026-12-15');
+  });
+
+  it('says it matches when the typed date agrees', () => {
+    const t = run(
+      facts({
+        ...lodged,
+        applicationReceivedOn: '2026-11-23',
+        acceptanceNoticeReceivedOn: '2026-11-25',
+        responseDueOn: '2026-11-30',
+      }),
+    );
+    expect(step(t, 'adjudication_response')?.note).toContain('matches the rules');
+  });
+
+  it('calls the suggestion a floor until the acceptance notice is known', () => {
+    const t = run(facts({ ...lodged, applicationReceivedOn: '2026-11-23' }));
+    expect(step(t, 'adjudication_response')?.note).toContain('at least 2026-11-30');
   });
 });
