@@ -25026,6 +25026,11 @@ export interface components {
              * @description The day it happened
              */
             doneOn: string | null;
+            /**
+             * Format: date
+             * @description A date worked out from the rules
+             */
+            suggestedOn?: string | null;
             /** @enum {string} */
             status: "done" | "upcoming" | "due_soon" | "overdue" | "closed";
             note: string | null;
@@ -25046,6 +25051,10 @@ export interface components {
             noticeServedOn: string | null;
             /** Format: date */
             applicationLodgedOn: string | null;
+            /** Format: date */
+            applicationReceivedOn: string | null;
+            /** Format: date */
+            acceptanceNoticeReceivedOn: string | null;
             nominatingAuthority: string | null;
             adjudicatorName: string | null;
             /** Format: date */
@@ -25063,7 +25072,7 @@ export interface components {
             outcome: "upheld" | "part_upheld" | "dismissed" | "withdrawn" | "settled" | null;
             notes: string | null;
             /** @description Send this back as `expectedVersion` when changing the record. */
-            version?: number;
+            version: number;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -25074,6 +25083,10 @@ export interface components {
             noticeServedOn?: string | null;
             /** Format: date */
             applicationLodgedOn?: string | null;
+            /** Format: date */
+            applicationReceivedOn?: string | null;
+            /** Format: date */
+            acceptanceNoticeReceivedOn?: string | null;
             nominatingAuthority?: string | null;
             adjudicatorName?: string | null;
             /** Format: date */

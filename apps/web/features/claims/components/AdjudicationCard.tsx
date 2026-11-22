@@ -24,6 +24,8 @@ const OUTCOME_LABEL = Object.fromEntries(OUTCOMES.map((o) => [o.value, o.label])
 const blank: Form = {
   noticeServedOn: '',
   applicationLodgedOn: '',
+  applicationReceivedOn: '',
+  acceptanceNoticeReceivedOn: '',
   nominatingAuthority: '',
   adjudicatorName: '',
   adjudicatorAppointedOn: '',
@@ -100,6 +102,11 @@ export function AdjudicationCard({
           items={[
             { label: 'Notice of intention served', value: date(r.noticeServedOn) },
             { label: 'Application lodged', value: date(r.applicationLodgedOn) },
+            {
+              label: 'Application received by the respondent',
+              value: date(r.applicationReceivedOn),
+            },
+            { label: 'Notice of acceptance received', value: date(r.acceptanceNoticeReceivedOn) },
             { label: 'Nominating authority', value: r.nominatingAuthority ?? '—' },
             { label: 'Adjudicator', value: r.adjudicatorName ?? '—' },
             { label: 'Adjudicator appointed', value: date(r.adjudicatorAppointedOn) },
@@ -143,6 +150,18 @@ export function AdjudicationCard({
         <form className="stack-lg" onSubmit={save} noValidate>
           {field('noticeServedOn', 'Notice of intention served on')}
           {field('applicationLodgedOn', 'Application lodged on')}
+          {field(
+            'applicationReceivedOn',
+            'Application received by the respondent on',
+            'date',
+            'Starts the response clock. The day it was received counts, not the day it was sent.',
+          )}
+          {field(
+            'acceptanceNoticeReceivedOn',
+            'Notice of the adjudicator’s acceptance received on',
+            'date',
+            'Some states give a second limb after this.',
+          )}
           {field('nominatingAuthority', 'Authorised nominating authority', 'text')}
           {field('adjudicatorName', 'Adjudicator', 'text')}
           {field('adjudicatorAppointedOn', 'Adjudicator appointed on')}
