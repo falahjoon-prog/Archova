@@ -37,7 +37,10 @@ export function ClaimTimeline({ steps }: { steps: Step[] }) {
     {
       id: 'date',
       header: 'Date',
-      cell: (s) => formatLocalDate((s.doneOn ?? s.dueOn)!),
+      cell: (s) => {
+        const day = s.doneOn ?? s.dueOn;
+        return day ? formatLocalDate(day) : '—';
+      },
     },
     {
       id: 'status',

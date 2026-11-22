@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261121130100_workforce_induction_reminders.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261121150100_workforce_induction_reminders.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Induction depth: re-induction after a lapse. Expiry reminders need no table: the daily job's notifications are keyed
 -- by completion, step and expiry date.
 --

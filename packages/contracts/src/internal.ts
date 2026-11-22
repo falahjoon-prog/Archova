@@ -327,6 +327,31 @@ export type OrgHoldDto = {
 export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
 export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
 
+export const PRODUCT_UPDATE_KINDS = ['feature', 'improvement', 'fix', 'notice'] as const;
+export type ProductUpdateKind = (typeof PRODUCT_UPDATE_KINDS)[number];
+export const ProductUpdateInput = z.object({
+  title: z.string().trim().min(3).max(120),
+  summary: z.string().trim().min(3).max(240),
+  body: z.string().trim().max(5000).default(''),
+  kind: z.enum(PRODUCT_UPDATE_KINDS),
+  /** Also shows as a dismissible banner to every signed-in user while it is the newest banner update. */
+  showBanner: z.boolean().default(false),
+});
+export type ProductUpdateInput = z.infer<typeof ProductUpdateInput>;
+export type ProductUpdateDto = {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  kind: ProductUpdateKind;
+  status: 'draft' | 'published' | 'archived';
+  showBanner: boolean;
+  publishedAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type FlagOrgRef = { orgId: string; name: string };
 export type FlagDto = {
   key: string;
@@ -820,6 +845,51 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.flags.edit',
     params: z.object({ id: uuid, orgId: orgRef }),
+    query: noParams,
+    body: null,
+  }),
+  listProductUpdates: op({
+    method: 'GET',
+    path: '/internal/v1/product-updates',
+    auth: 'staff',
+    permission: 'backoffice.updates.manage',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  createProductUpdate: op({
+    method: 'POST',
+    path: '/internal/v1/product-updates',
+    auth: 'staff',
+    permission: 'backoffice.updates.manage',
+    params: noParams,
+    query: noParams,
+    body: ProductUpdateInput,
+  }),
+  updateProductUpdate: op({
+    method: 'PUT',
+    path: '/internal/v1/product-updates/{id}',
+    auth: 'staff',
+    permission: 'backoffice.updates.manage',
+    params: id,
+    query: noParams,
+    body: ProductUpdateInput,
+  }),
+  publishProductUpdate: op({
+    method: 'POST',
+    path: '/internal/v1/product-updates/{id}/publish',
+    auth: 'staff',
+    permission: 'backoffice.updates.manage',
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  archiveProductUpdate: op({
+    method: 'POST',
+    path: '/internal/v1/product-updates/{id}/archive',
+    auth: 'staff',
+    permission: 'backoffice.updates.manage',
+    params: id,
     query: noParams,
     body: null,
   }),

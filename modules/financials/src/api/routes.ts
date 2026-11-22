@@ -132,6 +132,26 @@ export function financialsRoutes(
     statement: d.statement ? toStatementDto(d.statement) : null,
     warnings: d.warnings,
     timeline: d.timeline,
+    adjudication: d.adjudication
+      ? {
+          noticeServedOn: d.adjudication.noticeServedOn,
+          applicationLodgedOn: d.adjudication.applicationLodgedOn,
+          applicationReceivedOn: d.adjudication.applicationReceivedOn,
+          acceptanceNoticeReceivedOn: d.adjudication.acceptanceNoticeReceivedOn,
+          nominatingAuthority: d.adjudication.nominatingAuthority,
+          adjudicatorName: d.adjudication.adjudicatorName,
+          adjudicatorAppointedOn: d.adjudication.adjudicatorAppointedOn,
+          responseDueOn: d.adjudication.responseDueOn,
+          responseLodgedOn: d.adjudication.responseLodgedOn,
+          determinationDueOn: d.adjudication.determinationDueOn,
+          determinedOn: d.adjudication.determinedOn,
+          adjudicatedAmount: d.adjudication.adjudicatedAmount,
+          outcome: d.adjudication.outcome,
+          notes: d.adjudication.notes,
+          version: d.adjudication.version,
+          updatedAt: d.adjudication.updatedAt.toISOString(),
+        }
+      : null,
   });
   const contractBody = (d: {
     contract: Parameters<typeof toContractDto>[0];
@@ -776,6 +796,38 @@ export function financialsRoutes(
                 ...(b.signedOn ? { signedOn: b.signedOn } : {}),
                 ...(b.note ? { note: b.note } : {}),
               },
+            ),
+          ),
+        ),
+      };
+    },
+    recordClaimAdjudication: async (input) => {
+      const b = input.body;
+      return {
+        status: 200,
+        body: claimBody(
+          await tx(input, (s) =>
+            financials.recordAdjudication(
+              s,
+              project(input.params),
+              ref('paymentClaim', input.params.claimId, 'claimId'),
+              {
+                noticeServedOn: b.noticeServedOn ?? null,
+                applicationLodgedOn: b.applicationLodgedOn ?? null,
+                applicationReceivedOn: b.applicationReceivedOn ?? null,
+                acceptanceNoticeReceivedOn: b.acceptanceNoticeReceivedOn ?? null,
+                nominatingAuthority: b.nominatingAuthority ?? null,
+                adjudicatorName: b.adjudicatorName ?? null,
+                adjudicatorAppointedOn: b.adjudicatorAppointedOn ?? null,
+                responseDueOn: b.responseDueOn ?? null,
+                responseLodgedOn: b.responseLodgedOn ?? null,
+                determinationDueOn: b.determinationDueOn ?? null,
+                determinedOn: b.determinedOn ?? null,
+                adjudicatedAmount: b.adjudicatedAmount ?? null,
+                outcome: b.outcome ?? null,
+                notes: b.notes ?? null,
+              },
+              b.expectedVersion,
             ),
           ),
         ),

@@ -163,6 +163,38 @@ describe('ClaimsRegisterScreen', () => {
 });
 
 describe('ClaimDetailScreen', () => {
+  it('records an adjudication from the dates on the notices', async () => {
+    const PUT = `${P}/payment-claims/{claimId}/adjudication`;
+    const overdue = {
+      key: 'adjudication_notice' as const,
+      label: 'Last day to serve notice of intention to apply for adjudication',
+      dueOn: '2026-12-02',
+      doneOn: null,
+      status: 'upcoming' as const,
+      note: null,
+    };
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => ({ ...detail(), timeline: [overdue] }));
+    fake.on('PUT', PUT, () => ({ ...detail(), timeline: [overdue] }));
+    const user = userEvent.setup();
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    await user.click(await screen.findByRole('button', { name: 'Record adjudication' }));
+    await user.type(screen.getByLabelText('Notice of intention served on'), '2026-11-10');
+    await user.type(screen.getByLabelText('Adjudicator'), 'A. Person');
+    await user.click(screen.getByRole('button', { name: 'Save record' }));
+    await waitFor(() => expect(fake.callsTo('PUT', PUT)).toHaveLength(1));
+    expect(fake.callsTo('PUT', PUT)[0]!.init.body).toEqual({
+      noticeServedOn: '2026-11-10',
+      adjudicatorName: 'A. Person',
+    });
+  });
+
+  it('does not show the adjudication card while nothing about adjudication applies', async () => {
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    await screen.findByText(/Lines claimed/);
+    expect(screen.queryByText('Adjudication record')).toBeNull();
+  });
+
   it('schedules line by line: a reduced line needs its own reason, then sends only the reduced lines', async () => {
     const SCHEDULE = `${P}/payment-claims/{claimId}/schedule`;
     fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());

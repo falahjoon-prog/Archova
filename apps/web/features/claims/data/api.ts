@@ -37,6 +37,7 @@ export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
 export type SovDraft = S['NovaContractSovDraft'];
 export type SovDraftLine = SovDraft['lines'][number];
 export type RecordClaimStatement = S['RecordClaimStatementRequest'];
+export type RecordClaimAdjudication = S['RecordClaimAdjudicationRequest'];
 export type ClaimPayments = S['ClaimPayments'];
 export type ClaimPayment = S['ClaimPayment'];
 export type RecordClaimPayment = S['RecordClaimPaymentRequest'];
@@ -304,6 +305,18 @@ export function createClaimsApi(orgId: string) {
     ): Promise<PaymentClaimDetail> {
       return unwrap(
         await api.PUT(`${P}/payment-claims/{claimId}/subcontractor-statement`, {
+          params: { path: { orgId, projectId, claimId } },
+          body,
+        }),
+      );
+    },
+    async recordAdjudication(
+      projectId: string,
+      claimId: string,
+      body: RecordClaimAdjudication,
+    ): Promise<PaymentClaimDetail> {
+      return unwrap(
+        await api.PUT(`${P}/payment-claims/{claimId}/adjudication`, {
           params: { path: { orgId, projectId, claimId } },
           body,
         }),

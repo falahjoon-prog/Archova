@@ -21,6 +21,8 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.refund_approve',
   'backoffice.support.access',
   'backoffice.holds.manage',
+  // Product updates go to every customer, so only the Owner role holds this.
+  'backoffice.updates.manage',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 

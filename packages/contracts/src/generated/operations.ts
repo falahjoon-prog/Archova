@@ -4675,6 +4675,12 @@ export const RecordClaimStatementParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const RecordClaimStatementBody = s.RecordClaimStatementRequestSchema;
+export const RecordClaimAdjudicationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const RecordClaimAdjudicationBody = s.RecordClaimAdjudicationRequestSchema;
 export const ListClaimEvidenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5676,6 +5682,18 @@ export const operations = {
     method: 'GET',
     path: '/v1/public/price-book',
     module: "billing",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  listPublicProductUpdates: {
+    method: 'GET',
+    path: '/v1/public/product-updates',
+    module: "platform",
     auth: "none",
     permission: null,
     internal: false,
@@ -15363,6 +15381,18 @@ export const operations = {
     params: RecordClaimStatementParams,
     query: null,
     body: RecordClaimStatementBody,
+  },
+  recordClaimAdjudication: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/adjudication',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.assess",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimAdjudicationParams,
+    query: null,
+    body: RecordClaimAdjudicationBody,
   },
   listClaimEvidence: {
     method: 'GET',

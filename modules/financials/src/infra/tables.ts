@@ -119,6 +119,32 @@ export const paymentClaimLines = financialsSchema.table('payment_claim_lines', {
   toDate: money('to_date').notNull(),
 });
 
+export const claimAdjudications = financialsSchema.table('claim_adjudications', {
+  id: uuid('id').primaryKey(),
+  claimId: uuid('claim_id').notNull(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  noticeServedOn: date('notice_served_on'),
+  applicationLodgedOn: date('application_lodged_on'),
+  applicationReceivedOn: date('application_received_on'),
+  acceptanceNoticeReceivedOn: date('acceptance_notice_received_on'),
+  nominatingAuthority: text('nominating_authority'),
+  adjudicatorName: text('adjudicator_name'),
+  adjudicatorAppointedOn: date('adjudicator_appointed_on'),
+  responseDueOn: date('response_due_on'),
+  responseLodgedOn: date('response_lodged_on'),
+  determinationDueOn: date('determination_due_on'),
+  determinedOn: date('determined_on'),
+  adjudicatedAmount: money('adjudicated_amount'),
+  outcome: text('outcome').$type<
+    'upheld' | 'part_upheld' | 'dismissed' | 'withdrawn' | 'settled'
+  >(),
+  notes: text('notes'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+});
+
 export const paymentSchedules = financialsSchema.table('payment_schedules', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

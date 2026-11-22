@@ -20,11 +20,16 @@ import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { claimTimeline, mostUrgentStep } from '../domain/claim-timeline';
+import {
+  EMPTY_ADJUDICATION,
+  validateAdjudication,
+  type AdjudicationFacts,
+} from '../domain/adjudication';
 import { isScheduleLinesError, scheduleFromLines } from '../domain/schedule-lines';
 import { SNAPSHOT_SCHEMA_VERSION } from '../domain/evidence';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { attachChangeEvent } from './changeEvents';
-import { fromCents, percentOf, toCents } from '../domain/money';
+import { fromCents, isMoney, percentOf, toCents } from '../domain/money';
 import { sealMessage, type EvidenceSigner } from '../domain/seal-proof';
 import {
   canonicalJson,
@@ -34,6 +39,7 @@ import {
   type EvidenceSnapshot,
 } from '../domain/evidence';
 import {
+  claimAdjudications,
   claimStatements,
   contracts,
   costCodes,
@@ -716,7 +722,17 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` })
       .from(payments)
       .where(eq(payments.claimId, claimId));
+    // The adjudication record (adjudicator, notes, the builder's own dates) is the builder's: an outside payee reading
+    // their own claim sees neither the record nor the steps built from it.
+    const [adjudication] = (await viewer(scope, projectId)).isInternal
+      ? await scope.tx
+          .select()
+          .from(claimAdjudications)
+          .where(eq(claimAdjudications.claimId, claimId))
+          .limit(1)
+      : [];
     const timeline = claimTimeline({
+      adjudication: adjudication ? adjudicationFacts(adjudication) : null,
       ruleState: claim.ruleState,
       isValid: claim.isValid,
       servedOn: claim.servedOn,
@@ -735,11 +751,130 @@ export function createFinancialsService(deps: FinancialsDeps) {
       lines,
       schedule: schedule ?? null,
       statement: statement ?? null,
+      adjudication: adjudication ?? null,
       warnings,
       today,
       timeline,
       attention: mostUrgentStep(timeline),
     };
+  }
+
+  const adjudicationFacts = (r: typeof claimAdjudications.$inferSelect): AdjudicationFacts => ({
+    noticeServedOn: r.noticeServedOn,
+    applicationLodgedOn: r.applicationLodgedOn,
+    applicationReceivedOn: r.applicationReceivedOn,
+    acceptanceNoticeReceivedOn: r.acceptanceNoticeReceivedOn,
+    nominatingAuthority: r.nominatingAuthority,
+    adjudicatorName: r.adjudicatorName,
+    adjudicatorAppointedOn: r.adjudicatorAppointedOn,
+    responseDueOn: r.responseDueOn,
+    responseLodgedOn: r.responseLodgedOn,
+    determinationDueOn: r.determinationDueOn,
+    determinedOn: r.determinedOn,
+    adjudicatedAmount: r.adjudicatedAmount,
+    outcome: r.outcome,
+    notes: r.notes,
+  });
+
+  /**
+   * Record what has happened in adjudication on a claim (builder staff). The whole record is sent each time, so a
+   * date that was wrong is corrected by sending it again; nothing here is calculated or chosen for the person.
+   */
+  async function recordAdjudication(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    input: Partial<AdjudicationFacts>,
+    /** The version of the record the person was looking at; needed to change a record that exists. */
+    expectedVersion?: number,
+  ) {
+    await need(scope, 'financials.claims.assess', projectId);
+    await requireStaff(scope, projectId, 'record an adjudication');
+    const { claim, today } = await claimDetail(scope, projectId, claimId, false);
+    const text = (v: string | null | undefined) => v?.trim() || null;
+    const facts: AdjudicationFacts = {
+      ...EMPTY_ADJUDICATION,
+      ...input,
+      nominatingAuthority: text(input.nominatingAuthority),
+      adjudicatorName: text(input.adjudicatorName),
+      notes: text(input.notes),
+      adjudicatedAmount: input.adjudicatedAmount ?? null,
+    };
+    if (facts.adjudicatedAmount !== null && !isMoney(facts.adjudicatedAmount))
+      throw new AppError(
+        'validation_failed',
+        'Enter the adjudicated amount as dollars, like 12500.00.',
+        [{ path: 'adjudicatedAmount', message: 'Not a dollar amount' }],
+      );
+    const problems = validateAdjudication(facts, { servedOn: claim.servedOn, today });
+    if (problems.length > 0)
+      throw new AppError(
+        'validation_failed',
+        problems[0]!.message,
+        problems.map((p) => ({ path: p.path, message: p.message })),
+      );
+    const values = { ...facts, updatedBy: scope.ctx.userId };
+    const [cur] = await scope.tx
+      .select()
+      .from(claimAdjudications)
+      .where(eq(claimAdjudications.claimId, claimId))
+      .for('update')
+      .limit(1);
+    if (cur && expectedVersion === undefined)
+      throw new AppError('validation_failed', 'Say which version of the record you are changing.', [
+        { path: 'expectedVersion', message: 'Required when a record already exists' },
+      ]);
+    if (cur && cur.version !== expectedVersion)
+      throw new AppError(
+        'conflict',
+        'Someone else changed this record. Reload it and make your change again.',
+      );
+    if (!cur && expectedVersion !== undefined && expectedVersion !== 0)
+      throw new AppError(
+        'conflict',
+        'This record was removed or never existed. Reload and try again.',
+      );
+    const at = new Date();
+    const [row] = cur
+      ? await scope.tx
+          .update(claimAdjudications)
+          .set({ ...values, updatedAt: at, version: cur.version + 1 })
+          .where(eq(claimAdjudications.id, cur.id))
+          .returning()
+      : await scope.tx
+          .insert(claimAdjudications)
+          .values({ id: uuidv7(), orgId: scope.ctx.orgId, projectId, claimId, ...values })
+          .returning()
+          .catch((e: unknown) => {
+            // Two first records at once: the second loses to the unique claim, and is told to reload.
+            const code =
+              (e as { code?: string; cause?: { code?: string } }).code ??
+              (e as { cause?: { code?: string } }).cause?.code;
+            if (code === '23505')
+              throw new AppError(
+                'conflict',
+                'Someone else just started this record. Reload it and try again.',
+              );
+            throw e;
+          });
+    // Every change leaves its before and after on the event trail: dates here can decide an adjudication.
+    scope.events.add({
+      type: 'financials.claim_adjudication.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: row!.version,
+      data: { claimId, before: cur ? adjudicationFacts(cur) : null, after: facts },
+    });
+    if (!cur)
+      await recordRetention(scope, {
+        recordType: 'financials.claim_adjudications',
+        recordId: row!.id,
+        projectId,
+        category: 'financial_7y',
+        anchor: at,
+      });
+    return claimDetail(scope, projectId, claimId, false);
   }
 
   /** NSW asks for a subcontractor's statement with each payment claim a subcontractor makes. */
@@ -2211,6 +2346,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     listClaims,
     claimDetail,
     recordStatement,
+    recordAdjudication,
     issueSchedule,
     openSubcontractClaims,
     listEvidence,

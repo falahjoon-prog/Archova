@@ -1,0 +1,17 @@
+# Render build for the free online test deployment of the marketing site (apps/site). The CMS keeps its content in a
+# SQLite file that is re-seeded on every start, so this is test data only and resets whenever the instance restarts.
+FROM node:22-slim
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true NEXT_TELEMETRY_DISABLED=1 TURBO_TELEMETRY_DISABLED=1
+RUN corepack enable
+WORKDIR /repo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
+COPY apps/site/package.json apps/site/
+COPY packages packages
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --filter '@archova/site...'
+COPY . .
+ENV SITE_ORIGIN=https://archova-site.onrender.com SITE_PAYLOAD_SECRET=archova-test-site-secret-not-for-production
+RUN pnpm turbo run build --env-mode=loose --filter=@archova/site
+ENV NODE_ENV=production
+WORKDIR /repo/apps/site
+CMD ["sh","-c","mkdir -p data && NODE_ENV=development pnpm exec tsx scripts/seed.ts; exec pnpm exec next start -p ${PORT:-10000} -H 0.0.0.0"]
